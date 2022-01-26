@@ -50,13 +50,16 @@ Import numFieldTopology.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Reserved Notation "R .-ocitv" (at level 1, format "R .-ocitv").
+Reserved Notation "R .-ocitv.-measurable"
+ (at level 2, format "R .-ocitv.-measurable").
+
 Section hlength.
 Local Open Scope ereal_scope.
 Variable R : realType.
 Implicit Types i j : interval R.
-Definition itvs : Type := R.
 
-Definition hlength (A : set itvs) : \bar R := let i := Rhull A in i.2 - i.1.
+Definition hlength (A : set R) : \bar R := let i := Rhull A in i.2 - i.1.
 
 Lemma hlength0 : hlength (set0 : set R) = 0.
 Proof. by rewrite /hlength Rhull0 /= subee. Qed.
@@ -167,7 +170,7 @@ Arguments hlength {R}.
 Section itv_semiRingOfSets.
 Variable R : realType.
 Implicit Types (I J K : set R).
-Local Notation itvs := (itvs R).
+Definition ocitv_type : Type := R.
 
 Definition ocitv := [set `]x.1, x.2]%classic | x in [set: R * R]].
 
@@ -221,12 +224,17 @@ rewrite /Order.meet/= /Order.meet /Order.join/=
 by rewrite -negb_or le_total/=.
 Qed.
 
-HB.instance Definition _  : isSemiRingOfSets itvs :=
-  @isSemiRingOfSets.Build itvs (Pointed.class R) ocitv ocitv0 ocitvI ocitvD.
+Definition ocitv_display : Type -> measure_display. Proof. exact. Qed.
 
-Definition itvs_semiRingOfSets := [the semiRingOfSetsType of itvs].
+HB.instance Definition _  : isSemiRingOfSets _ ocitv_type :=
+  @isSemiRingOfSets.Build (ocitv_display R)
+    ocitv_type (Pointed.class R) ocitv ocitv0 ocitvI ocitvD.
 
-Lemma hlength_ge0' (I : set itvs) : (0 <= hlength I)%E.
+Notation "R .-ocitv" := (ocitv_display R) : measure_display_scope.
+Notation "R .-ocitv.-measurable" := (measurable : set (set (ocitv_type))) :
+  classical_set_scope.
+
+Lemma hlength_ge0' (I : set ocitv_type) : (0 <= hlength I)%E.
 Proof. by rewrite -hlength0 le_hlength. Qed.
 
 (* Unused *)
@@ -260,7 +268,7 @@ Proof. by rewrite -hlength0 le_hlength. Qed.
 (* by rewrite lt_geF ?midf_lt//= andbF le_gtF ?midf_le//= ltW. *)
 (* Qed. *)
 
-Lemma hlength_semi_additive : semi_additive hlength.
+Lemma hlength_semi_additive : semi_additive (hlength : set ocitv_type -> _).
 Proof.
 move=> /= I n /(_ _)/cid2-/all_sig[b]/all_and2[_]/(_ _)/esym-/funext {I}->.
 move=> Itriv [[/= a1 a2] _] /esym /[dup] + ->.
@@ -325,13 +333,14 @@ apply/andP; split=> //; apply: contraTneq xbj => ->.
 by rewrite in_itv/= le_gtF// (itvP xabi).
 Qed.
 
-Canonical hlength_measure : {additive_measure set itvs -> \bar R}
+Canonical hlength_measure : {additive_measure set ocitv_type -> \bar R}
   := AdditiveMeasure (AdditiveMeasure.Axioms (@hlength0 _)
      (@hlength_ge0') hlength_semi_additive).
 
-Hint Extern 0 (measurable _) => solve [apply: is_ocitv] : core.
+Hint Extern 0 ((_ .-ocitv).-measurable _) => solve [apply: is_ocitv] : core.
 
-Lemma hlength_sigma_sub_additive : sigma_sub_additive hlength.
+Lemma hlength_sigma_sub_additive :
+  sigma_sub_additive (hlength : set ocitv_type -> _).
 Proof.
 move=> I A /(_ _)/cid2-/all_sig[b]/all_and2[_]/(_ _)/esym AE.
 move=> [a _ <-]; rewrite hlength_itv ?lte_fin/= -EFinB => lebig.
@@ -342,10 +351,10 @@ apply: le_trans (epsilon_trick _ _ _) => //=.
 have eVn_gt0 n : 0 < e%:num / 2 / (2 ^ n.+1)%:R.
   by rewrite divr_gt0// ltr0n// expn_gt0.
 have eVn_ge0 n := ltW (eVn_gt0 n).
-pose Aoo i : set itvs :=
-  (`]((b i).1), ((b i).2 + e%:num / 2 / (2 ^ i.+1)%:R)[)%classic.
-pose Aoc i : set itvs :=
-  (`]((b i).1), ((b i).2 + e%:num / 2 / (2 ^ i.+1)%:R)])%classic.
+pose Aoo i : set ocitv_type :=
+  `](b i).1, (b i).2 + e%:num / 2 / (2 ^ i.+1)%:R[%classic.
+pose Aoc i : set ocitv_type :=
+  `](b i).1, (b i).2 + e%:num / 2 / (2 ^ i.+1)%:R]%classic.
 have: `[a.1 + e%:num / 2, a.2] `<=` \bigcup_i Aoo i.
   apply: (@subset_trans _ `]a.1, a.2]).
     move=> x; rewrite /= !in_itv /= => /andP[+ -> //].
@@ -358,7 +367,8 @@ move=> /[apply]-[i _|X _ Xc]; first by rewrite /Aoo//; apply: interval_open.
 have: `](a.1 + e%:num / 2), a.2] `<=` \bigcup_(i in [set` X]) Aoc i.
   move=> x /subset_itv_oc_cc /Xc [i /= Xi] Aooix.
   by exists i => //; apply: subset_itv_oo_oc Aooix.
-have /[apply] := @content_sub_fsum _ _ [additive_measure of hlength] _ [set` X].
+pose hlength_additive := [additive_measure of hlength : set ocitv_type -> _].
+have /[apply] := @content_sub_fsum _ _ _ hlength_additive _ [set` X].
 move=> /(_ _ _ _)/Box[]//=; apply: le_le_trans.
   rewrite hlength_itv ?lte_fin -?EFinD/= -addrA -opprD.
   by case: ltP => //; rewrite lee_fin subr_le0.
@@ -370,7 +380,7 @@ do !case: ifPn => //= ?; do ?by rewrite ?adde_ge0 ?lee_fin// ?subr_ge0// ?ltW.
 by rewrite addrAC lee_fin ler_add// subr_le0 leNgt.
 Qed.
 
-Lemma hlength_sigma_finite : sigma_finite [set: itvs] hlength.
+Lemma hlength_sigma_finite : sigma_finite [set: ocitv_type] hlength.
 Proof.
 exists (fun k : nat => `] (- k%:R)%R, k%:R]%classic).
   apply/esym; rewrite -subTset => /= x _ /=.
@@ -383,17 +393,19 @@ exists (fun k : nat => `] (- k%:R)%R, k%:R]%classic).
 by move=> k; split => //; rewrite hlength_itv/= -EFinB; case: ifP; rewrite ltey.
 Qed.
 
-Let gitvs := g_measurableType ocitv.
-
-Definition lebesgue_measure : {measure set gitvs -> \bar R} :=
+Definition lebesgue_measure : {measure set (salgebraType ocitv) -> \bar R} :=
   Hahn_ext_measure hlength_sigma_sub_additive.
 
 End itv_semiRingOfSets.
 Arguments lebesgue_measure {R}.
 
+Notation "R .-ocitv" := (ocitv_display R) : measure_display_scope.
+Notation "R .-ocitv.-measurable" := (measurable : set (set (ocitv_type R))) :
+  classical_set_scope.
+
 Section lebesgue_measure.
 Variable R : realType.
-Let gitvs := g_measurableType (@ocitv R).
+Let gitvs := salgebraType (@ocitv R).
 
 Lemma lebesgue_measure_unique (mu : {measure set gitvs -> \bar R}) :
   (forall X, ocitv X -> hlength X = mu X) ->
@@ -436,8 +448,7 @@ End ps_infty.
 
 Section salgebra_ereal.
 Variables (R : realType) (G : set (set R)).
-Let measurableTypeR := g_measurableType G.
-Let measurableR : set (set R) := @measurable measurableTypeR.
+Let measurableR : set (set R) := G.-sigma.-measurable.
 
 Definition emeasurable : set (set \bar R) :=
   [set EFin @` A `|` B | A in measurableR & B in ps_infty].
@@ -471,7 +482,7 @@ move=> mF; pose P := fun i j => measurableR j.1 /\ ps_infty j.2 /\
 have [f fi] : {f : nat -> (set R) * (set \bar R) & forall i, P i (f i) }.
   by apply: choice => i; have [x mx [y PSoo'y] xy] := mF i; exists (x, y).
 exists (\bigcup_i (f i).1).
-  by apply: bigcupT_measurable => i; exact: (fi i).1.
+  by apply: measurable_bigcup => i; exact: (fi i).1.
 exists (\bigcup_i (f i).2).
   apply/ps_inftyP => x [n _] fn2x.
   have /ps_inftyP : ps_infty(f n).2 by have [_ []] := fi n.
@@ -484,8 +495,9 @@ rewrite predeqE => i /=; split=> [[r [n _ fn1r <-{i}]]|[n _ [r fn1r <-{i}]]];
  by [exists n => //; exists r | exists r => //; exists n].
 Qed.
 
-Definition ereal_isMeasurable : isMeasurable (\bar R) :=
-  isMeasurable.Build _ (Pointed.class _)
+Definition ereal_isMeasurable :
+  isMeasurable default_measure_display (\bar R) :=
+  isMeasurable.Build _ _ (Pointed.class _)
     emeasurable0 emeasurableC bigcupT_emeasurable.
 
 End salgebra_ereal.
@@ -547,14 +559,14 @@ Qed.
 Section salgebra_R_ssets.
 Variable R : realType.
 
-Definition measurableTypeR :=
-  g_measurableType (@measurable (@itvs_semiRingOfSets R)).
+Definition measurableTypeR := salgebraType (R.-ocitv.-measurable).
+Definition measurableR : set (set R) :=
+  (R.-ocitv.-measurable).-sigma.-measurable.
 
-Definition measurableR : set (set R) := @measurable measurableTypeR.
-
-HB.instance Definition R_isMeasurable : isMeasurable R :=
-  isMeasurable.Build measurableTypeR (Pointed.class R)
-    measurable0 (@measurableC _) (@bigcupT_measurable _).
+HB.instance Definition R_isMeasurable :
+  isMeasurable default_measure_display R :=
+  @isMeasurable.Build _ measurableTypeR (Pointed.class R) measurableR
+    measurable0 (@measurableC _ _) (@measurable_bigcup _ _).
 (*HB.instance (Real.sort R) R_isMeasurable.*)
 
 Lemma measurable_set1 (r : R) : measurable [set r].
@@ -599,7 +611,7 @@ case: i => [[[] a|[]] [[] b|[]]] => //; do ?by rewrite set_itv_ge.
 Qed.
 
 HB.instance Definition _ :=
-  ereal_isMeasurable (@measurable (@itvs_semiRingOfSets R)).
+  (ereal_isMeasurable (R.-ocitv.-measurable)).
 (* NB: Until we dropped support for Coq 8.12, we were using
 HB.instance (\bar (Real.sort R))
   (ereal_isMeasurable (@measurable (@itvs_semiRingOfSets R))).
@@ -707,7 +719,7 @@ rewrite [X in lebesgue_measure X](_ : _ =
   rewrite predeqE => r; split.
     by move=> [x [[n _ Fnx xoo <-]]]; exists n => //; exists x.
   by move=> [n _ [x [Fnx xoo <-{r}]]]; exists x => //; split => //; exists n.
-apply: (@measure_semi_sigma_additive _ _ (@lebesgue_measure R)
+apply: (@measure_semi_sigma_additive _ _ _ (@lebesgue_measure R)
   (fun n => fine @` (F n `\` [set -oo; +oo]%E))).
 - move=> n; have := mF n.
   move=> [X mX [X' mX']] XX'Fn.
@@ -776,7 +788,8 @@ Hint Extern 0 (measurable [set _]) => solve [apply: measurable_set1|
 
 Section measurable_fun_measurable.
 Local Open Scope ereal_scope.
-Variables (T : measurableType) (R : realType) (D : set T) (f : T -> \bar R).
+Variables (d : measure_display) (T : measurableType d).
+Variables (R : realType) (D : set T) (f : T -> \bar R).
 Hypotheses (mD : measurable D) (mf : measurable_fun D f).
 Implicit Types y : \bar R.
 
@@ -804,7 +817,7 @@ Lemma emeasurable_fin_num : measurable (D `&` [set x | f x \is a fin_num]).
 Proof.
 rewrite [X in measurable X](_ : _ =
   \bigcup_k (D `&` ([set  x | - k%:R%:E <= f x] `&` [set x | f x <= k%:R%:E]))).
-  apply: bigcupT_measurable => k; rewrite -(setIid D) setIACA.
+  apply: measurable_bigcup => k; rewrite -(setIid D) setIACA.
   by apply: measurableI; [exact: emeasurable_fun_c_infty|
                           exact: emeasurable_fun_infty_c].
 rewrite predeqE => t; split => [/= [Dt ft]|].
@@ -836,10 +849,9 @@ Variable R : realType.
 Implicit Types x y z : R.
 
 Definition G := [set A | exists x, A = `]x, +oo[%classic].
-Let T := g_measurableType G.
 
 Lemma measurable_itv_bnd_infty b x :
-  @measurable T [set` Interval (BSide b x) +oo%O].
+  G.-sigma.-measurable [set` Interval (BSide b x) +oo%O].
 Proof.
 case: b; last by apply: sub_sigma_algebra; eexists; reflexivity.
 rewrite itv_c_inftyEbigcap; apply: bigcapT_measurable => k.
@@ -847,7 +859,7 @@ by apply: sub_sigma_algebra; eexists; reflexivity.
 Qed.
 
 Lemma measurable_itv_bounded a b x : a != +oo%O ->
-  @measurable T [set` Interval a (BSide b x)].
+  G.-sigma.-measurable [set` Interval a (BSide b x)].
 Proof.
 case: a => [a r _|[_|//]].
   by rewrite set_itv_splitD; apply: measurableD => //;
@@ -856,8 +868,7 @@ by rewrite -setCitvr; apply: measurableC; apply: measurable_itv_bnd_infty.
 Qed.
 
 Lemma measurableE :
-  @measurable (g_measurableType (measurable : set (set (itvs R)))) =
-  @measurable T.
+  (R.-ocitv.-measurable).-sigma.-measurable = G.-sigma.-measurable.
 Proof.
 rewrite eqEsubset; split => A.
   apply: smallest_sub; first exact: smallest_sigma_algebra.
@@ -875,19 +886,18 @@ Variable R : realType.
 Implicit Types x y z : R.
 
 Definition G := [set A | exists x, A = `]-oo, x[%classic].
-Let T := g_measurableType G.
 
 Lemma measurable_itv_bnd_infty b x :
-  @measurable T [set` Interval -oo%O (BSide b x)].
+  G.-sigma.-measurable [set` Interval -oo%O (BSide b x)].
 Proof.
 case: b; first by apply sub_sigma_algebra; eexists; reflexivity.
-rewrite -setCitvr itv_o_inftyEbigcup; apply/measurableC/bigcupT_measurable => n.
+rewrite -setCitvr itv_o_inftyEbigcup; apply/measurableC/measurable_bigcup => n.
 rewrite -setCitvl; apply: measurableC.
 by apply: sub_sigma_algebra; eexists; reflexivity.
 Qed.
 
 Lemma measurable_itv_bounded a b x : a != -oo%O ->
-  @measurable T [set` Interval (BSide b x) a].
+  G.-sigma.-measurable [set` Interval (BSide b x) a].
 Proof.
 case: a => [a r _|[//|_]].
   by rewrite set_itv_splitD; apply/measurableD => //;
@@ -895,9 +905,7 @@ case: a => [a r _|[//|_]].
 by rewrite -setCitvl; apply: measurableC; apply: measurable_itv_bnd_infty.
 Qed.
 
-Lemma measurableE :
-  @measurable (g_measurableType (measurable : set (set (itvs R)))) =
-  @measurable T.
+Lemma measurableE : (R.-ocitv.-measurable).-sigma.-measurable = G.-sigma.-measurable.
 Proof.
 rewrite eqEsubset; split => A.
   apply: smallest_sub; first exact: smallest_sigma_algebra.
@@ -915,18 +923,17 @@ Variable R : realType.
 Implicit Types x y z : R.
 
 Definition G : set (set R) := [set A | exists x, A = `[x, +oo[%classic].
-Let T := g_measurableType G.
 
 Lemma measurable_itv_bnd_infty b x :
-  @measurable T [set` Interval (BSide b x) +oo%O].
+  G.-sigma.-measurable [set` Interval (BSide b x) +oo%O].
 Proof.
 case: b; first by apply: sub_sigma_algebra; exists x; rewrite set_itv_c_infty.
-rewrite itv_o_inftyEbigcup; apply: bigcupT_measurable => k.
+rewrite itv_o_inftyEbigcup; apply: measurable_bigcup => k.
 by apply: sub_sigma_algebra; eexists; reflexivity.
 Qed.
 
 Lemma measurable_itv_bounded a b y : a != +oo%O ->
-  @measurable T [set` Interval a (BSide b y)].
+  G.-sigma.-measurable [set` Interval a (BSide b y)].
 Proof.
 case: a => [a r _|[_|//]].
   rewrite set_itv_splitD.
@@ -934,9 +941,7 @@ case: a => [a r _|[_|//]].
 by rewrite -setCitvr; apply: measurableC; apply: measurable_itv_bnd_infty.
 Qed.
 
-Lemma measurableE :
-  @measurable (g_measurableType (measurable : set (set (itvs R)))) =
-  @measurable T.
+Lemma measurableE : (R.-ocitv.-measurable).-sigma.-measurable = G.-sigma.-measurable.
 Proof.
 rewrite eqEsubset; split => A.
   apply: smallest_sub; first exact: smallest_sigma_algebra.
@@ -955,19 +960,18 @@ Variable R : realType.
 Implicit Types x y z : R.
 
 Definition G := [set A | exists x y, A = `]x, y[%classic].
-Let T := g_measurableType G.
 
-Local Lemma measurable_itvoo x y : @measurable T `]x, y[%classic.
+Local Lemma measurable_itvoo x y : G.-sigma.-measurable `]x, y[%classic.
 Proof. by apply sub_sigma_algebra; eexists; eexists; reflexivity. Qed.
 
-Local Lemma measurable_itv_o_infty x : @measurable T `]x, +oo[%classic.
+Local Lemma measurable_itv_o_infty x : G.-sigma.-measurable `]x, +oo[%classic.
 Proof.
-rewrite itv_bnd_inftyEbigcup; apply: bigcupT_measurable => i.
+rewrite itv_bnd_inftyEbigcup; apply: measurable_bigcup => i.
 exact: measurable_itvoo.
 Qed.
 
 Lemma measurable_itv_bnd_infty b x :
-  @measurable T [set` Interval (BSide b x) +oo%O].
+  G.-sigma.-measurable [set` Interval (BSide b x) +oo%O].
 Proof.
 case: b; last exact: measurable_itv_o_infty.
 rewrite itv_c_inftyEbigcap; apply: bigcapT_measurable => k.
@@ -975,22 +979,20 @@ exact: measurable_itv_o_infty.
 Qed.
 
 Lemma measurable_itv_infty_bnd b x :
-  @measurable T [set` Interval -oo%O (BSide b x)].
+  G.-sigma.-measurable [set` Interval -oo%O (BSide b x)].
 Proof.
 by rewrite -setCitvr; apply: measurableC; exact: measurable_itv_bnd_infty.
 Qed.
 
 Lemma measurable_itv_bounded a x b y :
-  @measurable T [set` Interval (BSide a x) (BSide b y)].
+  G.-sigma.-measurable [set` Interval (BSide a x) (BSide b y)].
 Proof.
 move: a b => [] []; rewrite -[X in measurable X]setCK setCitv;
   apply: measurableC; apply: measurableU; try solve[
     exact: measurable_itv_infty_bnd|exact: measurable_itv_bnd_infty].
 Qed.
 
-Lemma measurableE :
-  @measurable (g_measurableType (measurable : set (set (itvs R)))) =
-  @measurable T.
+Lemma measurableE : (R.-ocitv.-measurable).-sigma.-measurable = G.-sigma.-measurable.
 Proof.
 rewrite eqEsubset; split => A.
   apply: smallest_sub; first exact: smallest_sigma_algebra.
@@ -1092,23 +1094,22 @@ Implicit Types (x y z : \bar R) (r s : R).
 Local Open Scope ereal_scope.
 
 Definition G := [set A : set \bar R | exists x, A = `]x, +oo[%classic].
-Let T := g_measurableType G.
 
-Lemma measurable_set1_ninfty : @measurable T [set -oo].
+Lemma measurable_set1_ninfty : G.-sigma.-measurable [set -oo].
 Proof.
-rewrite eset1_ninfty; apply: (@bigcapT_measurable T) => i.
+rewrite eset1_ninfty; apply: bigcap_measurable => i _.
 rewrite -setCitvr; apply: measurableC; rewrite eitv_c_infty.
-apply: bigcapT_measurable => j; apply: sub_sigma_algebra.
+apply: bigcap_measurable => j _; apply: sub_sigma_algebra.
 by exists (- (i%:R + j.+1%:R^-1))%:E; rewrite opprD.
 Qed.
 
-Lemma measurable_set1_pinfty : @measurable T [set +oo].
+Lemma measurable_set1_pinfty : G.-sigma.-measurable [set +oo].
 Proof.
 rewrite eset1_pinfty; apply: bigcapT_measurable => i.
 by apply: sub_sigma_algebra; exists i%:R%:E.
 Qed.
 
-Lemma measurableE : emeasurable (measurable : set (set (itvs R))) = @measurable T.
+Lemma measurableE : emeasurable (R.-ocitv.-measurable) = G.-sigma.-measurable.
 Proof.
 apply/seteqP; split; last first.
   apply: smallest_sub.
@@ -1132,7 +1133,7 @@ move=> A [B mB [C mC]] <-; apply: measurableU; last first.
 rewrite RGenOInfty.measurableE in mB.
 have smB := smallest_sub _ _ mB.
 (* BUG: elim/smB : _. fails !! *)
-apply: (smB (@measurable T \o (image^~ EFin))); last first.
+apply: (smB (G.-sigma.-measurable \o (image^~ EFin))); last first.
   move=> _ [r ->]/=; rewrite EFin_itv_bnd_infty; apply: measurableD.
     by apply sub_sigma_algebra => /=; exists r%:E.
   exact: measurable_set1_pinfty.
@@ -1140,7 +1141,7 @@ split=> /= [|D mD|F mF]; first by rewrite image_set0.
 - rewrite setTD EFin_setC; apply: measurableD; first exact: measurableC.
   by apply: measurableU; [exact: measurable_set1_ninfty|
                           exact: measurable_set1_pinfty].
-- by rewrite EFin_bigcup; apply: bigcupT_measurable => i; exact: mF.
+- by rewrite EFin_bigcup; apply: bigcup_measurable => i _ ; exact: mF.
 Qed.
 
 End erealgenoinfty.
@@ -1153,21 +1154,20 @@ Implicit Types (x y z : \bar R) (r s : R).
 Local Open Scope ereal_scope.
 
 Definition G := [set A : set \bar R | exists x, A = `[x, +oo[%classic].
-Let T := g_measurableType G.
 
-Lemma measurable_set1_ninfty : @measurable T [set -oo].
+Lemma measurable_set1_ninfty : G.-sigma.-measurable [set -oo].
 Proof.
 rewrite eset1_ninfty; apply: bigcapT_measurable=> i; rewrite -setCitvr.
 by apply: measurableC; apply: sub_sigma_algebra; exists (- i%:R)%:E.
 Qed.
 
-Lemma measurable_set1_pinfty : @measurable T [set +oo].
+Lemma measurable_set1_pinfty : G.-sigma.-measurable [set +oo].
 Proof.
 apply: sub_sigma_algebra; exists +oo; rewrite predeqE => x; split => [->//|/=].
 by rewrite in_itv /= andbT lee_pinfty_eq => /eqP ->.
 Qed.
 
-Lemma measurableE : emeasurable (measurable : set (set (itvs R))) = @measurable T.
+Lemma measurableE : emeasurable (R.-ocitv.-measurable) = G.-sigma.-measurable.
 Proof.
 apply/seteqP; split; last first.
   apply: smallest_sub.
@@ -1191,7 +1191,7 @@ move=> _ [A' mA' [C mC]] <-; apply: measurableU; last first.
 rewrite RGenCInfty.measurableE in mA'.
 have smA' := smallest_sub _ _ mA'.
 (* BUG: elim/smA' : _. fails !! *)
-apply: (smA' (@measurable T \o (image^~ EFin))); last first.
+apply: (smA' (G.-sigma.-measurable \o (image^~ EFin))); last first.
   move=> _ [r ->]/=; rewrite EFin_itv_bnd_infty; apply: measurableD.
     by apply sub_sigma_algebra => /=; exists r%:E.
   exact: measurable_set1_pinfty.
@@ -1199,7 +1199,7 @@ split=> /= [|D mD|F mF]; first by rewrite image_set0.
 - rewrite setTD EFin_setC; apply: measurableD; first exact: measurableC.
   by apply: measurableU; [exact: measurable_set1_ninfty|
                           exact: measurable_set1_pinfty].
-- by rewrite EFin_bigcup; apply: bigcupT_measurable => i; exact: mF.
+- by rewrite EFin_bigcup; apply: bigcup_measurable => i _; exact: mF.
 Qed.
 
 End erealgencinfty.
@@ -1233,7 +1233,7 @@ Qed.
 
 End trace.
 
-Lemma strace_measurable (T : measurableType) (A : set T) : measurable A ->
+Lemma strace_measurable d (T : measurableType d) (A : set T) : measurable A ->
   strace measurable A `<=` measurable.
 Proof. by move=> mA=> _ [C mC <-]; apply: measurableI. Qed.
 
@@ -1288,7 +1288,7 @@ Qed.
 End standard_measurable_fun.
 
 Section measurable_fun_realType.
-Variables (T : measurableType) (R : realType).
+Variables (d : measure_display) (T : measurableType d) (R : realType).
 Implicit Types (D : set T) (f g : T -> R).
 
 Lemma measurable_funD D f g :
@@ -1312,7 +1312,7 @@ Qed.
 Lemma measurable_funrM D f (k : R) : measurable_fun D f ->
   measurable_fun D (fun x => k * f x).
 Proof.
-apply: (@measurable_fun_comp _ _ _ ( *%R k)).
+apply: (@measurable_fun_comp _ _ _ _ _ _ ( *%R k)).
 by apply: continuous_measurable_fun; apply: mulrl_continuous.
 Qed.
 
@@ -1415,7 +1415,7 @@ Proof.
 move=> mf_ f_f; have fE x : D x -> f x = lim_sup (h ^~ x).
   move=> Dx; have /cvg_lim  <-// := @cvg_sups _ (h ^~ x) (f x) (f_f _ Dx).
   exact: Rhausdorff.
-apply: (@eq_measurable_fun _ _ D (fun x => lim_sup (h ^~ x))).
+apply: (@eq_measurable_fun _ _ _ _ D (fun x => lim_sup (h ^~ x))).
   by move=> x; rewrite inE => Dx; rewrite -fE.
 apply: (@measurable_fun_lim_sup _ h) => // t Dt.
 - apply/bounded_fun_has_ubound/(@cvg_seq_bounded _ [normedModType R of R^o]).
@@ -1475,7 +1475,7 @@ End standard_emeasurable_fun.
   solve [exact: measurable_fun_EFin] : core.
 
 (* NB: real-valued function *)
-Lemma EFin_measurable_fun (T : measurableType) (R : realType) (D : set T)
+Lemma EFin_measurable_fun d (T : measurableType d) (R : realType) (D : set T)
     (g : T -> R) :
   measurable_fun D (EFin \o g) <-> measurable_fun D g.
 Proof.
@@ -1488,7 +1488,7 @@ Qed.
 
 Section emeasurable_fun.
 Local Open Scope ereal_scope.
-Variables (T : measurableType) (R : realType).
+Variables (d : measure_display) (T : measurableType d) (R : realType).
 Implicit Types (D : set T).
 
 Lemma measurable_fun_einfs D (f : (T -> \bar R)^nat) :
@@ -1577,4 +1577,4 @@ exact: measurable_fun_elim_sup.
 Qed.
 
 End emeasurable_fun.
-Arguments emeasurable_fun_cvg {T R D} f_.
+Arguments emeasurable_fun_cvg {d T R D} f_.
