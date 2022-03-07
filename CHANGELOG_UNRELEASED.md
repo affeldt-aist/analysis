@@ -34,6 +34,12 @@
   + lemma `fset_set_image`, `card_fset_set`, `geq_card_fset_set`,
     `leq_card_fset_set`, `infinite_set_fset`, `infinite_set_fsetP` and
     `fcard_eq`.
+- in file `classical_sets.v`:
+  + lemma `bigsetU_bigcup`
+- in file `numfun.v`:
+  + lemma `restrict_lee`
+- in file `lebesgue_integral.v`:
+  + lemmas `integral_set0`, `ge0_integral_bigsetU`, `ge0_integral_bigcup`
 
 ### Changed
 
