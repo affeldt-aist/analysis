@@ -77,6 +77,13 @@
   + lemmas `finite_card_dirac`, `infinite_card_dirac`
 - in file `lebesgue_integral.v`:
   + lemmas `integralM_indic`, `integralM_indic_nnsfun`, `integral_dirac`
+- in file `cardinality.v`:
+  + lemmas `trivIset_sum_card`, `fset_set_sub`, `fset_set_set0`
+- in file `sequences.v`:
+  + lemmas `nat_dvg_real`, `nat_cvgPpinfty`, `nat_nondecreasing_is_cvg`
+  + definition `nseries`, lemmas `le_nseries`, `cvg_nseries_near`, `dvg_nseries`
+- in file `measure.v`:
+  + defintion `measure_count`, lemma `measure_countE`
 
 ### Changed
 
