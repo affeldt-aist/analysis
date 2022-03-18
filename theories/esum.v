@@ -149,7 +149,7 @@ wlog : a b ag0 bg0 / \esum_(i in I) a i \isn't a fin_num => [saoo|]; last first.
   move=> /ereal_sup_gt[_ [X XI] <-] /ltW yle; exists X => //=.
   rewrite (le_trans yle)// big_split lee_addl// big_seq_cond sume_ge0 => // i.
   by rewrite andbT => /XI; apply: bg0.
-  case: (boolP (\esum_(i in I) a i \is a fin_num)) => sa; last exact: saoo.
+case: (boolP (\esum_(i in I) a i \is a fin_num)) => sa; last exact: saoo.
 case: (boolP (\esum_(i in I) b i \is a fin_num)) => sb; last first.
   by rewrite addeC (eq_esum (fun _ _ => addeC _ _)) saoo.
 rewrite -lee_subr_addr// ub_ereal_sup//= => _ [X XI] <-.
