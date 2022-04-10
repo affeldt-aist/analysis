@@ -34,6 +34,8 @@
   + lemma `fset_set_image`, `card_fset_set`, `geq_card_fset_set`,
     `leq_card_fset_set`, `infinite_set_fset`, `infinite_set_fsetP` and
     `fcard_eq`.
+- in file `topology.v`:
+  + definition `frechet_filter` and instance `frechet_properfilter`
 
 ### Changed
 
