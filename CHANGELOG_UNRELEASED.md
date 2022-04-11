@@ -197,6 +197,8 @@
     `lt_ninfty`
 - in `classical_sets.v`:
   + notation `[set of _]`
+- in `measure.v`:
+  + lemma `measure_restrE`
 
 ### Infrastructure
 
