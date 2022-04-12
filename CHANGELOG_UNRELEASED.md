@@ -41,6 +41,8 @@
   + remove one hypothesis in lemmas `reindex_esum`, `esum_image`
 - moved from `lebesgue_integral.v` to `lebesgue_measure.v` and generalized
   + hint `measurable_set1`/`emeasurable_set1`
+- in `classical_sets.v`:
+  + lemma `preimage10` turned into an equivalence
 
 ### Renamed
 
