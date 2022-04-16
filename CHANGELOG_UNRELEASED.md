@@ -77,6 +77,11 @@
   + lemmas `finite_card_dirac`, `infinite_card_dirac`
 - in file `lebesgue_integral.v`:
   + lemmas `integralM_indic`, `integralM_indic_nnsfun`, `integral_dirac`
+- in file `measure.v`:
+  + mixins `isAdditiveMeasure`, `isMeasure0`, `isMeasure`, `isOuterMeasure`
+  + structures `AdditiveMeasure`, `Measure`, `OuterMeasure`
+  + notations `additive_measure`, `measure`, `outer_measure`
+  + definition `restr`
 
 ### Changed
 
@@ -185,6 +190,14 @@
     `lt_ninfty`
 - in `classical_sets.v`:
   + notation `[set of _]`
+- in `measure.v`:
+  + notations `[additive_measure _ -> _]`, `[measure _ -> _]`, `[outer_measure _ -> _ ]`,
+  + lemma `measure_is_additive_measure`
+  + definitions `caratheodory_measure_mixin`, `caratheodory_measure`
+  + coercions `measure_to_nadditive_measure`, `measure_additive_measure`
+  + canonicals `measure_additive_measure`, `set_ring_measure`,
+    `outer_measure_of_measure`, `Hahn_ext_measure`
+
 
 ### Infrastructure
 

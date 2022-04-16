@@ -325,9 +325,8 @@ apply/andP; split=> //; apply: contraTneq xbj => ->.
 by rewrite in_itv/= le_gtF// (itvP xabi).
 Qed.
 
-Canonical hlength_measure : {additive_measure set itvs -> \bar R}
-  := AdditiveMeasure (AdditiveMeasure.Axioms (@hlength0 _)
-     (@hlength_ge0') hlength_semi_additive).
+HB.instance Definition _ := isAdditiveMeasure.Build R _ hlength
+  (@hlength0 _) (@hlength_ge0') hlength_semi_additive.
 
 Hint Extern 0 (measurable _) => solve [apply: is_ocitv] : core.
 
@@ -358,7 +357,7 @@ move=> /[apply]-[i _|X _ Xc]; first by rewrite /Aoo//; apply: interval_open.
 have: `](a.1 + e%:num / 2), a.2] `<=` \bigcup_(i in [set` X]) Aoc i.
   move=> x /subset_itv_oc_cc /Xc [i /= Xi] Aooix.
   by exists i => //; apply: subset_itv_oo_oc Aooix.
-have /[apply] := @content_sub_fsum _ _ [additive_measure of hlength] _ [set` X].
+have /[apply] := @content_sub_fsum _ _ [the additive_measure _ _ of hlength] _ [set` X].
 move=> /(_ _ _ _)/Box[]//=; apply: le_le_trans.
   rewrite hlength_itv ?lte_fin -?EFinD/= -addrA -opprD.
   by case: ltP => //; rewrite lee_fin subr_le0.
@@ -385,8 +384,19 @@ Qed.
 
 Let gitvs := g_measurableType ocitv.
 
-Definition lebesgue_measure : {measure set gitvs -> \bar R} :=
-  Hahn_ext_measure hlength_sigma_sub_additive.
+Definition lebesgue_measure := Hahn_ext [the additive_measure _ _ of hlength].
+
+Let lebesgue_measure0 : lebesgue_measure set0 = 0%E.
+Proof. by[]. Qed.
+
+Let lebesgue_measure_ge0 : forall x, (0 <= lebesgue_measure x)%E.
+Proof. exact: measure.Hahn_ext_ge0. Qed.
+
+Let lebesgue_measure_semi_sigma_additive : semi_sigma_additive lebesgue_measure.
+Proof. exact/measure.Hahn_ext_sigma_additive/hlength_sigma_sub_additive. Qed.
+
+HB.instance Definition _ := isMeasure.Build _ _ lebesgue_measure
+  lebesgue_measure0 lebesgue_measure_ge0 lebesgue_measure_semi_sigma_additive.
 
 End itv_semiRingOfSets.
 Arguments lebesgue_measure {R}.
@@ -668,11 +678,11 @@ Proof.
 by rewrite -setCitvr; exact/measurableC/emeasurable_itv_bnd_pinfty.
 Qed.
 
-Definition elebesgue_measure' : set \bar R -> \bar R :=
+Definition elebesgue_measure : set \bar R -> \bar R :=
   fun S => lebesgue_measure (fine @` (S `\` [set -oo; +oo]%E)).
 
-Lemma elebesgue_measure'0 : elebesgue_measure' set0 = 0%E.
-Proof. by rewrite /elebesgue_measure' set0D image_set0 measure0. Qed.
+Lemma elebesgue_measure0 : elebesgue_measure set0 = 0%E.
+Proof. by rewrite /elebesgue_measure set0D image_set0 measure0. Qed.
 
 Lemma measurable_fine (X : set \bar R) : measurable X ->
   measurable [set fine x | x in X `\` [set -oo; +oo]%E].
@@ -695,19 +705,19 @@ case => Y mY [X' [ | <-{X} | <-{X} | <-{X} ]].
   by move=> Yr; exists r%:E => //; split => [|[]//]; left; exists r.
 Qed.
 
-Lemma elebesgue_measure'_ge0 X : (0 <= elebesgue_measure' X)%E.
+Lemma elebesgue_measure_ge0 X : (0 <= elebesgue_measure X)%E.
 Proof. exact/measure_ge0. Qed.
 
-Lemma semi_sigma_additive_elebesgue_measure' :
-  semi_sigma_additive elebesgue_measure'.
+Lemma semi_sigma_additive_elebesgue_measure :
+  semi_sigma_additive elebesgue_measure.
 Proof.
-move=> /= F mF tF mUF; rewrite /elebesgue_measure'.
+move=> /= F mF tF mUF; rewrite /elebesgue_measure.
 rewrite [X in lebesgue_measure X](_ : _ =
     \bigcup_n (fine @` (F n `\` [set -oo; +oo]%E))); last first.
   rewrite predeqE => r; split.
     by move=> [x [[n _ Fnx xoo <-]]]; exists n => //; exists x.
   by move=> [n _ [x [Fnx xoo <-{r}]]]; exists x => //; split => //; exists n.
-apply: (@measure_semi_sigma_additive _ _ (@lebesgue_measure R)
+apply: (@measure_semi_sigma_additive _ _ [the measure _ _ of (@lebesgue_measure R)]
   (fun n => fine @` (F n `\` [set -oo; +oo]%E))).
 - move=> n; have := mF n.
   move=> [X mX [X' mX']] XX'Fn.
@@ -762,12 +772,9 @@ apply: (@measure_semi_sigma_additive _ _ (@lebesgue_measure R)
     by exists n => //; exists r%:E => //; split => //; case.
 Qed.
 
-Definition elebesgue_measure_isMeasure : is_measure elebesgue_measure' :=
-  Measure.Axioms elebesgue_measure'0 elebesgue_measure'_ge0
-                 semi_sigma_additive_elebesgue_measure'.
-
-Definition elebesgue_measure : {measure set \bar R -> \bar R} :=
-  Measure.Pack _ elebesgue_measure_isMeasure.
+HB.instance Definition _ := isMeasure.Build _ _ elebesgue_measure
+  elebesgue_measure0 elebesgue_measure_ge0
+  semi_sigma_additive_elebesgue_measure.
 
 End salgebra_R_ssets.
 #[global]
