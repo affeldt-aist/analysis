@@ -662,7 +662,7 @@ Lemma nnfun_mulem_ge0 d (T : measurableType d) (R : realType)
     (mu : {measure set T -> \bar R})(f : {nnsfun T >-> R}) x :
   0 <= x%:E * mu (f @^-1` [set x]).
 Proof.
-apply: (mulem_ge0 (fun x => f @^-1` [set x])); exact: preimage_nnfun0.
+by apply: (mulem_ge0 (fun x => f @^-1` [set x])); exact: preimage_nnfun0.
 Qed.
 End mulem_ge0.
 

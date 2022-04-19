@@ -983,7 +983,7 @@ Qed.
 Lemma sigma_algebra_preimage_classE aT (rT : pointedType) (D : set aT)
     (f : aT -> rT) (G' : set (set rT)) :
   <<s D, preimage_class D f G' >> =
-  preimage_class D f (G'.-sigma.-measurable).
+    preimage_class D f (G'.-sigma.-measurable).
 Proof.
 rewrite eqEsubset; split.
   have mG : sigma_algebra D
@@ -1876,8 +1876,8 @@ rewrite -[leRHS]SetRing.RmuE// -[B](setDUK AB) measureU/= ?setDIK//.
 Qed.
 
 Lemma measure_le0 d (T : semiRingOfSetsType d) (R : realFieldType)
-    (mu : {additive_measure set T -> \bar R}) (A : set T) :
-    (mu A <= 0)%E = (mu A == 0)%E.
+  (mu : {additive_measure set T -> \bar R}) (A : set T) :
+  (mu A <= 0)%E = (mu A == 0)%E.
 Proof. by case: ltgtP (measure_ge0 mu A). Qed.
 
 Section more_content_semiring_lemmas.
