@@ -82,6 +82,8 @@
   + structures `AdditiveMeasure`, `Measure`, `OuterMeasure`
   + notations `additive_measure`, `measure`, `outer_measure`
   + definition `restr`
+- in file `classical_sets.v`:
+  + lemma `trivIset_set0`
 
 ### Changed
 
@@ -93,6 +95,8 @@
   + generalize `eq_nneseries`, `nneseries0`
 - in `mathcomp_extra.v`:
   + generalize `card_fset_sum1`
+- in `measure.v`:
+  + `measure0` is now a lemma
 
 ### Renamed
 
@@ -197,7 +201,7 @@
   + coercions `measure_to_nadditive_measure`, `measure_additive_measure`
   + canonicals `measure_additive_measure`, `set_ring_measure`,
     `outer_measure_of_measure`, `Hahn_ext_measure`
-
+  + lemma `Rmu0`
 
 ### Infrastructure
 
