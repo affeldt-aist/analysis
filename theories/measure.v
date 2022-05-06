@@ -70,12 +70,9 @@ From HB Require Import structures.
 (*   pushforward f m == pushforward/image measure of m by f                   *)
 (*              \d_a == Dirac measure                                         *)
 (*   sigma_finite A f == the measure f is sigma-finite on A : set T with      *)
-(*                   T : ringOfSetsType.                                      *)
-(*   restr mu m == restriction of the measure mu to a set D; restr mu m       *)
-(*                 has type set T -> \bar R provided that m has type          *)
-(*                 {measure set T -> \bar R}                                  *)
-(*   Restr mu mD == same as restr mu D except that mD is a proof that D is    *)
-(*                  measurable; Restr mu mD has type {measure set T -> \bar R}*)
+(*                       T : ringOfSetsType.                                  *)
+(*   mrestr mu mD == restriction of the measure mu to a set D; mD is a proof  *)
+(*                   that D is measurable                                     *)
 (*   mu.-negligible A == A is mu negligible                                   *)
 (* 　{ae mu, forall x, P x} == P holds almost everywhere for the measure mu   *)
 (*                                                                            *)
@@ -1407,15 +1404,15 @@ Qed.
 End dirac_lemmas.
 
 Definition mrestr (T : measurableType) (R : realFieldType) (D : set T)
-  (f : set T -> \bar R) (mD : measurable D) := f.
+  (f : set T -> \bar R) (mD : measurable D) := fun X => f (X `&` D).
 
 Section measure_restr.
 Variables (T : measurableType) (R : realFieldType).
 Variables (mu : {measure set T -> \bar R}) (D : set T) (mD : measurable D).
 
-Definition restr (X : set _) : \bar R := mu (X `&` D).
+Local Notation restr := (mrestr mu mD).
 
-Let restr0 : restr set0 = 0%E. Proof. by rewrite /restr set0I measure0. Qed.
+Let restr0 : restr set0 = 0%E. Proof. by rewrite /mrestr set0I measure0. Qed.
 
 Let restr_ge0 (A : set _) : (0 <= restr A)%E.
 Proof. by rewrite /restr; apply: measure_ge0; exact: measurableI. Qed.
@@ -1432,7 +1429,7 @@ by rewrite /restr setI_bigcupl; exact: measure_sigma_additive.
 Qed.
 
 HB.instance Definition _ := isMeasure.Build _ _
-  (mrestr restr mD) restr0 restr_ge0 restr_sigma_additive.
+  restr restr0 restr_ge0 restr_sigma_additive.
 
 End measure_restr.
 
