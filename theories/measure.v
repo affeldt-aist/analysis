@@ -61,6 +61,9 @@ From HB Require Import structures.
 (*                   of type T where R is expected to be a numFieldType such  *)
 (*                   that this function maps set0 to 0, is non-negative over  *)
 (*                   measurable sets and is semi-sigma-additive               *)
+(*   nu `<< mu == nu is absolutely continuous w.r.t. mu                       *)
+(*   nu ~|~ mu == nu is singular w.r.t. mu                                    *)
+(*   measure_finite mu == mu is a finite measure                              *)
 (*   pushforward f m == pushforward/image measure of m by f                   *)
 (*   \d_a == Dirac measure                                                    *)
 (*   msum mu n == the measure corresponding to the sum of the measures        *)
@@ -121,6 +124,8 @@ Import Order.TTheory GRing.Theory Num.Def Num.Theory.
 Reserved Notation "'s<|' D , G '|>'" (at level 40, G, D at next level).
 Reserved Notation "'s<<' A '>>'".
 Reserved Notation "'d<<' D '>>'".
+Reserved Notation "nu '`<<' mu" (at level 51, format "nu  '`<<'  mu").
+Reserved Notation "nu '~|~' mu" (at level 51, format "nu  '~|~'  mu").
 Reserved Notation "mu .-negligible" (at level 2, format "mu .-negligible").
 Reserved Notation "{ 'ae' m , P }" (at level 0, format "{ 'ae'  m ,  P }").
 Reserved Notation "mu .-measurable" (at level 2, format "mu .-measurable").
@@ -1365,6 +1370,21 @@ Canonical measure_additive_measure :=
 End measure_is_additive_measure.
 
 Coercion measure_additive_measure : Measure.map >-> AdditiveMeasure.map.
+
+Definition absolutely_continuous (T : measurableType) (R : numFieldType)
+    (nu mu : {measure set T -> \bar R}) :=
+  forall A, mu A = 0 -> nu A = 0.
+
+Notation "nu '`<<' mu" := (absolutely_continuous nu mu) : ring_scope.
+
+Definition singular (T : measurableType) (R : numFieldType)
+    (nu mu : {measure set T -> \bar R}) :=
+  exists N, mu N = 0 /\ nu (~` N) = 0.
+
+Notation "nu '~|~' mu" := (singular nu mu) : ring_scope.
+
+Definition measure_finite (T : measurableType) (R : numFieldType)
+  (mu : {measure set T -> \bar R}) := mu setT < +oo.
 
 Section pushforward_measure.
 Local Open Scope ereal_scope.
