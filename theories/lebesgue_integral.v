@@ -4576,3 +4576,38 @@ Theorem Fubini :
 Proof. by rewrite fubini1 -fubini2. Qed.
 
 End fubini.
+
+Section finite_radon_nikodym.
+Local Open Scope ereal_scope.
+Variables (T : measurableType) (R : realType) (mu nu : {measure set T -> \bar R}).
+Hypothesis mufinite : measure_finite mu.
+Hypothesis numu : nu `<< mu.
+
+Lemma finite_radon_nikodym :
+  exists f : T -> \bar R,
+    (forall t, f t \is a fin_num) /\
+    measurable_fun setT f /\
+    (forall E, measurable E -> nu E = \int[mu]_(x in E) f x).
+(* TODO: uniqueness *)
+Proof.
+Abort.
+
+End finite_radon_nikodym.
+
+Section radon_nikodym.
+Local Open Scope ereal_scope.
+Variables (T : measurableType) (R : realType) (mu nu : {measure set T -> \bar R}).
+Hypothesis smu : sigma_finite setT mu.
+Hypothesis snu : sigma_finite setT nu.
+Hypothesis numu : nu `<< mu.
+
+Lemma radon_nikodym :
+  exists f : T -> \bar R,
+    (forall t, 0 <= f t) /\
+    measurable_fun setT f /\
+    (forall E, measurable E -> nu E = \int[mu]_(x in E) f x).
+(* TODO: uniqueness *)
+Proof.
+Abort.
+
+End radon_nikodym.
