@@ -640,3 +640,530 @@ by rewrite integral_cst//= mul1e probability_distribution distribution_values mu
 Qed.
 
 End discrete_distribution.
+
+(* PR in progress *)
+Section discrete_measurable.
+(*Variable T : pointedType.*)
+
+Definition discrete_measurable : set (set nat) := [set: set nat].
+
+Let discrete_measurable0 : discrete_measurable set0. Proof. by []. Qed.
+
+Let discrete_measurableC X :
+  discrete_measurable X -> discrete_measurable (~` X).
+Proof. by []. Qed.
+
+Let discrete_measurableU (F : (set nat)^nat) :
+  (forall i, discrete_measurable (F i)) ->
+  discrete_measurable (\bigcup_i F i).
+Proof. by []. Qed.
+
+HB.instance Definition _ := @isMeasurable.Build nat (Pointed.class _)
+  discrete_measurable discrete_measurable0 discrete_measurableC
+  discrete_measurableU.
+
+End discrete_measurable.
+(* /PR in progress *)
+
+Lemma lte01 (R : numDomainType) : (0 < (1 : \bar R))%E.
+Proof. by rewrite lte_fin ltr01. Qed.
+
+Lemma new_eq_nneseries (R : realFieldType) (f g : (\bar R)^nat) (P : pred nat) k :
+    (forall i, (k <= i)%N -> P i -> f i = g i) ->
+  (\sum_(k <= i <oo | P i) f i = \sum_(k <= i <oo | P i) g i)%E.
+Proof.
+move=> efg; congr (lim _); apply/funext => n; rewrite big_nat_cond.
+rewrite [RHS]big_nat_cond; apply: eq_bigr => i /andP[/andP[ki ni] Pi].
+exact: efg.
+Qed.
+
+Lemma new_nneseries0 (R : realFieldType) (f : (\bar R)^nat) k (P : pred nat) :
+  (forall i, (k <= i)%N -> P i -> f i = 0%E) -> (\sum_(k <= i <oo | P i) f i = 0)%E.
+Proof.
+move=> f0.
+rewrite ereal_series_cond nneseries0// => i /andP[].
+exact: f0.
+Qed.
+
+Section measure_scale.
+Local Open Scope ereal_scope.
+Variables (T : measurableType) (R : realFieldType).
+Variables (r : {nonneg R}) (m : {measure set T -> \bar R}).
+
+Definition mscale (A : set T) : \bar R := r%:num%:E * m A.
+
+Let mscale0 : mscale set0 = 0. Proof. by rewrite /mscale measure0 mule0. Qed.
+
+Let mscale_ge0 B : 0 <= mscale B.
+Proof. by rewrite /mscale mule_ge0. Qed.
+
+Let mscale_sigma_additive : semi_sigma_additive mscale.
+Proof.
+move=> F mF tF mUF; rewrite [X in X --> _](_ : _ =
+    (fun n => (r%:num)%:E * \sum_(0 <= i < n) m (F i))); last first.
+  by apply/funext => k; rewrite ge0_sume_distrr.
+rewrite /mscale; have [->|r0] := eqVneq r%:num 0%R.
+  rewrite mul0e [X in X --> _](_ : _ = (fun=> 0)); first exact: cvg_cst.
+  by under eq_fun do rewrite mul0e.
+by apply: ereal_cvgrM => //; exact: measure_semi_sigma_additive.
+Qed.
+
+Canonical measure_scale : {measure set T -> \bar R} :=
+  Measure.Pack _ (Measure.Axioms mscale0 mscale_ge0 mscale_sigma_additive).
+
+End measure_scale.
+Arguments mscale {T R}.
+Arguments measure_scale {T R}.
+
+Reserved Notation "x %:pr" (at level 0, format "x %:pr").
+Reserved Notation "p '.~'" (format "p .~", at level 5).
+
+Module Prob.
+Section prob.
+Variable (R : numDomainType).
+Record t := mk { p :> R ; Op1 : 0 <= p <= 1 }.
+Definition O1 (p : t) := Op1 p.
+Arguments O1 : simpl never.
+End prob.
+Module Exports.
+Section exports.
+Variables (R : numDomainType).
+Canonical prob_subType := Eval hnf in [subType for @p R].
+Local Notation prob := (t R).
+Definition prob_eqMixin := [eqMixin of prob by <:].
+Canonical prob_eqType := Eval hnf in EqType _ prob_eqMixin.
+Definition prob_choiceMixin := [choiceMixin of prob by <:].
+Canonical prob_choiceType := ChoiceType prob prob_choiceMixin.
+Definition prob_porderMixin := [porderMixin of prob by <:].
+Canonical prob_porderType := POrderType ring_display prob prob_porderMixin.
+End exports.
+End Exports.
+End Prob.
+Export Prob.Exports.
+Notation prob := Prob.t.
+Notation "q %:pr" := (@Prob.mk _ q (@Prob.O1 _ _)).
+Coercion Prob.p : prob >-> Num.NumDomain.sort.
+
+Lemma prob_ge0 (R : numDomainType) (p : prob R) : 0 <= p :> R.
+Proof. by case: p => p /= /andP[]. Qed.
+Global Hint Resolve prob_ge0 : core.
+
+Lemma prob_le1 (R : numDomainType) (p : prob R) : p <= 1 :> R.
+Proof. by case: p => p /= /andP[]. Qed.
+Global Hint Resolve prob_le1 : core.
+
+Definition onem (R : numDomainType) (r : R) := 1 - r.
+Notation "p '.~'" := (onem p).
+
+Lemma OO1 (R : numDomainType) : 0 <= (0 : R) <= 1.
+Proof. by rewrite lexx ler01. Qed.
+Canonical prob0 (R : numDomainType) := Eval hnf in Prob.mk (OO1 R).
+
+Lemma O11 (R : numDomainType) : 0 <= (1 : R) <= 1.
+Proof. by rewrite lexx ler01. Qed.
+Canonical prob1 (R : numDomainType) := Eval hnf in Prob.mk (O11 R).
+
+Lemma onem_prob (R : numDomainType) (r : R) : 0 <= r <= 1 -> 0 <= r.~ <= 1.
+Proof.
+move=> /andP[r0 r1].
+by rewrite /onem subr_ge0 r1/= ler_subl_addr ler_addl.
+Qed.
+Canonical probcplt (R : numDomainType) (p : prob R) :=
+  Eval hnf in Prob.mk (onem_prob (Prob.O1 p)).
+
+Lemma prob_mulR (R : numDomainType) (p q : prob R) :
+  (0 <= (p : R) * (q : R) <= 1)%R.
+Proof.
+apply/andP; split; first exact/mulr_ge0.
+by rewrite -(mulr1 1); exact: ler_pmul.
+Qed.
+Canonical probmulR (R : numDomainType) (p q : prob R) :=
+  Eval hnf in @Prob.mk _ _ (prob_mulR p q).
+
+Section test.
+Variables R : numDomainType.
+Check ((0 * 1.~)%:pr : prob R).
+End test.
+
+Lemma ge0_prob_subproof (R : numDomainType) (p : prob R) :
+  Signed.spec 0 ?=0 >=0 (p : R).
+Proof.
+case: p => p /= p01.
+rewrite /prob0 /Order.le /= /Order.CanMixin.le /=.
+by case/andP : p01.
+Qed.
+Canonical prob_nonneg (R : numDomainType) (p : prob R) : {nonneg R} :=
+  Signed.mk (ge0_prob_subproof p).
+
+Lemma ge0_onem_prob_subproof (R : numDomainType) (p : prob R) :
+  Signed.spec 0 ?=0 >=0 (probcplt p : R).
+Proof.
+rewrite /=.
+case: p => p /= /andP[p0 p1].
+by rewrite subr_ge0.
+Qed.
+Canonical probonem_nonneg (R : numDomainType) (p : prob R) :=
+  Signed.mk (ge0_onem_prob_subproof p).
+
+(* P_X = (1 - p)\dirac_0 + p\dirac_1 *)
+
+(* (1 - p) *: \dirac_0 + p *: \dirac_1 *)
+
+Definition Bernoulli_distribution (R : realType) (p : prob R) :
+    {measure set nat -> \bar R} :=
+  measure_add (measure_scale (prob_nonneg p) \d_0%N)
+              (measure_scale (probonem_nonneg p) \d_1%N).
+
+(* any combination by addition and scaling by nonneg scalar of measures is still a measure;
+  semi-module over the semiring of nonneg R, conical space *)
+
+Section bernoulli.
+Variables (R : realType) (p : R).
+Hypothesis p01 : 0 <= p <= 1.
+Let f n := if n is 0%N then 1 - p else if n is 1%N then p else 0.
+Let f0 : forall n, (0 <= f n)%R.
+Proof.
+move=> n; rewrite /f; case: n => [|[|//]].
+- by move/andP : p01 => [p0 p1]; rewrite subr_ge0.
+- by move/andP : p01 => [].
+Qed.
+Let f1 : (\sum_(n <oo) (f n)%:E = 1)%E.
+Proof.
+rewrite (nneseries_split 2)// 2!big_ord_recr/= big_ord0 add0e -EFinD subrK.
+by rewrite new_nneseries0 ?adde0//; case=> [//|[]//].
+Qed.
+Let c : convn R := Convn.Build_t f0 f1.
+Definition natR := (fun n => n%:R : R).
+Lemma homo_natR : {homo natR : x / setT x >-> setT x}.
+Proof. by []. Qed.
+HB.instance Definition _ := @IsFun.Build nat R setT setT natR homo_natR.
+Let natR_oinv : R -> option nat := fun r => some `|floor r|%N.
+HB.instance Definition _ := @OInv.Build nat R natR natR_oinv.
+Lemma natRK : {in @setT nat, pcancel natR 'oinv_natR}.
+Proof.
+move=> k _.
+rewrite /'oinv_natR.
+rewrite /oinv/=.
+rewrite /natR_oinv /natR.
+by rewrite floor_natz intz.
+Qed.
+HB.instance Definition _ := @OInv_Can.Build _ _ setT natR natRK.
+Let values := [the {injfun [set: nat] >-> [set: R]} of natR].
+Let P'' : set nat -> \bar R := fun (A : set nat) =>
+  (\sum_(i <oo) (f i)%:E * dirac i A)%E.
+Let P''proof : semi_sigma_additive P''.
+Proof.
+move=> /= F mF tF mUF.
+rewrite /P''.
+Admitted.
+Let P' : {measure set nat -> \bar R}. (* X {0} = 1 - p, X {1} = p*)
+(*P : set nat -> \bar R
+if 0 \in X then 1 - p
+if 1 \in X then 1
+else 0*)
+Admitted.
+Let P'1 : P' setT = 1%:E.
+Proof.
+Admitted.
+Let P := Probability.mk P'1.
+Let X' : nat -> R := fun n => if n == 0%N then 1 - p else if n == 1%N then p else 0.
+Let X : {RV P >-> R}.
+Admitted.
+Lemma Xa : (forall t : nat, exists n : nat, X t = values n).
+Proof.
+move=> n.
+exists n.
+rewrite /values/=.
+Admitted.
+Let H1 : distribution X =1
+         (fun A : set R => \sum_(n <oo) (c n)%:E * (\d_ (values n) A))%E.
+Proof.
+move=> /= A.
+rewrite /pushforward.
+Admitted.
+End bernoulli.
+
+Notation right_continuous f := (forall x, f%function @ at_right x --> f%function x).
+
+Require set_interval.
+
+Definition EFinf {R : numDomainType} (f : R -> R) : \bar R -> \bar R :=
+  fun x => if x is r%:E then (f r)%:E else x.
+
+Section hlength.
+Local Open Scope ereal_scope.
+Variable R : realType.
+Variable f : R -> R.
+(*Hypothesis f_monotone : {homo f : x y / (x <= y)%R}.
+Hypothesis f_right_continuous : right_continuous f.*)
+
+Let g : \bar R -> \bar R := EFinf f.
+
+Implicit Types i j : interval R.
+Definition itvs : Type := R.
+
+Definition hlength (A : set itvs) : \bar R.
+Admitted.
+(* :=
+  let i := Rhull A in
+  g (let: Interval _ x := i in set_interval.ereal_of_itv_bound x) -
+  g (let: Interval x _ := i in set_interval.ereal_of_itv_bound x).*)
+
+Lemma hlength0 : hlength (set0 : set R) = 0.
+Admitted.
+
+End hlength.
+Arguments hlength {R}.
+
+Section itv_semiRingOfSets.
+Variable R : realType.
+Implicit Types (I J K : set R).
+Local Notation itvs := (itvs R).
+
+Definition ocitv := [set `]x.1, x.2]%classic | x in [set: R * R]].
+
+Lemma is_ocitv a b : ocitv `]a, b]%classic.
+Proof. Admitted.
+Hint Extern 0 (ocitv _) => solve [apply: is_ocitv] : core.
+
+Lemma ocitv0 : ocitv set0.
+Proof. Admitted.
+Hint Resolve ocitv0 : core.
+
+Lemma ocitvD : semi_setD_closed ocitv.
+Proof. Admitted.
+
+Lemma ocitvI : setI_closed ocitv.
+Proof. Admitted.
+
+HB.instance Definition _  : isSemiRingOfSets itvs :=
+  @isSemiRingOfSets.Build itvs (Pointed.class R) ocitv ocitv0 ocitvI ocitvD.
+
+Definition itvs_semiRingOfSets := [the semiRingOfSetsType of itvs].
+
+Lemma hlength_ge0' (f : R -> R) (f_monotone : {homo f : x y / (x <= y)%R})
+  (I : set itvs) : (0 <= hlength f I)%E.
+Admitted.
+
+Lemma hlength_semi_additive (f : R -> R) : semi_additive (hlength f).
+Proof. Admitted.
+
+Canonical hlength_measure (f : R -> R) (f_monotone : {homo f : x y / (x <= y)%R}) :
+ {additive_measure set itvs -> \bar R}
+  := AdditiveMeasure (AdditiveMeasure.Axioms (hlength0 f)
+     (hlength_ge0' f_monotone) (hlength_semi_additive f)).
+
+Hint Extern 0 (measurable _) => solve [apply: is_ocitv] : core.
+
+Lemma hlength_sigma_sub_additive (f : R -> R)
+    (ndf : {homo f : x y / (x <= y)%R}) (rcf : right_continuous f) :
+  sigma_sub_additive (hlength f).
+Proof. Admitted.
+
+Lemma hlength_sigma_finite (f : R -> R) : sigma_finite [set: itvs] (hlength f).
+Proof. Admitted.
+
+Let gitvs := g_measurableType ocitv.
+
+Definition lebesgue_stieltjes_measure (f : R -> R)
+    (ndf : {homo f : x y / x <= y}) (rcf : right_continuous f)
+  : {measure set gitvs -> \bar R} :=
+  @Hahn_ext_measure R _ (hlength_measure ndf) (hlength_sigma_sub_additive ndf rcf).
+
+End itv_semiRingOfSets.
+Arguments lebesgue_stieltjes_measure {R}.
+
+Section RV_of_distribution.
+Variable (R : realType).
+Let T : measurableType := g_measurableType (@ocitv R).
+Definition distribution_function2
+    (P : probability T R) (X : {RV P >-> R}) : R -> \bar R :=
+  fun x => P (X @^-1` (`]-oo, x]%classic)). (* P[X <= x] *)
+
+Local Open Scope ereal_scope.
+
+Lemma lebesgue_stieltjes_measure_itv_oor (F : R -> R) (r : R)
+  (ndF : {homo F : x y / (x <= y)%R >-> (x <= y)%R})
+  (rcF : right_continuous F) :
+  lebesgue_stieltjes_measure F ndF rcF `]-oo, r]%classic =
+  (F r)%:E - (lim (F x @[x --> -oo]%R))%:E.
+Proof.
+Admitted.
+
+Lemma lebesgue_stieltjes_measure_itv_oooo (F : R -> R)
+  (ndF : {homo F : x y / (x <= y)%R >-> (x <= y)%R})
+  (rcF : right_continuous F) :
+  lebesgue_stieltjes_measure F ndF rcF `]-oo, +oo[%classic =
+  (lim (F x @[x --> +oo]%R))%:E - (lim (F x @[x --> -oo]%R))%:E.
+Admitted.
+
+Require Import set_interval.
+
+Lemma RV_of_distribution_function (F : R -> R) :
+  {homo F : x y / (x <= y)%R >-> (x <= y)%R} ->
+  right_continuous F ->
+  (F x @[x --> +oo] --> 1)%R ->
+  (F x @[x --> -oo] --> (0 : R))%R ->
+  exists (P : probability T R) (X : {RV P >-> R}),
+    distribution_function2 X = EFin \o F.
+Proof.
+move=> ndF rcF Foo1 Foo0.
+pose Omega := [set: R].
+have mOmega : measurable Omega by exact: measurableT.
+pose P' : {measure set _ -> _} := lebesgue_stieltjes_measure F ndF rcF.
+have P'T : P' setT = 1%E.
+  rewrite /P'.
+  rewrite (_ : setT = `]-oo, +oo[%classic); last first.
+    by rewrite set_itvE.
+  rewrite lebesgue_stieltjes_measure_itv_oooo.
+  move/cvg_lim : Foo1 => ->; last exact: Rhausdorff.
+  move/cvg_lim : Foo0 => ->; last exact: Rhausdorff.
+  by rewrite sube0.
+exists (Probability.mk P'T).
+have @X : {RV Probability.mk P'T >-> R}.
+  apply: MeasurableFun.Pack.
+  apply: MeasurableFun.Class.
+  apply: IsMeasurableFun.Axioms_.
+  by apply: measurable_fun_id.
+exists X.
+apply/funext => r/=.
+rewrite /distribution_function2.
+transitivity (P' `]-oo, r]%classic) => //.
+rewrite lebesgue_stieltjes_measure_itv_oor//.
+move/cvg_lim : Foo0 => ->; last exact: Rhausdorff.
+by rewrite sube0.
+Qed.
+
+Definition ginv (F : R -> R) : R -> R :=
+  fun t => inf [set x : R | (F x >= t)%R]. (* NB: for t in Omega *)
+
+Lemma measurable_fun_ginv (F : R -> R) : measurable_fun setT (ginv F).
+Proof.
+rewrite /= /ginv.
+Abort.
+
+Lemma supP (P : set R) (x : R) : P x -> has_ubound P -> (x <= sup P)%R.
+Proof. by move=> Px ubP; apply/sup_ub. Qed.
+
+Lemma infP (P : set R) : forall x, P x -> has_lbound P -> (inf P <= x)%R.
+Proof. by move=> x Px lbP; apply/inf_lb. Qed.
+
+Lemma monotone_right_continuous (a : R) (e : R) (f : R -> R)
+   (ndf : {homo f : x y / (x <= y)%R}) (rcf : (right_continuous f)) :
+  e > 0 -> exists Delta : {posnum R}, f (a + Delta%:num) <= f a + e.
+Admitted.
+
+xxx
+
+
+Lemma RV_of_distribution_function (F : R -> R) :
+  {homo F : x y / (x <= y) >-> (x <= y)%R} ->
+  right_continuous F ->
+  F x @[x --> +oo] --> 1 ->
+  exists (P : probability T R) (X : {RV P >-> R}),
+    distribution_function X = EFin \o F.
+Proof.
+move=> ndF rcF Flim1.
+pose Omega : set R := `]0, 1[%classic.
+pose A : set (set R) := [set X `&` Omega | X in @measurable (measurableTypeR R)].
+have mOmega : measurable Omega by exact: measurable_itv.
+pose P : {measure set _ -> _} := measure_restr (@lebesgue_measure R) mOmega.
+have PT : P setT = 1%E.
+  rewrite /P measure_restrE.
+  rewrite (_ : _ `&` _ = Omega);last by apply/seteqP; split => [? []//|].
+  by rewrite lebesgue_measure_itv hlength_itv/= lte01 oppr0 adde0.
+exists (Probability.mk PT).
+pose F1 : R -> R := ginv F.
+(* t \in Omega *)
+have H1 : forall (x t : R), 0 < t < 1 -> F1 t <= x <-> t <= F x.
+  move=> x t /andP[t0 t1]; split.
+    rewrite /F1 /ginv => tFx.
+    set S := [set x | t <= F x] in tFx.
+    have S0 : S !=set0.
+      rewrite /S.
+      apply/set0P/negP => /eqP tF.
+      have {}tF : forall x, F x < t.
+        move=> y.
+        rewrite ltNge; apply/negP => tFy.
+        by move/seteqP : tF => [] /(_ _ tFy).
+      move: Flim1.
+      move/(@cvg_distP _ [normedModType R of R^o]).
+      move: (tF) => /(_ x); rewrite -subr_gt0 => H1.
+      move/(_ _ H1).
+      rewrite near_simpl.
+      case=> N [Nreal].
+      move=> /(_ (N + 1)).
+      rewrite ltr_addl => /(_ ltr01).
+      rewrite ger0_norm; last by admit.
+      rewrite ltNge => /negP; apply.
+      rewrite ler_sub//.
+      by rewrite ltW.
+      apply/ndF.
+      admit. (* by properties of F *)
+    have lbS : has_lbound S.
+      admit. (* by properties of F *)
+    have hiS : has_inf S by [].
+    move: tFx.
+    rewrite le_eqVlt => /orP[/eqP|].
+      move=> <-.
+      rewrite /S.
+      rewrite leNgt.
+      apply/negP.
+      rewrite -subr_gt0 => tF0.
+      have H := divr_gt0 tF0 (ltr0n R 2%N).
+      have [s Ss sStF] := inf_adherent H hiS.
+      rewrite -/S in sStF.
+      (* F (inf S) is an inf of F @` S (needs a lemma, using monotonicity and right continuity) see contract_inf *)
+      have H1 : F (inf S) = inf (F @` S). admit.
+      (*there must be an x' such that F (inf S) < F x' < t with x' in S.
+       by definition of S, contradiction because F x' should be greater than t*)
+      admit.
+    move/ltW.
+    move/ndF.
+    apply: le_trans.
+    have -> : F (inf S) = inf (F @` S). admit.
+    rewrite /S.
+    have H2 : [set F x | x in [set x0 | t <= F x0]] `<=` [set` `[t, +oo[].
+      by move=> _/= [r tFr <-] /[!in_itv]/=; rewrite tFr.
+    have : inf [set` `[t, +oo[] <= inf [set F x | x in [set x0 | t <= F x0]].
+      admit.
+    apply: le_trans.
+    by rewrite set_interval.inf_itv//.
+    rewrite /F1 /ginv => tFx.
+    apply: infP => //.
+    
+    
+    admit.
+have H2 : forall x : R, [set t | t in [set t | (F1 t <= x)%R]] =
+               `]0, (F x)]%classic `&` Omega.
+  admit.
+have mF1 : measurable_fun setT F1.
+  move=> _ B /= mB.
+  rewrite setTI.
+  rewrite /F1 /ginv.
+  admit.
+have @X : {RV Probability.mk PT >-> R}.
+  apply: MeasurableFun.Pack.
+  apply: MeasurableFun.Class.
+  apply: IsMeasurableFun.Axioms_.
+  by apply: mF1.
+exists X.
+apply/funext => x.
+rewrite /=.
+rewrite /distribution_function.
+Admitted.
+
+End RV_of_distribution.
+
+Module Density.
+Section density.
+Local Open Scope form_scope.
+Variables (R : realType) (P : probability (g_measurableType (@ocitv R)) R)
+          (X : {RV P >-> R}).
+Record t := mk {
+  f : {mfun (g_measurableType (@ocitv R)) >-> R} ;
+  f0 : forall r, 0 <= f r ;
+  support : distribution X =1 (fun A => \int[lebesgue_measure]_(x in A) (f x)%:E)%E
+}.
+End density.
+End Density.
