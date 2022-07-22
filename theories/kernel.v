@@ -94,8 +94,9 @@ HB.mixin Record isSFiniteKernel (d d' : measure_display)
     (R : realType) (X : measurableType d) (Y : measurableType d')
     (k : X -> {measure set Y -> \bar R})
     of isKernel d d' R X Y k := {
-  sfinite_kernelP : exists k_ : (finite_kernel R X Y)^nat, forall x,
-    k x = [the measure _ _ of mseries (k_ ^~ x) 0]
+  sfinite_kernelP   : exists k_ : (finite_kernel R X Y)^nat, forall x U,
+    measurable U ->
+    k x U = [the measure _ _ of mseries (k_ ^~ x) 0] U
 }.
 
 #[short(type=sfinite_kernel)]
@@ -593,29 +594,67 @@ Lemma eq_measure (d : measure_display) (T : measurableType d) (R : realType)
 Proof.
 Abort.
 
+Section eq_measure_integral_new.
+Local Open Scope ereal_scope.
+Variables (d : measure_display) (T : measurableType d) (R : realType)
+          (D : set T).
+Implicit Types m : {measure set T -> \bar R}.
+
+Let eq_measure_integral0 m2 m1 (f : T -> \bar R) :
+  (forall A, measurable A -> A `<=` D -> m1 A = m2 A) ->
+  [set sintegral m1 h | h in
+    [set h : {nnsfun T >-> R} | (forall x, (h x)%:E <= (f \_ D) x)]] `<=`
+  [set sintegral m2 h | h in
+    [set h : {nnsfun T >-> R} | (forall x, (h x)%:E <= (f \_ D) x)]].
+Proof.
+move=> m12 _ [h hfD <-] /=; exists h => //; apply: eq_fsbigr => r _.
+have [hrD|hrD] := pselect (h @^-1` [set r] `<=` D); first by rewrite m12.
+suff : r = 0%R by move=> ->; rewrite !mul0e.
+apply: contra_notP hrD => /eqP r0 t/= htr.
+have := hfD t.
+rewrite /patch/=; case: ifPn; first by rewrite inE.
+move=> tD.
+move: r0; rewrite -htr => ht0.
+by rewrite le_eqVlt eqe (negbTE ht0)/= lte_fin// ltNge// fun_ge0.
+Qed.
+
+Lemma eq_measure_integral_new m2 m1 (f : T -> \bar R) :
+    (forall A, measurable A -> A `<=` D -> m1 A = m2 A) ->
+  \int[m1]_(x in D) f x = \int[m2]_(x in D) f x.
+Proof.
+move=> m12; rewrite /integral funepos_restrict funeneg_restrict.
+congr (ereal_sup _ - ereal_sup _)%E; rewrite eqEsubset; split;
+  apply: eq_measure_integral0 => A /m12 //.
+by move=> /[apply].
+by move=> /[apply].
+Qed.
+
+End eq_measure_integral_new.
+Arguments eq_measure_integral_new {d T R D} m2 {m1 f}.
+
 Section star_is_sfinite_kernel.
 Variables (d d' : _) (R : realType) (X : measurableType d) (Y : measurableType d')
           (Z : measurableType (d, d').-prod).
 Variable k : sfinite_kernel R [the measurableType _ of (X * Y)%type] Z.
 Variable l : sfinite_kernel R X Y.
 
-Lemma star_sfinite : exists k_ : (finite_kernel R X Z)^nat, forall x,
-  mstar k l x = [the measure _ _ of mseries (k_ ^~ x) O].
+Lemma star_sfinite : exists k_ : (finite_kernel R X Z)^nat, forall x U, measurable U ->
+  mstar k l x U = [the measure _ _ of mseries (k_ ^~ x) O] U.
 Proof.
 have [k_ hk_] := @sfinite_kernelP _ _ _ _ _ k.
 have [l_ hl_] := @sfinite_kernelP _ _ _ _ _ l.
 pose K := [the kernel _ _ _ of sum_of_kernels k_].
 pose L := [the kernel _ _ _ of sum_of_kernels l_].
-have H1 x U : star k l x U = star K L x U.
+have H1 x U : measurable U -> star k l x U = star K L x U.
+  move=> mU.
   rewrite /star /L /K /=.
-  have -> : l x = [the measure _ _ of mseries (fun x0 : nat => l_ x0 x) 0].
-    apply/eq_measure/funeqP => V.
+  transitivity (\int[
+    [the measure _ _ of mseries (fun x0 : nat => l_ x0 x) 0]
+]_y k (x, y) U).
+    apply eq_measure_integral_new => A mA _ .
     by rewrite hl_.
   apply eq_integral => y _.
-  suff: k (x, y) = [the measure _ _ of mseries (fun x0 : nat => k_ x0 (x, y)) 0].
-    by move=> ->.
-  apply/eq_measure/funeqP => V.
-  by rewrite hk_.
+  by rewrite hk_//.
 have H2 x U : star K L x U =
   \int[mseries (l_ ^~ x) 0]_y (\sum_(i <oo) k_ i (x, y) U).
   rewrite /star /L /=.
@@ -641,13 +680,10 @@ have H5 x U : \sum_(i <oo) \sum_(j <oo) \int[l_ j x]_y k_ i (x, y) U =
 suff: exists k_0 : (finite_kernel R X Z) ^nat, forall x U,
     \esum_(i in setT) star (k_ i.1) (l_ i.2) x U = \sum_(i <oo) k_0 i x U.
   move=> [kl_ hkl_].
-  exists kl_ => x.
-  apply/eq_measure/funext => U.
+  exists kl_ => x U mU.
   rewrite /=.
-  rewrite /mstar/= /mseries H1 H2 H3; last first.
-    admit.
-  rewrite H4//; last first.
-    admit.
+  rewrite /mstar/= /mseries H1// H2 H3//.
+  rewrite H4//.
   rewrite H5// -hkl_ /=.
   rewrite (_ : setT = setT `*`` (fun=> setT)); last by apply/seteqP; split.
   rewrite -(@esum_esum _ _ _ _ _ (fun i j => star (k_ i) (l_ j) x U))//.
@@ -659,7 +695,7 @@ have /ppcard_eqP[f] : ([set: nat] #= [set: nat * nat])%card.
 exists (fun i => [the finite_kernel _ _ _ of mstar (k_ (f i).1) (l_ (f i).2)]) => x U.
 rewrite (reindex_esum [set: nat] [set: nat * nat] f)//.
 by rewrite nneseries_esum// fun_true.
-Admitted.
+Qed.
 
 HB.instance Definition _ :=
   isSFiniteKernel.Build d ((d, d').-prod)%mdisp R X Z (mstar k l) star_sfinite.
