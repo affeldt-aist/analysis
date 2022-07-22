@@ -58,8 +58,7 @@ rewrite [X in measurable_fun _ X](_ : _ =
     by rewrite -lim_mkord.
   exact: is_cvg_nneseries.
 apply: measurable_fun_elim_sup => n.
-apply: emeasurable_fun_sum => *.
-by apply/kernelP.
+by apply: emeasurable_fun_sum => *; exact/kernelP.
 Qed.
 
 HB.instance Definition _ :=
@@ -78,12 +77,18 @@ Proof.
 by move=> f0 mf; rewrite /sum_of_kernels/= ge0_integral_measure_series.
 Qed.
 
+Section kernel_uub.
+Variables (d d' : measure_display) (R : numFieldType) (X : measurableType d)
+  (Y : measurableType d') (k : X -> set Y -> \bar R).
+
+Definition kernel_uub := exists r : {posnum R}, forall x, k x [set: Y] < r%:num%:E.
+
+End kernel_uub.
+
 HB.mixin Record isFiniteKernel (d d' : measure_display)
     (R : realType) (X : measurableType d) (Y : measurableType d')
     (k : X -> {measure set Y -> \bar R})
-    of isKernel d d' R X Y k := {
-  finite_kernelP : exists r : {posnum R}, forall x, k x [set: Y] < r%:num%:E
-}.
+    of isKernel d d' R X Y k := { finite_kernelP : kernel_uub k }.
 
 #[short(type=finite_kernel)]
 HB.structure Definition FiniteKernel (d d' : measure_display)
@@ -94,9 +99,9 @@ HB.mixin Record isSFiniteKernel (d d' : measure_display)
     (R : realType) (X : measurableType d) (Y : measurableType d')
     (k : X -> {measure set Y -> \bar R})
     of isKernel d d' R X Y k := {
-  sfinite_kernelP   : exists k_ : (finite_kernel R X Y)^nat, forall x U,
-    measurable U ->
-    k x U = [the measure _ _ of mseries (k_ ^~ x) 0] U
+  sfinite_kernelP   : exists k_ : (finite_kernel R X Y)^nat,
+    forall x U, measurable U ->
+      k x U = [the measure _ _ of mseries (k_ ^~ x) 0] U
 }.
 
 #[short(type=sfinite_kernel)]
@@ -107,49 +112,49 @@ HB.structure Definition SFiniteKernel (d d' : measure_display)
         isKernel d d' R X Y k}.
 
 Section star_is_kernel.
-Variables (d d' d3 : _) (R : realType) (X : measurableType d) (Y : measurableType d')
-          (Z : measurableType d3).
+Variables (d1 d2 d3 : _) (R : realType) (X : measurableType d1)
+          (Y : measurableType d2) (Z : measurableType d3).
 Variable k : kernel R [the measurableType _ of (X * Y)%type] Z.
 Variable l : kernel R X Y.
 
 Definition star : X -> set Z -> \bar R := fun x U => \int[l x]_y k (x, y) U.
 
-Let star0 (x : X) : star x set0 = 0.
+Let star0 x : star x set0 = 0.
 Proof.
 by rewrite /star (eq_integral (cst 0)) ?integral0// => y _; rewrite measure0.
 Qed.
 
-Let star_ge0 (x : X) (U : set Z) : 0 <= star x U.
+Let star_ge0 x U : 0 <= star x U.
 Proof. by apply: integral_ge0 => y _; exact: measure_ge0. Qed.
 
-Let star_sigma_additive (x : X) : semi_sigma_additive (star x).
+Let star_sigma_additive x : semi_sigma_additive (star x).
 Proof.
-move=> U mU tU mUU.
-rewrite [X in _ --> X](_ : _ =
+move=> U mU tU mUU; rewrite [X in _ --> X](_ : _ =
   \int[l x]_y (\sum_(n <oo) k (x, y) (U n)))%E; last first.
   apply: eq_integral => V _.
   by apply/esym/cvg_lim => //; exact/measure_semi_sigma_additive.
 apply/cvg_closeP; split.
   by apply: is_cvg_nneseries => n _; exact: integral_ge0.
 rewrite closeE// integral_sum// => n.
-move: (@kernelP _ _ R _ _ k (U n) (mU n)) => /measurable_fun_prod1.
-exact.
+have := @kernelP _ _ R _ _ k (U n) (mU n).
+exact/measurable_fun_prod1.
 Qed.
 
-HB.instance Definition _ (x : X) :=
-  isMeasure.Build _ R _ (star x) (star0 x) (star_ge0 x) (@star_sigma_additive x).
+HB.instance Definition _ x := isMeasure.Build _ R _
+  (star x) (star0 x) (star_ge0 x) (@star_sigma_additive x).
 
-Definition mstar : X -> {measure set Z -> \bar R} := fun x => [the measure _ _ of star x].
+Definition mstar : X -> {measure set Z -> \bar R} :=
+  fun x => [the measure _ _ of star x].
 
 End star_is_kernel.
 
 (* TODO: PR *)
-Section integralM_indic.
+Section integralM_0ifneg.
 Local Open Scope ereal_scope.
 Variables (d : measure_display) (T : measurableType d) (R : realType).
 Variables (m : {measure set T -> \bar R}) (D : set T) (mD : measurable D).
 
-Lemma integralM_indic_new (f : R -> T -> R) (k : R)
+Lemma integralM_0ifneg (f : R -> T -> R) (k : R)
   (f0 : forall r t, D t -> (0 <= f r t)%R) :
   ((k < 0)%R -> f k = cst 0%R) -> measurable_fun setT (f k) ->
   \int[m]_(x in D) (k * (f k) x)%:E = k%:E * \int[m]_(x in D) ((f k) x)%:E.
@@ -165,31 +170,28 @@ rewrite ge0_integralM//.
 - by move=> y Dy; rewrite lee_fin f0.
 Qed.
 
-End integralM_indic.
+End integralM_0ifneg.
+Arguments integralM_0ifneg {d T R} m {D} mD f.
 
-Section test.
+Section integralM_indic.
 Local Open Scope ereal_scope.
 Variables (d : measure_display) (T : measurableType d) (R : realType).
 Variables (m : {measure set T -> \bar R}) (D : set T) (mD : measurable D).
 
-Lemma integralM_indic_test (f : R -> set T) (k : R) :
+Let integralM_indic (f : R -> set T) (k : R) :
   ((k < 0)%R -> f k = set0) -> measurable (f k) ->
   \int[m]_(x in D) (k * \1_(f k) x)%:E = k%:E * \int[m]_(x in D) (\1_(f k) x)%:E.
 Proof.
 move=> fk0 mfk.
-apply: (@integralM_indic_new _ _ _ _ _ _ (fun k x => \1_(f k) x)) => //=.
-  move/fk0 => -> /=.
-  apply/funext => x.
-  by rewrite indicE in_set0.
+apply: (integralM_0ifneg _ _ (fun k x => \1_(f k) x)) => //=.
+  by move/fk0 => -> /=; apply/funext => x; rewrite indicE in_set0.
 by rewrite (_ : \1_(f k) = mindic R mfk).
 Qed.
 
-End test.
+End integralM_indic.
+Arguments integralM_indic {d T R} m {D} mD f.
 
-
-Lemma muleCA (R : realType) : left_commutative ( *%E : _ -> _ -> \bar R).
-Proof. by move=> x y z; rewrite muleC (muleC x) muleA. Qed.
-
+(* NB: PR in progress *)
 Section integral_mscale.
 Variables (R : realType) (k : {nonneg R}).
 Variables (d : measure_display) (T : measurableType d).
@@ -201,7 +203,6 @@ Let integral_mscale_indic (E : set T) (mE : measurable E) :
   k%:num%:E * \int[m]_(x in D) (\1_E x)%:E.
 Proof. by rewrite !integral_indic. Qed.
 
-(*NB: notation { mfun aT >-> rT} broken? *)
 Let integral_mscale_nnsfun (h : {nnsfun T >-> R}) :
   \int[mscale k m]_(x in D) (h x)%:E = k%:num%:E * \int[m]_(x in D) (h x)%:E.
 Proof.
@@ -240,19 +241,7 @@ rewrite ge0_integralM//; last 2 first.
   have fr : measurable (h @^-1` [set r]) by exact/measurable_sfunP.
   by rewrite (_ : \1__ = mindic R fr).
   by move=> t Dt; rewrite muleindic_ge0.
-rewrite (@integralM_indic_new _ _ _ _ _ _ (fun r x => \1_(h @^-1` [set r]) x))//; last 2 first.
-  move=> r0.
-  by rewrite preimage_nnfun0// indic0.
-  have fr : measurable (h @^-1` [set r]) by exact/measurable_sfunP.
-  by rewrite (_ : \1__ = mindic R fr).
-rewrite /=.
-rewrite (@integralM_indic_new _ _ _ _ _ _ (fun r x => \1_(h @^-1` [set r]) x))//; last 2 first.
-  move=> r0.
-  by rewrite preimage_nnfun0// indic0.
-  have fr : measurable (h @^-1` [set r]) by exact/measurable_sfunP.
-  by rewrite (_ : \1__ = mindic R fr).
-rewrite integral_mscale_indic//.
-by rewrite muleCA.
+by rewrite !integralM_indic_nnsfun//= integral_mscale_indic// muleCA.
 Qed.
 
 Lemma ge0_integral_mscale (mf : measurable_fun D f) :
@@ -297,8 +286,6 @@ Qed.
 
 End integral_mscale.
 
-(* TODO: rename emeasurable_funeM? *)
-
 Section ndseq_closed_B.
 Variables (d1 d2 : measure_display).
 Variables (T1 : measurableType d1) (T2 : measurableType d2) (R : realType).
@@ -309,7 +296,7 @@ Variables (pt2 : T2) (m2 : T1 -> {measure set T2 -> \bar R}).
 Let phi A x := m2 x (xsection A x).
 Let B := [set A | measurable A /\ measurable_fun setT (phi A)].
 
-Lemma xsection_ndseq_closed : ndseq_closed B.
+Lemma xsection_ndseq_closed_dep : ndseq_closed B.
 Proof.
 move=> F ndF; rewrite /B /= => BF; split.
   by apply: bigcupT_measurable => n; have [] := BF n.
@@ -341,7 +328,7 @@ Let B := [set A | measurable A /\ measurable_fun setT (phi A)].
 
 Hypothesis H1 : forall X2, measurable X2 -> measurable_fun [set: T1] (m2D^~ X2).
 
-Lemma measurable_prod_subset_xsection
+Lemma measurable_prod_subset_xsection_dep
     (m2D_bounded : forall x, exists M, forall X, measurable X -> (m2D x X < M%:E)%E) :
   measurable `<=` B.
 Proof.
@@ -363,7 +350,7 @@ have CB : C `<=` B.
   apply/EFin_measurable_fun.
   by rewrite (_ : \1_ _ = mindic R mX1).
 suff monoB : monotone_class setT B by exact: monotone_class_subset.
-split => //; [exact: CB| |exact: xsection_ndseq_closed].
+split => //; [exact: CB| |exact: xsection_ndseq_closed_dep].
 move=> X Y XY [mX mphiX] [mY mphiY]; split; first exact: measurableD.
 have -> : phi (X `\` Y) = (fun x => phi X x - phi Y x)%E.
   rewrite funeqE => x; rewrite /phi/= xsectionD// /m2D measureD.
@@ -380,41 +367,32 @@ End xsection.
 
 End measurable_prod_subset.
 
-(*NB: measurable_xsection as a superfluous parameter*)
-
 Section measurable_fun_xsection.
-Variables (d1 d2 : measure_display).
-Variables (T1 : measurableType d1) (T2 : measurableType d2) (R : realType).
+Variables (d1 d2 : measure_display) (T1 : measurableType d1)
+          (T2 : measurableType d2) (R : realType).
 Variables (m2 : T1 -> {measure set T2 -> \bar R}).
 Implicit Types A : set (T1 * T2).
-Hypotheses (sm2 : exists r : {posnum R}, forall x, m2 x [set: T2] < r%:num%:E).
+Hypotheses m2_ub : kernel_uub m2.
 
-Hypothesis H1 : forall X2, measurable X2 -> measurable_fun [set: T1] ((fun x => mrestr (m2 x) measurableT)^~ X2).
+Hypothesis H1 : forall X2, measurable X2 ->
+  measurable_fun [set: T1] ((fun x => mrestr (m2 x) measurableT)^~ X2).
 
 Let phi A := (fun x => m2 x (xsection A x)).
 Let B := [set A | measurable A /\ measurable_fun setT (phi A)].
 
-Lemma measurable_fun_xsection A :
+Lemma measurable_fun_xsection_dep A :
   A \in measurable -> measurable_fun setT (phi A).
 Proof.
 move: A; suff : measurable `<=` B by move=> + A; rewrite inE => /[apply] -[].
 move=> X mX.
-(*move/sigma_finiteP : sf_m2 => [F F_T [F_nd F_oo]] X mX.*)
-(*have -> : X = \bigcup_n (X `&` (setT `*` F n)).
-  by rewrite -setI_bigcupr -setM_bigcupr -F_T setMTT setIT.
-apply: xsection_ndseq_closed.
-  move=> m n mn; apply/subsetPset; apply: setIS; apply: setSM => //.
-  exact/subsetPset/F_nd.
-move=> n; rewrite -/B; have [? ?] := F_oo n.*)
-(*pose m2Fn := [the measure _ _ of mrestr m2 (F_oo n).1].*)
 rewrite /B/=; split => //.
 rewrite /phi.
 rewrite -(_ : (fun x : T1 => mrestr (m2 x) measurableT (xsection X x)) = (fun x => (m2 x) (xsection X x)))//; last first.
   apply/funext => x//=.
   by rewrite /mrestr setIT.
-apply measurable_prod_subset_xsection => //; last first.
+apply measurable_prod_subset_xsection_dep => //; last first.
   move=> x.
-  case: sm2 => r hr.
+  case: m2_ub => r hr.
   exists r%:num => Y mY.
   apply: (le_lt_trans _ (hr x)) => //.
   rewrite /mrestr.
@@ -422,7 +400,6 @@ apply measurable_prod_subset_xsection => //; last first.
   rewrite inE.
   apply: measurableI => //.
   by rewrite inE.
-
 Qed.
 
 End measurable_fun_xsection.
@@ -443,7 +420,7 @@ Local Open Scope ereal_scope.
 Variables (d1 d2 : measure_display).
 Variables (T1 : measurableType d1) (T2 : measurableType d2) (R : realType).
 Variables (m1 : {measure set T1 -> \bar R}) (m2 : T1 -> {measure set T2 -> \bar R}).
-Hypotheses (sm2 : exists r : {posnum R}, forall x, m2 x [set: T2] < r%:num%:E).
+Hypotheses m2_ub : kernel_uub m2.
 
 Section indic_fubini_tonelli.
 Variables (A : set (T1 * T2)) (mA : measurable A).
@@ -452,7 +429,7 @@ Let f : (T1 * T2) -> R := \1_A.
 
 Let F := fubini_F_dep m2 (EFin \o f).
 
-Lemma indic_fubini_tonelli_FE : F = (fun x => m2 x (xsection A x)).
+Lemma indic_fubini_tonelli_FE_dep : F = (fun x => m2 x (xsection A x)).
 Proof.
 rewrite funeqE => x; rewrite /= -(setTI (xsection _ _)).
 rewrite -integral_indic//; last exact: measurable_xsection.
@@ -469,8 +446,7 @@ Hypothesis H1 : forall X2, measurable X2 ->
 
 Lemma indic_measurable_fun_fubini_tonelli_F_dep : measurable_fun setT F.
 Proof.
-rewrite indic_fubini_tonelli_FE//.
-apply: measurable_fun_xsection => //.
+rewrite indic_fubini_tonelli_FE_dep//; apply: measurable_fun_xsection_dep => //.
 by rewrite inE.
 Qed.
 
@@ -525,9 +501,8 @@ apply emeasurable_fun_sum => r.
 rewrite [X in measurable_fun _ X](_ : _ = (fun x => r%:E *
     \int[l x]_y (\1_(k_ n @^-1` [set r]) (x, y))%:E)); last first.
   apply/funext => x.
-  rewrite (@integralM_indic_new _ _ _ _ _ _ (fun k y => \1_(k_ n @^-1` [set r]) (x, y)))//.
-  - move=> r_lt0; apply/funext => y.
-    by rewrite preimage_nnfun0// ?indicE ?in_set0.
+  rewrite (integralM_0ifneg _ _ (fun k y => \1_(k_ n @^-1` [set r]) (x, y)))//.
+  - by move=> r_lt0; apply/funext => y; rewrite preimage_nnfun0// indicE in_set0.
   - apply/measurable_fun_prod1 => /=.
     by rewrite (_ : \1_ _ = mindic R (measurable_sfunP (k_ n) r)).
 apply: emeasurable_funeM.
@@ -568,7 +543,7 @@ Variables (d d' : _) (R : realType) (X : measurableType d) (Y : measurableType d
 Variable k : finite_kernel R [the measurableType _ of (X * Y)%type] Z.
 Variable l : finite_kernel R X Y.
 
-Lemma star_finite : exists r : {posnum R}, forall x, star k l x [set: Z] < r%:num%:E.
+Lemma star_finite : kernel_uub (star k l).
 Proof.
 have [r hr] := @finite_kernelP _ _ _ _ _ k.
 have [s hs] := @finite_kernelP _ _ _ _ _ l.
@@ -587,12 +562,6 @@ HB.instance Definition _ :=
   isFiniteKernel.Build _ _ R X Z (mstar k l) star_finite.
 
 End star_is_finite_kernel.
-
-Lemma eq_measure (d : measure_display) (T : measurableType d) (R : realType)
-  (m1 m2 : {measure set T -> \bar R}) :
-  (forall U, measurable U -> m1 U = m2 U) -> m1 = m2.
-Proof.
-Abort.
 
 Section eq_measure_integral_new.
 Local Open Scope ereal_scope.
@@ -728,12 +697,7 @@ rewrite ge0_integral_sum//; last 2 first.
 under eq_bigr.
   move=> r _.
   rewrite /=.
-  rewrite (@integralM_indic_new _ _ _ _ _ _ (fun r x0 => \1_(f @^-1` [set r]) x0))//; last 2 first.
-    move=> r0.
-    apply/funext => z/=.
-    by rewrite indicE memNset// preimage_nnfun0.
-  have fr : measurable (f @^-1` [set r]) by exact/measurable_sfunP.
-  by rewrite (_ : \1__ = mindic R fr).
+  rewrite integralM_indic_nnsfun//.
   rewrite /=.
   rewrite lemma3_indic//.
   over.
@@ -762,7 +726,28 @@ HB.structure Definition Probability (d : measure_display) (T : measurableType d)
     (R : realType) :=
   {P of isProbability d T R P & isMeasure d R T P }.
 
-Section discrete_measurable2.
+Canonical unit_pointedType := PointedType unit tt.
+
+Section discrete_measurable_unit.
+
+Definition discrete_measurable_unit : set (set unit) := [set: set unit].
+
+Let discrete_measurable0 : discrete_measurable_unit set0. Proof. by []. Qed.
+
+Let discrete_measurableC X : discrete_measurable_unit X -> discrete_measurable_unit (~` X).
+Proof. by []. Qed.
+
+Let discrete_measurableU (F : (set unit)^nat) :
+  (forall i, discrete_measurable_unit (F i)) -> discrete_measurable_unit (\bigcup_i F i).
+Proof. by []. Qed.
+
+HB.instance Definition _ := @isMeasurable.Build default_measure_display unit (Pointed.class _)
+  discrete_measurable_unit discrete_measurable0 discrete_measurableC
+  discrete_measurableU.
+
+End discrete_measurable_unit.
+
+Section discrete_measurable_bool.
 
 Definition discrete_measurable_bool : set (set bool) := [set: set bool].
 
@@ -781,7 +766,7 @@ HB.instance Definition _ := @isMeasurable.Build default_measure_display bool (Po
   discrete_measurable_bool discrete_measurable0 discrete_measurableC
   discrete_measurableU.
 
-End discrete_measurable2.
+End discrete_measurable_bool.
 
 Definition twoseven (R : realType) : {nonneg R}.
 Admitted.
@@ -793,27 +778,6 @@ Definition bernoulli (R : realType) : {measure set _ -> \bar R} :=
   [the measure _ _ of measure_add
     [the measure _ _ of mscale (twoseven R) [the measure _ _ of dirac true]]
     [the measure _ _ of mscale (fiveseven R) [the measure _ _ of dirac false]]].
-
-Canonical unit_pointedType := PointedType unit tt.
-
-Section unit_measurable.
-
-Definition unit_measurable : set (set unit) := [set: set unit].
-
-Let unit_measurable0 : unit_measurable set0. Proof. by []. Qed.
-
-Let unit_measurableC X : unit_measurable X -> unit_measurable (~` X).
-Proof. by []. Qed.
-
-Let unit_measurableU (F : (set unit)^nat) :
-  (forall i, unit_measurable (F i)) -> unit_measurable (\bigcup_i F i).
-Proof. by []. Qed.
-
-HB.instance Definition _ := @isMeasurable.Build default_measure_display unit (Pointed.class _)
-  unit_measurable unit_measurable0 unit_measurableC
-  unit_measurableU.
-
-End unit_measurable.
 
 (* semantics for a sample operation? *)
 Section kernel_from_measure.
