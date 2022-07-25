@@ -15,6 +15,26 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
 
+(* PR 516 in progress *)
+HB.mixin Record isProbability (d : measure_display) (T : measurableType d)
+  (R : realType) (P : set T -> \bar R) of isMeasure d R T P :=
+  { probability_setT : P setT = 1%E }.
+
+#[short(type=probability)]
+HB.structure Definition Probability (d : measure_display) (T : measurableType d)
+    (R : realType) :=
+  {P of isProbability d T R P & isMeasure d R T P }.
+
+Section probability_lemmas.
+Variables (d : _) (T : measurableType d) (R : realType) (P : probability T R).
+
+Lemma probability_le1 (A : set T) : measurable A -> (P A <= 1)%E.
+Proof.
+Admitted.
+
+End probability_lemmas.
+(* /PR 516 in progress *)
+
 HB.mixin Record isKernel (d d' : measure_display)
     (R : realType) (X : measurableType d) (Y : measurableType d')
     (k : X -> {measure set Y -> \bar R}) := {
@@ -27,6 +47,7 @@ HB.structure Definition Kernel (d d' : measure_display)
   {k & isKernel d d' R X Y k}.
 Notation "X ^^> Y" := (kernel _ X Y) (at level 42).
 
+(* TODO: define using the probability type *)
 HB.mixin Record isProbabilityKernel (d d' : measure_display)
     (R : realType) (X : measurableType d) (Y : measurableType d')
     (k : X -> {measure set Y -> \bar R})
@@ -154,6 +175,29 @@ Local Open Scope ereal_scope.
 Variables (d : measure_display) (T : measurableType d) (R : realType).
 Variables (m : {measure set T -> \bar R}) (D : set T) (mD : measurable D).
 
+Lemma integralM_0ifneg (f : R -> T -> \bar R) (k : R)
+  (f0 : forall r t, D t -> (0 <= f r t)) :
+  ((k < 0)%R -> f k = cst 0%E) -> measurable_fun setT (f k) ->
+  \int[m]_(x in D) (k%:E * (f k) x) = k%:E * \int[m]_(x in D) ((f k) x).
+Proof.
+move=> fk0 mfk; have [k0|k0] := ltP k 0%R.
+  rewrite (eq_integral (cst 0%E)) ?integral0 ?mule0; last first.
+    by move=> x _; rewrite fk0// mule0.
+  rewrite (eq_integral (cst 0%E)) ?integral0 ?mule0// => x _.
+  by rewrite fk0// indic0.
+rewrite ge0_integralM//.
+- by apply/(@measurable_funS _ _ _ _ setT) => //.
+- by move=> y Dy; rewrite f0.
+Qed.
+
+End integralM_0ifneg.
+Arguments integralM_0ifneg {d T R} m {D} mD f.
+
+(*Section integralM_0ifneg.
+Local Open Scope ereal_scope.
+Variables (d : measure_display) (T : measurableType d) (R : realType).
+Variables (m : {measure set T -> \bar R}) (D : set T) (mD : measurable D).
+
 Lemma integralM_0ifneg (f : R -> T -> R) (k : R)
   (f0 : forall r t, D t -> (0 <= f r t)%R) :
   ((k < 0)%R -> f k = cst 0%R) -> measurable_fun setT (f k) ->
@@ -171,7 +215,7 @@ rewrite ge0_integralM//.
 Qed.
 
 End integralM_0ifneg.
-Arguments integralM_0ifneg {d T R} m {D} mD f.
+Arguments integralM_0ifneg {d T R} m {D} mD f.*)
 
 Section integralM_indic.
 Local Open Scope ereal_scope.
@@ -183,9 +227,12 @@ Let integralM_indic (f : R -> set T) (k : R) :
   \int[m]_(x in D) (k * \1_(f k) x)%:E = k%:E * \int[m]_(x in D) (\1_(f k) x)%:E.
 Proof.
 move=> fk0 mfk.
-apply: (integralM_0ifneg _ _ (fun k x => \1_(f k) x)) => //=.
-  by move/fk0 => -> /=; apply/funext => x; rewrite indicE in_set0.
-by rewrite (_ : \1_(f k) = mindic R mfk).
+under eq_integral do rewrite EFinM.
+apply: (integralM_0ifneg _ _ (fun k x => (\1_(f k) x)%:E)) => //=.
+- by move=> r t Dt; rewrite lee_fin.
+- by move/fk0 => -> /=; apply/funext => x; rewrite indicE in_set0.
+- apply/EFin_measurable_fun.
+  by rewrite (_ : \1_(f k) = mindic R mfk).
 Qed.
 
 End integralM_indic.
@@ -501,9 +548,11 @@ apply emeasurable_fun_sum => r.
 rewrite [X in measurable_fun _ X](_ : _ = (fun x => r%:E *
     \int[l x]_y (\1_(k_ n @^-1` [set r]) (x, y))%:E)); last first.
   apply/funext => x.
-  rewrite (integralM_0ifneg _ _ (fun k y => \1_(k_ n @^-1` [set r]) (x, y)))//.
+  under eq_integral do rewrite EFinM.
+  rewrite (integralM_0ifneg _ _ (fun k y => (\1_(k_ n @^-1` [set r]) (x, y))%:E))//.
+  - by move=> _ t _; rewrite lee_fin.
   - by move=> r_lt0; apply/funext => y; rewrite preimage_nnfun0// indicE in_set0.
-  - apply/measurable_fun_prod1 => /=.
+  - apply/EFin_measurable_fun/measurable_fun_prod1 => /=.
     by rewrite (_ : \1_ _ = mindic R (measurable_sfunP (k_ n) r)).
 apply: emeasurable_funeM.
 apply: indic_measurable_fun_fubini_tonelli_F_dep.
@@ -687,23 +736,116 @@ Lemma lemma3_nnsfun d d' (R : realType) (X : measurableType d)
     (l : sfinite_kernel R X Y) x (f : {nnsfun Z >-> R}) :
   \int[mstar k l x]_z (f z)%:E = \int[l x]_y (\int[k (x, y)]_z (f z)%:E).
 Proof.
-under eq_integral do rewrite fimfunE -sumEFin.
+under [in LHS]eq_integral do rewrite fimfunE -sumEFin.
 rewrite ge0_integral_sum//; last 2 first.
-  move=> r.
-  apply/EFin_measurable_fun/measurable_funrM.
+  move=> r; apply/EFin_measurable_fun/measurable_funrM.
   have fr : measurable (f @^-1` [set r]) by exact/measurable_sfunP.
   by rewrite (_ : \1__ = mindic R fr).
   by move=> r z _; rewrite EFinM muleindic_ge0.
-under eq_bigr.
-  move=> r _.
-  rewrite /=.
-  rewrite integralM_indic_nnsfun//.
-  rewrite /=.
-  rewrite lemma3_indic//.
+under [in RHS]eq_integral.
+  move=> y _.
+  under eq_integral.
+    move=> z _.
+    rewrite fimfunE -sumEFin.
+    over.
+  rewrite /= ge0_integral_sum//; last 2 first.
+    move=> r; apply/EFin_measurable_fun/measurable_funrM.
+    have fr : measurable (f @^-1` [set r]) by exact/measurable_sfunP.
+    by rewrite (_ : \1__ = mindic R fr).
+    by move=> r z _; rewrite EFinM muleindic_ge0.
+  under eq_bigr.
+    move=> r _.
+    rewrite (@integralM_indic _ _ _ _ _ _ (fun r => f @^-1` [set r]))//; last first.
+      by move=> r0; rewrite preimage_nnfun0.
+    rewrite integral_indic// setIT.
+    over.
   over.
+rewrite /= ge0_integral_sum//; last 2 first.
+  move=> r; apply: emeasurable_funeM.
+  have := @kernelP _ _ _ _ _ k (f @^-1` [set r]) (measurable_sfunP f r).
+  by move/measurable_fun_prod1; exact.
+  move=> n y _.
+  have := @mulem_ge0 _ _ _ (k (x, y)) n (fun n => f @^-1` [set n]).
+  apply.
+  exact: preimage_nnfun0.
+apply eq_bigr => r _.
+rewrite (@integralM_indic _ _ _ _ _ _ (fun r => f @^-1` [set r]))//; last first.
+  exact: preimage_nnfun0.
+rewrite /= lemma3_indic; last exact/measurable_sfunP.
+rewrite (@integralM_0ifneg _ _ _ _ _ _ (fun r t => k (x, t) (f @^-1` [set r])))//; last 2 first.
+  move=> r0.
+  apply/funext => y.
+  by rewrite preimage_nnfun0// measure0.
+  have := @kernelP _ _ _ _ _ k (f @^-1` [set r]) (measurable_sfunP f r).
+  by move/measurable_fun_prod1; exact.
+congr (_ * _).
+apply eq_integral => y _.
+by rewrite integral_indic// setIT.
+Qed.
+
+Lemma pollard2 (d d' d3 : measure_display)
+  (R : realType)
+  (X : measurableType d)
+  (Y : measurableType d') (Z : measurableType d3)
+  (k : Z -> \bar R)
+  (k0 : (forall z, True -> 0 <= k z))
+  (mk : measurable_fun setT k)
+  (l : finite_kernel R [the measurableType _ of (X * Y)%type] Z) c :
+measurable_fun [set: Y] (fun x0 : Y => \int[l (c, x0)]_z k z).
+Proof.
+have [k_ [ndk_ k_k]] := @approximation _ _ _ _ measurableT k mk k0.
+simpl in *.
+rewrite (_ : (fun x0 => \int[l (c, x0)]_z k z) =
+    (fun x0 => elim_sup (fun n => \int[l (c, x0)]_z (k_ n z)%:E))); last first.
+  apply/funeqP => x.
+  transitivity (lim (fun n => \int[l (c, x)]_z (k_ n z)%:E)); last first.
+    rewrite is_cvg_elim_supE//.
+    apply: ereal_nondecreasing_is_cvg => m n mn.
+    apply: ge0_le_integral => //.
+    - by move=> y' _; rewrite lee_fin.
+    - exact/EFin_measurable_fun.
+    - by move=> y' _; rewrite lee_fin.
+    - exact/EFin_measurable_fun.
+    - by move=> y' _; rewrite lee_fin; apply/lefP/ndk_.
+  rewrite -monotone_convergence//.
+  - by apply: eq_integral => y _; apply/esym/cvg_lim => //; exact: k_k.
+  - by move=> n; exact/EFin_measurable_fun.
+  - by move=> n y' _; rewrite lee_fin.
+  - by move=> y' _ m n mn; rewrite lee_fin; apply/lefP/ndk_.
+apply: measurable_fun_elim_sup => n.
+rewrite [X in measurable_fun _ X](_ : _ = (fun x0 => \int[l (c, x0)]_z
+  ((\sum_(r <- fset_set (range (k_ n)))
+     r * \1_(k_ n @^-1` [set r]) z))%:E)); last first.
+  by apply/funext => x; apply: eq_integral => y _; rewrite fimfunE.
+rewrite [X in measurable_fun _ X](_ : _ = (fun x0 => \sum_(r <- fset_set (range (k_ n)))
+  (\int[l (c, x0)]_z
+     (r * \1_(k_ n @^-1` [set r]) z)%:E))); last first.
+  apply/funext => x; rewrite -ge0_integral_sum//.
+  - by apply: eq_integral => y _; rewrite sumEFin.
+  - move=> r.
+    apply/EFin_measurable_fun/measurable_funrM => /=.
+    by rewrite (_ : \1_ _ = mindic R (measurable_sfunP (k_ n) r)).
+  - by move=> m y _; rewrite muleindic_ge0.
+apply emeasurable_fun_sum => r.
+rewrite [X in measurable_fun _ X](_ : _ = (fun x => r%:E *
+    \int[l (c ,x)]_z (\1_(k_ n @^-1` [set r]) z)%:E)); last first.
+  apply/funext => x.
+  under eq_integral do rewrite EFinM.
+  rewrite (integralM_0ifneg _ _ (fun k z => (\1_(k_ n @^-1` [set r]) z)%:E))//.
+  - by move=> _ t _; rewrite lee_fin.
+  - by move=> r_lt0; apply/funext => y; rewrite preimage_nnfun0// indicE in_set0.
+  - apply/EFin_measurable_fun => /=.
+    by rewrite (_ : \1_ _ = mindic R (measurable_sfunP (k_ n) r)).
+apply: emeasurable_funeM.
+rewrite (_ : (fun x : Y => \int[l (c, x)]_z (\1_(k_ n @^-1` [set r]) z)%:E) =
+  (fun x : Y => l (c, x) (k_ n @^-1` [set r]))); last first.
+  apply/funext => y.
+  by rewrite integral_indic// setIT.
+have := @kernelP _ _ R _ _ l (k_ n @^-1` [set r]) (measurable_sfunP (k_ n) r).
 rewrite /=.
-apply/esym.
-Admitted.
+move/measurable_fun_prod1.
+exact.
+Qed.
 
 Lemma lemma3 d d' (R : realType) (X : measurableType d)
     (Y : measurableType d') (Z : measurableType (d, d').-prod)
@@ -713,18 +855,41 @@ Lemma lemma3 d d' (R : realType) (X : measurableType d)
 Proof.
 move=> f0 mf.
 have [f_ [ndf_ f_f]] := approximation measurableT mf (fun z _ => f0 z).
-simpl in *.
-(* TODO *)
-Admitted.
-
-HB.mixin Record isProbability (d : measure_display) (T : measurableType d)
-  (R : realType) (P : set T -> \bar R) of isMeasure d R T P :=
-  { probability_setT : P setT = 1%E }.
-
-#[short(type=probability)]
-HB.structure Definition Probability (d : measure_display) (T : measurableType d)
-    (R : realType) :=
-  {P of isProbability d T R P & isMeasure d R T P }.
+transitivity (\int[mstar k l x]_z (lim (EFin \o (f_^~ z)))).
+  apply/eq_integral => z _.
+  apply/esym/cvg_lim => //=.
+  exact: f_f.
+rewrite monotone_convergence//; last 3 first.
+  by move=> n; apply/EFin_measurable_fun.
+  by move=> n z _; rewrite lee_fin.
+  by move=> z _ a b /ndf_ /lefP ab; rewrite lee_fin.
+rewrite (_ : (fun _ => _) = (fun n => \int[l x]_y (\int[k (x, y)]_z (f_ n z)%:E)))//; last first.
+  by apply/funext => n; rewrite lemma3_nnsfun.
+transitivity (\int[l x]_y lim (fun n => \int[k (x, y)]_z (f_ n z)%:E)).
+  rewrite -monotone_convergence//; last 3 first.
+  move=> n.
+  apply: pollard2 => //.
+  - by move=> z; rewrite lee_fin.
+  - by apply/EFin_measurable_fun.
+  - move=> n y _.
+    by apply integral_ge0 => // z _; rewrite lee_fin.
+  - move=> y _ a b ab.
+    apply: ge0_le_integral => //.
+    + by move=> z _; rewrite lee_fin.
+    + exact/EFin_measurable_fun.
+    + by move=> z _; rewrite lee_fin.
+    + exact/EFin_measurable_fun.
+    + move: ab => /ndf_ /lefP ab z _.
+      by rewrite lee_fin.
+apply eq_integral => y _.
+rewrite -monotone_convergence//; last 3 first.
+  move=> n; exact/EFin_measurable_fun.
+  by move=> n z _; rewrite lee_fin.
+  by move=> z _ a b /ndf_ /lefP; rewrite lee_fin.
+apply eq_integral => z _.
+apply/cvg_lim => //.
+exact: f_f.
+Qed.
 
 Canonical unit_pointedType := PointedType unit tt.
 
@@ -768,32 +933,134 @@ HB.instance Definition _ := @isMeasurable.Build default_measure_display bool (Po
 
 End discrete_measurable_bool.
 
-Definition twoseven (R : realType) : {nonneg R}.
-Admitted.
+Section nonneg_constants.
+Variable R : realType.
+Let twoseven_proof : (0 <= 2 / 7 :> R)%R.
+Proof. by rewrite divr_ge0// ler0n. Qed.
 
-Definition fiveseven (R : realType) : {nonneg R}.
-Admitted.
+Definition twoseven : {nonneg R} := NngNum twoseven_proof.
 
-Definition bernoulli (R : realType) : {measure set _ -> \bar R} :=
-  [the measure _ _ of measure_add
+Let fiveseven_proof : (0 <= 5 / 7 :> R)%R.
+Proof. by rewrite divr_ge0// ler0n. Qed.
+
+Definition fiveseven : {nonneg R} := NngNum fiveseven_proof.
+
+End nonneg_constants.
+
+Lemma measure_diract_setT_true (R : realType) :
+  [the measure _ _ of dirac true] [set: bool] = 1 :> \bar R.
+Proof. by rewrite /= diracE in_setT. Qed.
+
+Lemma measure_diract_setT_false (R : realType) :
+  [the measure _ _ of dirac false] [set: bool] = 1 :> \bar R.
+Proof. by rewrite /= diracE in_setT. Qed.
+
+Section bernoulli27.
+Variable R : realType.
+
+Definition bernoulli27 : set _ -> \bar R :=
+  measure_add
     [the measure _ _ of mscale (twoseven R) [the measure _ _ of dirac true]]
-    [the measure _ _ of mscale (fiveseven R) [the measure _ _ of dirac false]]].
+    [the measure _ _ of mscale (fiveseven R) [the measure _ _ of dirac false]].
+
+HB.instance Definition _ := Measure.on bernoulli27.
+
+Lemma bernoulli27_setT : bernoulli27 [set: _] = 1.
+Proof.
+rewrite /bernoulli27/= /measure_add/= /msum 2!big_ord_recr/= big_ord0 add0e/=.
+rewrite /mscale/= !diracE !in_setT !mule1 -EFinD.
+by rewrite -mulrDl -natrD divrr// unitfE pnatr_eq0.
+Qed.
+
+HB.instance Definition _ := @isProbability.Build _ _ R bernoulli27 bernoulli27_setT.
+
+End bernoulli27.
+
+Section kernel_from_mzero.
+Variables (d : measure_display) (T : measurableType d) (R : realType).
+Variable (d' : measure_display) (T' : measurableType d').
+
+Definition kernel_from_mzero : T' -> {measure set T -> \bar R} :=
+  fun _ : T' => [the measure _ _ of mzero].
+
+Lemma kernel_from_mzeroP : forall U, measurable U ->
+  measurable_fun setT (kernel_from_mzero ^~ U).
+Proof. by move=> U mU/=; exact: measurable_fun_cst. Qed.
+
+HB.instance Definition _ :=
+  @isKernel.Build d' d R T' T kernel_from_mzero
+  kernel_from_mzeroP.
+
+Lemma kernel_from_mzero_uub : kernel_uub kernel_from_mzero.
+Proof.
+exists (PosNum ltr01) => /= t.
+by rewrite /mzero/=.
+Qed.
+
+HB.instance Definition _ :=
+  @isFiniteKernel.Build d' d R _ T kernel_from_mzero
+  kernel_from_mzero_uub.
+
+End kernel_from_mzero.
+
+(* a finite kernel is always an s-finite kernel *)
+Lemma finite_kernel_sfinite_kernelP (d : measure_display)
+    (R : realType) (X : measurableType d) (d' : measure_display) (T : measurableType d')
+    (k : finite_kernel R T X) :
+  exists k_ : (finite_kernel R _ _)^nat, forall x U, measurable U ->
+    k x U = [the measure _ _ of mseries (k_ ^~ x) 0] U.
+Proof.
+exists (fun n => if n is O then
+           k
+         else
+           [the finite_kernel _ _ _ of @kernel_from_mzero _ X R _ T]
+           ).
+move=> t U mU/=.
+rewrite /mseries.
+rewrite (nneseries_split 1%N)// big_ord_recl/= big_ord0 adde0.
+rewrite ereal_series (@eq_nneseries _ _ (fun=> 0%E)); last first.
+  by case.
+by rewrite nneseries0// adde0.
+Qed.
 
 (* semantics for a sample operation? *)
-Section kernel_from_measure.
+Section kernel_from_probability.
 Variables (d : measure_display) (R : realType) (X : measurableType d).
-Variable m : {measure set X -> \bar R}. (* measure, probability measure *)
+Variable m : probability X R. (* measure, probability measure *)
 
-Definition kernel_from_measure : unit -> {measure set X -> \bar R} :=
+Definition kernel_from_probability : unit -> {measure set X -> \bar R} :=
   fun _ : unit => m.
 
-Lemma kernel_from_measureP : forall U, measurable U -> measurable_fun setT (kernel_from_measure ^~ U).
+Lemma kernel_from_probabilityP : forall U, measurable U ->
+  measurable_fun setT (kernel_from_probability ^~ U).
 Proof. by []. Qed.
 
 HB.instance Definition _ :=
-  @isKernel.Build default_measure_display d R _ X kernel_from_measure
-  kernel_from_measureP.
-End kernel_from_measure.
+  @isKernel.Build default_measure_display d R _ X kernel_from_probability
+  kernel_from_probabilityP.
+
+Lemma kernel_from_probability_uub : kernel_uub kernel_from_probability.
+Proof.
+(*NB: shouldn't this work? exists 2%:pos. *)
+exists (PosNum (addr_gt0 ltr01 ltr01)) => /= -[].
+rewrite (le_lt_trans (probability_le1 m measurableT))//.
+by rewrite lte_fin ltr_addr.
+Qed.
+
+HB.instance Definition _ :=
+  @isFiniteKernel.Build default_measure_display d R _ X kernel_from_probability
+  kernel_from_probability_uub.
+
+Lemma kernel_from_probability_sfinite_kernelP : exists k_ : (finite_kernel R _ _)^nat,
+    forall x U, measurable U ->
+      kernel_from_probability x U = [the measure _ _ of mseries (k_ ^~ x) 0] U.
+Proof. exact: finite_kernel_sfinite_kernelP. Qed.
+
+HB.instance Definition _ :=
+  @isSFiniteKernel.Build default_measure_display d R _ X kernel_from_probability
+  kernel_from_probability_sfinite_kernelP.
+
+End kernel_from_probability.
 
 (* semantics for return? *)
 Section kernel_from_dirac.
@@ -814,6 +1081,26 @@ Qed.
 
 HB.instance Definition _ :=
   isKernel.Build _ _ R _ _ kernel_from_dirac kernel_from_diracP.
+
+Lemma kernel_from_dirac_uub : kernel_uub kernel_from_dirac.
+Proof.
+exists (PosNum (addr_gt0 ltr01 ltr01)) => t/=.
+by rewrite diracE in_setT lte_fin ltr_addr.
+Qed.
+
+HB.instance Definition _ :=
+  @isFiniteKernel.Build d d R _ T kernel_from_dirac
+  kernel_from_dirac_uub.
+
+Lemma kernel_from_dirac_sfinite_kernelP : exists k_ : (finite_kernel R _ _)^nat,
+    forall x U, measurable U ->
+      kernel_from_dirac x U = [the measure _ _ of mseries (k_ ^~ x) 0] U.
+Proof. exact: finite_kernel_sfinite_kernelP. Qed.
+
+HB.instance Definition _ :=
+  @isSFiniteKernel.Build d d R _ T kernel_from_dirac
+  kernel_from_dirac_sfinite_kernelP.
+
 End kernel_from_dirac.
 
 (* let x = sample (bernoulli 2/7) in
@@ -828,15 +1115,15 @@ Section sample_program.
 Variables (R : realType).
 
 Definition sample_bernoulli27 (*NB: 1 ^^> bool *) :=
-  [the kernel _ _ _ of kernel_from_measure (bernoulli R)] .
+  [the sfinite_kernel _ _ _ of kernel_from_probability [the probability _ _ of bernoulli27 R]] .
 
-Definition Return : kernel R _ [the measurableType (default_measure_display,default_measure_display).-prod of (Datatypes_unit__canonical__measure_SemiRingOfSets * Datatypes_bool__canonical__measure_SemiRingOfSets)%type] (* NB: 1 * bool ^^> 1 * bool *) :=
-  [the kernel _ _ _ of @kernel_from_dirac R _ _].
+Definition Return : sfinite_kernel R _ [the measurableType (_, _).-prod of (unit * Datatypes_bool__canonical__measure_SemiRingOfSets)%type] (* NB: 1 * bool ^^> 1 * bool *) :=
+  [the sfinite_kernel _ _ _ of @kernel_from_dirac R _ _].
 
-Definition program : unit -> set (unit * bool) -> \bar R (* NB: 1 ^^> 1 * bool *) :=
-  letin
+Definition program : sfinite_kernel R _ [the measurableType (_, _).-prod of (unit * Datatypes_bool__canonical__measure_SemiRingOfSets)%type] :=
+  [the sfinite_kernel _ _ _ of letin
     sample_bernoulli27
-    Return.
+    Return].
 
 Lemma programE : forall U, program tt U =
   ((twoseven R)%:num)%:E * \d_(tt, true) U +
