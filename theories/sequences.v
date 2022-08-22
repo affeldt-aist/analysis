@@ -2633,6 +2633,64 @@ Qed.
 
 End elim_sup_inf.
 
+Reserved Notation "1.- r" (format "1.- r", at level 2).
+
+Section onem.
+Variable R : numDomainType.
+Implicit Types r : R.
+
+Definition onem r := 1 - r.
+Local Notation "1.- r" := (onem r).
+
+Lemma onem0 : 1.-0 = 1. Proof. by rewrite /onem subr0. Qed.
+
+Lemma onem1 : 1.-1 = 0. Proof. by rewrite /onem subrr. Qed.
+
+Lemma onemK r : 1.-(1.-r) = r.
+Proof. by rewrite /onem opprB addrCA subrr addr0. Qed.
+
+Lemma onem_gt0 r : r < 1 -> 0 < 1.-r. Proof. by rewrite subr_gt0. Qed.
+
+Lemma onem_ge0 r : r <= 1 -> 0 <= 1.-r.
+Proof. by rewrite le_eqVlt => /predU1P[->|/onem_gt0/ltW]; rewrite ?onem1. Qed.
+
+Lemma onem_le1 r : 0 <= r -> 1.-r <= 1.
+Proof. by rewrite ler_subl_addr ler_addl. Qed.
+
+Lemma onem_lt1 r : 0 < r -> 1.-r < 1.
+Proof. by rewrite ltr_subl_addr ltr_addl. Qed.
+
+Lemma onemX_ge0 r n : 0 <= r -> r <= 1 -> 0 <= 1.-(r ^+ n).
+Proof. by move=> ? ?; rewrite subr_ge0 exprn_ile1. Qed.
+
+Lemma onemX_lt1 r n : 0 < r -> 1.-(r ^+ n) < 1.
+Proof. by move=> ?; rewrite onem_lt1// exprn_gt0. Qed.
+
+Lemma onemD r s : 1.-(r + s) = 1.-r - s.
+Proof. by rewrite /onem addrAC opprD addrA addrAC. Qed.
+
+Lemma onemMr r s : s * 1.-r = s - s * r.
+Proof. by rewrite /onem mulrBr mulr1. Qed.
+
+Lemma onemM r s : 1.-(r * s) = 1.-r + 1.-s - 1.-r * 1.-s.
+Proof.
+rewrite /onem mulrBr mulr1 mulrBl mul1r opprB -addrA.
+by rewrite (addrC (1 - r)) !addrA subrK opprB addrA subrK addrK.
+Qed.
+
+(* These proofs help integrate all the arithmetic with signed.v. The issue is *)
+(* Terms like `0 < 1-q` with subtraction don't work well. So we hide the      *)
+(* subtractions behind `PosNum` and `NngNum` constructors*)
+Lemma onem_PosNum r (r1 : r < 1) : 1.-r = (PosNum (onem_gt0 r1))%:num.
+Proof. by []. Qed.
+
+Lemma onemX_NngNum r (r1 : r <= 1) (r0 : 0 <= r) n :
+  1.-(r ^+ n) = (NngNum (onemX_ge0 n r0 r1))%:num.
+Proof. by []. Qed.
+
+End onem.
+Notation "1.- r" := (onem r) : ring_scope.
+
 Section banach_contraction.
 
 Context {R : realType} {X : completeNormedModType R} (U : set X).
@@ -2640,22 +2698,6 @@ Variables (f : {fun U >-> U}).
 
 Section contractions.
 Variables (q : {nonneg R}) (ctrf : contraction q f) (base : X) (Ubase : U base).
-
-(* These proofs help integrate all the arithmetic with signed.v. The issue is *)
-(* Terms like `0 < 1-q` with subtraction don't work well. So we hide the      *)
-(* subtractions behind `PosNum` and `NngNum` constructors*)
-
-Let qlt1 : 0 < 1 - q%:num.
-Proof. by rewrite subr_gt0; case: ctrf. Qed.
-
-Let qsub1E : 1 - q%:num = (PosNum qlt1)%:num.
-Proof. by []. Qed.
-
-Let qpow_lt_1 m : 0 <= 1 - q%:num ^+ m.
-Proof. by rewrite subr_ge0 exprn_ile1// ltW//; case: ctrf. Qed.
-
-Let qmsub1E m : 1 - q%:num ^+ m = (NngNum (qpow_lt_1 m))%:num.
-Proof. by []. Qed.
 
 Lemma contraction_dist n m :
   `| iter n f base - iter (n + m) f base| <=
@@ -2670,16 +2712,17 @@ have /le_trans -> // : `| y n - y (n + m)%N| <=
     series (geometric (`|f base - base| * q%:num ^+ n) q%:num) m.
   elim: m => [|m ih].
     by rewrite geometric_seriesE ?lt_eqF//= addn0 subrr normr0 subrr mulr0 mul0r.
-  apply: le_trans; first exact: (ler_dist_add (y (n + m)%N)).
+  rewrite (le_trans (ler_dist_add (y (n + m)%N) _ _))//.
   apply: (le_trans (ler_add ih _)); first by rewrite distrC addnS; exact: f1.
-  rewrite [_ * `|_|]mulrC exprD mulrA geometric_seriesE ?lt_eqF//= qsub1E qmsub1E.
-  rewrite -!mulrA -mulrDr ler_pmul // -mulrDr ler_pmul //.
-  rewrite -[x in _ + x]mulr1 -{3}(@divrr _ (PosNum qlt1)%:num) ?unitf_gt0 //.
-  rewrite mulrA -mulrDl ler_pdivr_mulr // mulrDr.
-  by rewrite divrK ?unitf_gt0 // mulr1 subrKA /= mulrN [_ * q%:num]mulrC -exprS.
-rewrite geometric_seriesE ?lt_eqF// /mk_sequence ?qsub1E ?qmsub1E.
-rewrite -?mulrA ler_pmul // [leRHS] mulrC ler_pmul //.
-by rewrite -ler_pdivl_mulr// divrr ?unitf_gt0// ler_subl_addr ler_addl.
+  rewrite [_ * `|_|]mulrC exprD mulrA geometric_seriesE ?lt_eqF//=.
+  rewrite -!/(1.-_) (onem_PosNum ctrf.1) (onemX_NngNum (ltW ctrf.1)).
+  rewrite -!mulrA -mulrDr ler_pmul// -mulrDr exprSr onemM -addrA.
+  rewrite -[in leRHS](mulrC _ 1.-(_ ^+ m)) -onemMr onemK.
+  by rewrite [in leRHS]mulrDl mulrAC mulrV ?mul1r// unitf_gt0// onem_gt0.
+rewrite geometric_seriesE ?lt_eqF//=.
+rewrite -!/(1.-_) (onem_PosNum ctrf.1) (onemX_NngNum (ltW ctrf.1)).
+rewrite -!mulrA ler_pmul// [leRHS]mulrC ler_pmul// -ler_pdivl_mulr ?invr_gt0//.
+by rewrite divrr ?unitf_gt0// onem_le1.
 Qed.
 
 Lemma contraction_cvg : cvg (iter n f base @[n-->\oo]).
@@ -2691,11 +2734,12 @@ have lt_min n m : `|y n - y m| <= C * q%:num ^+ minn n m.
   wlog : n m / (n <= m)%N => W.
     by case/orP: (leq_total n m) => /W //; rewrite distrC minnC.
   rewrite -(@subnKC n m) //; apply: le_trans; first exact: contraction_dist.
-  by rewrite qsub1E ler_pmul// subnKC//; move/minn_idPl : W => ->.
+  by rewrite -/(1.-_) (onem_PosNum ctrf.1) ler_pmul ?subnKC//; move/minn_idPl : W => ->.
 have [Cpos| |C0] := ltrgt0P C; last first.
   - near=> n m => /=; rewrite -ball_normE.
     by apply: (le_lt_trans (lt_min _ _)); rewrite C0 mul0r.
-  - by rewrite ltNge //; apply: contraNP => _; rewrite /C qsub1E.
+  - rewrite ltNge //; apply: contraNP => _; rewrite /C.
+    by rewrite -/(1.-_) (onem_PosNum ctrf.1).
 near=> n; rewrite -ball_normE /= (le_lt_trans (lt_min n.1 n.2)) //.
 rewrite // -ltr_pdivl_mull //.
 suff : ball 0 (C^-1 * e%:num) (q%:num ^+ minn n.1 n.2).
