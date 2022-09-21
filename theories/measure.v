@@ -84,7 +84,8 @@ From HB Require Import structures.
 (*     isMeasure == factory corresponding to the type of measures             *)
 (*     Measure == structure corresponding to measures                         *)
 (*                                                                            *)
-(*   pushforward f m == pushforward/image measure of m by f                   *)
+(*  pushforward mf m == pushforward/image measure of m by f, where mf is a    *)
+(*                      proof that f is measurable                            *)
 (*              \d_a == Dirac measure                                         *)
 (*         msum mu n == the measure corresponding to the sum of the measures  *)
 (*                      mu_0, ..., mu_{n-1}                                   *)
@@ -959,7 +960,7 @@ split.
 Qed.
 
 Lemma measurable_funS (E D : set T1) (f : T1 -> T2) :
-     measurable E -> D `<=` E -> measurable_fun E f ->
+    measurable E -> D `<=` E -> measurable_fun E f ->
   measurable_fun D f.
 Proof.
 move=> mE DE mf mD; have mC : measurable (E `\` D) by exact: measurableD.
@@ -968,6 +969,10 @@ have := measurable_funU f mD mC.
 suff -> : D `|` (E `\` D) = E by move=> [[]] //.
 by rewrite setDUK.
 Qed.
+
+Lemma measurable_funTS (D : set T1) (f : T1 -> T2) :
+  measurable_fun setT f -> measurable_fun D f.
+Proof. exact: measurable_funS. Qed.
 
 Lemma measurable_fun_ext (D : set T1) (f g : T1 -> T2) :
   {in D, f =1 g} -> measurable_fun D f -> measurable_fun D g.
@@ -1457,18 +1462,19 @@ Section pushforward_measure.
 Local Open Scope ereal_scope.
 Variables (d d' : measure_display).
 Variables (T1 : measurableType d) (T2 : measurableType d') (f : T1 -> T2).
-Hypothesis mf : measurable_fun setT f.
 Variables (R : realFieldType) (m : {measure set T1 -> \bar R}).
 
-Definition pushforward A := m (f @^-1` A).
+Definition pushforward (mf : measurable_fun setT f) A := m (f @^-1` A).
 
-Let pushforward0 : pushforward set0 = 0.
+Hypothesis mf : measurable_fun setT f.
+
+Let pushforward0 : pushforward mf set0 = 0.
 Proof. by rewrite /pushforward preimage_set0 measure0. Qed.
 
-Let pushforward_ge0 A : 0 <= pushforward A.
+Let pushforward_ge0 A : 0 <= pushforward mf A.
 Proof. by apply: measure_ge0; rewrite -[X in measurable X]setIT; apply: mf. Qed.
 
-Let pushforward_sigma_additive : semi_sigma_additive pushforward.
+Let pushforward_sigma_additive : semi_sigma_additive (pushforward mf).
 Proof.
 move=> F mF tF mUF; rewrite /pushforward preimage_bigcup.
 apply: measure_semi_sigma_additive.
@@ -1479,7 +1485,7 @@ apply: measure_semi_sigma_additive.
 Qed.
 
 HB.instance Definition _ := isMeasure.Build _ _ _
-  pushforward pushforward0 pushforward_ge0 pushforward_sigma_additive.
+  (pushforward mf) pushforward0 pushforward_ge0 pushforward_sigma_additive.
 
 End pushforward_measure.
 
@@ -1532,7 +1538,7 @@ Lemma finite_card_dirac (A : set T) : finite_set A ->
   \esum_(i in A) \d_ i A = (#|` fset_set A|%:R)%:E :> \bar R.
 Proof.
 move=> finA.
-rewrite -sum_fset_set// big_seq_cond (eq_bigr (fun=> 1)) -?big_seq_cond.
+rewrite esum_fset// fsbig_finite// big_seq_cond (eq_bigr (fun=> 1)) -?big_seq_cond.
   by rewrite card_fset_sum1// natr_sum -sumEFin.
 by move=> i; rewrite andbT in_fset_set//= /dirac indicE => ->.
 Qed.
@@ -1542,12 +1548,13 @@ Lemma infinite_card_dirac (A : set T) : infinite_set A ->
 Proof.
 move=> infA; apply/eq_pinftyP => r r0.
 have [B BA Br] := infinite_set_fset `|ceil r| infA.
-apply: esum_ge; exists B => //; apply: (@le_trans _ _ `|ceil r|%:R%:E).
+apply: esum_ge; exists [set` B] => //; apply: (@le_trans _ _ `|ceil r|%:R%:E).
   by rewrite lee_fin natr_absz gtr0_norm ?ceil_gt0// ceil_ge.
 move: Br; rewrite -(@ler_nat R) -lee_fin => /le_trans; apply.
-rewrite big_seq (eq_bigr (cst 1))/=; last first.
-  by move=> i Bi; rewrite /dirac indicE mem_set//; exact: BA.
-by rewrite -big_seq card_fset_sum1 sumEFin natr_sum.
+rewrite fsbig_finite// big_seq (eq_bigr (cst 1))/=; last first.
+  move=> i; rewrite in_fset_set// inE/= => Bi; rewrite diracE mem_set//.
+  exact: BA.
+by rewrite -big_seq card_fset_sum1 sumEFin natr_sum// set_fsetK.
 Qed.
 
 End dirac_lemmas.

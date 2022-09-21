@@ -132,9 +132,9 @@ rewrite mulrBr mulrC divfK //.
 case: n => [|n].
   by rewrite !expr0 !(mul0r, mulr0, subr0, subrr, big_geq).
 rewrite subrXX addrK -mulrBr; congr (_ * _).
-rewrite -(big_mkord xpredT (fun i : nat => (h + z) ^+ (n - i) * z ^+ i)).
+rewrite -(big_mkord xpredT (fun i => (h + z) ^+ (n - i) * z ^+ i)).
 rewrite big_nat_recr //= subnn expr0 -addrA -mulrBl.
-rewrite -add1n natrD opprD addrA subrr sub0r mulNr.
+rewrite -nat1r opprD addrA subrr sub0r mulNr.
 rewrite mulr_natl -[in X in _ *+ X](subn0 n) -sumr_const_nat -sumrB.
 rewrite pseries_diffs_P1 mulr_sumr !big_mkord; apply: eq_bigr => i _.
 rewrite mulrCA; congr (_ * _).
@@ -394,7 +394,7 @@ Qed.
 Lemma expRMm n x : expR (n%:R * x) = expR x ^+ n.
 Proof.
 elim: n x => [x|n IH x] /=; first by rewrite mul0r expr0 expR0.
-by rewrite exprS -add1n natrD mulrDl mul1r expRD IH.
+by rewrite exprS -nat1r mulrDl mul1r expRD IH.
 Qed.
 
 Lemma expR_gt1 x:  (1 < expR x) = (0 < x).
@@ -442,7 +442,7 @@ Proof.
 move=> x_ge1; have x_ge0 : 0 <= x by apply: le_trans x_ge1.
 have [x1 x1Ix| |x1 _ /eqP] := @IVT _ (fun y => expR y - x) _ _ 0 x_ge0.
 - apply: continuousB => // y1; last exact: cst_continuous.
-  by apply/continuous_subspaceT=> ? _; exact: continuous_expR.
+  by apply/continuous_subspaceT=> ?; exact: continuous_expR.
 - rewrite expR0; have [_| |] := ltrgtP (1- x) (expR x - x).
   + by rewrite subr_le0 x_ge1 subr_ge0 (le_trans _ (expR_ge1Dx _)) ?ler_addr.
   + by rewrite ltr_add2r expR_lt1 ltNge x_ge0.
@@ -606,7 +606,7 @@ Qed.
 Lemma exp_fun_mulrn a n : 0 < a -> exp_fun a n%:R = a ^+ n.
 Proof.
 move=> a0; elim: n => [|n ih]; first by rewrite mulr0n expr0 exp_funr0.
-by rewrite -addn1 natrD exp_funD // exprD ih exp_funr1.
+by rewrite -natr1 exprSr exp_funD// ih exp_funr1.
 Qed.
 
 End ExpFun.

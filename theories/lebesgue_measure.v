@@ -370,7 +370,8 @@ move=> /(_ _ _ _)/Box[]//=; apply: le_le_trans.
   rewrite hlength_itv ?lte_fin -?EFinD/= -addrA -opprD.
   by case: ltP => //; rewrite lee_fin subr_le0.
 rewrite nneseries_esum//; last by move=> *; rewrite adde_ge0//= ?lee_fin.
-rewrite esum_ge//; exists X => //; rewrite fsbig_finite// ?set_fsetK//=.
+rewrite esum_ge//; exists [set` X] => //; rewrite fsbig_finite// ?set_fsetK//=.
+rewrite fsbig_finite//= set_fsetK//.
 rewrite lee_sum // => i _; rewrite ?AE// !hlength_itv/= ?lte_fin -?EFinD/=.
 do !case: ifPn => //= ?; do ?by rewrite ?adde_ge0 ?lee_fin// ?subr_ge0// ?ltW.
   by rewrite addrAC.
@@ -561,8 +562,7 @@ move=> x rx; apply/esym/eqP; rewrite eq_le (itvP (rx 0%N _))// andbT.
 apply/ler_addgt0Pl => e e_gt0; rewrite -ler_subl_addl ltW//.
 have := rx `|floor e^-1%R|%N I; rewrite /= in_itv => /andP[/le_lt_trans->]//.
 rewrite ler_add2l ler_opp2 -lef_pinv ?invrK//; last by rewrite qualifE.
-rewrite -addn1 natrD natr_absz ger0_norm ?floor_ge0 ?invr_ge0 1?ltW//.
-by rewrite lt_succ_floor.
+by rewrite -natr1 natr_absz ger0_norm ?floor_ge0 ?invr_ge0 1?ltW// lt_succ_floor.
 Qed.
 
 Lemma itv_bnd_open_bigcup (R : realType) b (r s : R) :
@@ -575,7 +575,7 @@ apply/seteqP; split => [x/=|]; last first.
 rewrite in_itv/= => /andP[sx xs]; exists `|ceil ((s - x)^-1)|%N => //=.
 rewrite in_itv/= sx/= ler_subr_addl addrC -ler_subr_addl.
 rewrite -[in X in _ <= X](invrK (s - x)) ler_pinv.
-- rewrite -addn1 natrD natr_absz ger0_norm; last first.
+- rewrite -natr1 natr_absz ger0_norm; last first.
     by rewrite ceil_ge0// invr_ge0 subr_ge0 ltW.
   by rewrite (@le_trans _ _ (ceil (s - x)^-1)%:~R)// ?ler_addl// ceil_ge.
 - by rewrite inE unitfE ltr0n andbT pnatr_eq0.
@@ -833,6 +833,22 @@ End salgebra_R_ssets.
 #[global]
 Hint Extern 0 (measurable [set _]) => solve [apply: measurable_set1|
                                             apply: emeasurable_set1] : core.
+
+Lemma measurable_fun_fine (R : realType) (D : set (\bar R)) : measurable D ->
+  measurable_fun D fine.
+Proof.
+move=> mD _ /= B mB; rewrite [X in measurable X](_ : _ `&` _ = if 0%R \in B then
+    D `&` ((EFin @` B) `|` [set -oo; +oo]%E) else D `&` EFin @` B); last first.
+  apply/seteqP; split=> [[r [Dr Br]|[Doo B0]|[Doo B0]]|[r| |]].
+  - by case: ifPn => _; split => //; left; exists r.
+  - by rewrite mem_set//; split => //; right; right.
+  - by rewrite mem_set//; split => //; right; left.
+  - by case: ifPn => [_ [Dr [[s + [sr]]|[]//]]|_ [Dr [s + [sr]]]]; rewrite sr.
+  - by case: ifPn => [/[!inE] B0 [Doo [[]//|]] [//|_]|B0 [Doo//] []].
+  - by case: ifPn => [/[!inE] B0 [Doo [[]//|]] [//|_]|B0 [Doo//] []].
+case: ifPn => B0; apply/measurableI => //; last exact: measurable_EFin.
+by apply: measurableU; [exact: measurable_EFin|exact: measurableU].
+Qed.
 
 Section lebesgue_measure_itv.
 Variable R : realType.
@@ -1470,12 +1486,32 @@ move=> q; case: ifPn => // qfab; apply: is_interval_measurable => //.
 exact: is_interval_bigcup_ointsub.
 Qed.
 
-Lemma continuous_measurable_fun (f : R -> R) : continuous f ->
-  measurable_fun setT f.
+Lemma open_measurable_subspace (D : set R) (U : set (subspace D)) :
+  measurable D -> open U -> measurable (D `&` U).
 Proof.
-move=> /continuousP cf; apply: (measurability (RGenOpens.measurableE R)).
-move=> _ [_ [a [b ->] <-]]; rewrite setTI.
-by apply: open_measurable; exact/cf/interval_open.
+move=> mD /open_subspaceP [V [oV] VD]; rewrite setIC -VD.
+by apply: measurableI => //; exact: open_measurable.
+Qed.
+
+Lemma subspace_continuous_measurable_fun (D : set R) (f : subspace D -> R) :
+  measurable D -> continuous f -> measurable_fun D f.
+Proof.
+move=> mD /continuousP cf; apply: (measurability (RGenOpens.measurableE R)).
+move=> _ [_ [a [b ->] <-]]; apply: open_measurable_subspace => //.
+by exact/cf/interval_open.
+Qed.
+
+Corollary open_continuous_measurable_fun (D : set R) (f : R -> R) :
+  open D -> {in D, continuous f} -> measurable_fun D f.
+Proof.
+move=> oD; rewrite -(continuous_open_subspace f oD).
+by apply: subspace_continuous_measurable_fun; exact: open_measurable.
+Qed.
+
+Lemma continuous_measurable_fun (f : R -> R) :
+  continuous f -> measurable_fun setT f.
+Proof.
+by move=> cf; apply: open_continuous_measurable_fun => //; exact: openT.
 Qed.
 
 End coutinuous_measurable.
@@ -1503,6 +1539,9 @@ by split => // _; rewrite /= in_itv /= andbT (lt_le_trans x0).
 Qed.
 
 End standard_measurable_fun.
+
+#[global] Hint Extern 0 (measurable_fun _ normr) =>
+  solve [exact: measurable_fun_normr] : core.
 
 Section measurable_fun_realType.
 Variables (d : measure_display) (T : measurableType d) (R : realType).
