@@ -8,6 +8,7 @@
   + lemmas `gte_addl`, `gte_addr`
   + lemmas `gte_daddl`, `gte_daddr`
   + lemma `lte_spadder`, `lte_spaddre`
+  + lemma `lte_spdadder`
 
 ### Changed
 
@@ -19,10 +20,13 @@
 
 ### Renamed
 
+- in `constructive_ereal.v`:
+  + `lte_spdaddr` -> `lte_spdaddre`
+
 ### Deprecated
 
 - in `constructive_ereal.v`:
-  + lemma `lte_spaddr`
+  + lemma `lte_spaddr` replaced by `lte_spaddre`
 
 ### Removed
 
