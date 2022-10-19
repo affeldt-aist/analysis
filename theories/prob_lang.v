@@ -566,6 +566,7 @@ Definition kr (r : R) := @measurable_fun_cst _ _ T _ setT r.
 Definition k3 : measurable_fun _ _ := kr 3%:R.
 Definition k10 : measurable_fun _ _ := kr 10%:R.
 Definition ktt := @measurable_fun_cst _ _ T _ setT tt.
+Definition kb (b : bool) := @measurable_fun_cst _ _ T _ setT b.
 
 End cst_fun.
 Arguments kr {R d T}.
@@ -828,27 +829,24 @@ Definition kstaton_bus : R.-sfker T ~> mbool :=
 
 Notation var2of4 := (measurable_fun_comp (@measurable_fun_snd _ _ _ _)(measurable_fun_comp (@measurable_fun_fst _ _ _ _) (@measurable_fun_fst _ _ _ _))).
 
-Definition kstaton_bus'' : R.-sfker munit ~> _ :=
+Definition kstaton_bus' : R.-sfker T ~> _ :=
   letin
-    (sample (bernoulli p27) : _.-sfker munit ~> mbool)
+    (sample (bernoulli p27) : _.-sfker T ~> mbool)
     (letin
       (ite var2of2 
         (ret (@k3 _ _ _))
         (ret (@k10 _ _ _))
-      : _.-sfker [the measurableType _ of (munit * mbool)%type] ~> _)
+      : _.-sfker [the measurableType _ of (T * mbool)%type] ~> _)
       (letin
-        (score (measurable_fun_comp (@mpoisson R 4) var3of3)
-        : _.-sfker [the measurableType _ of (munit * bool * R)%type] ~> munit)
+        (score (measurable_fun_comp mh var3of3)
+        : _.-sfker [the measurableType _ of (T * bool * R)%type] ~> munit)
         (ret var2of4
-        : _.-sfker [the measurableType _ of (munit * mbool * R * munit)%type] ~> mbool)
-      : R.-sfker [the measurableType _ of (munit * bool * R)%type] ~> mbool) 
-    : R.-sfker [the measurableType _ of (munit * mbool)%type] ~> mbool).
-
-Check kstaton_bus'' tt : measure R mbool.
-Lemma __ : kstaton_bus'' tt set0 = 0.
-Proof. rewrite //. Qed.
+        : _.-sfker [the measurableType _ of (T * mbool * R * munit)%type] ~> mbool)
+      : R.-sfker [the measurableType _ of (T * bool * R)%type] ~> mbool) 
+    : R.-sfker [the measurableType _ of (T * mbool)%type] ~> mbool).
 
 Definition staton_bus := normalize kstaton_bus.
+Definition staton_bus' := normalize kstaton_bus'.
 
 End staton_bus.
 
@@ -950,3 +948,88 @@ by rewrite addr_gt0// mulr_gt0//= ?divr_gt0// ?ltr0n// exp_density_gt0 ?ltr0n.
 Qed.
 
 End staton_bus_exponential.
+
+Section staton_bus_poisson'.
+Import Notations.
+Variables (R : realType) (d : _) (T : measurableType d).
+Let poisson4 := @poisson R 4%N.
+Let mpoisson4 := @mpoisson R 4%N.
+
+Definition kstaton_bus_poisson' : R.-sfker munit ~> mbool :=
+  kstaton_bus' _ mpoisson4.
+
+Let kstaton_bus_poissonE' t U : kstaton_bus_poisson' t U =
+  (2 / 7)%:E * (poisson4 3)%:E * \d_true U +
+  (5 / 7)%:E * (poisson4 10)%:E * \d_false U.
+Proof.
+rewrite /kstaton_bus_poisson' /kstaton_bus'.
+rewrite letin_sample_bernoulli.
+rewrite -!muleA; congr (_ * _ + _ * _).
+rewrite letin_iteT// letin_retk// letin_kret//.
+by rewrite scoreE//= => r r0; exact: poisson_ge0.
+by rewrite onem27.
+rewrite letin_iteF// letin_retk// letin_kret//.
+by rewrite scoreE//= => r r0; exact: poisson_ge0.
+Qed.
+
+(* true -> 2/7 * 0.168 = 2/7 * 3^4 e^-3 / 4! *)
+(* false -> 5/7 * 0.019 = 5/7 * 10^4 e^-10 / 4! *)
+
+Lemma staton_busE' P (t : unit) U :
+  let N := ((2 / 7) * poisson4 3 +
+            (5 / 7) * poisson4 10)%R in
+  staton_bus' mpoisson4 P t U =
+  ((2 / 7)%:E * (poisson4 3)%:E * \d_true U +
+   (5 / 7)%:E * (poisson4 10)%:E * \d_false U) * N^-1%:E.
+Proof.
+rewrite normalizeE /= !kstaton_bus_poissonE' !diracT !mule1 ifF //.
+apply/negbTE; rewrite gt_eqF// lte_fin.
+by rewrite addr_gt0// mulr_gt0//= ?divr_gt0// ?ltr0n// poisson_gt0// ltr0n.
+Qed.
+
+End staton_bus_poisson'.
+
+(* let x = sample (bernoulli (2/7)) in
+   let r = case x of {(1, _) => return (k3()), (2, _) => return (k10())} in
+   let _ = score (r e^-(15/60 r)) in
+   return x *)
+Section staton_bus_exponential'.
+Import Notations.
+Variables (R : realType) (d : _) (T : measurableType d).
+Let exp1560 := @exp_density R (ratr (15%:Q / 60%:Q)).
+Let mexp1560 := @mexp_density R (ratr (15%:Q / 60%:Q)).
+
+(* 15/60 = 0.25 *)
+
+Definition kstaton_bus_exponential' : R.-sfker munit ~> mbool :=
+  kstaton_bus' _ mexp1560.
+
+Let kstaton_bus_exponentialE' (t : unit) U : kstaton_bus_exponential' t U =
+  (2 / 7)%:E * (exp1560 3)%:E * \d_true U +
+  (5 / 7)%:E * (exp1560 10)%:E * \d_false U.
+Proof.
+rewrite letin_sample_bernoulli.
+rewrite -!muleA; congr (_ * _ + _ * _).
+rewrite letin_iteT// letin_retk// letin_kret//.
+rewrite scoreE//= => r r0; exact: exp_density_ge0.
+- by rewrite onem27.
+rewrite letin_iteF// letin_retk// letin_kret//.
+by rewrite scoreE//= => r r0; exact: exp_density_ge0.
+Qed.
+
+(* true -> 5/7 * 0.019 = 5/7 * 10^4 e^-10 / 4! *)
+(* false -> 2/7 * 0.168 = 2/7 * 3^4 e^-3 / 4! *)
+
+Lemma staton_bus_exponentialE' P (t : unit) U :
+  let N := ((2 / 7) * exp1560 3 +
+            (5 / 7) * exp1560 10)%R in
+  staton_bus' mexp1560 P t U =
+  ((2 / 7)%:E * (exp1560 3)%:E * \d_true U +
+   (5 / 7)%:E * (exp1560 10)%:E * \d_false U) * N^-1%:E.
+Proof.
+rewrite normalizeE /= !kstaton_bus_exponentialE' !diracT !mule1 ifF //.
+apply/negbTE; rewrite gt_eqF// lte_fin.
+by rewrite addr_gt0// mulr_gt0//= ?divr_gt0// ?ltr0n// exp_density_gt0 ?ltr0n.
+Qed.
+
+End staton_bus_exponential'.
