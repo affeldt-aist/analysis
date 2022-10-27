@@ -424,6 +424,57 @@ Qed.
 
 End discrete_distribution.
 
+(* NB: available in lebesgue-stieltjes PR *)
+Section from_lebesgue_stieltjes.
+Definition EFinf {R : numDomainType} (f : R -> R) : \bar R -> \bar R :=
+  fun x => if x is r%:E then (f r)%:E else x.
+
+Lemma nondecreasing_EFinf (R : realDomainType) (f : R -> R) :
+  {homo f : x y / (x <= y)%R} -> {homo EFinf f : x y / (x <= y)%E}.
+Proof.
+move=> ndf.
+by move=> [r| |] [l| |]//=; rewrite ?leey ?leNye// !lee_fin; exact: ndf.
+Qed.
+
+Lemma nondecreasing_EFinf' (R : realDomainType) (f : R -> R) {D : set R} :
+  {in D &, {homo f : x y / (x <= y)%R}} -> {in (@EFin R) @` D &, {homo EFinf f : x y / (x <= y)%E}}.
+Proof.
+move=> ndf [r| |] [l| |] rD lD //= rl; rewrite ?leey ?leNye// lee_fin ndf //.
+  by move: rD; rewrite inE /= => -[] x /mem_set ? [] <-.
+by move: lD; rewrite inE /= => -[] x /mem_set ? [] <-.
+Qed.
+End from_lebesgue_stieltjes.
+
+Section from_kernels.
+Section discrete_measurable_bool.
+
+Definition discrete_measurable_bool : set (set bool) := [set: set bool].
+
+Let discrete_measurable0 : discrete_measurable_bool set0. Proof. by []. Qed.
+
+Let discrete_measurableC X :
+discrete_measurable_bool X -> discrete_measurable_bool (~` X).
+Proof. by []. Qed.
+
+Let discrete_measurableU (F : (set bool)^nat) :
+(forall i, discrete_measurable_bool (F i)) ->
+discrete_measurable_bool (\bigcup_i F i).
+Proof. by []. Qed.
+
+HB.instance Definition _ := @isMeasurable.Build default_measure_display bool
+(Pointed.class _) discrete_measurable_bool discrete_measurable0
+discrete_measurableC discrete_measurableU.
+
+End discrete_measurable_bool.
+
+Lemma measurable_fun_ifT (d d' : _) (X : measurableType d)
+      (Y : measurableType d') (x y : X -> Y) (f : X -> bool)
+      (mf : measurable_fun setT f) :
+  measurable_fun setT x -> measurable_fun setT y ->
+  measurable_fun setT (fun t => if f t then x t else y t).
+Admitted.
+End from_kernels.
+
 Section tmp.
 Variables (d : _) (T : measurableType d) (R : realType).
 Variable mu : {measure set T -> \bar R}.
@@ -453,7 +504,8 @@ Qed.
 
 Lemma le_integral_abse (D : set T) (mD : measurable D) (g : T -> \bar R) a
     (f : \bar R -> \bar R) (mf : measurable_fun setT f)
-    (f0 : forall r, 0 <= f r) (f_nd : {homo f : x y / x <= y}) :
+    (* (f0 : forall r, 0 <= r -> D r -> 0 <= f r) could be better *)
+    (f0 : forall r, 0 <= r -> 0 <= f r) (f_nd : {in `[0, +oo[%classic &, {homo f : x y / x <= y}}) :
   measurable_fun D g -> (0 < a)%R ->
   (f a%:E) * mu (D `&` [set x | (`|g x| >= a%:E)%E]) <= \int[mu]_(x in D) f `|g x|.
 Proof.
@@ -461,15 +513,29 @@ move=> mg a0; have ? : measurable (D `&` [set x | (a%:E <= `|g x|)%E]).
   by apply: emeasurable_fun_c_infty => //; exact: measurable_fun_comp.
 apply: (@le_trans _ _ (\int[mu]_(x in D `&` [set x | `|g x| >= a%:E]) f `|g x|)).
   rewrite -integral_ecst//; apply: ge0_le_integral => //.
-  - by move=> x _ /=.
+  - by move=> x _ /=; rewrite f0 // lee_fin ltW.
   - exact/measurable_fun_cst.
+  - by move=> x _ /=; rewrite f0.
   - apply: measurable_fun_comp => //; apply: measurable_fun_comp => //.
     exact: measurable_funS mg.
-  - by move=> x /= [] Dx; exact/f_nd.
+  - move=> x /= [] Dx.
+    apply: f_nd.
+    by rewrite inE /= in_itv /= andbT lee_fin ltW.
+  - by rewrite inE /= in_itv /= andbT.
 apply: subset_integral => //.
-by apply: measurable_fun_comp => //; exact: measurable_fun_comp.
+  by apply: measurable_fun_comp => //; exact: measurable_fun_comp.
+by move=> x _ /=; rewrite f0.
 Qed.
 
+(* (* real version; really in need? *)
+Lemma le_integral_abse' (D : set T) (mD : measurable D) (g : T -> \bar R) a
+    (f : R -> R) (mf : measurable_fun setT f)
+    (f0 : forall r, (0 <= f r)%R) (f_nd : {homo f : x y / (x <= y)%R}) :
+  measurable_fun D g -> (0 < a)%R ->
+  (EFinf f a%:E) * mu (D `&` [set x | (`|g x| >= a%:E)%E]) <= \int[mu]_(x in D) EFinf f `|g x|.
+Proof.
+Abort.
+*)
 End tmp.
 
 Section markov_chebyshev.
@@ -485,24 +551,33 @@ Proof.
 Qed.
 
 (* NB: do not rm, we should prove it this way *)
-Lemma markov (X : {RV P >-> R}) (f : {mfun _ >-> R}) (eps : R) :
-  0 < eps -> (forall r : R, 0 <= f r) -> {homo f : x y / x <= y} ->
+Lemma markov (X : {RV P >-> R}) (f : {mfun R >-> R}) (eps : R) :
+  0 < eps -> (forall r : R, 0 <= f r) -> {in `[0, +oo[%classic &, {homo f : x y / x <= y}} ->
  ((f eps)%:E * P [set x | eps%:E <= `| (X x)%:E | ]%E <=
   'E ([the {mfun _ >-> R} of f \o @mabs R] `o X))%E.
 Proof.
 move=> e0 f0 f_nd.
 rewrite -(setTI [set _ | _]).
 apply: (le_trans (@le_integral_abse d T R P setT measurableT (EFin \o X) eps
-  (fun x => (f (fine x))%:E) _ _ _ _ e0)) => //=.
-- apply/EFin_measurable_fun => /=.
-  apply/measurable_fun_comp => //=.
-  exact: measurable_fun_fine.
-- by move=> r/=; rewrite lee_fin.
-- move=> [x| |] [y| |]//=.
-  + by rewrite !lee_fin => /f_nd.
-Abort.
+  (EFinf f) _ _ _ _ e0)) => //=.
+- rewrite /EFinf /=.
+  rewrite (_ : (fun x : \bar R => match x with
+                       | r%:E => (f r)%:E
+                       | _ => x
+                       end) = fun r : \bar R => if r \is a fin_num then (f (fine r))%:E else r) ; last by apply: funext=> -[].
+  apply: measurable_fun_ifT => /=.
+  + admit. (*emeasurable_fin_num*)
+  + admit. (*measurable_fun_fine, measurable_fine*)
+  + exact: measurable_fun_id.
+- by case => //= r _; exact: f0.
+- rewrite (_ : `[0%E, +oo[%classic = EFin @` `[0, +oo[%classic);
+   first exact: nondecreasing_EFinf'.
+  admit. (* EFin preserves intervals *)
+- admit.
+Admitted.
 
-Lemma markov (X : {RV P >-> R}) (f : {mfun _ >-> R}) (eps : R) :
+(* more primitive version *)
+Lemma _markov (X : {RV P >-> R}) (f : {mfun _ >-> R}) (eps : R) :
   0 < eps -> (forall r : R, 0 <= f r) -> {in `[0, +oo[%classic &, {mono f : x y / x <= y }} ->
  ((f eps)%:E * P [set x | eps%:E <= `| (X x)%:E | ]%E <=
   'E ([the {mfun _ >-> R} of f \o @mabs R] `o X))%E.
@@ -547,7 +622,7 @@ have [hv|hv] := eqVneq ('V X)%E (+oo)%E.
 have h (Y : {RV P >-> R}) : (P [set x | (eps <= `|Y x|)%R] <= (eps ^- 2)%:E * 'E (Y `^+ 2))%E.
   rewrite -lee_pdivr_mull; last by rewrite invr_gt0// exprn_gt0.
   rewrite exprnN expfV exprz_inv opprK -exprnP.
-  have : {in `[0, +oo[%classic &, {mono mexp 2 : x y / x <= y :> R}}.
+  have : {in `[0, +oo[%classic &, {homo mexp 2 : x y / x <= y :> R}}.
     by move=> x y; rewrite !inE !mksetE !in_itv/= !andbT => x0 y0; rewrite /mexp ler_sqr.
   move=> /(@markov Y [the {mfun _ >-> R} of @mexp R 2] _ heps (@sqr_ge0 _)) /=.
   move=> /le_trans; apply => /=.
