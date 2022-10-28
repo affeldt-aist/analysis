@@ -860,7 +860,7 @@ Variables (R : realType) (d : _) (T : measurableType d).
 Let poisson4 := @poisson R 4%N.
 Let mpoisson4 := @mpoisson R 4%N.
 
-Definition kstaton_bus_poisson : R.-sfker (mR R) ~> mbool :=
+Definition kstaton_bus_poisson : R.-sfker T ~> mbool :=
   kstaton_bus _ mpoisson4.
 
 Let kstaton_bus_poissonE t U : kstaton_bus_poisson t U =
@@ -955,7 +955,7 @@ Variables (R : realType) (d : _) (T : measurableType d).
 Let poisson4 := @poisson R 4%N.
 Let mpoisson4 := @mpoisson R 4%N.
 
-Definition kstaton_bus_poisson' : R.-sfker munit ~> mbool :=
+Definition kstaton_bus_poisson' : R.-sfker T ~> mbool :=
   kstaton_bus' _ mpoisson4.
 
 Let kstaton_bus_poissonE' t U : kstaton_bus_poisson' t U =
@@ -975,7 +975,7 @@ Qed.
 (* true -> 2/7 * 0.168 = 2/7 * 3^4 e^-3 / 4! *)
 (* false -> 5/7 * 0.019 = 5/7 * 10^4 e^-10 / 4! *)
 
-Lemma staton_busE' P (t : unit) U :
+Lemma staton_busE' P (t : T) U :
   let N := ((2 / 7) * poisson4 3 +
             (5 / 7) * poisson4 10)%R in
   staton_bus' mpoisson4 P t U =
@@ -1033,3 +1033,33 @@ by rewrite addr_gt0// mulr_gt0//= ?divr_gt0// ?ltr0n// exp_density_gt0 ?ltr0n.
 Qed.
 
 End staton_bus_exponential'.
+
+Section example.
+Variables (R : realType).
+Import Notations.
+Check ret k3.
+(* Hypothesis H : @measurable_fun _ _ mbool _ setT (fun b => b == true). *)
+
+(* Example ite1 := @ite _ _ mbool _ R (fun b => b == true) H (ret (kb true)) (ret (kb false)). *)
+(* Lemma ex_ite U : ite1 true [set: bool] = \d_true U.
+ (* + \d_false U. *)
+Proof.
+rewrite iteE /= retE /= diracE in_setT.
+Admitted. *)
+
+Check kdirac k3.
+Lemma ex_ret : @ret _ _ _ _ R _ k3 tt [set (3%R : mR R)] = kdirac k3 tt [set (3%R : mR R)].
+Proof. rewrite retE diracE /= //. Qed.
+Lemma ex_dirac : @kdirac _ _ _ _ R _ k3 tt [set: mR R] = 1%:E.
+Proof. rewrite /= diracE in_setT //. Qed.
+(* Example ite2 := @ite _ _ munit _ R . *)
+
+(* Variables (RF : realFieldType). *)
+Check (2 / 7)%:E * \d_(3 : R) [set: mR R] + (5 / 7)%:E * \d_(10 : R) [set: mR R].
+
+
+Lemma __ : sample_and_branch R (mR R) 1%R [set (3%:R : mR R)] = (2 / 7)%:E.
+Proof. rewrite sample_and_branchE 2!diracE. Abort.
+
+
+End example.
