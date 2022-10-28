@@ -549,8 +549,8 @@ Qed.
 
 Lemma le_integral_abse (D : set T) (mD : measurable D) (g : T -> \bar R) a
     (f : \bar R -> \bar R) (mf : measurable_fun setT f)
-    (* (f0 : forall r, 0 <= r -> D r -> 0 <= f r) could be better *)
-    (f0 : forall r, 0 <= r -> 0 <= f r) (f_nd : {in `[0, +oo[%classic &, {homo f : x y / x <= y}}) :
+    (f0 : forall r, 0 <= r -> 0 <= f r)
+    (f_nd : {in `[0, +oo[%classic &, {homo f : x y / x <= y}}) :
   measurable_fun D g -> (0 < a)%R ->
   (f a%:E) * mu (D `&` [set x | (`|g x| >= a%:E)%E]) <= \int[mu]_(x in D) f `|g x|.
 Proof.
@@ -563,13 +563,10 @@ apply: (@le_trans _ _ (\int[mu]_(x in D `&` [set x | `|g x| >= a%:E]) f `|g x|))
   - by move=> x _ /=; rewrite f0.
   - apply: measurable_fun_comp => //; apply: measurable_fun_comp => //.
     exact: measurable_funS mg.
-  - move=> x /= [] Dx.
-    apply: f_nd.
-    by rewrite inE /= in_itv /= andbT lee_fin ltW.
-  - by rewrite inE /= in_itv /= andbT.
-apply: subset_integral => //.
-  by apply: measurable_fun_comp => //; exact: measurable_fun_comp.
-by move=> x _ /=; rewrite f0.
+  - by move=> x /= [Dx]; apply: f_nd;
+      rewrite inE /= in_itv /= andbT// lee_fin ltW.
+apply: subset_integral => //; last by move=> x _ /=; rewrite f0.
+by apply: measurable_fun_comp => //; exact: measurable_fun_comp.
 Qed.
 
 (* (* real version; really in need? *)
@@ -595,6 +592,24 @@ Proof.
   exact: mulrC.
 Qed.
 
+Lemma emeasurable_fun_bool (D : set (\bar R)) (f : \bar R -> bool) b :
+  measurable (f @^-1` [set b]) -> measurable_fun D f.
+Proof.
+have FNT : [set false] = [set~ true] by apply/seteqP; split => -[]//=.
+wlog {b}-> : b / b = true.
+  case: b => [|h]; first exact.
+  by rewrite FNT -preimage_setC => /measurableC; rewrite setCK; exact: h.
+move=> mfT mD /= Y; have := @subsetT _ Y; rewrite setT_bool => YT.
+have [-> _|-> _|-> _ |-> _] := subset_set2 YT.
+- by rewrite preimage0 ?setI0.
+- by apply: measurableI => //; exact: mfT.
+- rewrite -[X in measurable X]setCK; apply: measurableC; rewrite setCI.
+  apply: measurableU; first exact: measurableC.
+  by rewrite FNT preimage_setC setCK; exact: mfT.
+- by rewrite -setT_bool preimage_setT setIT.
+Qed.
+Arguments emeasurable_fun_bool {D f} b.
+
 (* NB: do not rm, we should prove it this way *)
 Lemma markov (X : {RV P >-> R}) (f : {mfun R >-> R}) (eps : R) :
   0 < eps -> (forall r : R, 0 <= f r) -> {in `[0, +oo[%classic &, {homo f : x y / x <= y}} ->
@@ -605,24 +620,26 @@ move=> e0 f0 f_nd.
 rewrite -(setTI [set _ | _]).
 apply: (le_trans (@le_integral_abse d T R P setT measurableT (EFin \o X) eps
   (EFinf f) _ _ _ _ e0)) => //=.
-- rewrite /EFinf /=.
-  rewrite (_ : (fun x : \bar R => match x with
-                       | r%:E => (f r)%:E
-                       | _ => x
-                       end) = fun r : \bar R => if r \is a fin_num then (f (fine r))%:E else r) ; last by apply: funext=> -[].
+- rewrite (_ : EFinf _ = fun x => if x \is a fin_num then (f (fine x))%:E else x); last first.
+    by apply: funext=> -[].
   apply: measurable_fun_ifT => /=.
-  + admit. (*emeasurable_fin_num*)
-  + admit. (*measurable_fun_fine, measurable_fine*)
+  + apply: (emeasurable_fun_bool true).
+    rewrite /preimage/= -[X in measurable X]setTI.
+    by apply/emeasurable_fin_num => //; exact: measurable_fun_id.
+  + apply/EFin_measurable_fun/measurable_fun_comp => //.
+    exact/measurable_fun_fine.
   + exact: measurable_fun_id.
 - by case => //= r _; exact: f0.
-- rewrite (_ : `[0%E, +oo[%classic = EFin @` `[0, +oo[%classic);
-   first exact: nondecreasing_EFinf'.
-  admit. (* EFin preserves intervals *)
-- admit.
-Admitted.
+- move=> x y.
+  rewrite !inE/= !in_itv/= !andbT.
+  move: x y => [x| |] [y| |] x0 y0 xy//=.
+  by rewrite lee_fin f_nd// inE /= in_itv/= andbT -lee_fin.
+  by rewrite leey.
+- exact/EFin_measurable_fun.
+Qed.
 
 (* more primitive version *)
-Lemma _markov (X : {RV P >-> R}) (f : {mfun _ >-> R}) (eps : R) :
+(*Lemma _markov (X : {RV P >-> R}) (f : {mfun _ >-> R}) (eps : R) :
   0 < eps -> (forall r : R, 0 <= f r) -> {in `[0, +oo[%classic &, {mono f : x y / x <= y }} ->
  ((f eps)%:E * P [set x | eps%:E <= `| (X x)%:E | ]%E <=
   'E ([the {mfun _ >-> R} of f \o @mabs R] `o X))%E.
@@ -656,7 +673,7 @@ rewrite mindicE.
 have [|_] := boolP (x \in [set x | eps%:E <= `|(X x)%:E| ]%E).
   by rewrite mulr1.
 by rewrite mulr0.
-Qed.
+Qed.*)
 
 Lemma chebyshev (X : {RV P >-> R}) (eps : R) : 0 < eps ->
   (P [set x | (eps <= `| X x - fine ('E X)|)%R ] <= (eps ^- 2)%:E * 'V X)%E.
