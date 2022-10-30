@@ -318,51 +318,6 @@ Qed.
 End variance.
 Notation "''V' X" := (variance X).
 
-Section covariance.
-Local Open Scope ereal_scope.
-Variables (d : _) (T : measurableType d) (R : realType) (P : probability T R).
-
-Definition covariance (X Y : {RV P >-> R}) :=
-  'E ((X `- cst_mfun (fine 'E X)) `* (Y `- cst_mfun (fine 'E Y))).
-Local Notation "''Cov' [ X , Y ]" := (covariance X Y).
-
-Lemma cauchy_schwarz (X Y : {RV P >-> R}) :
-  'E X < +oo -> 'E Y < +oo ->
-    'E (X `* Y) ^+2 <= 'E (X`^+2) + 'E (Y`^+2).
-Proof.
-move => hfinex hfiney.
-pose a := Num.sqrt (fine 'E (Y`^+2)).
-pose b := Num.sqrt (fine 'E (X`^+2)).
-have ex2_ge0 : 0 <= 'E (X `^+ 2) by apply expectation_ge0 => x /=; rewrite /mexp; exact: sqr_ge0.
-have ey2_ge0 : 0 <= 'E (Y `^+ 2) by apply expectation_ge0 => x /=; rewrite /mexp; exact: sqr_ge0.
-have [a0|a0] := eqVneq ('E (Y`^+2)) 0.
-  rewrite a0 adde0.
-  have -> : 'E (X `* Y) = 0. admit.
-  rewrite /= mule0.
-  apply ex2_ge0.
-have [b0|b0] := eqVneq ('E (X`^+2)) 0.
-  rewrite b0 add0e.
-  have -> : 'E (X `* Y) = 0. admit.
-  rewrite /= mule0.
-  apply ey2_ge0.
-have H2ab : (2 * a * b * (b * a) = a * a * (fine 'E (X`^+2)) + b * b * (fine 'E (Y`^+2)))%R.
-  rewrite -(sqr_sqrtr (a:=fine 'E (X`^+2))); last (apply: fine_ge0; apply: expectation_ge0 => x; apply sqr_ge0).
-  rewrite -(sqr_sqrtr (a:=fine 'E (Y`^+2))); last (apply: fine_ge0; apply: expectation_ge0 => x; apply sqr_ge0).
-  rewrite -/a -/b /GRing.exp /=.
-  by rewrite mulrA (mulrC (_ * _) a)%R ![in LHS]mulrA (mulrC a) (mulrC _ (a * a)%R)
-             -![in LHS]mulrA mulrC mulr2n !mulrA mulrDr mulr1.
-Admitted.
-
-Lemma cauchy_schwarz' (X Y : {RV P >-> R}) :
-  ('Cov[ X , Y ])^+2 <= 'V X + 'V Y.
-Proof.
-rewrite /variance /covariance.
-apply cauchy_schwarz.
-Admitted.
-
-End covariance.
-Notation "''Cov' [ X , Y ]" := (covariance X Y).
-
 Section distribution.
 Variables (d : _) (T : measurableType d) (R : realType) (P : probability T R)
           (X : {mfun T >-> R}).
