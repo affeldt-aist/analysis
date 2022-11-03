@@ -112,6 +112,8 @@
     `cvgPpinfty_lt_near` and `cvgPninfty_lt_near`
 - in `classical_sets.v`:
   + notations `\bigcup_(i < n) F` and `\bigcap_(i < n) F`
+- in `contructive_ereal.v`:
+  + multi-rules `lteey`, `lteNye`
 
 - in `fsbig.v`:
   + lemma `fsbig_setU_set1`
@@ -212,6 +214,10 @@
   + definition `fimfunE` now uses fsbig
 - in `sequence.v`:
   + `nneseries_pinfty` generalized to `eseries_pinfty`
+- in `lebesgue_measure.v`:
+  + generalize and rename `eitv_c_infty` to `eitv_bnd_infty` and
+    `eitv_infty_c` to `eitv_infty_bnd`
+  + generalize `ErealGenOInfty.G`, `ErealGenCInfty.G`, `ErealGenInftyO.G`
 
 - moved from `mathcomp_extra.v` to `classical_sets.v`: `pred_oappE`, and
     `pred_oapp_set`.
