@@ -51,40 +51,7 @@ End dependent_choice_Type.
 Local Open Scope ring_scope.
 Local Open Scope classical_set_scope.
 
-(* NB: PR in progress *)
-Lemma inv_cvg (R : realType) (u : R ^nat) :
-  (forall n, 0 < u n)%R ->
-  (fun n => (u n)^-1) --> (0 : R)%R -> u --> +oo%R.
-Proof.
-move=> u0 uV0; apply/cvgPpinfty => M.
-move/(@cvg_distP _ [normedModType R of R^o]) : uV0 => /(_ (`|M| + 1)^-1%R).
-rewrite invr_gt0 ltr_paddl// => /(_ erefl); rewrite !near_map.
-apply: filterS => n.
-rewrite sub0r normrN normrV ?unitfE ?gt_eqF//.
-rewrite ger0_norm; last by rewrite ltW.
-rewrite ltr_pinv; last 2 first.
-  by rewrite inE unitfE u0 andbT gt_eqF.
-  by rewrite inE unitfE ltr_paddl// andbT gt_eqF.
-move/ltW; apply: le_trans.
-by rewrite (le_trans (ler_norm _))// ler_addl.
-Qed.
-
 Local Open Scope ereal_scope.
-
-(* NB: PR in progress *)
-Lemma nneseries_is_cvg (R : realType) (u : nat -> R) :
-  (forall i, 0 <= u i)%R -> \sum_(k <oo) (u k)%:E < +oo -> cvg (series u).
-Proof.
-move=> ? ?; apply: nondecreasing_is_cvg.
-  move=> m n mn; rewrite /series/=.
-  rewrite -(subnKC mn) {2}/index_iota subn0 iotaD big_cat/=.
-  by rewrite add0n -{2}(subn0 m) -/(index_iota _ _) ler_addl sumr_ge0.
-exists (fine (\sum_(k <oo) (u k)%:E)).
-rewrite /ubound/= => _ [n _ <-]; rewrite -lee_fin fineK//; last first.
-  rewrite fin_num_abs gee0_abs//; apply: nneseries_ge0 => // i _.
-  by rewrite lee_fin.
-by rewrite -sumEFin; apply: nneseries_lim_ge => i _; rewrite lee_fin.
-Qed.
 
 (* TODO: PR? *)
 Lemma lt_trivIset T (F : nat -> set T) :
@@ -332,7 +299,7 @@ have nuS_ n : nu (SF n) <= 0.
   have [_] := H n.
   by apply; rewrite ?inE// => x -[[]].
 move/cvg_lim : (SFS) => <-//.
-apply: ereal_lim_le.
+apply: lime_le.
   by apply/cvg_ex => /=; first eexists; exact: SFS.
 by apply: nearW => n; exact: sume_le0.
 Qed.
@@ -454,6 +421,7 @@ exists B; split => //.
 by rewrite (le_trans _ (ltW mmuB)).
 Qed.
 
+
 Lemma hahn_decomposition_lemma : measurable D -> mu D <= 0 ->
   {A | [/\ A `<=` D, measurable A, negative_set mu A & mu A <= mu D] }.
 Proof.
@@ -497,19 +465,18 @@ have A_cvg_0 : (fun n => mu (A_ (v n))) --> 0.
   apply/(@cvg_series_cvg_0 _ [normedModType R of R^o]).
   move: cvg_muA.
   rewrite -(@fineK _ (mu Aoo)) ?isfinite//.
-  move/ereal_cvg_real => [_ ?].
+  move/fine_cvgP => [_ ?].
   rewrite (_ : series _ = fine \o (fun n => \sum_(0 <= i < n) mu (A_ (v i)))); last first.
     apply/funext => n /=.
     by rewrite /series/= sum_fine//= => i _; rewrite isfinite.
   by apply/cvg_ex; exists (fine (mu Aoo)).
 have mine_cvg_0 : (fun n => mine (d_ (v n) * 2^-1%:E) 1) --> 0.
-  apply: (@ereal_squeeze _ (cst 0) _ (fun n => mu (A_ (v n)))); [|exact: cvg_cst|by []].
+  apply: (@squeeze_cvge _ _ _ _ (cst 0) _ (fun n => mu (A_ (v n)))); [|exact: cvg_cst|by []].
   apply: nearW => n /=.
   by rewrite elt_mine andbT le_minr lee01 andbT mule_ge0.
 have d_cvg_0 : d_ \o v --> 0.
-  move/ereal_cvg_real : A_cvg_0 => -[_].
-  move/(@cvg_distP _ [normedModType R of R^o]) => /(_ _ ltr01).
-  rewrite near_map => -[N _ hN].
+  move/(@fine_cvgP [numFieldType of R]) : A_cvg_0 => -[_] /=.
+  move/(@cvgrPdist_lt _ [pseudoMetricNormedZmodType R of R^o])=> /(_ _ ltr01)[N _ hN].
   have d_v_fin_num : \forall x \near \oo, d_ (v x) \is a fin_num.
     near=> n.
     have /hN : (N <= n)%N by near: n; exists N.
@@ -520,14 +487,14 @@ have d_cvg_0 : d_ \o v --> 0.
       by rewrite ge0_fin_numE// (lt_le_trans d2)// leey.
     move=> _ /[swap]; rewrite ltNge => -/[swap].
     by move/fine_le => -> //; rewrite isfinite.
-  apply/ereal_cvg_real; split => //.
-  apply/(@cvg_distP _ [normedModType R of R^o]) => e e0.
+  apply/fine_cvgP; split => //.
+  apply/(@fcvgrPdist_lt _ [normedModType R of R^o]) => e e0.
   rewrite near_map.
-  move/ereal_cvg_real : mine_cvg_0 => -[_].
-  move/(@cvg_distP _ [normedModType R of R^o]).
+  move/fine_cvgP : mine_cvg_0 => -[_].
+  move/(@cvgrPdist_lt _ [normedModType R of R^o]).
   have : (0 < minr (e / 2) 1)%R by rewrite lt_minr// ltr01 andbT divr_gt0.
   move=> /[swap] /[apply].
-  rewrite near_map => -[M _ hM].
+  move=> -[M _ hM].
   near=> n.
   rewrite sub0r normrN.
   have /hM : (M <= n)%N by near: n; exists M.
@@ -681,7 +648,7 @@ have neg_set_N : negative_set nu N.
 pose P := setT `\` N.
 have mP : measurable P by exact: measurableD.
 exists P, N; split; first last.
-  by rewrite /P setTD setvI.
+  by rewrite /P setTD setICl.
   by rewrite /P setTD setvU.
   exact: neg_set_N.
 rewrite /positive_set inE; split=> // D; rewrite inE => mD DP; rewrite leNgt; apply/negP => nuD0.
@@ -697,14 +664,14 @@ have max_le0 n : maxe (s_ (v n) * 2^-1%:E) (- (1)) <= 0.
   rewrite /maxe; case: ifPn => // _.
   by rewrite pmule_lle0// (le_trans (snuD _))// ltW.
 have not_s_cvg_0 : ~ s_ \o v --> 0.
-  move/ereal_cvg_real => -[sfin].
-  move/(@cvg_distP _ [normedModType R of R^o]).
+  move/fine_cvgP => -[sfin].
+  move/(@fcvgrPdist_lt _ [normedModType R of R^o]).
   have : (0 < `|fine (nu D)|)%R by rewrite normr_gt0// fine_eq0// ?lt_eqF// isfinite.
   move=> /[swap] /[apply].
-  rewrite near_map => -[M _ hM].
+  move=> -[M _ hM].
   near \oo => n.
   have /hM : (M <= n)%N by near: n; exists M.
-  rewrite sub0r normrN /= ler0_norm//; last by rewrite fine_le0.
+  rewrite /= sub0r normrN /= ler0_norm//; last by rewrite fine_le0.
   rewrite ltr0_norm//; last by rewrite fine_lt0// nuD0 andbT ltNye_eq isfinite.
   rewrite ltr_opp2; apply/negP; rewrite -leNgt; apply: fine_le.
   - near: n; exact.
@@ -727,11 +694,11 @@ move=> /cvg_ex[[l| |]]; first last.
     have := @npeseries_le0 _ (fun n => maxe (s_ (v n) * 2^-1%:E) (- (1))) xpredT.
     rewrite limoo// leNgt.
     by move=> /(_ (fun n _ => max_le0 n))/negP; apply.
-move/ereal_cvg_real => [Hfin cvgl].
+move/fine_cvgP => [Hfin cvgl].
 have : cvg (series (fun n => fine (maxe (s_ (v n) * 2^-1%:E) (- (1))))).
   apply/cvg_ex; exists l.
   move: cvgl.
-  rewrite [X in X --> _](_ : _ =
+  rewrite [X in X @ _ --> _](_ : _ =
     (fun n => \sum_(0 <= k < n) fine (maxe (s_ (v k) * 2^-1%:E)%E (- (1))%E))%R) //.
   apply/funext => n/=.
   rewrite sum_fine// => i _.
@@ -745,9 +712,8 @@ rewrite [X in X --> _](_ : _ = (fun n => s_ (v n) * 2^-1%:E) \* cst 2%:E); last 
   by rewrite -muleA -EFinM mulVr ?mule1// unitfE.
 rewrite (_ : 0 = 0 * 2%:E); last by rewrite mul0e.
 apply: ereal_cvgM; [by rewrite mule_def_fin| |exact: cvg_cst].
-apply/ereal_cvg_real; split.
-  move/(@cvg_distP _ [normedModType R of R^o]) : maxe_cvg_0 => /(_ _ ltr01).
-  rewrite near_map => -[M _ hM].
+apply/fine_cvgP; split.
+  move/cvgrPdist_lt : maxe_cvg_0 => /(_ _ ltr01) [M _ hM].
   near=> n.
   have /hM : (M <= n)%N by near: n; exists M.
   rewrite sub0r normrN => maxe_lt1.
@@ -755,12 +721,11 @@ apply/ereal_cvg_real; split.
     apply/negP => /eqP h.
     by rewrite h max_r// ?leNye//= normrN normr1 ltxx in maxe_lt1.
   by rewrite lt_eqF// (@le_lt_trans _ _ 0)// mule_le0_ge0.
-apply/(@cvg_distP _ [normedModType R of R^o]) => e e0.
-rewrite near_map.
-move/(@cvg_distP _ [normedModType R of R^o]) : maxe_cvg_0.
+apply/(@cvgrPdist_lt _ [normedModType R of R^o]) => e e0.
+move/cvgrPdist_lt : maxe_cvg_0.
 have : (0 < minr e 1)%R by rewrite lt_minr// e0 ltr01.
 move=> /[swap] /[apply].
-rewrite near_map => -[M _ hM].
+move=> -[M _ hM].
 near=> n.
 rewrite sub0r normrN.
 have /hM : (M <= n)%N by near: n; exists M.
