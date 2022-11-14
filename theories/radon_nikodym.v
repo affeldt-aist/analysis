@@ -1894,36 +1894,37 @@ have muE0P0: mu E0P > 0.
   apply integral_ge0.
   move=> x _.
   by rewrite adde_ge0.
-pose h x := if (x \in P) then (limF x + ((eps mE0 abs)%:num)%:E) else (limF x).
+pose h x := if (x \in E0P) then (limF x + ((eps mE0 abs)%:num)%:E) else (limF x).
 have hnu : forall S, measurable S -> \int[mu]_(x in S) h x <= nu S.
   admit.
 (* have posE0P : positive_set sigma E0P. *)
 have : \int[mu]_(x in setT) h x > M.
-  rewrite -(setUv P).
+  rewrite -(setUv E0P).
   rewrite integral_setU //; last 4 first.
           by apply measurableC.
         rewrite measurable_funU //; last first.
           by apply measurableC.
         split.
-          apply (@measurable_restrict _ _ _ _ P setT h) => //.
-          have hp : h \_ P = (fun x => limF x + ((eps mE0 abs)%:num)%:E) \_ P.
+          apply (@measurable_restrict _ _ _ _ E0P setT h) => //.
+          have he0p : h \_ E0P =
+                        (fun x => limF x + ((eps mE0 abs)%:num)%:E) \_ E0P.
             apply eq_restrictP.
-            move=> x xp.
-            by rewrite /h ifT.
-          rewrite hp.
+            move=> x xe0p.
+            rewrite /h ifT //.
+          rewrite he0p.
           apply measurable_restrict => //.
           apply measurable_funTS.
           apply emeasurable_funD => //.
           by apply measurable_fun_cst.
-        apply (@measurable_restrict _ _ _ _ (~`P) setT h) => //.
+        apply (@measurable_restrict _ _ _ _ (~`E0P) setT h) => //.
           by apply measurableC.
-        have hcp : h \_ (~`P) = (fun x => limF x) \_ (~`P).
+        have hce0p : h \_ (~`E0P) = (fun x => limF x) \_ (~`E0P).
           apply eq_restrictP.
           move=> x.
           rewrite inE /=.
-          rewrite /h => xnp.
+          rewrite /h => xne0p.
           by rewrite memNset.
-        rewrite hcp.
+        rewrite hce0p.
         apply measurable_restrict => //.
           by apply measurableC.
         by apply measurable_funTS.
@@ -1937,13 +1938,12 @@ have : \int[mu]_(x in setT) h x > M.
   rewrite -(eq_integral _ (fun x => limF x + ((eps mE0 abs)%:num)%:E)); last first.
     move=> x xE0P.
     by rewrite ifT.
-  rewrite -[\int[mu]_(x in ~` P) _](eq_integral _ (fun x => limF x)); last first.
-    move=> x xnE0P.
-    rewrite ifF //.
-    apply negbTE.
-    by rewrite -in_setC.
+  rewrite -[\int[mu]_(x in ~`E0P) _](eq_integral _ (fun x => limF x)); last first.
+    move=> x.
+    rewrite inE /= => xnp.
+    rewrite memNset //.
   rewrite ge0_integralD//; last 2 first.
-      apply (@measurable_funS _ _ _ _ setT P) => //.
+      apply (@measurable_funS _ _ _ _ setT E0P) => //.
     exact : measurable_fun_cst.
   rewrite integral_cst //.
   rewrite addeAC.
