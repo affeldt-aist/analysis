@@ -1911,13 +1911,27 @@ have : \int[mu]_(x in setT) h x > M.
             move=> x xp.
             by rewrite /h ifT.
           rewrite hp.
-          move=> S /= T mT.
-          apply measurableI => //.
-          rewrite /measurable.
-        admit.
-      admit.
-      admit.
-      apply /disj_set2P.
+          apply measurable_restrict => //.
+          apply measurable_funTS.
+          apply emeasurable_funD => //.
+          by apply measurable_fun_cst.
+        apply (@measurable_restrict _ _ _ _ (~`P) setT h) => //.
+          by apply measurableC.
+        have hcp : h \_ (~`P) = (fun x => limF x) \_ (~`P).
+          apply eq_restrictP.
+          move=> x.
+          rewrite inE /=.
+          rewrite /h => xnp.
+          by rewrite memNset.
+        rewrite hcp.
+        apply measurable_restrict => //.
+          by apply measurableC.
+        by apply measurable_funTS.
+      move=> x _.
+      rewrite /h.
+      case: ifPn => // xp.
+      by rewrite adde_ge0.
+    apply /disj_set2P.
     exact : setICr.
   rewrite /h.
   rewrite -(eq_integral _ (fun x => limF x + ((eps mE0 abs)%:num)%:E)); last first.
@@ -1933,10 +1947,11 @@ have : \int[mu]_(x in setT) h x > M.
     exact : measurable_fun_cst.
   rewrite integral_cst //.
   rewrite addeAC.
-  rewrite -integral_setU //; last 3 first. (* 上のintegral_setU以降と同じ *)
-        admit.
-      admit.
-    admit.
+  rewrite -integral_setU //; last 3 first.
+        by apply measurableC.
+      by rewrite setUv.
+    apply /disj_set2P.
+    exact : setICr.
   rewrite setUv.
   rewrite limFXeqM.
   rewrite -lte_subel_addl; last first.
@@ -1946,7 +1961,7 @@ have : \int[mu]_(x in setT) h x > M.
 have hinG: G h.
   rewrite /G //=.
   split.
-      admit. (* *)
+      admit.
     admit.
   move=> S.
   rewrite inE.
@@ -1968,7 +1983,8 @@ Admitted.
 
 End Radon_Nikodym_finite_ge0.
 
-Theorem Radon_Nikodym d (X : measurableType d) (R : realType)
+Theorem Radon_Nikodym d (X : measurableType d) (R 
+: realType)
     (mu : {measure set X -> \bar R}) (nu : {smeasure set X -> \bar R})
     (musigmafinite : sigma_finite setT mu) :
   nu `<< mu -> exists f : X -> \bar R,
