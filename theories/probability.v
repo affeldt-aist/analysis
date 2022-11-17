@@ -345,6 +345,37 @@ Proof. by move=> mf f0; rewrite integral_pushforward. Qed.
 
 End transfer_probability.
 
+(*
+def : density function f =def= measurable functional
+                               mf V := \int[lebesgue_measure]_(x in V) f x
+                               (this is a probability measure)
+                               mf setT = 1
+
+distribution mf =def= fsdist (conjecture, if T is finite)
+
+change set nat in isDiscreteRV to a finite set
+
+poisson is not discrete
+*)
+
+(* a predicate to say that the RV X is discrete
+we need to say for which density function
+*)
+
+Definition mnat := Datatypes_nat__canonical__measure_Measurable.
+
+HB.mixin Record isDiscreteRV (R : realType)
+    (f : nat -> R)
+    (mfT : (\sum_(k <oo) (f k)%:E = 1%E)%E)(*TODO: change to integral*)
+    (values : {injfun [set: nat] >-> [set: R]})
+    (m : probability mnat R)
+      (*NB: this is the pm induced by f and values *)
+    of @MeasurableFun _ mnat R f := {
+  distributionE : distribution m [the {mfun mnat >-> R} of f] =1
+    (fun A : set R => \sum_(n <oo) (f n)%:E * \d_ (values n) A)%E
+}.
+
+
 HB.mixin Record isDiscreteRV (d : _) (T : measurableType d) (R : realType)
     (P : probability T R) (X : T -> R) of @MeasurableFun d T R X := {
   weight : convn R ;
@@ -651,6 +682,7 @@ Qed.
 
 End markov_chebyshev.
 
+
 Section cvg_random_variable.
 Variables (d : _) (T : measurableType d) (R : realType) (P : probability T R).
 
@@ -668,6 +700,7 @@ apply/(@cvg_distP _ [pseudoMetricNormedZmodType R of R^o]).
 move => eps heps.
 rewrite near_map /=.
 near=> n.
+
 
 
 End cvg_random_variable.
