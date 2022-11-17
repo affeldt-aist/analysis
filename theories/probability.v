@@ -655,11 +655,13 @@ Section cvg_random_variable.
 Variables (d : _) (T : measurableType d) (R : realType) (P : probability T R).
 
 Definition probabilistic_cvg (X : {RV P >-> R}^nat) (Y : {RV P >-> R})
-  := forall a : {posnum R}, [sequence (fine \o P) [set x | a%:num <= `| X n x - Y x | ] ]_n --> (0%R:R).
+  := forall a : {posnum R},
+    [sequence (fine \o P) [set x | a%:num <= `| X n x - Y x | ] ]_n --> (0%R:R).
 
 Lemma prop_23_1 (X : {RV P >-> R}^nat) (Y : {RV P >-> R})
   : (*(@mabs R `o (X n `- Y) ) @[n --> \oo]--> cst_mfun 0*)
-    (forall x, `| X n x - Y x | @[n --> \oo]--> (0%R:R)) -> probabilistic_cvg X Y.
+    (forall x, `| X n x - Y x | @[n --> \oo]--> (0%R:R)) ->
+    probabilistic_cvg X Y.
 Proof.
 move => h a /=.
 apply/(@cvg_distP _ [pseudoMetricNormedZmodType R of R^o]).
