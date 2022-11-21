@@ -1887,6 +1887,20 @@ have muE0P0: mu E0P > 0.
   apply : (le_lt_trans _ nufinite).
   by apply le_measure => //; rewrite inE .
 pose h x := if (x \in E0P) then (limF x + ((eps mE0 abs)%:num)%:E) else (limF x).
+have hge0 x: 0 <= h x.
+ .
+      move=> x [[E0Px Sx]|[Sx]].
+        rewrite /h ifT.
+          by apply: adde_ge0.
+        by rewrite inE.
+      rewrite not_andP.
+      move => [nE0Px|]//.
+        rewrite /h ifF.
+        exact: limF_ge0.
+      exact: memNset.
+    rewrite disj_set2E.
+    apply /eqP.
+    exact: setDIK.
 have hnuP : forall S, measurable S -> S `<=` E0P -> \int[mu]_(x in S) h x <= nu S.
   move=> S mS SE0P.
   have : sigma S >= 0.
@@ -1931,9 +1945,10 @@ have hnu : forall S, measurable S -> \int[mu]_(x in S) h x <= nu S.
   pose E0PS := E0P `&` S.
   have mE0PS : measurable E0PS.
    by apply measurableI.
-  have H : S = E0PS `|` (S `\` E0PS).
-    admit.
-  rewrite H.
+  have Sdcm : S = E0PS `|` (S `\` E0PS).
+    rewrite setDUK //.
+    exact: subIsetr.
+  rewrite Sdcm.
   rewrite integral_setU //; last 4 first.
           by apply measurableD.
         apply measurable_funU => //.
@@ -1941,6 +1956,17 @@ have hnu : forall S, measurable S -> \int[mu]_(x in S) h x <= nu S.
         split.
           admit. (* apply measurable_fun_if. *)
         admit.
+(*
+      move=> x [[E0Px Sx]|[Sx]].
+        rewrite /h ifT.
+          by apply: adde_ge0.
+        by rewrite inE.
+      rewrite not_andP.
+      move => [nE0Px|]//.
+        rewrite /h ifF.
+        exact: limF_ge0.
+      exact: memNset.
+*)
       admit.
     rewrite disj_set2E.
     apply /eqP.
