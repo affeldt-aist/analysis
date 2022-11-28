@@ -327,12 +327,17 @@ Lemma integrable_bigcup d (X : measurableType d) (R : realType) (n : nat)
     (forall i, measurable (E i) /\ integrable mu (E i) f) ->
                     integrable mu (\bigcup_i (*MN: not genuine bigcup*) E i) f.
 Proof.
+pose F := (seqDU E).
+have disjF : (trivIset [set: nat] F) := (@trivIset_seqDU _ E).
+have EF : \bigcup_i E i = \bigcup_i F i := (@seqDU_bigcup_eq _ E).
 move=> h.
 split.
   apply measurable_fun_bigcup => //.
   move=> i.
   by have [? [? _]] := h i.
-
+rewrite EF.
+rewrite ge0_integral_bigcup //.
+(* goal 3 ??? *)
 (*
 have : exists F : nat -> set X, (forall i, (i < n)%nat -> measurable (F i)) /\
                           \bigcup_(i in `I_n) F i = \bigcup_(i in `I_n) E i.
@@ -915,9 +920,30 @@ by rewrite FNT preimage_setC setCK; exact: mfT.
 by rewrite -setT_bool preimage_setT setIT.
 Qed.
 
+Lemma in_mem_mem_true (D : set X) : in_mem^~ (mem D) @^-1` [set true] = D.
+Proof.
+rewrite/preimage.
+apply/seteqP.
+split => x /=.
+  by move/set_mem.
+by move/mem_set.
+Qed.
+
+Lemma in_mem_mem_false (D : set X) : in_mem^~ (mem D) @^-1` [set false] = ~` D.
+Proof.
+rewrite /preimage.
+apply/seteqP.
+split.
+  move=> x /=.
+  apply: contraFnot.
+  by rewrite inE.
+move=> x /=.
+by apply: memNset.
+Qed.
+
 End emeasurable_fun.
 
-Theorem Radon_Nikodym_finite_nonnegative :
+Theorem Radon_Nikodym_finite_ge0 :
   nu `<< mu -> exists f : X -> \bar R, [/\
         forall x, f x >= 0,
         integrable mu setT f &
@@ -927,7 +953,7 @@ Proof.
  * Define the measurable subsets of X to be those subsets that belong to the
  *  σ-algebra measurable on which the measures mu and nu are defined.
  *)
-rewrite /abs_continuous => mudomnu.
+move => mudomnu.
 (* have : forall m x, F m x >= 0
  *   forall x, 0 <= g m x, g m in G
  *)
@@ -941,12 +967,9 @@ rewrite andbT leNgt; apply/negP => abs.
 pose sigma : {smeasure set X -> \bar R} := [the {smeasure set X -> \bar R} of sigma' mE0 abs].
 have sigmaE : forall F, sigma F = nu F - \int[mu]_(x in F) (limF x + (eps mE0 abs)%:num%:E).
   by [].
-move : (Hahn_decomposition sigma) => [P [N [posP negN PNX PN0]]].
-pose E0P := E0 `&` P.
-pose E0N := E0 `&` N.
-move: (posP) => [mP _].
-move: negN => [mN negN].
+move : (Hahn_decomposition sigma) => [P [N [[mP posP] [mN negN] PNX PN0]]].
 rewrite !inE in (*mE0*) mP mN.
+pose E0P := E0 `&` P.
 have mE0P : measurable E0P.
   exact: measurableI.
 have muE0P0: mu E0P > 0.
@@ -954,24 +977,32 @@ have muE0P0: mu E0P > 0.
   apply : (contra_not_neq (mudomnu _ mE0P)).
   apply /eqP.
   rewrite gt_eqF //.
-  apply : (@lt_le_trans _ _ (sigma E0P)).
-    apply (@lt_le_trans _ _ (sigma E0)) ; last first.
-      rewrite (s_measure_partition2 _ mP mN PNX PN0) //.
-      rewrite gee_addl //.
-      apply negN => //.
+  apply: (@lt_le_trans _ _ (sigma E0P)).
+    apply: (@lt_le_trans _ _ (sigma E0)) ; last first.
+      rewrite (s_measure_partition2 _ _ _ PNX) // gee_addl //.
+      apply: negN => //.
       rewrite inE.
-      by apply measurableI => //.
+      by apply: measurableI.
     rewrite sigmaE sube_gt0//.
     exact: Heps.
   rewrite /sigma/=/sigma' lee_subel_addl.
-    apply lee_paddl => //.
-    apply integral_ge0.
+    apply: lee_paddl => //.
+    apply: integral_ge0.
     move=> x _.
     by rewrite adde_ge0.
   rewrite (ge0_fin_numE (measure_ge0 nu E0P)).
   apply : (le_lt_trans _ nufinite).
-  by apply le_measure => //; rewrite inE .
+  by apply le_measure => //; rewrite inE.
 pose h x := if (x \in E0P) then (limF x + ((eps mE0 abs)%:num)%:E) else (limF x).
+have mh : measurable_fun setT h.
+  apply: measurable_fun_if => //.
+      apply: (@emeasurable_fun_bool _ _ true).
+      by rewrite in_mem_mem_true.
+    rewrite in_mem_mem_true setTI.
+    apply: measurable_funTS.
+    apply: emeasurable_funD => //.
+    exact: measurable_fun_cst.
+  by apply:measurable_funTS.
 have hge0 x: 0 <= h x.
   rewrite/h.
   case:ifPn => // _.
@@ -979,10 +1010,10 @@ have hge0 x: 0 <= h x.
 have hnuP : forall S, measurable S -> S `<=` E0P -> \int[mu]_(x in S) h x <= nu S.
   move=> S mS SE0P.
   have : sigma S >= 0.
-    apply posP.
+    apply: posP.
       by rewrite inE.
     apply: (subset_trans SE0P).
-    by apply subIsetr.
+    by apply: subIsetr.
   rewrite sigmaE.
   rewrite sube_ge0; last first.
   apply /orP.
@@ -1031,27 +1062,22 @@ have hnu : forall S, measurable S -> \int[mu]_(x in S) h x <= nu S.
         split.
           apply: measurable_fun_if => //.
             apply: (@emeasurable_fun_bool _ _ true) => //.
-            rewrite/preimage.
-            rewrite [X in measurable X](_ : _ = E0P)//.
-            apply/seteqP.
-            split => x /=.
-              by move/set_mem.
-            by move/mem_set.
-          admit.
-        admit.
-      admit.
-      
-(*
-      move=> x [[E0Px Sx]|[Sx]].
-        rewrite /h ifT.
-          by apply: adde_ge0.
-        by rewrite inE.
-      rewrite not_andP.
-      move => [nE0Px|]//.
-        rewrite /h ifF.
-        exact: limF_ge0.
-      exact: memNset.
-*)
+            by rewrite in_mem_mem_true.
+          rewrite in_mem_mem_true.
+          rewrite setIidl; last first.
+            exact: subIsetl.
+          apply: emeasurable_funD.
+            by apply: (measurable_funS measurableT).
+          exact: measurable_fun_cst.
+        by apply: (measurable_funS measurableT).
+      apply: measurable_fun_if.
+            by apply:measurableD.
+          apply: (@emeasurable_fun_bool _ _ true) => //.
+          by rewrite in_mem_mem_true.
+        apply: emeasurable_funD => //.
+          by apply:(measurable_funS measurableT).
+        by apply:measurable_fun_cst.
+      by apply:(measurable_funS measurableT).
     rewrite disj_set2E.
     apply /eqP.
     exact: setDIK.
@@ -1109,7 +1135,7 @@ have inthgtM : \int[mu]_(x in setT) h x > M.
     rewrite inE /= => xnp.
     rewrite memNset //.
   rewrite ge0_integralD//; last 2 first.
-      apply (@measurable_funS _ _ _ _ setT E0P) => //.
+      by apply: measurable_funTS.
     exact : measurable_fun_cst.
   rewrite integral_cst //.
   rewrite addeAC.
@@ -1121,13 +1147,18 @@ have inthgtM : \int[mu]_(x in setT) h x > M.
   rewrite setUv.
   rewrite limFXeqM.
   rewrite -lte_subel_addl; last first.
-    rewrite ge0_fin_numE //.
+    by rewrite ge0_fin_numE.
   rewrite subee //.
-  apply mule_gt0 => //.
+  by apply mule_gt0.
 have hinG: G h.
   rewrite /G //=.
   split => //=.
-    admit.
+    split.
+      exact: mh.
+    under eq_integral => x Tx.
+      rewrite gee0_abs //.
+      over.
+    apply: (le_lt_trans (hnu setT measurableT)) => //.
   move=> S.
   rewrite inE.
   apply : hnu.
@@ -1138,8 +1169,8 @@ have : (\int[mu]_x h x <= M).
   exists h => //.
 rewrite leNgt.
 by rewrite inthgtM.
-Admitted.
-xxx
+Abort.
+
 End Radon_Nikodym_finite_ge0.
 
 Theorem Radon_Nikodym d (X : measurableType d) (R 
