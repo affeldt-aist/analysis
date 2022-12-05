@@ -1176,8 +1176,54 @@ have [f_tilde Hf_tilde] := choice (fun j => Radon_Nikodym_finite_ge0 (mu_finite 
 pose f_ j x := if (x \in E j) then f_tilde j x else 0.
 have : forall j S, measurable S -> \int[mu]_(x in S) f_ j x = nu (S `&` E j).
   admit.
-(* pose f x := \big[adde/0%E] f_ j x *)
+pose f x := \big[adde/0]_(j <oo) (f_ j x).
+move=> H.
+exists f.
 Admitted.
+
+Axiom smeasure_add : forall (d : measure_display) (T : measurableType d) (R : realType),
+       {smeasure set T -> \bar R} -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
+
+Axiom smscale : forall (d : measure_display) (T : measurableType d) (R : realType),
+       R -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
+(*
+Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType) (nu : {smeasure set T -> \bar R}), (forall A, 0 <= nu A) -> {measure set T -> \bar R}.*)
+
+Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType)
+(nu : {smeasure set T -> \bar R}) (P : set T), positive_set nu P -> {measure set T -> \bar R}.
+(* := smrestr nu mP *)
+
+Section Jordan_decomposition.
+Variables (d : _) (X : measurableType d) (R : realType).
+Variables (nu: {smeasure set X -> \bar R}).
+Variables (P N: set X).
+Hypothesis nuPN : is_Hahn_decomposition nu P N.
+
+Let mP : measurable P.
+Admitted.
+
+Let mN : measurable N.
+Admitted.
+
+Let posP : positive_set nu P.
+Admitted.
+
+Let negN : positive_set (smscale (-1) (smrestr nu mN)) N.
+Admitted.
+
+Definition nu'_p := measure_of_signed_measure posP.
+Definition nu'_n := measure_of_signed_measure negN.
+
+(* Lemma nu_dcmp : nu = smeasure_add nu'_p nu'_n. *)
+
+(*
+HB.instance Definition _ (E0 : set X) (muE0 : d.-measurable E0)
+    (abs : \int[mu]_(x in E0) limF x < nu E0) :=
+  @isAdditiveSignedMeasure.Build _ _ _ (sigma' muE0 abs) (sigma'_semi_additive muE0 abs).
+*)
+
+
+End Jordan_decomposition.
 
 Theorem Radon_Nikodym d (X : measurableType d) (R : realType)
     (mu : {measure set X -> \bar R}) (nu : {smeasure set X -> \bar R})
@@ -1185,12 +1231,47 @@ Theorem Radon_Nikodym d (X : measurableType d) (R : realType)
   nu `<< mu -> exists f : X -> \bar R,
   integrable mu setT f /\ forall E, E \in measurable -> nu E = integral mu E f.
 Proof.
-have [P [N [[mP posP] [mN negN] PNX PN0]]] := Hahn_decomposition nu.
-rewrite !inE in mP mN.
+move=> nudommu.
+
+have [P [N [posP negN PNX PN0]]] := Hahn_decomposition nu.
+have [mN _] := negN.
+rewrite !inE in mN.
 (* Jordan decomposition *)
-pose nu_p := smrestr nu mP.
-pose nu_n S:= (-1)%:E * (smrestr nu mN S).
+
+have negN' : positive_set (smscale (-1) (smrestr nu mN)) N.
+  admit.
+
+pose nu'_p := measure_of_signed_measure posP.
+pose nu'_n := measure_of_signed_measure negN'.
+
+have nu_dcmp : forall S, nu S = nu'_p S - nu'_p S.
+  admit.
+
 (* nu_p and nu_n are finite measures *)
+have nu_pfinite : nu'_p setT < +oo.
+  admit.
+have nu_nfinite : nu'_n setT < +oo.
+  admit.
+have nu_pdommu : nu'_p `<< mu.
+  admit.
+have nu_ndommu : nu'_n `<< mu.
+  admit.
+(* f_p := Radon_Nikodym_sigma_finite_ge0 nu_pdommu*)
+have := Radon_Nikodym_sigma_finite_ge0 nu_pfinite sigma_finite_mu nu_pdommu.
+move=> [f_p [intf_p f_pE]].
+
+have := Radon_Nikodym_sigma_finite_ge0 nu_nfinite sigma_finite_mu nu_ndommu.
+move=> [f_n [intf_n f_nE]].
+pose f := f_p \- f_n.
+exists f.
+split.
+  apply: integrableB => //.
+move=> E.
+rewrite inE => mE.
+rewrite nu_dcmp integralB; last 3 first.
+      exact: mE.
+    by apply: (integrableS measurableT).
+  by apply: (integrableS measurableT).
 
 Abort.
 
