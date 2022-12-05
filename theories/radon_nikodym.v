@@ -910,65 +910,65 @@ rewrite [X in X --> _](_ : _ = (fun n =>
   rewrite big_split/= sumeN// => i _.
   by rewrite htmp.
 apply: ereal_cvgB.
-  rewrite adde_defC fin_num_adde_def//.
-  rewrite ge0_fin_numE// (le_lt_trans _ nufinite)//.
-  apply: le_measure => //.
-  rewrite inE.
-  exact: bigcup_measurable.
-  by rewrite inE.
+    rewrite adde_defC fin_num_adde_def//.
+    rewrite ge0_fin_numE// (le_lt_trans _ nufinite)//.
+    apply: le_measure => //.
+      rewrite inE.
+      exact: bigcup_measurable.
+    by rewrite inE.
   exact: measure_semi_sigma_additive.
 rewrite ge0_integral_bigcup; last 4 first.
-  done.
-  split.
-    have : measurable_fun setT (fun x : X => limF x + ((eps muE0 abs)%:num)%:E).
-      apply: emeasurable_funD => //.
-      exact/EFin_measurable_fun/measurable_fun_cst.
-    exact: measurable_funS.
-  apply: (@le_lt_trans _ _ (\int[mu]_(x in \bigcup_k F' k) `|limF x| + \int[mu]_(x in \bigcup_k F' k)`|((eps muE0 abs)%:num)%:E|)).
-    rewrite -integralD.
-    apply: ge0_le_integral => //.
-    apply: measurable_fun_comp => //.
-    apply: emeasurable_funD => //.
-    by apply: measurable_funS mlimF.
-    exact/EFin_measurable_fun/measurable_fun_cst.
-    apply: emeasurable_funD => //.
-    apply: measurable_fun_comp => //.
-    by apply: measurable_funS mlimF.
-    apply: measurable_fun_comp => //.
-    exact/EFin_measurable_fun/measurable_fun_cst.
-    move=> x _.
-    exact: lee_abs_add.
-    done.
+        done.
+      split.
+        have : measurable_fun setT (fun x : X => limF x + ((eps muE0 abs)%:num)%:E).
+          apply: emeasurable_funD => //.
+          exact/EFin_measurable_fun/measurable_fun_cst.
+        exact: measurable_funS.
+      apply: (@le_lt_trans _ _ (\int[mu]_(x in \bigcup_k F' k) `|limF x| + \int[mu]_(x in \bigcup_k F' k)`|((eps muE0 abs)%:num)%:E|)).
+        rewrite -integralD.
+              apply: ge0_le_integral => //.
+                  apply: measurable_fun_comp => //.
+                  apply: emeasurable_funD => //.
+                    by apply: measurable_funS mlimF.
+                  exact/EFin_measurable_fun/measurable_fun_cst.
+                apply: emeasurable_funD => //.
+                  apply: measurable_fun_comp => //.
+                  by apply: measurable_funS mlimF.
+                apply: measurable_fun_comp => //.
+                exact/EFin_measurable_fun/measurable_fun_cst.
+              move=> x _.
+              exact: lee_abs_add.
+            done.
     (* TODO: lemma about integrability of abse *)
-    split.
-      apply: measurable_fun_comp => //.
-      by apply: measurable_funS mlimF.
-    rewrite (le_lt_trans _ limFoo)//.
-    under eq_integral do rewrite abse_id.
-    apply: subset_integral => //.
-    apply: measurable_fun_comp => //.
-    split.
-      apply: measurable_fun_comp => //.
-      exact/EFin_measurable_fun/measurable_fun_cst.
-    under eq_integral do rewrite abse_id.
-    rewrite integral_cst//=.
-    apply: lte_mul_pinfty => //.
-      rewrite lee_fin//.
-     by rewrite normr_ge0.
-    rewrite (le_lt_trans _ mufinite)//.
-    by apply: le_measure => //; rewrite inE.
-  apply: lte_add_pinfty.
-    rewrite (le_lt_trans _ limFoo)//.
-    apply: subset_integral => //.
-    by apply: measurable_fun_comp => //.
-  rewrite integral_cst//=.
-  apply: lte_mul_pinfty => //.
-    rewrite lee_fin//.
-    by rewrite normr_ge0.
-  rewrite (le_lt_trans _ mufinite)//.
-  by apply: le_measure => //; rewrite inE.
-  move=> x _.
-  by rewrite adde_ge0//.
+          split.
+            apply: measurable_fun_comp => //.
+            by apply: measurable_funS mlimF.
+          rewrite (le_lt_trans _ limFoo)//.
+          under eq_integral do rewrite abse_id.
+          apply: subset_integral => //.
+          by apply: measurable_fun_comp.
+        split.
+          apply: measurable_fun_comp => //.
+          exact/EFin_measurable_fun/measurable_fun_cst.
+        under eq_integral do rewrite abse_id.
+        rewrite integral_cst//=.
+        apply: lte_mul_pinfty => //.
+          rewrite lee_fin//.
+          by rewrite normr_ge0.
+        rewrite (le_lt_trans _ mufinite)//.
+        by apply: le_measure => //; rewrite inE.
+      apply: lte_add_pinfty.
+        rewrite (le_lt_trans _ limFoo)//.
+        apply: subset_integral => //.
+        by apply: measurable_fun_comp => //.
+      rewrite integral_cst//=.
+      apply: lte_mul_pinfty => //.
+        rewrite lee_fin//.
+        by rewrite normr_ge0.
+      rewrite (le_lt_trans _ mufinite)//.
+      by apply: le_measure => //; rewrite inE.
+    move=> x _.
+    by rewrite adde_ge0//.
   done.
 have /cvg_ex[/= l hl] : cvg (fun x => \sum_(0 <= i < x) \int[mu]_(x0 in F' i) (limF x0 + ((eps muE0 abs)%:num)%:E)).
   apply: is_cvg_ereal_nneg_natsum => n _.
@@ -1106,8 +1106,7 @@ have inthgtM : \int[mu]_(x in setT) h x > M.
     exact:setICr.
   rewrite -(setUv E0P) integral_setU //; last first.
     by rewrite setUv.
-  rewrite /h.
-  rewrite -(eq_integral _ (fun x => limF x + ((eps mE0 abs)%:num)%:E)); last first.
+  rewrite /h -(eq_integral _ (fun x => limF x + ((eps mE0 abs)%:num)%:E)); last first.
     move=> x xE0P.
     by rewrite ifT.
   rewrite -[\int[mu]_(x in ~`E0P) _](eq_integral _ (fun x => limF x)); last first.
@@ -1117,12 +1116,9 @@ have inthgtM : \int[mu]_(x in setT) h x > M.
   rewrite ge0_integralD//; last 2 first.
       by apply: measurable_funTS.
     exact : measurable_fun_cst.
-  rewrite integral_cst // addeAC.
-  rewrite -integral_setU //; last first.
+  rewrite integral_cst // addeAC -integral_setU //; last first.
       by rewrite setUv.
-  rewrite setUv.
-  rewrite limFXeqM.
-  rewrite -lte_subel_addl; last first.
+  rewrite setUv limFXeqM -lte_subel_addl; last first.
     by rewrite ge0_fin_numE// ?sup_RN_approx_integral_lty// sup_RN_approx_integral_ge0.
   rewrite subee //.
     by apply: mule_gt0.
