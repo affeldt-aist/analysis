@@ -1151,44 +1151,263 @@ Theorem Radon_Nikodym_sigma_finite_ge0 d (X : measurableType d) (R : realType)
   integrable mu setT f /\ forall E, E \in measurable -> nu E = integral mu E f.
 Proof.
 (* assume that nu is non-negative *)
-move: sigma_finite_mu => [F TF Ffin].
+move: sigma_finite_mu => [F TF mFAFfin].
+have [mF Ffin] := all_and2 mFAFfin.
+move: mFAFfin => _.
 pose E := seqDU F.
 have mE : forall j, measurable (E j).
   (* bigsetU_measurable. *)
-  admit.
+  move=> j.
+  apply: measurableD => //.
+  by apply: bigsetU_measurable => //.
 have disj_E := (@trivIset_seqDU _ F).
 have Efin : forall j, mu (E j) < +oo.
-  admit.
+  move=> j.
+  have mE_j' : (E j) \in measurable.
+    by rewrite inE.
+  apply:(@le_lt_trans _ _ (mu (F j))).
+    apply:(le_measure _ mE_j').
+      by rewrite inE.
+    exact: subDsetl.
+  by apply: Ffin.
 have TE : \bigcup_i E i = setT.
   rewrite TF.
   by rewrite [RHS]seqDU_bigcup_eq.
-pose mu_ j := mrestr mu (mE j).
+pose mu_ j := mrestr mu (mE j): {measure set X -> \bar R}.
+pose nu_ j := mrestr nu (mE j): {measure set X -> \bar R}.
 have mu_finite : forall n, mu_ n setT < +oo.
-  admit.
+  move=> j.
+  by rewrite /mu_ /= /mrestr setTI.
+have nu_finite : forall n, nu_ n setT < +oo.
+  move=> j.
+  rewrite /nu_ /= /mrestr setTI.
+  apply: (@le_lt_trans _ _ (nu setT)) => //.
+  by apply:le_measure => //; rewrite inE.
 move=> nudommu.
-have nudommu_ j : nu `<< mu_ j.
-  admit.
-have [f_tilde Hf_tilde] := choice (fun j => Radon_Nikodym_finite_ge0 (mu_finite j) nufinite (nudommu_ j)).
+have nu_dommu_ j : nu_ j `<< mu_ j.
+  move=> S mS mu_jS0.
+  apply: nudommu => //.
+  by apply: measurableI.
+have [f_tilde Hf_tilde] := choice (fun j =>
+            Radon_Nikodym_finite_ge0 (mu_finite j) (nu_finite j) (nu_dommu_ j)).
+have [f_tilde_ge0 int_f_tildeT int_f_tildeE] := all_and3 Hf_tilde.
+move: Hf_tilde => _.
 pose f_ j x := if (x \in E j) then f_tilde j x else 0.
-have : forall j S, measurable S -> \int[mu]_(x in S) f_ j x = nu (S `&` E j).
+have f_ge0 : forall j x, 0 <= f_ j x.
+  move=> j x.
+  rewrite /f_.
+  by case: ifP.
+have mf_ : forall j, measurable_fun setT (f_ j).
+  move=> j.
+  rewrite /f_.
+  apply: measurable_fun_if => //.
+      apply: (@emeasurable_fun_bool _ _ _ _ true).
+      by rewrite in_mem_mem_true.
+    rewrite in_mem_mem_true.
+    apply: (measurable_funS measurableT) => //.
+    by apply (int_f_tildeT j).
+  rewrite in_mem_mem_false.
+  apply: (measurable_funS measurableT) => //.
+  exact: measurable_fun_cst.
+have int_f_T : forall j, integrable mu setT (f_ j).
+  move=> j.
+  split => //.
+  under eq_integral.
+    move=> x _.
+    rewrite gee0_abs; last first.
+    exact: f_ge0.
+    over.
+  rewrite -(setUv (E j)).
+  rewrite integral_setU //; last 3 first.
+        by apply: measurableC.
+      by rewrite setUv.
+    apply/disj_set2P.
+    apply subsets_disjoint => //.
+  rewrite /f_ -(eq_integral _ (fun x => f_tilde j x)); last first.
+    move=> x Ejx.
+    by rewrite ifT.
+  rewrite (@eq_measure_integral _ _ _ (E j) (mu_ j)); last first.
+    move=> A mA AEj.
+    by rewrite /mu_ /= /mrestr setIidl.
+  rewrite -int_f_tildeE ?inE //.
+  under eq_integral.
+    move=>x.
+    rewrite inE /= => nEjx.
+    rewrite ifF; last first.
+      by rewrite memNset.
+    over.
+  rewrite integral0 adde0.
+  rewrite /nu_ /= /mrestr setIid.
+  apply: (@le_lt_trans _ _ (nu setT)) => //.
+  by apply:le_measure; rewrite ?inE.
+have int_f_E: forall j S, measurable S -> \int[mu]_(x in S) f_ j x = nu (S `&` E j).
+  move=> j S mS.
+  have mSIEj := measurableI _ _ mS (mE j).
+  have mSDEj := measurableD mS (mE j).
+  rewrite -{1}(setUIDK S (E j)).
+  rewrite (integral_setU _ mSIEj mSDEj); last 3 first.
+        rewrite setUIDK.
+        by apply: (measurable_funS measurableT).
+      move=> x.
+      rewrite setUIDK => Sx.
+      rewrite /f_.
+      by case: ifP.
+    apply/disj_set2P.
+    rewrite setIC.
+    exact: disj_setDI.
+  rewrite /f_ -(eq_integral _ (fun x => f_tilde j x)); last first.
+    move=> x.
+    rewrite inE => SIEjx.
+    rewrite /f_ ifT //.
+    rewrite inE.
+    by apply: (@subIsetr _ S (E j)).
+  rewrite (@eq_measure_integral _ _ _ (S `&` E j) (mu_ j)); last first.
+    move=> A mA.
+    rewrite subsetI; move => [_ Ejx].
+    by rewrite /mu_ /= /mrestr setIidl.
+  rewrite -int_f_tildeE; last first.
+    rewrite inE.
+    by apply measurableI.
+  under eq_integral.
+    move=> x.
+    rewrite inE setDE /=; move=> [_ nEj].
+    rewrite ifF; last first.
+      by rewrite memNset.
+    over.
+  rewrite integral0 adde0.
+  by rewrite /nu_ /= /mrestr -setIA setIid.
+pose f x : \bar R := \sum_(j<oo) (f_ j x).
+(* pose f x := \big[adde/0]_(j <oo) (f_ j x). *)
+(*
+have fE :forall x, exists j, f x = f_ j x.
+  move=> x.
+
   admit.
-pose f x := \big[adde/0]_(j <oo) (f_ j x).
-move=> H.
+*)
 exists f.
 Admitted.
 
+(* ---from measure.v--- 
+Section smeasure_sum.
+Variables (d : measure_display) (T : measurableType d) (R : realType).
+Variables (m : {smeasure set T -> \bar R}^nat) (n : nat).
+
+Definition smsum (A : set T) : \bar R := \sum_(k < n) m k A.
+
+Let smsum0 : smsum set0 = 0.
+Proof.
+rewrite /smsum big1 //.
+move=> i _.
+by apply: smeasure0.
+Qed.
+
+Let smsumltey B : smsum B < +oo.
+Proof.
+rewrite /smsum.
+apply: lte_sum_pinfty.
+move=> i _.
+
+Admitted.
+
+Let smsum_sigma_additive : semi_sigma_additive smsum.
+Proof.
+move=> F mF tF mUF.
+rewrite [X in _ --> X](_ : _ =
+    lim (fun n => \sum_(0 <= i < n) smsum (F i))).
+  apply: is_cvg_ereal_nneg_natsum => //. apply: sume_ge0.
+rewrite nneseries_sum//; apply: eq_bigr => /= i _.
+exact: measure_semi_bigcup.
+Qed.
+
+HB.instance Definition _ := isSignedMeasure.Build _ _ _ smsum
+  smsum0 smsumltey smsum_sigma_additive.
+
+End smeasure_sum.
+
+Arguments msum {d T R}.
+
+Section measure_zero.
+Local Open Scope ereal_scope.
+Variables (d : measure_display) (T : measurableType d) (R : realType).
+
+Definition mzero (A : set T) : \bar R := 0.
+
+Let mzero0 : mzero set0 = 0. Proof. by []. Qed.
+
+Let mzero_ge0 B : 0 <= mzero B. Proof. by []. Qed.
+
+Let mzero_sigma_additive : semi_sigma_additive mzero.
+Proof.
+move=> F mF tF mUF; rewrite [X in X --> _](_ : _ = cst 0); first exact: cvg_cst.
+by apply/funext => n; rewrite big1.
+Qed.
+
+HB.instance Definition _ := isMeasure.Build _ _ _ mzero
+  mzero0 mzero_ge0 mzero_sigma_additive.
+
+End measure_zero.
+Arguments mzero {d T R}.
+
+Lemma msum_mzero (d : _) (T : measurableType d) (R : realType)
+    (m_ : {measure set T -> \bar R}^nat) :
+  msum m_ 0 = mzero.
+Proof. by apply/funext => A/=; rewrite /msum big_ord0. Qed.
+
+Section measure_add.
+Local Open Scope ereal_scope.
+Variables (d : measure_display) (T : measurableType d) (R : realType).
+Variables (m1 m2 : {smeasure set T -> \bar R}).
+
+Definition measure_add := msum (fun n => if n is 0%N then m1 else m2) 2.
+
+Lemma measure_addE A : measure_add A = m1 A + m2 A.
+Proof. by rewrite /measure_add/= /msum 2!big_ord_recl/= big_ord0 adde0. Qed.
+
+End measure_add.
+
+Section measure_scale.
+Local Open Scope ereal_scope.
+Variables (d : measure_display) (T : measurableType d) (R : realFieldType).
+Variables (r : {nonneg R}) (m : {measure set T -> \bar R}).
+
+Definition mscale (A : set T) : \bar R := r%:num%:E * m A.
+
+Let mscale0 : mscale set0 = 0. Proof. by rewrite /mscale measure0 mule0. Qed.
+
+Let mscale_ge0 B : 0 <= mscale B.
+Proof. by rewrite /mscale mule_ge0. Qed.
+
+Let mscale_sigma_additive : semi_sigma_additive mscale.
+Proof.
+move=> F mF tF mUF; rewrite [X in X --> _](_ : _ =
+    (fun n => (r%:num)%:E * \sum_(0 <= i < n) m (F i))); last first.
+  by apply/funext => k; rewrite ge0_sume_distrr.
+rewrite /mscale; have [->|r0] := eqVneq r%:num 0%R.
+  rewrite mul0e [X in X --> _](_ : _ = (fun=> 0)); first exact: cvg_cst.
+  by under eq_fun do rewrite mul0e.
+by apply: cvgeMl => //; exact: measure_semi_sigma_additive.
+Qed.
+
+HB.instance Definition _ := isMeasure.Build _ _ _ mscale
+  mscale0 mscale_ge0 mscale_sigma_additive.
+
+End measure_scale.
+
 Axiom smeasure_add : forall (d : measure_display) (T : measurableType d) (R : realType),
        {smeasure set T -> \bar R} -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
+Axiom smeasure_addE : forall (d : measure_display) (T : measurableType d) (R : realType)
+       (nu mu : {smeasure set T -> \bar R}), forall S, measurable S -> smeasure_add nu mu S = nu S + mu S.
 
 Axiom smscale : forall (d : measure_display) (T : measurableType d) (R : realType),
        R -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
+Axiom smscaleE :  forall (d : measure_display) (T : measurableType d) (R : realType)
+       (r : R) (mu: {smeasure set T -> \bar R}), forall S, measurable S -> smscale r mu S = r%:E * mu S.
+
 (*
 Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType) (nu : {smeasure set T -> \bar R}), (forall A, 0 <= nu A) -> {measure set T -> \bar R}.*)
 
 Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType)
 (nu : {smeasure set T -> \bar R}) (P : set T), positive_set nu P -> {measure set T -> \bar R}.
-(* := smrestr nu mP *)
-
 Section Jordan_decomposition.
 Variables (d : _) (X : measurableType d) (R : realType).
 Variables (nu: {smeasure set X -> \bar R}).
@@ -1220,7 +1439,7 @@ HB.instance Definition _ (E0 : set X) (muE0 : d.-measurable E0)
 
 
 End Jordan_decomposition.
-
+ --- *)
 Theorem Radon_Nikodym d (X : measurableType d) (R : realType)
     (mu : {measure set X -> \bar R}) (nu : {smeasure set X -> \bar R})
     (sigma_finite_mu : sigma_finite setT mu) :
@@ -1240,7 +1459,7 @@ have negN' : positive_set (smscale (-1) (smrestr nu mN)) N.
 pose nu'_p := measure_of_signed_measure posP.
 pose nu'_n := measure_of_signed_measure negN'.
 
-have nu_dcmp : forall S, nu S = nu'_p S - nu'_p S.
+have nu_dcmp : forall S, nu S = nu'_p S - nu'_n S.
   admit.
 
 (* nu_p and nu_n are finite measures *)
@@ -1268,7 +1487,7 @@ rewrite nu_dcmp integralB; last 3 first.
       exact: mE.
     by apply: (integrableS measurableT).
   by apply: (integrableS measurableT).
-
+by rewrite f_pE ?inE // f_nE ?inE.
 Abort.
 
 Proposition abs_continuous_fun_measure d (R : realType)
