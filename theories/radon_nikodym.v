@@ -1276,16 +1276,65 @@ have int_f_E: forall j S, measurable S -> \int[mu]_(x in S) f_ j x = nu (S `&` E
     over.
   rewrite integral0 adde0.
   by rewrite /nu_ /= /mrestr -setIA setIid.
-pose f x : \bar R := \sum_(j<oo) (f_ j x).
-(* pose f x := \big[adde/0]_(j <oo) (f_ j x). *)
 (*
-have fE :forall x, exists j, f x = f_ j x.
-  move=> x.
-
-  admit.
+pose f x : \bar R := \esum_(i in [set _ | true]) f_ i x. *)
+(* this definition will need less nneseries_esum and proving forall n : nat, true -> 0 <= _
+   than use \sum_(j<oo) to define. But we can't do rewrite -nneseries then proved following:
 *)
+have esum_sum_ge0 :forall (P: nat -> \bar R),(forall n, 0 <= P n) -> \esum_(i in [set _ | true]) P i = \sum_(i <oo) P i.
+  move=>P P0.
+  by rewrite nneseries_esum.
+
+pose f x : \bar R := \sum_(j <oo) (f_ j x).
 exists f.
-Admitted.
+have mf : measurable_fun setT f.
+  by apply: ge0_emeasurable_fun_sum.
+have fge0 : forall x, 0 <= f x.
+  move=> x.
+  rewrite /f nneseries_esum; last by move=> n _; apply: f_ge0.
+  by apply: esum_ge0.
+have intfgenu : \int[mu]_x f x = nu setT.
+(*  apply/eqP; rewrite eq_le; apply/andP; split. *)
+  rewrite integral_sum //.
+  rewrite nneseries_esum; last first.
+    move=> m _.
+    by rewrite integral_ge0.
+  under eq_esum => /=.
+    move=> n _.
+    rewrite int_f_E //.
+    rewrite setTI.
+    over.
+  move=> //.
+  rewrite esum_sum_ge0 //.
+  rewrite -measure_bigcup //.
+  by rewrite TE.
+split.
+  split => //.
+  under eq_integral => x _.
+    rewrite gee0_abs; last first.
+      by apply: nneseries_ge0.
+    over.
+  by rewrite intfgenu.
+move=> E0; rewrite inE => mE0.
+rewrite integral_sum //; last first.
+  move=> n.
+  by apply: (measurable_funS measurableT).
+rewrite nneseries_esum; last first.
+  move=> m _.
+  by rewrite integral_ge0.
+under eq_esum => /=.
+  move=> n _.
+  rewrite int_f_E //.
+  over.
+move=> //.
+rewrite esum_sum_ge0 //.
+rewrite -measure_bigcup //;last 2 first.
+    move=> i.
+    apply: measurableI => //.
+  apply: trivIset_setI.
+  exact: disj_E.
+by rewrite -setI_bigcupr TE setIT.
+Qed.
 
 (* ---from measure.v--- 
 Section smeasure_sum.
