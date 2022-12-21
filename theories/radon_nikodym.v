@@ -1341,6 +1341,7 @@ Variables (d : measure_display) (T : measurableType d) (R : realType).
 Variables (m : {smeasure set T -> \bar R}^nat) (n : nat).
 
 Variables (mp mn : {measure set T -> \bar R}^nat).
+
 Hypothesis m_dcmp : forall (n : nat) S, measurable S -> m n S = mp n S - mn n S.
 
 Definition smsum (A : set T) : \bar R := \sum_(k < n) m k A.
@@ -1363,7 +1364,8 @@ have H: \sum_(k < n) m k B = \esum_(k in `I_n) m k B.
   admit.
 rewrite H.
 under eq_esum => /= i _.
-  rewrite (m_dcmp i) //.
+  rewrite (funeposneg (m i)) //.
+  
   over.
   split.
 Admitted.
@@ -1583,16 +1585,19 @@ End measure_of_restricted_signed_measure.
 Section measure_of_smeasure.
 Variables (d : _) (X : measurableType d) (R : realType).
 Variable (mu : {smeasure set X -> \bar R}).
-
-Hypothesis nnmu : forall E, measurable E -> 0 <= mu E.
+Hypothesis nnmu : positive_set mu setT.
+(*Hypothesis nnmu : forall E, measurable E -> 0 <= mu E.*)
 
 Definition measure_of_smeasure S := mu S.
 
 Let mu0 : measure_of_smeasure set0 = 0.
 Proof. exact: smeasure0. Qed.
 
-Let mu_ge0 : forall S, 0 <= measure_of_smeasure S.
-Proof. move=> E. apply: nnmu. admit. Admitted.
+Let mu_ge0 : forall S, measurable S ->  0 <= measure_of_smeasure S.
+Proof. move=> E.
+have H: forall E, measurable E -> 0 <= mu E.
+  admit.
+apply: H. Admitted.
 
 Let mu_sigma_additive : semi_sigma_additive measure_of_smeasure.
 Proof. exact: smeasure_semi_sigma_additive. Qed.
@@ -1624,8 +1629,7 @@ Let Nnu : {smeasure set X -> \bar R} := smscale (-1) (smrestr nu mN).
 Let negN : forall E, measurable E -> 0 <= Nnu E.
 Admitted.
 
-Let nu_p : {measure set X -> \bar R} :=
-(@measure_of_smeasure _ _ R Pnu).
+Let nu_p : {measure set X -> \bar R} := (@measure_of_smeasure d X R Pnu).
 Let nu_n : {measure set X -> \bar R} := measure_of_smeasure .
 
 Definition Jordan_measure_decomposition := (nu_p, nu_n).

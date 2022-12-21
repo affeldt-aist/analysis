@@ -1276,7 +1276,7 @@ Qed.
 
 HB.mixin Record isAdditiveMeasure d
     (R : numFieldType) (T : semiRingOfSetsType d) (mu : set T -> \bar R) := {
-  measure_ge0 : forall x, 0 <= mu x ;
+  measure_ge0 : forall x, measurable x -> 0 <= mu x ;
   measure_semi_additive : semi_additive mu }.
 
 HB.structure Definition AdditiveMeasure d
@@ -1295,11 +1295,11 @@ Context d (R : numFieldType) (T : semiRingOfSetsType d).
 
 Variable mu : {additive_measure set T -> \bar R}.
 
-Lemma additive_measure_snum_subproof S : Signed.spec 0 ?=0 >=0 (mu S).
+(*Lemma additive_measure_snum_subproof S : Signed.spec 0 ?=0 >=0 (mu S).
 Proof. exact: measure_ge0. Qed.
 
 Canonical additive_measure_snum S :=
-  Signed.mk (additive_measure_snum_subproof S).
+  Signed.mk (additive_measure_snum_subproof S).*)
 
 End additive_measure_signed.
 
@@ -1447,17 +1447,17 @@ Context d (R : numFieldType) (T : semiRingOfSetsType d).
 
 Variable mu : {measure set T -> \bar R}.
 
-Lemma measure_snum_subproof S : Signed.spec 0 ?=0 >=0 (mu S).
+(*Lemma measure_snum_subproof S : Signed.spec 0 ?=0 >=0 (mu S).
 Proof. exact: measure_ge0. Qed.
 
-Canonical measure_snum S := Signed.mk (measure_snum_subproof S).
+Canonical measure_snum S := Signed.mk (measure_snum_subproof S).}*)
 
 End measure_signed.
 
 HB.factory Record isMeasure d
     (R : realFieldType) (T : semiRingOfSetsType d) (mu : set T -> \bar R) := {
   measure0 : mu set0 = 0 ;
-  measure_ge0 : forall x, 0 <= mu x ;
+  measure_ge0 : forall x, measurable x -> 0 <= mu x ;
   measure_semi_sigma_additive : semi_sigma_additive mu }.
 
 HB.builders Context d (R : realFieldType) (T : semiRingOfSetsType d)
@@ -1532,8 +1532,10 @@ Hypothesis mf : measurable_fun setT f.
 Let pushforward0 : pushforward mf set0 = 0.
 Proof. by rewrite /pushforward preimage_set0 measure0. Qed.
 
-Let pushforward_ge0 A : 0 <= pushforward mf A.
-Proof. by apply: measure_ge0; rewrite -[X in measurable X]setIT; apply: mf. Qed.
+Let pushforward_ge0 A : measurable A -> 0 <= pushforward mf A.
+Proof.
+by move=> mA; apply: measure_ge0; rewrite -[X in measurable X]setTI; apply: mf.
+Qed.
 
 Let pushforward_sigma_additive : semi_sigma_additive (pushforward mf).
 Proof.
@@ -1558,7 +1560,7 @@ Definition dirac (A : set T) : \bar R := (\1_A a)%:E.
 
 Let dirac0 : dirac set0 = 0. Proof. by rewrite /dirac indic0. Qed.
 
-Let dirac_ge0 B : 0 <= dirac B. Proof. by rewrite /dirac indicE. Qed.
+Let dirac_ge0 B : measurable B -> 0 <= dirac B. Proof. by move=> _; rewrite /dirac indicE. Qed.
 
 Let dirac_sigma_additive : semi_sigma_additive dirac.
 Proof.
@@ -1594,11 +1596,12 @@ Section dirac_lemmas.
 Local Open Scope ereal_scope.
 Context d (T : measurableType d) (R : realType).
 
-Lemma finite_card_dirac (A : set T) : finite_set A ->
+Lemma finite_card_dirac (A : set T) : finite_set A -> measurable A ->
   \esum_(i in A) \d_ i A = (#|` fset_set A|%:R)%:E :> \bar R.
 Proof.
-move=> finA.
-rewrite esum_fset// fsbig_finite// big_seq_cond (eq_bigr (fun=> 1)) -?big_seq_cond.
+move=> finA mA.
+rewrite esum_fset//; last by move=> *; rewrite measure_ge0.
+rewrite fsbig_finite// big_seq_cond (eq_bigr (fun=> 1)) -?big_seq_cond.
   by rewrite card_fset_sum1// natr_sum -sumEFin.
 by move=> i; rewrite andbT in_fset_set//= /dirac indicE => ->.
 Qed.
@@ -1628,14 +1631,17 @@ Definition msum (A : set T) : \bar R := \sum_(k < n) m k A.
 
 Let msum0 : msum set0 = 0. Proof. by rewrite /msum big1. Qed.
 
-Let msum_ge0 B : 0 <= msum B. Proof. by rewrite /msum; apply: sume_ge0. Qed.
+Let msum_ge0 B : measurable B -> 0 <= msum B.
+Proof. by move=> mB; rewrite /msum; apply: sume_ge0 => i _; exact: measure_ge0. Qed.
 
 Let msum_sigma_additive : semi_sigma_additive msum.
 Proof.
 move=> F mF tF mUF; rewrite [X in _ --> X](_ : _ =
     lim (fun n => \sum_(0 <= i < n) msum (F i))).
-  by apply: is_cvg_ereal_nneg_natsum => k _; exact: sume_ge0.
-rewrite nneseries_sum//; apply: eq_bigr => /= i _.
+  apply: is_cvg_ereal_nneg_natsum => k _; apply: sume_ge0 => // i _.
+  exact: measure_ge0.
+rewrite nneseries_sum//; last by move=> i j _; exact: measure_ge0.
+apply: eq_bigr => /= i _.
 exact: measure_semi_bigcup.
 Qed.
 
@@ -1653,7 +1659,7 @@ Definition mzero (A : set T) : \bar R := 0.
 
 Let mzero0 : mzero set0 = 0. Proof. by []. Qed.
 
-Let mzero_ge0 B : 0 <= mzero B. Proof. by []. Qed.
+Let mzero_ge0 B : measurable B -> 0 <= mzero B. Proof. by []. Qed.
 
 Let mzero_sigma_additive : semi_sigma_additive mzero.
 Proof.
@@ -1693,14 +1699,14 @@ Definition mscale (A : set T) : \bar R := r%:num%:E * m A.
 
 Let mscale0 : mscale set0 = 0. Proof. by rewrite /mscale measure0 mule0. Qed.
 
-Let mscale_ge0 B : 0 <= mscale B.
-Proof. by rewrite /mscale mule_ge0. Qed.
+Let mscale_ge0 B : measurable B -> 0 <= mscale B.
+Proof. by move=> mB; rewrite /mscale mule_ge0// measure_ge0. Qed.
 
 Let mscale_sigma_additive : semi_sigma_additive mscale.
 Proof.
 move=> F mF tF mUF; rewrite [X in X --> _](_ : _ =
     (fun n => (r%:num)%:E * \sum_(0 <= i < n) m (F i))); last first.
-  by apply/funext => k; rewrite ge0_sume_distrr.
+  by apply/funext => k; rewrite ge0_sume_distrr// => i _; rewrite measure_ge0.
 rewrite /mscale; have [->|r0] := eqVneq r%:num 0%R.
   rewrite mul0e [X in X --> _](_ : _ = (fun=> 0)); first exact: cvg_cst.
   by under eq_fun do rewrite mul0e.
@@ -1723,9 +1729,11 @@ Definition mseries (A : set T) : \bar R := \sum_(n <= k <oo) m k A.
 Let mseries0 : mseries set0 = 0.
 Proof. by rewrite /mseries ereal_series eseries0. Qed.
 
-Let mseries_ge0 B : 0 <= mseries B.
+Let mseries_ge0 B : measurable B -> 0 <= mseries B.
 Proof.
-by rewrite /mseries ereal_series nneseries_esum//; exact: esum_ge0.
+move=> mB; rewrite /mseries ereal_series nneseries_esum//; last first.
+  by move=> p _; exact: measure_ge0.
+by apply: esum_ge0 => p _; rewrite measure_ge0.
 Qed.
 
 Let mseries_sigma_additive : semi_sigma_additive mseries.
@@ -1737,12 +1745,14 @@ move=> F mF tF mUF; rewrite [X in _ --> X](_ : _ =
     rewrite 2!ereal_series.
     apply: (@eq_eseries _ (fun k => m k (\bigcup_n0 F n0))) => i ni.
     exact: measure_semi_bigcup.
-  rewrite ereal_series nneseries_interchange//.
+  rewrite ereal_series nneseries_interchange//; last first.
+    by move=> i j; rewrite measure_ge0.
   apply: (@eq_eseries R (fun j => \sum_(i <oo | (n <= i)%N) m i (F j))
                           (fun i => \sum_(n <= k <oo) m k (F i))).
   by move=> i _; rewrite ereal_series.
 apply: is_cvg_ereal_nneg_natsum => k _.
-by rewrite /mseries ereal_series; exact: nneseries_ge0.
+rewrite /mseries ereal_series; apply: nneseries_ge0 => p _.
+by rewrite measure_ge0.
 Qed.
 
 HB.instance Definition _ := isMeasure.Build _ _ _ mseries
@@ -1762,8 +1772,10 @@ Local Notation restr := (mrestr mu mD).
 
 Let restr0 : restr set0 = 0%E. Proof. by rewrite /mrestr set0I measure0. Qed.
 
-Let restr_ge0 (A : set _) : (0 <= restr A)%E.
-Proof. by rewrite /restr; apply: measure_ge0; exact: measurableI. Qed.
+Let restr_ge0 (A : set _) : measurable A -> (0 <= restr A)%E.
+Proof.
+by move=> mA; rewrite /restr; apply: measure_ge0; apply: measurableI.
+Qed.
 
 Let restr_sigma_additive : semi_sigma_additive restr.
 Proof.
@@ -1791,8 +1803,10 @@ Definition counting (X : set T) : \bar R :=
 Let counting0 : counting set0 = 0.
 Proof. by rewrite /counting asboolT// fset_set0. Qed.
 
-Let counting_ge0 (A : set _) : 0 <= counting A.
-Proof. by rewrite /counting; case: ifPn; rewrite ?lee_fin// lee_pinfty. Qed.
+Let counting_ge0 (A : set _) : measurable A -> 0 <= counting A.
+Proof.
+by move=> _; rewrite /counting; case: ifPn; rewrite ?lee_fin// lee_pinfty.
+Qed.
 
 Let counting_sigma_additive : semi_sigma_additive counting.
 Proof.
@@ -1805,7 +1819,8 @@ have [[i Fi]|infinF] := pselect (exists k, infinite_set (F k)).
   have ni : (i < n)%N by near: n; exists i.+1.
   rewrite (bigID (xpred1 i))/= big_mkord (big_pred1 (Ordinal ni))//=.
   rewrite [X in X + _]/counting asboolF// addye ?leey//.
-  by rewrite gt_eqF// (@lt_le_trans _ _ 0)//; exact: sume_ge0.
+  rewrite gt_eqF// (@lt_le_trans _ _ 0)// sume_ge0// => j _.
+  by rewrite counting_ge0.
 have {infinF}finF : forall i, finite_set (F i) by exact/not_forallP.
 pose u : nat^nat := fun n => #|` fset_set (F n) |.
 have sumFE n : \sum_(i < n) counting (F i) =
@@ -2148,8 +2163,13 @@ rewrite -(bigcup_set0 (fun _ : void => set0)).
 by rewrite Rmu_fin_bigcup// fsbig_set0.
 Qed.
 
-Lemma Rmu_ge0 A : Rmu A >= 0.
-Proof. by rewrite sume_ge0. Qed.
+Lemma Rmu_ge0 A : measurable A -> Rmu A >= 0.
+Proof.
+move=> mA.
+rewrite /measure/= fsbig_mkcond/= sume_ge0 // => f _.
+rewrite /patch; case: ifPn => // fA.
+by rewrite measure_ge0//; apply: decomp_measurable fA.
+Qed.
 
 Lemma Rmu_additive : semi_additive Rmu.
 Proof.
@@ -2195,15 +2215,16 @@ Proof.
 move=> A B; rewrite ?inE => mA mB AB; have [|muBfin] := leP +oo%E (mu B).
   by rewrite leye_eq => /eqP ->; rewrite leey.
 rewrite -[leRHS]SetRing.RmuE// -[B](setDUK AB) measureU/= ?setDIK//.
-- by rewrite SetRing.RmuE ?lee_addl.
+- rewrite SetRing.RmuE ?lee_addl// measure_ge0//.
+  by apply: measurableD => //; exact: sub_gen_smallest.
 - exact: sub_gen_smallest.
 - by apply: measurableD; exact: sub_gen_smallest.
 Qed.
 
 Lemma measure_le0 d (T : semiRingOfSetsType d) (R : realFieldType)
-  (mu : {additive_measure set T -> \bar R}) (A : set T) :
+  (mu : {additive_measure set T -> \bar R}) (A : set T) : measurable A ->
   (mu A <= 0)%E = (mu A == 0)%E.
-Proof. by case: ltgtP (measure_ge0 mu A). Qed.
+Proof. by move=> mA; case: ltgtP (measure_ge0 mu A) => // _ /(_ mA). Qed.
 
 Section more_content_semiring_lemmas.
 Context d (R : realFieldType) (T : semiRingOfSetsType d).
@@ -2288,7 +2309,8 @@ Lemma content_ring_sup_sigma_additive (A : nat -> set T) :
   (forall i, measurable (A i)) -> measurable (\bigcup_i A i) ->
   trivIset [set: nat] A -> \sum_(i <oo) mu (A i) <= mu (\bigcup_i A i).
 Proof.
-move=> Am UAm At; rewrite lime_le//; first exact: is_cvg_nneseries.
+move=> Am UAm At; rewrite lime_le//.
+  by apply: is_cvg_nneseries => // n _; rewrite measure_ge0.
 near=> n; rewrite big_mkord -measure_bigsetU//= le_measure ?inE//=.
 - exact: bigsetU_measurable.
 - by rewrite -bigcup_mkord; apply: bigcup_sub => i lein; apply: bigcup_sup.
@@ -2297,7 +2319,8 @@ Unshelve. all: by end_near. Qed.
 Lemma content_ring_sigma_additive : sigma_sub_additive mu -> semi_sigma_additive mu.
 Proof.
 move=> mu_sub A Am Atriv UAm.
-suff <- : \sum_(i <oo) mu (A i) = mu (\bigcup_n A n) by exact: is_cvg_nneseries.
+suff <- : \sum_(i <oo) mu (A i) = mu (\bigcup_n A n).
+  by apply: is_cvg_nneseries => // n _; rewrite measure_ge0.
 by apply/eqP; rewrite eq_le mu_sub// ?content_ring_sup_sigma_additive.
 Qed.
 
@@ -2312,8 +2335,12 @@ Import SetRing.
 Lemma ring_sigma_sub_additive : sigma_sub_additive mu -> sigma_sub_additive Rmu.
 Proof.
 move=> muS; move=> /= D A Am Dm Dsub.
-rewrite /Rmu (eq_eseries (fun _ _ => fsbig_esum _ _))//; last first.
-  by move=> *; exact: decomp_finite_set.
+rewrite /Rmu (eq_eseries (fun _ _ => fsbig_esum _ _))//; last 2 first.
+  by move=> *; apply: decomp_finite_set.
+xxx
+  move=> _ _ x; rewrite measure_ge0//.
+  
+  apply: decomp_measurable.
 rewrite nneseries_esum ?esum_esum//=; last by move=> *; rewrite esum_ge0.
 set K := _ `*`` _.
 have /ppcard_eqP[f] : (K #= [set: nat])%card.
