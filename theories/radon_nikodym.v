@@ -1342,6 +1342,332 @@ rewrite -measure_bigcup //;last 2 first.
 by rewrite -setI_bigcupr TE setIT.
 Qed.
 
+Section signed_measure_scale.
+Local Open Scope ereal_scope.
+Variables (d : measure_display) (T : measurableType d) (R : realType). (* R : realFieldType? *)
+Variables (r : R) (m : {smeasure set T -> \bar R}).
+(*
+Variable P N : set T.
+Hypothesis HahnPN : is_Hahn_decomposition m P N.
+
+Let posP : positive_set m P.
+Proof.
+by move:HahnPN=> [posP _  _ _].
+Qed.
+
+Let negN : negative_set m N.
+Proof.
+by move:HahnPN=>[_ negN _ _].
+Qed.
+
+Let mP : measurable P.
+Proof.
+by move:posP=>[mP _]; rewrite inE in mP.
+Qed.
+
+Let mN : measurable N.
+Proof.
+by move:negN=>[mN _]; rewrite inE in mN.
+Qed.
+
+Definition m_p := smrestr m mP.
+Definition m_n := (fun S => oppe (smrestr m mN S)).
+
+Lemma m_p_ge0 : forall S, measurable S -> 0 <= m_p S.
+Proof.
+move=> S mS.
+rewrite /m_p/smrestr//.
+by apply posP; [rewrite inE; apply measurableI|apply subIsetr].
+Qed.
+
+Lemma m_n_ge0 : forall S, measurable S -> 0 <= m_n S.
+move=> S mS.
+rewrite/m_n/smrestr.
+rewrite oppe_ge0.
+by apply negN; [rewrite inE; apply measurableI|apply subIsetr].
+Qed.
+
+Let PNT : P `|` N = setT.
+by have [_ _ PNT _] :=HahnPN.
+Qed.
+
+Let PN0 : P `&` N = set0.
+by have [_ _ _ PN0] :=HahnPN.
+Qed.
+
+Lemma m_dcmp : forall S, measurable S -> m S = m_p S - m_n S.
+Proof.
+move=> S mS;rewrite/m_p/m_n/smrestr.
+rewrite oppeK.
+rewrite -smeasureU; [|apply measurableI|apply measurableI|] => //.
+  by rewrite -setIUr PNT setIT.
+by rewrite -setIIr PN0 setI0.
+Qed.
+*)
+Definition smscale (A : set T) : \bar R := r%:E * m A.
+
+Let smscale0 : smscale set0 = 0. Proof. by rewrite /smscale smeasure0 mule0. Qed.
+
+Let smscale_isfinite U : measurable U -> smscale U \is a fin_num.
+move=> mU.
+apply: fin_numM => //.
+by apply: isfinite.
+Qed.
+
+HB.instance Definition _ :=
+  isSignedMeasure0.Build _ _ _ smscale smscale_isfinite.
+
+Let smscale_semi_additive : semi_additive smscale.
+Proof.
+move=> F n mF tF mU.
+rewrite /smscale smeasure_semi_additive //.
+
+(* sumに関するrewriteがしたい
+ * -> ge0_mule_fsumrを使いたい
+ * -> ge0が必要なので m (F i) を m (F i) - infm + infmとしたい
+ * -> rewrite が通らないので under eq_esum をしたい
+ * -> sumをesumに変換したいので rewrite fsbig_esum をしたい
+ * -> ge0が必要 ???
+ *)
+
+pose infm := ereal_inf [set mE | exists E, mE = m E /\ measurable E].
+have ge0minfm : forall U, measurable U -> 0 <= m U - infm.
+  move=> S mS.
+  rewrite sube_ge0 /infm.
+    apply: ereal_inf_lb => /=.
+    exists S.
+    by split.
+  apply/orP; right.
+  by apply: isfinite.
+have fininfm : infm \is a fin_num.
+  rewrite le0_fin_numE.
+    admit.
+  rewrite oppe_le0.
+  apply: ereal_sup_ub => /=.
+  exists 0; last first.
+    by rewrite oppe0.
+  exists set0; split; by [rewrite smeasure0|apply measurable0].
+
+
+
+rewrite (_ : \sum_(i < n) m (F i) = \esum_(i in `I_n) m (F i)); last first.
+
+  rewrite (_ : (\sum_(i < n) m (F i)) = (\sum_(i \in `I_n) m (F i)));last first.
+    admit.
+
+  under eq_sum.
+
+  rewrite fsbig_esum.
+      done.
+    done.
+  move=> /= .
+
+rewrite (_ : m (F i) = (fun i => (m (F i) - infm)) i + infm).
+rewrite big_mkcond.
+
+
+rewrite mule_. /=; last first.
+  move=> i.
+under eq_bigl.
+  
+rewrite fsbig_ord.
+(* want to do
+rewrite -ge0_mule_fsumr.
+but did not find a way to rewrite big_ord to fsbig
+*)
+(*c
+under eq_big.
+    rewrite /= => i.
+    over.
+  rewrite /= => i _.
+  rewrite -(@addeK _ infm (m (F i))); last first.
+    rewrite /infm /ereal_inf. 
+    rewrite fin_numN.
+    rewrite ge0_fin_numE.
+    have H : (forall S , m S < +oo ) -> ereal_sup [set x | x in [set mE | (exists E : set T, mE = m E /\ measurable E)]] < +oo.
+      move=> HH.
+      rewrite /ereal_sup.
+      rewrite /supremum ifF; last first.
+        apply/eqP.
+
+
+        rewrite eqbF_neg.
+        apply/negP.
+        apply/eqP.
+Unset Printing Notations.
+       rewrite set0P.
+ereal_supremums_neq0
+       rewrite eq_set.
+       apply/eqP.
+Qed.
+*)
+Admitted.
+
+HB.instance Definition _ :=
+  isAdditiveSignedMeasure.Build _ _ _ smscale smscale_semi_additive.
+
+(* how to solve? *)
+Let smscale_sigma_additive : semi_sigma_additive smscale.
+Proof.
+(*
+move=> F mF tF mUF; rewrite [X in X --> _](_ : _ =
+    (fun n => (r%:num)%:E * \sum_(0 <= i < n) m (F i))); last first.
+  by apply/funext => k; rewrite ge0_sume_distrr.
+rewrite /mscale; have [->|r0] := eqVneq r%:num 0%R.
+  rewrite mul0e [X in X --> _](_ : _ = (fun=> 0)); first exact: cvg_cst.
+  by under eq_fun do rewrite mul0e.
+by apply: cvgeMl => //; exact: measure_semi_sigma_additive.
+Qed.
+*)
+Admitted.
+
+HB.instance Definition _ := isSignedMeasure.Build _ _ _ smscale
+  smscale_sigma_additive.
+
+End signed_measure_scale.
+
+(*
+Axiom smeasure_add : forall (d : measure_display) (T : measurableType d) (R : realType),
+       {smeasure set T -> \bar R} -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
+Axiom smeasure_addE : forall (d : measure_display) (T : measurableType d) (R : realType)
+       (nu mu : {smeasure set T -> \bar R}), forall S, measurable S -> smeasure_add nu mu S = nu S + mu S.
+
+Axiom smscale : forall (d : measure_display) (T : measurableType d) (R : realType),
+       R -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
+Axiom smscaleE :  forall (d : measure_display) (T : measurableType d) (R : realType)
+       (r : R) (mu: {smeasure set T -> \bar R}), forall S, measurable S -> smscale r mu S = r%:E * mu S.
+Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType) (nu : {smeasure set T -> \bar R}), (forall A, 0 <= nu A) -> {measure set T -> \bar R}.
+
+Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType)
+(nu : {smeasure set T -> \bar R}) (P : set T), positive_set nu P -> {measure set T -> \bar R}.
+*)
+Section measure_of_restricted_signed_measure.
+Variables (d : _) (X : measurableType d) (R : realType).
+Variable (nu : {smeasure set X -> \bar R}).
+Variable (P : set X).
+
+Hypothesis posP : positive_set nu P.
+
+Let mP : measurable P.
+Proof. by move: posP => [] mP _;rewrite inE in mP. Qed.
+
+Let nnP : forall E, measurable E -> E `<=` P ->  0 <= nu E.
+by move:posP => [] _ H E mE EP; apply: H => //; rewrite inE. Qed.
+
+Definition measure_of_restrsmeasure := smrestr nu mP.
+
+Let nuP0 : measure_of_restrsmeasure set0 = 0.
+Proof. by rewrite /measure_of_restrsmeasure /smrestr set0I smeasure0. Qed.
+
+Let nuP_ge0 B :measurable B -> 0 <= measure_of_restrsmeasure B.
+Proof.
+move=> n.
+rewrite /measure_of_restrsmeasure /smrestr.
+apply: nnP => //.
+by apply measurableI.
+Qed.
+
+Let nuP_sigma_additive : semi_sigma_additive measure_of_restrsmeasure.
+Proof.
+move=> F mF tF mU; pose FP i := F i `&` P.
+have mFP i : measurable (FP i) by exact: measurableI.
+have tFP : trivIset setT FP.
+  apply/trivIsetP => i j _ _ ij.
+  move/trivIsetP : tF => /(_ i j Logic.I Logic.I ij).
+  by rewrite /FP setIACA => ->; rewrite set0I.
+rewrite /measure_of_restrsmeasure/smrestr setI_bigcupl; apply: smeasure_semi_sigma_additive => //.
+by apply: bigcup_measurable => k _; exact: measurableI.
+Qed.
+
+HB.instance Definition _ := isMeasure.Build _ _ _ measure_of_restrsmeasure
+  nuP0 nuP_ge0 nuP_sigma_additive.
+
+End measure_of_restricted_signed_measure.
+
+Section measure_of_smeasure.
+Variables (d : _) (X : measurableType d) (R : realType).
+Variable (mu : {smeasure set X -> \bar R}).
+Variable (mu_is_non_negative : positive_set mu setT).
+(*Hypothesis nnmu : forall E, measurable E -> 0 <= mu E.*)
+
+Definition measure_of_smeasure := (fun (_ : positive_set mu setT) (S : set X) =>
+                                     mu S).
+Let measure_mu := measure_of_smeasure mu_is_non_negative.
+
+Let mu0 : measure_mu set0 = 0.
+Proof. exact: smeasure0. Qed.
+
+Let mu_ge0 : forall S, measurable S ->  0 <= measure_mu S.
+Proof.
+move=> E mE.
+move: mu_is_non_negative.
+move=> [] _ -> //.
+by rewrite inE.
+Qed.
+
+Let mu_sigma_additive : semi_sigma_additive measure_mu.
+Proof. exact: smeasure_semi_sigma_additive. Qed.
+
+HB.instance Definition _ := isMeasure.Build _ _ _
+  (measure_of_smeasure mu_is_non_negative)
+  mu0 mu_ge0 mu_sigma_additive.
+
+End measure_of_smeasure.
+
+Section Jordan_measure_decomposition.
+Variables (d : _) (X : measurableType d) (R : realType).
+Variables (nu: {smeasure set X -> \bar R}).
+
+(* P N mP mNを Hahn_decomposition nuから取り出して一度に全てまとめて定義したい *)
+(*
+Definition [P [N [[mP posP] [mN negN] PN0 PNT] := Hahn_decomposition nu.
+*)
+
+Variables (P N: set X).
+Hypothesis nuPN : is_Hahn_decomposition nu P N.
+
+Let mP : measurable P.
+by have [[mP _] _ _ _] := nuPN ; rewrite inE in mP.
+Qed.
+
+Let mN : measurable N.
+by have [_ [mN _] _ _] := nuPN; rewrite inE in mN.
+Qed.
+
+Let nu_p' : {smeasure set X -> \bar R} := smrestr nu mP.
+
+Let positive_nu_p' : positive_set nu_p' setT.
+have [posP _ _ _] := nuPN.
+split;[|move=> E]; rewrite inE // => mE _.
+rewrite /nu_p'/smrestr/=/smrestr.
+by apply posP; rewrite ?inE; [apply measurableI|apply subIsetr].
+Qed.
+
+Let nu_n' : {smeasure set X -> \bar R} := smscale (-1) (smrestr nu mN).
+
+
+Let positive_nu_n' : positive_set nu_n' setT.
+
+Admitted.
+
+Let nu_p : {measure set X -> \bar R} := measure_of_smeasure positive_nu_p'.
+Let nu_n : {measure set X -> \bar R} := measure_of_smeasure positive_nu_n'.
+
+(* Jordan_measure_decomposition のargumentsがnuだけになるようにしたい*)
+
+Definition Jordan_measure_decomposition := (nu_p, nu_n).
+
+(* Lemma nu_dcmp : nu = smeasure_add nu'_p nu'_n. *)
+
+(*
+HB.instance Definition _ (E0 : set X) (muE0 : d.-measurable E0)
+    (abs : \int[mu]_(x in E0) limF x < nu E0) :=
+  @isAdditiveSignedMeasure.Build _ _ _ (sigma' muE0 abs) (sigma'_semi_additive muE0 abs).
+*)
+
+
+End Jordan_measure_decomposition.
+
 Section smeasure_sum.
 Variables (d : measure_display) (T : measurableType d) (R : realType).
 Variables (m : {smeasure set T -> \bar R}^nat) (n : nat).
@@ -1454,219 +1780,6 @@ Proof. by rewrite /smeasure_add/= /smsum 2!big_ord_recl/= big_ord0 adde0. Qed.
 
 End smeasure_add.
 
-Section signed_measure_scale.
-Local Open Scope ereal_scope.
-Variables (d : measure_display) (T : measurableType d) (R : realType). (* R : realFieldType? *)
-Variables (r : R) (m : {smeasure set T -> \bar R}).
-
-Definition smscale (A : set T) : \bar R := r%:E * m A.
-
-Let smscale0 : smscale set0 = 0. Proof. by rewrite /smscale smeasure0 mule0. Qed.
-
-Let smscale_isfinite U : measurable U -> smscale U \is a fin_num.
-move=> mU.
-apply: fin_numM => //.
-by apply: isfinite.
-Qed.
-
-HB.instance Definition _ :=
-  isSignedMeasure0.Build _ _ _ smscale smscale_isfinite.
-
-Let smscale_semi_additive : semi_additive smscale.
-Proof.
-move=> F n mF tF mU.
-rewrite /smscale smeasure_semi_additive //.
-pose infm := ereal_inf [set mE | exists E, mE = m E /\ measurable E].
-have ge0minfm : forall U, measurable U -> 0 <= m U - infm.
-  move=> S mS.
-  rewrite sube_ge0 /infm.
-    apply: ereal_inf_lb => /=.
-    exists S.
-    by split.
-  apply/orP; right.
-  by apply: isfinite.
-(*
-under eq_big.
-    rewrite /= => i.
-    over.
-  rewrite /= => i _.
-  rewrite -(@addeK _ infm (m (F i))); last first.
-    rewrite /infm /ereal_inf. 
-    rewrite fin_numN.
-    rewrite ge0_fin_numE.
-    have H : (forall S , m S < +oo ) -> ereal_sup [set x | x in [set mE | (exists E : set T, mE = m E /\ measurable E)]] < +oo.
-      move=> HH.
-      rewrite /ereal_sup.
-      rewrite /supremum ifF; last first.
-        apply/eqP.
-
-
-        rewrite eqbF_neg.
-        apply/negP.
-        apply/eqP.
-Unset Printing Notations.
-       rewrite set0P.
-ereal_supremums_neq0
-       rewrite eq_set.
-       apply/eqP.
-Qed.
-*)
-Admitted.
-
-HB.instance Definition _ :=
-  isAdditiveSignedMeasure.Build _ _ _ smscale smscale_semi_additive.
-
-Let smscale_sigma_additive : semi_sigma_additive smscale.
-Proof.
-(*
-move=> F mF tF mUF; rewrite [X in X --> _](_ : _ =
-    (fun n => (r%:num)%:E * \sum_(0 <= i < n) m (F i))); last first.
-  by apply/funext => k; rewrite ge0_sume_distrr.
-rewrite /mscale; have [->|r0] := eqVneq r%:num 0%R.
-  rewrite mul0e [X in X --> _](_ : _ = (fun=> 0)); first exact: cvg_cst.
-  by under eq_fun do rewrite mul0e.
-by apply: cvgeMl => //; exact: measure_semi_sigma_additive.
-Qed.
-*)
-Admitted.
-
-HB.instance Definition _ := isSignedMeasure.Build _ _ _ smscale
-  smscale_sigma_additive.
-
-End signed_measure_scale.
-
-(*
-Axiom smeasure_add : forall (d : measure_display) (T : measurableType d) (R : realType),
-       {smeasure set T -> \bar R} -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
-Axiom smeasure_addE : forall (d : measure_display) (T : measurableType d) (R : realType)
-       (nu mu : {smeasure set T -> \bar R}), forall S, measurable S -> smeasure_add nu mu S = nu S + mu S.
-
-Axiom smscale : forall (d : measure_display) (T : measurableType d) (R : realType),
-       R -> {smeasure set T -> \bar R} -> {smeasure set T -> \bar R}.
-Axiom smscaleE :  forall (d : measure_display) (T : measurableType d) (R : realType)
-       (r : R) (mu: {smeasure set T -> \bar R}), forall S, measurable S -> smscale r mu S = r%:E * mu S.
-Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType) (nu : {smeasure set T -> \bar R}), (forall A, 0 <= nu A) -> {measure set T -> \bar R}.
-
-Axiom measure_of_signed_measure : forall d (T : measurableType d) (R : realType)
-(nu : {smeasure set T -> \bar R}) (P : set T), positive_set nu P -> {measure set T -> \bar R}.
-*)
-Section measure_of_restricted_signed_measure.
-Variables (d : _) (X : measurableType d) (R : realType).
-Variable (nu : {smeasure set X -> \bar R}).
-Variable (P : set X).
-
-Hypothesis posP : positive_set nu P.
-
-Let mP : measurable P.
-Proof. by move: posP => [] mP _;rewrite inE in mP. Qed.
-
-Let nnP : forall E, measurable E -> E `<=` P ->  0 <= nu E.
-by move:posP => [] _ H E mE EP; apply: H => //; rewrite inE. Qed.
-
-Definition measure_of_restrsmeasure := smrestr nu mP.
-
-Let nuP0 : measure_of_restrsmeasure set0 = 0.
-Proof. by rewrite /measure_of_restrsmeasure /smrestr set0I smeasure0. Qed.
-
-Let nuP_ge0 B :measurable B -> 0 <= measure_of_restrsmeasure B.
-Proof.
-move=> n.
-rewrite /measure_of_restrsmeasure /smrestr.
-apply: nnP => //.
-by apply measurableI.
-Qed.
-
-Let nuP_sigma_additive : semi_sigma_additive measure_of_restrsmeasure.
-Proof.
-move=> F mF tF mUF.
-rewrite [X in _ --> X](_ : _ = \sum_(i <oo) nu (F i `&` P)); last first.
-  rewrite/measure_of_restrsmeasure/smrestr setI_bigcupl.
-  apply/esym/cvg_lim => //.
-Admitted.
-
-HB.instance Definition _ := isMeasure.Build _ _ _ measure_of_restrsmeasure
-  nuP0 nuP_ge0 nuP_sigma_additive.
-
-End measure_of_restricted_signed_measure.
-
-Section measure_of_smeasure.
-Variables (d : _) (X : measurableType d) (R : realType).
-Variable (mu : {smeasure set X -> \bar R}).
-Variable (mu_is_non_negative : positive_set mu setT).
-(*Hypothesis nnmu : forall E, measurable E -> 0 <= mu E.*)
-
-Definition measure_of_smeasure := (fun (_ : positive_set mu setT) (S : set X) =>
-                                     mu S).
-Let measure_mu := measure_of_smeasure mu_is_non_negative.
-
-Let mu0 : measure_mu set0 = 0.
-Proof. exact: smeasure0. Qed.
-
-Let mu_ge0 : forall S, measurable S ->  0 <= measure_mu S.
-Proof.
-move=> E mE.
-move: mu_is_non_negative.
-move=> [] _ -> //.
-by rewrite inE.
-Qed.
-
-Let mu_sigma_additive : semi_sigma_additive measure_mu.
-Proof. exact: smeasure_semi_sigma_additive. Qed.
-
-HB.instance Definition _ := isMeasure.Build _ _ _
-  (measure_of_smeasure mu_is_non_negative)
-  mu0 mu_ge0 mu_sigma_additive.
-
-End measure_of_smeasure.
-
-Section Jordan_measure_decomposition.
-Variables (d : _) (X : measurableType d) (R : realType).
-Variables (nu: {smeasure set X -> \bar R}).
-
-(* P N mP mNを Hahn_decomposition nuから取り出して一度に全てまとめて定義したい *)
-(*
-Definition [P [N [[mP posP] [mN negN] PN0 PNT] := Hahn_decomposition nu.
-*)
-
-Variables (P N: set X).
-Hypothesis nuPN : is_Hahn_decomposition nu P N.
-
-Let mP : measurable P.
-by have [[mP _] _ _ _] := nuPN ; rewrite inE in mP.
-Qed.
-
-Let mN : measurable N.
-Admitted.
-
-Let nu_p' : {smeasure set X -> \bar R} := smrestr nu mP.
-
-Let positive_nu_p' : positive_set nu_p' setT.
-Admitted.
-
-Let nu_n' : {smeasure set X -> \bar R} := smscale (-1) (smrestr nu mN).
-
-Let positive_nu_n' : positive_set nu_n' setT.
-
-Admitted.
-
-Let nu_p : {measure set X -> \bar R} := measure_of_smeasure positive_nu_p'.
-Let nu_n : {measure set X -> \bar R} := measure_of_smeasure positive_nu_n'.
-
-(* Jordan_measure_decomposition のargumentsがnuだけになるようにしたい*)
-
-Definition Jordan_measure_decomposition := (nu_p, nu_n).
-
-(* Lemma nu_dcmp : nu = smeasure_add nu'_p nu'_n. *)
-
-(*
-HB.instance Definition _ (E0 : set X) (muE0 : d.-measurable E0)
-    (abs : \int[mu]_(x in E0) limF x < nu E0) :=
-  @isAdditiveSignedMeasure.Build _ _ _ (sigma' muE0 abs) (sigma'_semi_additive muE0 abs).
-*)
-
-
-End Jordan_measure_decomposition.
-
 (*
 Definition is_Jordan_measure_decomposition d (X : measurableType d) (R : realType)
 (nu : {smeasure set X -> \bar R}) (nup nun : {measure set X -> \bar R})
@@ -1680,7 +1793,7 @@ Definition Jordan_decompositionE d (X : measurableType d) (R : realType)
     (JordanPN : is_Jordan_measure_decomposition nup nun HahnPN)
 : 
   nu = smeasure_add (measure_of_smeasure nup) nun.
-*)
+ *)
 (* --- *)
 Theorem Radon_Nikodym d (X : measurableType d) (R : realType)
     (mu : {measure set X -> \bar R}) (nu : {smeasure set X -> \bar R})
