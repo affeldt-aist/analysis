@@ -1543,16 +1543,39 @@ Section Jordan_measure_decomposition.
 Variables (d : _) (X : measurableType d) (R : realType).
 Variables (nu: {smeasure set X -> \bar R}).
 
-(* P N mP mNを Hahn_decomposition nuから取り出して一度に全てまとめて定義したい *)
-(*
-Definition [P [N [[mP posP] [mN negN] PN0 PNT] := Hahn_decomposition nu.
-*)
+Let Hahn := Hahn_decomposition nu.
 
-Variables (P N: set X).
-Hypothesis nuPN : is_Hahn_decomposition nu P N.
+Let P : set X := proj1_sig (cid Hahn).
+Let N : set X := proj1_sig (cid (proj2_sig (cid Hahn))).
+
+Let nuPN : is_Hahn_decomposition nu P N := proj2_sig (cid (proj2_sig (cid Hahn))).
 
 Let mP : measurable P.
-by have [[mP _] _ _ _] := nuPN ; rewrite inE in mP.
+(*
+ (
+  (fun
+      e : forall p n pnt pn0,
+        (fun=>measurable P) (And4 p n pnt pn0) =>
+   match nuPN as a return ((fun=> measurable P) a) with
+   | And4 p n pnt pn0 => e p n pnt pn0
+   end)
+    (fun posp : positive_set nu P =>
+     (fun
+        e0 : forall a b,
+                   (fun=> negative_set nu N -> P `|` N = [set: X] -> P `&` N = set0 -> measurable P) (conj a b) =>
+      match
+        posp as a return ((fun=> negative_set nu N -> P `|` N = [set: X] -> P `&` N = set0 -> measurable P) a)
+      with
+      | conj a b => e0 a b
+      end)
+       (fun in_mP : P \in d.-measurable =>
+        fun=> (fun=> (fun=> (fun=>
+                       (fun _: measurable P -> measurable P =>
+eq_ind_r (fun p : Prop => p -> measurable P) id
+  (in_setE _ _)) id in_mP)))))).
+*)
+by have [[mP _] _ _ _] := nuPN; rewrite inE in mP.
+Show Proof.
 Qed.
 
 Let mN : measurable N.
@@ -1580,18 +1603,17 @@ Qed.
 Let nu_p : {measure set X -> \bar R} := measure_of_smeasure positive_nu_p'.
 Let nu_n : {measure set X -> \bar R} := measure_of_smeasure positive_nu_n'.
 
-(* Jordan_measure_decomposition のargumentsがnuだけになるようにしたい*)
-
 Definition Jordan_measure_decomposition := (nu_p, nu_n).
 
-(* Lemma nu_dcmp : nu = smeasure_add nu'_p nu'_n. *)
-
-(*
-HB.instance Definition _ (E0 : set X) (muE0 : d.-measurable E0)
-    (abs : \int[mu]_(x in E0) limF x < nu E0) :=
-  @isAdditiveSignedMeasure.Build _ _ _ (sigma' muE0 abs) (sigma'_semi_additive muE0 abs).
-*)
-
+Lemma Jordan_measure_decompositionE A : measurable A -> nu A = nu_p A - nu_n A.
+Proof.
+move=> mA; rewrite /= /smscale /= /smrestr /= -[in LHS](setIT A).
+case: nuPN => _ _ <- PN0; rewrite setIUr smeasureU//; last 3 first.
+  exact: measurableI.
+  exact: measurableI.
+  by rewrite setIACA PN0 setI0.
+by rewrite EFinN mulN1e oppeK.
+Qed.
 
 End Jordan_measure_decomposition.
 
@@ -1736,12 +1758,9 @@ have [mN _] := negN.
 rewrite inE in mN.
 (* Jordan decomposition *)
 
-have [nu_p nu_n] := Jordan_measure_decomposition HahnPN.
+have [nu_p nu_n] := Jordan_measure_decomposition nu.
+have nu_dcmp := Jordan_measure_decompositionE nu.
 
-have nu_dcmp : forall S, nu S = nu_p S - nu_n S.
-  move=> S.
-  (* rewrite /nu_p. *) (* nu_p is opaque, why? *)
-  admit.
 (* nu_p and nu_n are finite measures *)
 have nu_pfinite : nu_p setT < +oo.
   admit.
@@ -1767,6 +1786,7 @@ rewrite nu_dcmp integralB; last 3 first.
   by apply: (integrableS measurableT).
 by rewrite f_pE ?inE // f_nE ?inE.
 Abort.
+
 (* Need lebesgue_stieltjes measure
 Proposition abs_continuous_fun_measure d (R : realType)
     (f : R -> R) : forall a b : R,
