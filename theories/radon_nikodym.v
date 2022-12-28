@@ -1445,7 +1445,7 @@ Variable (mu_is_non_negative : positive_set mu setT).
 
 Definition measure_of_smeasure := (fun (_ : positive_set mu setT) (S : set X) =>
                                      mu S).
-Let measure_mu := measure_of_smeasure mu_is_non_negative.
+Local Notation measure_mu := (measure_of_smeasure mu_is_non_negative).
 
 Let mu0 : measure_mu set0 = 0.
 Proof. exact: smeasure0. Qed.
@@ -1465,11 +1465,12 @@ HB.instance Definition _ := isMeasure.Build _ _ _
   (measure_of_smeasure mu_is_non_negative)
   mu0 mu_ge0 mu_sigma_additive.
 
+Lemma measure_of_smeasureE S : measure_mu S = mu S.
+Proof. by []. Qed.
+
 End measure_of_smeasure.
 
 Arguments measure_of_smeasure {d X R}.
-Notation " 'measure' mu" :=
-(radon_nikodym_measure_of_smeasure__canonical__measure_Measure mu) (at level 50).
 
 Section Jordan_measure_decomposition.
 Context (d : _) (X : measurableType d) (R : realType).
@@ -1477,11 +1478,11 @@ Variables (nu: {smeasure set X -> \bar R}).
 
 Local Notation Hahn := (Hahn_decomposition nu).
 
-Local Notation X_P := (proj1_sig (cid Hahn)).
+Let X_P := (proj1_sig (cid Hahn)).
 
-Local Notation X_N := (proj1_sig (cid (proj2_sig (cid Hahn)))).
+Let X_N := (proj1_sig (cid (proj2_sig (cid Hahn)))).
 
-Local Notation nuPN := (proj2_sig (cid (proj2_sig (cid Hahn)))).
+Let nuPN := (proj2_sig (cid (proj2_sig (cid Hahn)))).
 
 Let mP : measurable X_P.
 Proof.
@@ -1495,7 +1496,7 @@ Qed.
 
 Local Notation nu_p' := (smrestr nu mP).
 
-Local Definition positive_nu_p' : positive_set nu_p' setT.
+Let positive_nu_p' : positive_set nu_p' setT.
 have [posP _ _ _] := nuPN.
 split;[|move=> E]; rewrite inE // => mE _.
 rewrite /nu_p'/smrestr/=/smrestr.
@@ -1515,9 +1516,25 @@ Let nu_p : {measure set X -> \bar R} :=
 measure_of_smeasure nu_p' positive_nu_p'.
 Let nu_n : {measure set X -> \bar R} := measure_of_smeasure nu_n' positive_nu_n'.
 
-Definition Jordan_measure_decomposition := (nu_p, nu_n).
+Let nu_p_finite : nu_p setT < +oo.
+Proof.
+rewrite /nu_p /=.
+rewrite /smrestr setTI.
+apply: fin_num_ltey.
+by apply: isfinite.
+Qed.
 
-Definition Jordan_measure_decompositionE A : measurable A -> nu A = nu_p A - nu_n A.
+Let nu_n_finite : nu_n setT < +oo.
+Proof.
+rewrite /=/smscale/=/smrestr setTI.
+apply: fin_num_ltey.
+rewrite muleC muleN1 fin_numN.
+by apply: isfinite.
+Qed.
+
+Definition Jordan_measure_decomposition := ((nu_p, nu_p_finite), (nu_n, nu_n_finite)).
+
+Lemma Jordan_measure_decompositionE A : measurable A -> nu A = nu_p A - nu_n A.
 Proof.
 move=> mA; rewrite /= /smscale /= /smrestr /= -[in LHS](setIT A).
 case: nuPN => _ _ <- PN0; rewrite setIUr smeasureU//; last 3 first.
@@ -1525,7 +1542,7 @@ case: nuPN => _ _ <- PN0; rewrite setIUr smeasureU//; last 3 first.
   exact: measurableI.
   by rewrite setIACA PN0 setI0.
 by rewrite EFinN mulN1e oppeK.
-Qed. 
+Qed.
 
 End Jordan_measure_decomposition.
 
@@ -1539,13 +1556,9 @@ move=> nudommu.
 
 have Hahn_dcmp := Hahn_decomposition nu.
 
-have [P [N HahnPN]] := Hahn_dcmp.
-have [posP negN PNX PN0] := HahnPN.
-have [mN _] := negN.
-rewrite inE in mN.
 (* Jordan decomposition *)
 
-have [nu_p nu_n] := Jordan_measure_decomposition nu.
+have [[nu_p nu_p_finite] [nu_n nu_n_finite]] := Jordan_measure_decomposition nu.
 (* Jordan_decompositionEの形が変 *)
 (* 特にrewrite nu_dcmpができなくなっている *)
 (* Jordan_decompositionEの中でJordan_decompositionを再度使っているのが原因? *)
@@ -1556,8 +1569,10 @@ rewrite /smrestr.
 rewrite /smscale /=.
 rewrite /smrestr.
 rewrite /sval .
-rewrite -/N.
-move=> nu_dcmp.
+pose P := (let (a, _) := cid (Hahn_decomposition nu) in a).
+pose N := (let (a, _) := cid (proj2_sig (cid (Hahn_decomposition nu))) in a).
+rewrite -/P -/N.
+ move=> nu_dcmp.
 
 (* nu_p and nu_n are finite measures *)
 have nu_pfinite : nu_p setT < +oo.
@@ -1582,7 +1597,8 @@ rewrite nu_dcmp // integralB; last 3 first.
       exact: mE.
     by apply: (integrableS measurableT).
   by apply: (integrableS measurableT).
-rewrite f_pE. ?inE // f_nE ?inE.
+rewrite -f_pE ?inE // -f_nE ?inE //.
+rewrite /nu_p.
 Abort.
 
 (* Need lebesgue_stieltjes measure
