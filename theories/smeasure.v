@@ -621,7 +621,7 @@ have not_s_cvg_0 : ~ s_ \o v --> 0.
     by rewrite normr_gt0// fine_eq0// ?lt_eqF// isfinite.
   near \oo => n.
   have /hM : (M <= n)%N by near: n; exists M.
-  rewrite sub0r normrN /= ler0_norm//; last by rewrite fine_le0.
+  rewrite /= sub0r normrN /= ler0_norm//; last by rewrite fine_le0.
   rewrite ltr0_norm//; last by rewrite fine_lt0// nuD0 andbT ltNye_eq isfinite.
   rewrite ltr_opp2; apply/negP; rewrite -leNgt; apply: fine_le.
   - near: n; exact.
