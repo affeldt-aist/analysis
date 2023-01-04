@@ -209,16 +209,6 @@ Proof.
 by move=> Af0; rewrite (eq_integral (cst 0%E)) ?integral0// => x /[1!inE] /Af0.
 Qed.
 
-(* TODO: rename to abs_continuous *)
-(* maybe rewrite I : R * R to I : interval R *)
-Definition abs_continuous_function (R : realType) (f : R -> R) (I : R * R) :=
-  forall e : {posnum R}, exists d : {posnum R},
-    forall J : nat -> R * R, forall n : nat,
-      \sum_(k < n)((J k).2 - (J k).1) < d%:num ->
-        trivIset setT (fun n => `[(J n).1, (J n).2]%classic) ->
-          (forall n, I.1 <= (J n).1 /\ (J n).2 <= I.2) ->
-            \sum_(k < n) `| f (J k).2 - f (J k).1 | < e%:num.
-
 Local Open Scope ereal_scope.
 
 (* NB: PR in progress *)

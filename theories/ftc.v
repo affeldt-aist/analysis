@@ -1,12 +1,13 @@
 (* mathcomp analysis (c) 2017 Inria and AIST. License: CeCILL-C.              *)
 From mathcomp Require Import all_ssreflect ssralg ssrnum ssrint interval.
 From mathcomp Require Import finmap fingroup perm rat.
- Require Import boolp reals ereal classical_sets signed topology numfun.
-Require Import mathcomp_extra functions normedtype.
+From mathcomp.classical Require Import boolp classical_sets functions.
+From mathcomp.classical Require Import cardinality fsbigop mathcomp_extra.
+Require Import reals ereal signed topology numfun normedtype.
 From HB Require Import structures.
-Require Import sequences esum measure fsbigop cardinality real_interval.
-Require Import realfun.
+Require Import sequences esum measure real_interval realfun.
 Require Import lebesgue_measure lebesgue_integral smeasure radon_nikodym.
+Require Import derive.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -17,7 +18,13 @@ Import numFieldTopology.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-(* TODO: move *)
+(******************************************************************************)
+(* scratch file to sketch the FTC                                             *)
+(******************************************************************************)
+
+(* the following is the axiomatized version of
+   https://github.com/math-comp/analysis/pull/677,
+   waiting to be merged into master *)
 Notation right_continuous f :=
   (forall x, f%function @ at_right x --> f%function x).
 
@@ -218,92 +225,195 @@ Example lebesgue_measure d (R : realType)
     : set [the measurableType (d.-measurable).-sigma of salgebraType (d.-measurable)] -> \bar R :=
   lebesgue_stieltjes_measure _ [the cumulative _ of @idfun R].
 
-(* ----- End Stieltjes. -----*)
+(* /rnd Stieltjes *)
 
-(* with ref to A Course in Functional Analysis and Measure Theory *)
-
-Section with_ref.
-
-(* 7.2 *)
-Variable d : measure_display.
-Variable R : realType.
-
-(*
-Definition Newton_Leibniz_fomula (f' f : R -> R) (a b : R) :
-  (\int[@lebesgue_measure d R]_(x in `]a, b]) f' x)%:E= hlength f `]a, b].
+(* reference:
+   A Course in Functional Analysis and Measure Theory
+   7.2
 *)
 
-(* 7.2.1 *)
+Section newton_leibniz.
+Local Open Scope ereal_scope.
+Context (R : realType).
+Let gitvs := [the measurableType _ of salgebraType (@ocitv R)].
+Variable (mu : {measure set gitvs -> \bar R}).
+Implicit Types f : R -> R.
 
+Let F f (e : R ^nat) n t := ((f (t + e n) - f t) / e n)%R.
 
+Let e n : R := n.+1%:R^-1.
 
-(* 7.2.3 *)
+Definition derivative f :=
+  get (fun f' : R -> R => {ae mu, forall t, F f e ^~ t --> f' t}).
 
-Section Variation.
+Theorem thm7211 f (a b : R) :
+  {homo f : x y / (x <= y)%R} (* f increasing over [a, b] *) ->
+  mu.-integrable `[a, b] (EFin \o (derivative f)) /\
+  \int[mu]_(x in `[a, b]) (derivative f x)%:E <= (f b - f a)%:E.
+Proof.
+move=> nd_f.
+have H2 : mu.-integrable `[a, b] (EFin \o derivative f).
+  split.
+    apply: measurable_fun_comp => //.
+    apply: subspace_continuous_measurable_fun => //.
+      exact: measurable_itv.
+    admit.
+  admit. (* by fatou's lemma?! *)
+split => //.
+pose f_ := F f e.
+have me n : measurable_fun `[a, b] (fun=> e n).
+  rewrite /e.
+  apply: (measurable_funS measurableT) => //=.
+  admit.
+have H1 n : \int[mu]_(x in `[a, b]) (f_ n x)%:E <= (f b - f a)%:E.
+  admit.
+apply: (@le_trans _ _ (lim_einf (fun n => \int[mu]_(x in `[a, b]) (f_ n x)%:E))).
+  apply: (@le_trans _ _ (\int[mu]_(x in `[a, b]) lim_einf (fun n => (f_ n x)%:E))).
+    rewrite /f_.
+    admit. (* by definition *)
+  apply: fatou => //.
+  - exact: measurable_itv.
+  - move=> n .
+    apply/EFin_measurable_fun.
+    rewrite /f_ /F.
+    apply/measurable_funM.
+      apply/measurable_funB.
+        apply/measurable_fun_comp => //.
+          admit. (* by hypo? *)
+        apply: measurable_funD.
+          exact: measurable_fun_id.
+        exact: me.
+      admit. (* by hypo? *)
+    admit.
+  - move=> n x abx.
+    rewrite lee_fin /f_ /F.
+    apply/divr_ge0 => //.
+      by rewrite subr_ge0 nd_f// ler_addl invr_ge0.
+    by rewrite invr_ge0.
+- rewrite is_cvg_lim_einfE; last first.
+    admit.
+  apply: lime_le.
+    admit.
+  exact: nearW.
+Admitted.
 
-Variable R :realType.
+End newton_leibniz.
 
-Definition variation (f : R -> R) (a b: R) :=
-  sup [set x : R | exists (n : nat) (p : nat -> R),
+Section primitive_function.
+Local Open Scope ereal_scope.
+Context (R : realType).
+Let gitvs := [the measurableType _ of salgebraType (@ocitv R)].
+Variable (mu : {measure set gitvs -> \bar R}).
+
+Definition primitive (f : R -> R) a x :=
+  \int[mu]_(t in `[a, x]) (f t)%:E.
+
+Theorem thm7221 (f : R -> R) (a b : R) :
+  mu.-integrable `[a, b] (EFin \o f) ->
+  {within `[a, b], continuous (primitive f a)}.
+Proof.
+Admitted.
+
+Lemma lem7221 (f : R -> R) (a b : R) :
+  (* primitive differentiable almost everywhere? *)
+  mu.-integrable `[a, b] (EFin \o (derivative mu (fine \o primitive f a))) /\
+  \int[mu]_(t in `[a, b]) `|(derivative mu (fine \o primitive f a) t)%:E| <=
+  \int[mu]_(t in `[a, b]) `|f t|%:E.
+Proof.
+Admitted.
+
+Theorem them7222 (f : R -> R) (a b : R) :
+  mu.-integrable `[a, b] (EFin \o f) ->
+  {ae mu, forall x, derivative mu (fine \o primitive f a) x = f x}.
+Proof.
+Admitted.
+
+End primitive_function.
+
+Reserved Notation "{ 'within' A , 'right_continuous' f }"
+  (at level 70, A at level 69, format "{ 'within'  A ,  'right_continuous'  f }").
+Notation "{ 'within' A , 'right_continuous' f }" := (forall x,
+  cvg_to [filter of fmap f (filter_of (Phantom (subspace A) (at_right x)))]
+         [filter of f x]).
+
+Section variation.
+Variable R : realType.
+
+Definition variation (f : R -> R) (a b : R) :=
+  sup [set x : R | exists (n : nat) (p : R ^nat),
      p 0%nat = a /\ p n = b /\ (forall k, p k < p k.+1)
         /\ x = \sum_(i < n) `| f (p i) - f (p i.+1) |].
 
 (* bouded variation*)
-Definition is_BV f a b := ((variation f a b)%:E < +oo)%E.
+Definition variation_lty f a b := ((variation f a b)%:E < +oo)%E.
 
-Lemma BV_nondecreasing : forall a b f, is_BV f a b ->
-  {homo (fun x => variation f a x) : x y / x <= y}.
+Lemma variation_nondecreasing a b f : variation_lty f a b ->
+  {homo variation f a : x y / x <= y}.
 Admitted.
 
-Lemma BVf_nondecreasing : forall a b f, is_BV f a b ->
-  {homo (fun x => variation f a x - f x) : x y / x <= y}.
+Lemma variationB_nondecreasing a b f : variation_lty f a b ->
+  {homo variation f a \- f : x y / x <= y}.
 Admitted.
 
-Lemma 7211 : forall f, right_continuous f /\ is_BV f a b ->
-right_continuous (fun x => variation f a x) on [a, b].
+Fail Lemma right_continuous_variation a b (f : R -> R) :
+  right_continuous f -> variation_lty f a b ->
+    {within `[a, b], right_continuous (variation f a)}.
 
-Lemma 7211' : forall f, right_continuous f /\ is_BV f a b ->
-right_continuous (fun x => variation f a x - f x) on [a, b].
+Fail Lemma right_continuous_variationB a b f :
+  right_continuous f -> variation_lty f a b ->
+    {within `[a, b], right_continuous (variation f a \- f)}.
 
-End Variation.
+End variation.
 
+(* maybe rewrite I : R * R to I : interval R *)
+Definition abs_continuous (R : realType) (f : R -> R) (I : R * R) :=
+  forall e : {posnum R}, exists d : {posnum R},
+    forall J : nat -> R * R, forall n : nat,
+      \sum_(k < n)((J k).2 - (J k).1) < d%:num ->
+        trivIset setT (fun n => `[(J n).1, (J n).2]%classic) ->
+          (forall n, I.1 <= (J n).1 /\ (J n).2 <= I.2) ->
+            \sum_(k < n) `| f (J k).2 - f (J k).1 | < e%:num.
 
 Section abs_cont_properties.
-
 Local Open Scope ereal_scope.
+Context (R : realType).
+Let gitvs := [the measurableType _ of salgebraType (@ocitv R)].
 
-Lemma abs_contE (R : realType)
-  (mu nu : {smeasure set R -> \bar R}):
+Lemma dominatesE
+  (mu nu : {smeasure set gitvs -> \bar R}):
     nu `<< mu <-> forall e, 0 < e -> exists d, 0 < d /\
       (forall S, (measurable S /\ mu S < d) -> nu S < e).
 Proof.
 move=> /=.
 split.
-  move=> nudommu e e0.
+  move=> nu_mu e e0.
 Admitted.
 
 (* Need lebesgue_stieltjes measure*)
-Lemma abs_continuous_fun_measure d (R : realType)
-    (f : R -> R) : forall a b : R,
-    abs_continuous_function f (a, b) ->
-      smrestr (hlength f) ([set` Interval -oo%O (BSide false b)]%E) `<< smrestr (@lebesgue_measure d R) `[a, b].
+Lemma abs_continuous_fun_measure
+    (mu : {measure set gitvs -> \bar R}) (*for lebesgue measure *)
+    (f : R -> R) a b :
+  abs_continuous f (a, b) ->
+  smrestr (hlength f) (measurable_itv `[a, b]) `<<
+  smrestr mu (measurable_itv `[a, b]).
 Proof.
 Admitted.
 
-(* abs_cont -> abs_cont_fun *)
-Lemma abs_continuous_measure_fun d (R : realType)     (nu : {smeasure R -> \bar R}) : forall a b : R,
-      
-
 End abs_cont_properties.
 
+Section ftc.
 
 Theorem FTC2 (d : measure_display) (R : realType) (f : R -> R) (a b : R)
-     (f_abscont : abs_continuous_function f (a, b) )
-       : exists f' : R -> \bar R, summable `[a, b] f' /\
-         {ae (@lebesgue_measure (ocitv_display R) R), forall x, x \in `[a, b] ->f' x \is a fin_num}
-           /\ forall x, x \in `[a, b] ->
-                        (f x - f a)%:E = (integral (@lebesgue_measure (ocitv_display R) R) `[a ,x] f').
+    (f_abscont : abs_continuous f (a, b) ) :
+  let lambda := @lebesgue_measure (ocitv_display R) R in
+  exists f' : R -> \bar R, [/\
+    lambda.-integrable `[a, b] f',
+     {ae lambda, forall x, x \in `[a, b] -> f' x \is a fin_num} &
+     forall x, x \in `[a, b] ->
+      (f x - f a)%:E = (\int[lambda]_(x in `[a, x]) f' x)%E].
 Proof.
-pose Lambda_f := lebesgue_stieltjes_measure d f.
-have f' := Radon_Nikodym Lambda_f.
+Fail pose Lambda_f := lebesgue_stieltjes_measure d f.
+Fail have f' := Radon_Nikodym Lambda_f.
 Abort.
+
+End ftc.
