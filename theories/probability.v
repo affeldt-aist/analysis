@@ -22,17 +22,19 @@ Require Import sequences esum measure numfun lebesgue_measure lebesgue_integral.
 (*        X `+ Y, X `- Y == addition, subtraction of R.V.                     *)
 (*              k `\o* X := k \o* X                                           *)
 (*                  'E X == expectation of of the real random variable X      *)
-(* square_integrable D f := mu.-integrable D (fun x => (`|f x| ^+ 2)%:E)      *)
+(*          mu.-Lspace p := [set f : T -> R |                                 *)
+(*                            \int[mu]_(x in D) (`|f x| ^+ p)%:E < +oo]       *)
 (*                  'V X == variance of the real random variable X            *)
 (*        distribution X == measure image of P by X : {RV P -> R}, declared   *)
 (*                          as a probability measure                          *)
-(*         {dRV P >-> R} == discrete real random variable                     *)
+(*         {dRV P >-> R} == real-valued discrete random variable              *)
 (*             dRV_dom X == domain of the random variable X                   *)
-(*           dRV_value X == bijection between the domain and the range of X   *)
-(*        dRV_weight X k == probability of the kth dRV_value X                *)
+(*          enum_range X == bijection between the domain and the range of X   *)
+(*         enum_prob X k == probability of the kth value in the range of X    *)
 (*                                                                            *)
 (******************************************************************************)
 
+Reserved Notation "mu .-Lspace p" (at level 2, format "mu .-Lspace  p").
 Reserved Notation "'{' 'RV' P >-> R '}'"
   (at level 0, format "'{' 'RV'  P  '>->'  R '}'").
 Reserved Notation "f `o X" (at level 50, format "f  `o '/ '  X").
@@ -68,41 +70,6 @@ move=> /pcard_leP[f]; exists (f @` A).
 by apply/pcard_eqP; squash [fun f in A].
 Qed.
 
-(* TODO: move *)
-Lemma patchE aT (rT : pointedType) (f : aT -> rT) (B : set aT) x :
-  (f \_ B) x = if x \in B then f x else point.
-Proof. by []. Qed.
-
-(* NB: PR progress *)
-Lemma trivIset_mkcond T I (D : set I) (F : I -> set T) :
-  trivIset D F <-> trivIset setT (fun i => if i \in D then F i else set0).
-Proof.
-split=> [tA i j _ _|tA i j Di Dj]; last first.
-  by have := tA i j Logic.I Logic.I; rewrite !mem_set.
-case: ifPn => iD; last by rewrite set0I => -[].
-by case: ifPn => [jD /tA|jD]; [apply; exact: set_mem|rewrite setI0 => -[]].
-Qed.
-
-(* NB: PR in progress *)
-Section measure_lemmas.
-Local Open Scope ereal_scope.
-Context d (R : realFieldType) (T : measurableType d).
-Variable mu : {measure set T -> \bar R}.
-
-Lemma measure_bigcup' (D : set nat) F : (forall i, D i -> measurable (F i)) ->
-  trivIset D F ->
-  mu (\bigcup_(n in D) F n) = \sum_(i <oo | i \in D) mu (F i).
-Proof.
-move=> mF tF; rewrite bigcup_mkcond measure_semi_bigcup.
-- by rewrite [in RHS]eseries_mkcond; apply: eq_eseries => n _; case: ifPn.
-- by move=> i; case: ifPn => // /set_mem; exact: mF.
-- by move/trivIset_mkcond : tF.
-- by rewrite -bigcup_mkcond; apply: bigcup_measurable.
-Qed.
-
-End measure_lemmas.
-Arguments measure_bigcup' {d R T} _ _.
-
 (* NB: available in lebesgue-stieltjes PR *)
 Section from_lebesgue_stieltjes.
 Definition EFinf {R : numDomainType} (f : R -> R) : \bar R -> \bar R :=
@@ -128,12 +95,12 @@ End from_lebesgue_stieltjes.
 (* PR in progress/move                                                        *)
 (******************************************************************************)
 
-HB.mixin Record isConvn (R : realType) (f : nat -> R) of IsNonNegFun nat R f :=
+HB.mixin Record isConvn (R : realType) (f : nat -> R) of isNonNegFun nat R f :=
   { convn1 : (\sum_(n <oo) (f n)%:E = 1)%E }.
 
 #[short(type=convn)]
 HB.structure Definition Convn (R : realType) :=
-  { f of isConvn R f & IsNonNegFun nat R f }.
+  { f of isConvn R f & isNonNegFun nat R f }.
 
 Section probability_lemmas.
 Context d (T : measurableType d) (R : realType) (P : probability T R).
@@ -179,12 +146,12 @@ Definition mexp n : R -> R := @GRing.exp R ^~ n.
 Let measurable_fun_mexp n : measurable_fun setT (mexp n).
 Proof. exact/measurable_fun_exprn/measurable_fun_id. Qed.
 
-HB.instance Definition _ (n : nat) := @IsMeasurableFun.Build _ _ R
+HB.instance Definition _ (n : nat) := @isMeasurableFun.Build _ _ R
   (mexp n) (measurable_fun_mexp n).
 
 Definition subr m : R -> R := fun x => x - m.
 
-Lemma subr_mfun_subproof m : @IsMeasurableFun _ _ R (subr m).
+Lemma subr_mfun_subproof m : @isMeasurableFun _ _ R (subr m).
 Proof.
 split => _; apply: (measurability (RGenOInfty.measurableE R)) => //.
 move=> /= _ [_ [x ->] <-]; apply: measurableI => //.
@@ -200,7 +167,7 @@ Definition mabs : R -> R := fun x => `| x |.
 Lemma measurable_fun_mabs : measurable_fun setT (mabs).
 Proof. exact: measurable_fun_normr. Qed.
 
-HB.instance Definition _ := @IsMeasurableFun.Build _ _ R
+HB.instance Definition _ := @isMeasurableFun.Build _ _ R
   (mabs) (measurable_fun_mabs).
 
 Let measurable_fun_mmul d (T : measurableType d) (f g : {mfun T >-> R}) :
@@ -208,7 +175,7 @@ Let measurable_fun_mmul d (T : measurableType d) (f g : {mfun T >-> R}) :
 Proof. exact/measurable_funM. Qed.
 
 HB.instance Definition _ d (T : measurableType d) (f g : {mfun T >-> R}) :=
-  @IsMeasurableFun.Build _ _ R (f \* g) (measurable_fun_mmul f g).
+  @isMeasurableFun.Build _ _ R (f \* g) (measurable_fun_mmul f g).
 
 End mfun.
 
@@ -217,7 +184,7 @@ Context d (T : measurableType d) (R : realType)
   (f : {mfun Real_sort__canonical__measure_Measurable R >-> R})
   (g : {mfun T >-> R}).
 
-Lemma comp_mfun_subproof : @IsMeasurableFun _ _ _ (f \o g).
+Lemma comp_mfun_subproof : @isMeasurableFun _ _ _ (f \o g).
 Proof. by split; exact: measurable_funT_comp. Qed.
 HB.instance Definition _ := comp_mfun_subproof.
 Definition comp_mfun := [the {mfun _ >-> R} of (f \o g)].
@@ -338,14 +305,15 @@ Proof. by rewrite /expectation integralB_EFin. Qed.
 
 End expectation_lemmas.
 
-Section square_integrable.
+Section Lspace.
 Context d (T : measurableType d) (R : realType).
 Variable mu : {measure set T -> \bar R}.
 
-Definition square_integrable (D : set T) (f : T -> R) :=
-  mu.-integrable D (EFin \o (fun x => `|f x| ^+ 2)).
+Definition Lspace p := [set f : T -> R |
+  measurable_fun setT f /\ (\int[mu]_x (`|f x| ^+ p)%:E < +oo)%E].
 
-End square_integrable.
+End Lspace.
+Notation "mu .-Lspace p" := (Lspace mu p) : type_scope.
 
 Section variance.
 Local Open Scope ereal_scope.
@@ -356,7 +324,7 @@ Definition variance (X : {RV P >-> R}) :=
 Local Notation "''V' X" := (variance X).
 
 Lemma varianceE (X : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> square_integrable P setT X ->
+    P.-integrable setT (EFin \o X) -> P.-Lspace 2 X ->
   'V X = 'E (X `^+ 2) - ('E X) ^+ 2.
 Proof.
 move=> iX siX.
@@ -369,7 +337,13 @@ rewrite /variance (_ : _ `^+ 2 = X `^+ 2 `- (2 * fine 'E X) `\o* X
   have [Efin|] := boolP ('E X \is a fin_num); first by rewrite fineM.
   by rewrite fin_numElt -(lte_absl ('E X) +oo) (integrable_expectation iX).
 have ? : P.-integrable [set: T] (EFin \o X `^+ 2).
-  rewrite (_ : EFin \o X `^+ 2 = (fun x => (`| X x | ^+ 2)%:E))//.
+  rewrite (_ : EFin \o X `^+ 2 = (fun x => (`| X x | ^+ 2)%:E)).
+    have ? : measurable_fun [set: T] (fun x : T => (`|X x| ^+ 2)%:E).
+      apply/EFin_measurable_fun/measurable_fun_exprn.
+      exact: measurable_funT_comp.
+    split=> //; rewrite (le_lt_trans _ siX.2)// ge0_le_integral//.
+      exact: measurable_funT_comp.
+    by move=> x _; rewrite lee_fin normrX normr_id.
   by rewrite funeqE => p /=; rewrite real_normK// num_real.
 rewrite expectationD; last 2 first.
   - rewrite (_ : _ \o _ =
@@ -454,7 +428,7 @@ HB.mixin Record isDiscreteRV d (T : measurableType d) (R : realType)
 #[short(type=discrete_random_variable)]
 HB.structure Definition DiscreteRV d (T : measurableType d) (R : realType)
     (P : probability T R) := {
-  X of IsMeasurableFun d T R X & isDiscreteRV d T R P X
+  X of isMeasurableFun d T R X & isDiscreteRV d T R P X
 }.
 
 Notation "{ 'dRV' P >-> R }" := (@discrete_random_variable _ _ R P) : form_scope.
@@ -462,20 +436,57 @@ Notation "{ 'dRV' P >-> R }" := (@discrete_random_variable _ _ R P) : form_scope
 Section dRV_definitions.
 Context d (T : measurableType d) (R : realType) (P : probability T R).
 
-Definition dRV_dom_value (X : {dRV P >-> R}) :
+Definition dRV_dom_enum (X : {dRV P >-> R}) :
   { B : set nat & {splitbij B >-> range X} }.
 have /countable_bijP/cid[B] := @countable_range _ _ _ P X.
 move/card_esym/ppcard_eqP/unsquash => f.
 by exists B; exact: f.
 Defined.
 
-Definition dRV_dom (X : {dRV P >-> R}) : set nat := projT1 (dRV_dom_value X).
+Definition dRV_dom (X : {dRV P >-> R}) : set nat := projT1 (dRV_dom_enum X).
 
-Definition dRV_value (X : {dRV P >-> R}) : {splitbij (dRV_dom X) >-> range X} :=
-  projT2 (dRV_dom_value X).
+Definition dRV_enum (X : {dRV P >-> R}) : {splitbij (dRV_dom X) >-> range X} :=
+  projT2 (dRV_dom_enum X).
 
-Definition dRV_weight (X : {dRV P >-> R}) (k : nat) :=
-  if k \in dRV_dom X then P (X @^-1` [set dRV_value X k]) else 0%E.
+Definition enum_prob (X : {dRV P >-> R}) (k : nat) :=
+  if k \in dRV_dom X then P (X @^-1` [set dRV_enum X k]) else 0%E.
+
+Lemma enum_probE (X : {dRV P >-> R}) (k : nat) :
+  enum_prob X k = P (X @^-1` [set dRV_enum X k]).
+Proof.
+rewrite /enum_prob; case: ifPn => // kX.
+rewrite notin_range_probability//.
+move: kX.
+rewrite /dRV_dom /dRV_enum /dRV_dom_enum/=.
+rewrite /ssr_have/=.
+case: cid => //= A XA kA.
+rewrite /unsquash/=.
+case: cid => //= f _.
+apply: contra kA.
+rewrite inE /(range _)/= => -[t _ Xtfk].
+Abort.
+
+Definition pmf (X : {dRV P >-> R}) (r : R) : R :=
+  fine (P (X @^-1` [set r])).
+
+(*Lemma enum_probE (X : {dRV P >-> R}) (k : nat) :
+  enum_prob X k =
+    \esum_(t in X @^-1` [set dRV_enum X k]) P [set t].
+Proof.
+rewrite /enum_prob.
+case: ifPn => kX.
+  admit.
+rewrite preimage10; last first.
+  move=> Xk.
+  move/negP : kX; apply.
+  rewrite inE.
+  move: Xk.
+  move=> [t _].
+  rewrite /dRV_enum /dRV_dom/= /dRV_dom_enum/=.
+  rewrite /ssr_have/=.
+  case: cid => //= B XB.
+  rewrite /unsquash.
+  case: cid => //= x _ Xtxk.*)
 
 End dRV_definitions.
 
@@ -484,26 +495,25 @@ Local Open Scope ereal_scope.
 Context d (T : measurableType d) (R : realType) (P : probability T R).
 Variable X : {dRV P >-> R}.
 
-Lemma distribution_dRV_value (n : nat) : n \in dRV_dom X ->
-  distribution P X [set dRV_value X n] = dRV_weight X n.
-Proof. by move=> nX; rewrite /distribution/= /dRV_weight/= nX. Qed.
+Lemma distribution_dRV_enum (n : nat) : n \in dRV_dom X ->
+  distribution P X [set dRV_enum X n] = enum_prob X n.
+Proof. by move=> nX; rewrite /distribution/= /enum_prob/= nX. Qed.
 
-(* TODO: explain 'inj, funS, inj *)
 Lemma distribution_dRV A : measurable A ->
-  distribution P X A = \sum_(k <oo) dRV_weight X k * \d_ (dRV_value X k) A.
+  distribution P X A = \sum_(k <oo) enum_prob X k * \d_ (dRV_enum X k) A.
 Proof.
 move=> mA; rewrite /distribution /pushforward.
-have mAX i : dRV_dom X i -> measurable (X @^-1` (A `&` [set dRV_value X i])).
+have mAX i : dRV_dom X i -> measurable (X @^-1` (A `&` [set dRV_enum X i])).
   move=> _; rewrite preimage_setI; apply: measurableI => //.
   exact/measurable_sfunP.
-have tAX : trivIset (dRV_dom X) (fun k => X @^-1` (A `&` [set dRV_value X k])).
+have tAX : trivIset (dRV_dom X) (fun k => X @^-1` (A `&` [set dRV_enum X k])).
   under eq_fun do rewrite preimage_setI; rewrite -/(trivIset _ _).
   apply: trivIset_setIl; apply/trivIsetP => i j iX jX /eqP ij.
   rewrite -preimage_setI (_ : _ `&` _ = set0)//.
   by apply/seteqP; split => //= x [] -> {x} /inj; rewrite inE inE => /(_ iX jX).
-have := measure_bigcup' P _ (fun k => X @^-1` (A `&` [set dRV_value X k])) mAX tAX.
+have := measure_bigcup P _ (fun k => X @^-1` (A `&` [set dRV_enum X k])) mAX tAX.
 rewrite -preimage_bigcup => {mAX tAX}PXU.
-rewrite -{1}(setIT A) -(setUv (\bigcup_(i in dRV_dom X) [set dRV_value X i])).
+rewrite -{1}(setIT A) -(setUv (\bigcup_(i in dRV_dom X) [set dRV_enum X i])).
 rewrite setIUr preimage_setU measureU; last 3 first.
   - rewrite preimage_setI; apply: measurableI => //; first exact: measurable_sfunP.
     by apply: measurable_sfunP; apply: bigcup_measurable.
@@ -513,12 +523,12 @@ rewrite setIUr preimage_setU measureU; last 3 first.
     by rewrite setICr preimage_set0 2!setI0.
 rewrite [X in _ + X = _](_ : _ = 0) ?adde0; last first.
   rewrite (_ : _ @^-1` _ = set0) ?measure0//; apply/disjoints_subset => x AXx.
-  rewrite setCK /bigcup /=; exists ((dRV_value X)^-1 (X x))%function.
+  rewrite setCK /bigcup /=; exists ((dRV_enum X)^-1 (X x))%function.
     exact: funS.
   by rewrite invK// inE.
 rewrite setI_bigcupr; etransitivity; first exact: PXU.
 rewrite eseries_mkcond; apply: eq_eseries => k _.
-rewrite /dRV_weight; case: ifPn => nX; rewrite ?mul0e//.
+rewrite /enum_prob; case: ifPn => nX; rewrite ?mul0e//.
 rewrite diracE; have [kA|] := boolP (_ \in A).
   by rewrite mule1// setIidr//= => r /= ->{r}; exact: set_mem.
 rewrite notin_set => kA.
@@ -526,7 +536,7 @@ rewrite mule0 (disjoints_subset _ _).2 ?preimage_set0 ?measure0// => r + /= rE.
 by rewrite rE.
 Qed.
 
-Lemma convn_dRV_weight : (\sum_(n <oo) (dRV_weight X) n = 1)%E.
+Lemma convn_enum_prob : (\sum_(n <oo) (enum_prob X) n = 1)%E.
 Proof.
 have := distribution_dRV measurableT.
 rewrite probability_setT/= => /esym; apply: eq_trans.
@@ -559,21 +569,20 @@ Lemma probability_distribution r :
 Proof. by []. Qed.
 
 Lemma dRV_expectation : P.-integrable setT (EFin \o (X : {RV P >-> R})) ->
-  'E (X : {RV P >-> R}) = (\sum_(n <oo) (dRV_weight X n) * (dRV_value X n)%:E)%E.
+  'E (X : {RV P >-> R}) = (\sum_(n <oo) enum_prob X n * (dRV_enum X n)%:E)%E.
 Proof.
 move=> ix; rewrite /expectation.
-rewrite -[in LHS](_ : \bigcup_k
-    (if k \in dRV_dom X then (X : {RV P >-> R}) @^-1` [set dRV_value X k] else set0) =
-    setT); last first.
+rewrite -[in LHS](_ : \bigcup_k (if k \in dRV_dom X then
+    X @^-1` [set dRV_enum X k] else set0) = setT); last first.
   apply/seteqP; split => // t _.
-  exists ((dRV_value X)^-1%function (X t)) => //.
+  exists ((dRV_enum X)^-1%function (X t)) => //.
   case: ifPn=> [_|].
     by rewrite invK// inE.
   by rewrite notin_set/=; apply; apply: funS.
-have tA : trivIset (dRV_dom X) (fun k => [set dRV_value X k]).
+have tA : trivIset (dRV_dom X) (fun k => [set dRV_enum X k]).
   by move=> i j iX jX [r [/= ->{r}]] /inj; rewrite !inE; exact.
 have {tA}/trivIset_mkcond tXA :
-    trivIset (dRV_dom X) (fun k => (X : {RV P >-> R}) @^-1` [set dRV_value X k]).
+    trivIset (dRV_dom X) (fun k => X @^-1` [set dRV_enum X k]).
   apply/trivIsetP => /= i j iX jX ij.
   move/trivIsetP : tA => /(_ i j iX jX) Aij.
   by rewrite -preimage_setI Aij ?preimage_set0.
@@ -582,13 +591,14 @@ rewrite integral_bigcup //; last 2 first.
   - apply: (integrableS measurableT) => //.
     by rewrite -bigcup_mkcond; exact: bigcup_measurable.
 transitivity (\sum_(i <oo)
-    \int[P]_(x in (if i \in dRV_dom X then X @^-1` [set dRV_value X i] else set0))
-            (dRV_value X i)%:E)%E.
+    \int[P]_(x in (if i \in dRV_dom X then X @^-1` [set dRV_enum X i] else set0))
+      (dRV_enum X i)%:E)%E.
   apply eq_eseries => i _; case: ifPn => iX.
     by apply eq_integral => t; rewrite in_setE/= => ->.
   by rewrite !integral_set0.
-transitivity (\sum_(i <oo) (dRV_value X i)%:E *
-    \int[P]_(x in (if i \in dRV_dom X then X @^-1` [set dRV_value X i] else set0)) 1)%E.
+transitivity (\sum_(i <oo) (dRV_enum X i)%:E *
+    \int[P]_(x in (if i \in dRV_dom X then X @^-1` [set dRV_enum X i] else set0))
+      1)%E.
   apply eq_eseries => i _; rewrite -integralM//; last 2 first.
     - by case: ifPn.
     - split; first exact: measurable_fun_cst.
@@ -598,11 +608,61 @@ transitivity (\sum_(i <oo) (dRV_value X i)%:E *
       rewrite mul1e (@le_lt_trans _ _ 1%E) ?ltey//.
       by case: ifPn => // _; exact: probability_le1.
   by apply eq_integral => y _; rewrite mule1.
-apply eq_eseries => k _; case: ifPn => kX.
+apply: eq_eseries => k _; case: ifPn => kX.
   rewrite /= integral_cst//= mul1e probability_distribution muleC.
-  by rewrite distribution_dRV_value.
-by rewrite integral_set0 mule0 /dRV_weight (negbTE kX) mul0e.
+  by rewrite distribution_dRV_enum.
+by rewrite integral_set0 mule0 /enum_prob (negbTE kX) mul0e.
 Qed.
+
+Require Import fsbigop.
+
+Lemma dRV_expectation' : P.-integrable setT (EFin \o (X : {RV P >-> R})) ->
+  'E (X : {RV P >-> R}) = (\esum_(r in range X) (pmf X r)%:E * r%:E)%E.
+Proof.
+move=> iX.
+rewrite dRV_expectation// /pmf/=.
+set x := dRV_enum X @` dRV_dom X.
+transitivity (\esum_(r in x) ((fine (P (X @^-1` [set r])))%:E * r%:E)%E); last first.
+  rewrite esum_mkcond.
+  rewrite [in RHS]esum_mkcond.
+  apply eq_esum => r _.
+  case: ifPn.
+    move=> rx.
+    rewrite ifT//.
+    rewrite /(range _)/= inE/=.
+    move: rx.
+    rewrite inE/x/= => -[k].
+    rewrite /dRV_dom /dRV_enum /dRV_dom_enum /ssr_have/=.
+    case: cid => // B XB/= Bk.
+    rewrite /unsquash/=.
+    case: cid=> //= f _ fkr.
+    have : f k \in range X.
+      rewrite inE.
+      by apply: funS.
+    rewrite inE => -[t _ Xtfk].
+    exists t => //.
+    by rewrite Xtfk.
+  move=> rx.
+  have : r \notin (range X).
+    apply: contra (rx).
+    rewrite !inE/x/= => -[t _ Xtr].
+    exists ((dRV_enum X)^-1 r)%function.
+      apply: funS.
+      by exists t.
+    rewrite invK// inE.
+    by exists t.
+  by move/negbTE => ->//.
+(*rewrite (@eq_fsbigl _ _ _ _ _ _ x)//; last first.
+  rewrite /x.
+  apply/seteqP; split => //= _ [t _ <-] /=.
+  exists ((dRV_enum X)^-1%function (X t)) => //.
+    exact: funS.
+  by rewrite invK// inE.*)
+rewrite esum_image//.
+rewrite /enum_prob.
+rewrite [in RHS]esum_mkcond/=.
+
+Abort.
 
 End discrete_distribution.
 
