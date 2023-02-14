@@ -36,6 +36,7 @@ charge.v
 kernel.v
 prob_lang.v
 wip.v
+lang_syntax.v
 altreals/xfinmap.v
 altreals/discrete.v
 altreals/realseq.v
