@@ -186,8 +186,7 @@ Context {R : realType}.
 Lemma exec_normalize_return g x r :
   projT1 (@execD _ g _ [Normalize return r:R]) x = \d_r :> probability _ R.
 Proof.
-rewrite execD_normalize_pt execP_return execD_real/=.
-exact: normalize_kdirac.
+by rewrite execD_normalize_pt execP_return execD_real//=; exact: normalize_kdirac.
 Qed.
 
 End trivial_example.
@@ -568,42 +567,11 @@ Local Open Scope lang_scope.
 Import Notations.
 Context {R : realType}.
 
-Section tests.
-
-Local Notation "$ str" := (@exp_var _ _ str%string _ erefl)
-  (in custom expr at level 1, format "$ str").
-
-Definition staton_bus_syntax0_generic (x r u : string)
-    (rx : infer (r != x)) (Rx : infer (u != x))
-    (ur : infer (u != r)) (xr : infer (x != r))
-    (xu : infer (x != u)) (ru : infer (r != u)) : @exp R P [::] _ :=
-  [let x := Sample {exp_bernoulli (2 / 7%:R)%:nng p27} in
-   let r := if #x then return {3}:R else return {10}:R in
-   let u := Score {exp_poisson 4 [#r]} in
-   return #x].
-
-Fail Definition staton_bus_syntax0_generic' (x r u : string)
-    (rx : infer (r != x)) (Rx : infer (u != x))
-    (ur : infer (u != r)) (xr : infer (x != r))
-    (xu : infer (x != u)) (ru : infer (r != u)) : @exp R P [::] _ :=
-  [let x := Sample {exp_bernoulli (2 / 7%:R)%:nng p27} in
-   let r := if $x then return {3}:R else return {10}:R in
-   let u := Score {exp_poisson 4 [$r]} in
-   return $x].
-
-Fail Definition staton_bus_syntax0' : @exp R _ [::] _ :=
-  [let "x" := Sample {exp_bernoulli (2 / 7%:R)%:nng p27} in
-   let "r" := if ${"x"} then return {3}:R else return {10}:R in
-   let "_" := Score {exp_poisson 4 [${"r"}]} in
-   return ${"x"}].
-
 Definition staton_bus_syntax0 : @exp R _ [::] _ :=
   [let "x" := Sample {exp_bernoulli (2 / 7%:R)%:nng p27} in
    let "r" := if #{"x"} then return {3}:R else return {10}:R in
    let "_" := Score {exp_poisson 4 [#{"r"}]} in
    return #{"x"}].
-
-End tests.
 
 Definition staton_bus_syntax := [Normalize {staton_bus_syntax0}].
 
@@ -801,6 +769,8 @@ End staton_busA.
 Section letinC.
 Local Open Scope lang_scope.
 Variable (R : realType).
+
+Require Import Classical_Prop. (* TODO: mv *)
 
 Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   (x y : string)
