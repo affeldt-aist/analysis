@@ -379,7 +379,7 @@ end.
 (* Import Notations. *)
 
 Definition fun_of_binop g (b : binop) : (mctx g -> mtyp (type_of_binop b)) ->
-  (mctx g -> mtyp (type_of_binop b)) -> @mctx R g -> @mtyp R (type_of_binop b) := 
+  (mctx g -> mtyp (type_of_binop b)) -> @mctx R g -> @mtyp R (type_of_binop b) :=
 match b with
 | binop_and => (fun f1 f2 x => f1 x && f2 x : mtyp Bool)
 | binop_or => (fun f1 f2 x => f1 x || f2 x : mtyp Bool)
@@ -388,8 +388,8 @@ match b with
 | binop_mult => (fun f1 f2 => (f1 \* f2)%R)
 end.
 
-Definition mfun_of_binop g b 
-  (f1 : @mctx R g -> @mtyp R (type_of_binop b)) (mf1 : measurable_fun setT f1) 
+Definition mfun_of_binop g b
+  (f1 : @mctx R g -> @mtyp R (type_of_binop b)) (mf1 : measurable_fun setT f1)
   (f2 : @mctx R g -> @mtyp R (type_of_binop b)) (mf2 : measurable_fun setT f2) :
   measurable_fun [set: @mctx R g] (fun_of_binop f1 f2).
 destruct b.
@@ -682,8 +682,8 @@ with evalP : forall g t, exp P g t -> pval R g t -> Prop :=
   [let str := e1 in e2] -P> letin' k1 k2
 
 | eval_sample g t (e : exp _ _ (Prob t))
-    (f : mctx g -> probability (mtyp t) R) mf :
-  e -D> f ; mf -> [Sample e] -P> sample f mf
+    (p : mctx g -> pprobability (mtyp t) R) mp :
+  e -D> p ; mp -> [Sample e] -P> sample p mp
 
 | eval_score g (e : exp _ g _) f mf :
   e -D> f ; mf -> [Score e] -P> kscore mf
@@ -808,13 +808,13 @@ all: (rewrite {g t e u v mu mv hu}).
   inj_ex H6; subst e5.
   inj_ex H5; subst e4.
   by rewrite (IH1 _ H4) (IH2 _ H8).
-- move=> g t e f mf ev IH k.
+- move=> g t e p mp ev IH k.
   inversion 1; subst g0.
   inj_ex H5; subst t0.
   inj_ex H5; subst e1.
   inj_ex H7; subst k.
-  have ? := IH _ _ H3; subst f1.
-  by have -> : mf = mf1 by [].
+  have ? := IH _ _ H3; subst p1.
+  by have -> : mp = mp1 by [].
 - move=> g e f mf ev IH k.
   inversion 1; subst g0.
   inj_ex H0; subst e0.
@@ -939,12 +939,12 @@ all: rewrite {g t e u v eu}.
   inj_ex H5; subst e4.
   inj_ex H6; subst e5.
   by rewrite (IH1 _ H4) (IH2 _ H8).
-- move=> g t e f mf ep IH v.
+- move=> g t e p mp ep IH v.
   inversion 1; subst g0 t0.
   inj_ex H7; subst v.
   inj_ex H5; subst e1.
-  have ? := IH _ _ H3; subst f1.
-  by have -> : mf = mf1 by [].
+  have ? := IH _ _ H3; subst p1.
+  by have -> : mp = mp1 by [].
 - move=> g e f mf ev IH k.
   inversion 1; subst g0.
   inj_ex H0; subst e0.
