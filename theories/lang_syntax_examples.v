@@ -568,8 +568,6 @@ Local Open Scope lang_scope.
 Import Notations.
 Context {R : realType}.
 
-Section tests.
-
 Local Notation "$ str" := (@exp_var _ _ str%string _ erefl)
   (in custom expr at level 1, format "$ str").
 
@@ -602,8 +600,6 @@ Definition staton_bus_syntax0 : @exp R _ [::] _ :=
    let "r" := if #{"x"} then return {3}:R else return {10}:R in
    let "_" := Score {exp_poisson 4 [#{"r"}]} in
    return #{"x"}].
-
-End tests.
 
 Definition staton_bus_syntax := [Normalize {staton_bus_syntax0}].
 

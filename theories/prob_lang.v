@@ -15,6 +15,7 @@ Require Import lebesgue_measure numfun lebesgue_integral exp kernel.
 (* uniform_probability a b ab0 == uniform probability over the interval [a,b] *)
 (*          sample mP == sample according to the probability P where mP is a  *)
 (*                       proof that P is a measurable function                *)
+(*       sample_cst P == sample according to the probability P                *)
 (*          letin l k == execute l, augment the context, and execute k        *)
 (*             ret mf == access the context with f and return the result      *)
 (*           score mf == observe t from d, where f is the density of d and    *)
