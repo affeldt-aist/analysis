@@ -303,7 +303,7 @@ Proof.
 have [s ks] := sfinite k.
 exists (s ^~ z).
   move=> n; have [r snr] := measure_uub (s n).
-  by rewrite /finite_measure (lt_le_trans (snr _))// leey.
+  by apply: lty_fin_num_fun; rewrite (lt_le_trans (snr _))// leey.
 by move=> U mU; rewrite ks.
 Qed.
 
@@ -398,10 +398,10 @@ HB.end.
 
 Lemma finite_kernel_measure d d' (X : measurableType d)
     (Y : measurableType d') (R : realType) (k : R.-fker X ~> Y) (x : X) :
-  finite_measure (k x).
+  fin_num_fun (k x).
 Proof.
 have [r k_r] := measure_uub k.
-by rewrite /finite_measure (@lt_trans _ _ r%:E) ?ltey.
+by apply: lty_fin_num_fun; rewrite (@lt_trans _ _ r%:E) ?ltey.
 Qed.
 
 (* see measurable_prod_subset in lebesgue_integral.v;
