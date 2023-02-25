@@ -41,16 +41,16 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
 
-(* TODO: PR*)
-Lemma emeasurable_itv1 (R : realType) (i : nat) :
-  measurable (`[(i%:R)%:E, (i.+1%:R)%:E[%classic : set \bar R).
+(* PR in progress *)
+Lemma emeasurable_itv (R : realType) (i : interval (\bar R)) :
+  measurable ([set` i]%classic : set \bar R).
 Proof.
-rewrite -[X in measurable X]setCK.
-apply: measurableC.
-rewrite set_interval.setCitv /=.
-apply: measurableU.
+rewrite -[X in measurable X]setCK; apply: measurableC.
+rewrite set_interval.setCitv /=; apply: measurableU => [|].
+- move: i => [[b1 i1|[|]] i2] /=; rewrite ?set_interval.set_itvE//.
   exact: emeasurable_itv_ninfty_bnd.
-exact: emeasurable_itv_bnd_pinfty.
+- move: i => [i1 [b2 i2|[|]]] /=; rewrite ?set_interval.set_itvE//.
+  exact: emeasurable_itv_bnd_pinfty.
 Qed.
 
 Section sfinite_fubini.
@@ -68,7 +68,7 @@ pose s2 := sfinite_measure_seq m2.
 rewrite [LHS](eq_measure_integral [the measure _ _ of mseries s1 0]); last first.
   by move=> A mA _; rewrite /=; exact: sfinite_measure_seqP.
 transitivity (\int[mseries s1 0]_x \int[mseries s2 0]_y f (x, y)).
-  apply eq_integral => x _; apply: eq_measure_integral => ? ? _.
+  apply: eq_integral => x _; apply: eq_measure_integral => ? ? _.
   exact: sfinite_measure_seqP.
 transitivity (\sum_(n <oo) \int[s1 n]_x \sum_(m <oo) \int[s2 m]_y f (x, y)).
   rewrite ge0_integral_measure_series; [|by []| |]; last 2 first.
@@ -79,17 +79,17 @@ transitivity (\sum_(n <oo) \int[s1 n]_x \sum_(m <oo) \int[s2 m]_y f (x, y)).
       by rewrite ge0_integral_measure_series//; exact/measurable_fun_prod1.
     apply: ge0_emeasurable_fun_sum; first by move=> k x; exact: integral_ge0.
     by move=> k; apply: measurable_fun_fubini_tonelli_F.
-  apply: eq_eseries => n _; apply eq_integral => x _.
+  apply: eq_eseriesr => n _; apply: eq_integral => x _.
   by rewrite ge0_integral_measure_series//; exact/measurable_fun_prod1.
 transitivity (\sum_(n <oo) \sum_(m <oo) \int[s1 n]_x \int[s2 m]_y f (x, y)).
-  apply eq_eseries => n _; rewrite integral_nneseries//.
+  apply: eq_eseriesr => n _; rewrite integral_nneseries//.
     by move=> m; exact: measurable_fun_fubini_tonelli_F.
   by move=> m x _; exact: integral_ge0.
 transitivity (\sum_(n <oo) \sum_(m <oo) \int[s2 m]_y \int[s1 n]_x f (x, y)).
-  apply eq_eseries => n _; apply eq_eseries => m _.
+  apply: eq_eseriesr => n _; apply: eq_eseriesr => m _.
   by rewrite fubini_tonelli//; exact: finite_measure_sigma_finite.
 transitivity (\sum_(n <oo) \int[mseries s2 0]_y \int[s1 n]_x f (x, y)).
-  apply eq_eseries => n _; rewrite ge0_integral_measure_series//.
+  apply: eq_eseriesr => n _; rewrite ge0_integral_measure_series//.
     by move=> y _; exact: integral_ge0.
   exact: measurable_fun_fubini_tonelli_G.
 transitivity (\int[mseries s2 0]_y \sum_(n <oo) \int[s1 n]_x f (x, y)).
@@ -97,11 +97,11 @@ transitivity (\int[mseries s2 0]_y \sum_(n <oo) \int[s1 n]_x f (x, y)).
     by move=> n; apply: measurable_fun_fubini_tonelli_G.
   by move=> n y _; exact: integral_ge0.
 transitivity (\int[mseries s2 0]_y \int[mseries s1 0]_x f (x, y)).
-  apply eq_integral => y _.
+  apply: eq_integral => y _.
   by rewrite ge0_integral_measure_series//; exact/measurable_fun_prod2.
 transitivity (\int[m2]_y \int[mseries s1 0]_x f (x, y)).
-  by apply eq_measure_integral => A mA _ /=; rewrite sfinite_measure_seqP.
-apply eq_integral => y _; apply eq_measure_integral => A mA _ /=.
+  by apply: eq_measure_integral => A mA _ /=; rewrite sfinite_measure_seqP.
+apply: eq_integral => y _; apply: eq_measure_integral => A mA _ /=.
 by rewrite sfinite_measure_seqP.
 Qed.
 
@@ -256,7 +256,7 @@ exists (fun n => if n is O then [the _.-ker _ ~> _ of k] else
   by case => [|_]; [exact: measure_uub|exact: kzero_uub].
 move=> t U mU/=; rewrite /mseries.
 rewrite (nneseries_split 1%N)// big_ord_recl/= big_ord0 adde0.
-rewrite ereal_series (@eq_eseries _ _ (fun=> 0%E)); last by case.
+rewrite ereal_series (@eq_eseriesr _ _ (fun=> 0%E)); last by case.
 by rewrite eseries0// adde0.
 Qed.
 
@@ -299,7 +299,7 @@ End sfinite.
 
 Lemma sfinite_kernel_measure d d' (Z : measurableType d) (X : measurableType d')
     (R : realType) (k : R.-sfker Z ~> X) (z : Z) :
-  sfinite_measure_def (k z).
+  sfinite_measure (k z).
 Proof.
 have [s ks] := sfinite k.
 exists (s ^~ z).
@@ -715,7 +715,7 @@ exists (fun n => [the _.-ker _ ~> _ of kadd (f1 n) (f2 n)]).
   by rewrite /msum !big_ord_recr/= big_ord0 add0e EFinD lte_add.
 move=> x U mU.
 rewrite /kadd/= -/(measure_add (k1 x) (k2 x)) measure_addE hk1//= hk2//=.
-rewrite /mseries -nneseriesD//; apply: eq_eseries => n _ /=.
+rewrite /mseries -nneseriesD//; apply: eq_eseriesr => n _ /=.
 by rewrite -/(measure_add (f1 n x) (f2 n x)) measure_addE.
 Qed.
 
@@ -997,7 +997,7 @@ transitivity (([the _.-ker _ ~> _ of kseries l_] \; [the _.-ker _ ~> _ of kserie
 rewrite /= /kcomp/= integral_nneseries//=; last first.
   by move=> n; have /measurable_fun_prod1 := measurable_kernel (k_ n) _ mU; exact.
 transitivity (\sum_(i <oo) \sum_(j <oo) (l_ j \; k_ i) x U).
-  apply: eq_eseries => i _; rewrite integral_kseries//.
+  apply: eq_eseriesr => i _; rewrite integral_kseries//.
   by have /measurable_fun_prod1 := measurable_kernel (k_ i) _ mU; exact.
 rewrite /mseries -hkl/=.
 rewrite (_ : setT = setT `*`` (fun=> setT)); last by apply/seteqP; split.
@@ -1099,7 +1099,7 @@ Let integral_kcomp_indic x E (mE : measurable E) :
   \int[(l \; k) x]_z (\1_E z)%:E = \int[l x]_y (\int[k (x, y)]_z (\1_E z)%:E).
 Proof.
 rewrite integral_indic//= /kcomp.
-by apply eq_integral => y _; rewrite integral_indic.
+by apply: eq_integral => y _; rewrite integral_indic.
 Qed.
 
 Let integral_kcomp_nnsfun x (f : {nnsfun Z >-> R}) :
@@ -1142,7 +1142,7 @@ have [r0|r0] := leP 0%R r.
   rewrite ge0_integralM//; last first.
     have := measurable_kernel k (f @^-1` [set r]) (measurable_sfunP f (measurable_set1 r)).
     by move/measurable_fun_prod1; exact.
-  by congr (_ * _); apply eq_integral => y _; rewrite integral_indic// setIT.
+  by congr (_ * _); apply: eq_integral => y _; rewrite integral_indic// setIT.
 rewrite integral0_eq ?mule0; last first.
    by move=> y _; rewrite integral0_eq// => z _; rewrite preimage_nnfun0// indic0.
 by rewrite integral0_eq// => y _; rewrite preimage_nnfun0// measure0 mule0.
@@ -1169,18 +1169,18 @@ transitivity (\int[l x]_y lim (fun n => \int[k (x, y)]_z (f_ n z)%:E)).
       by move=> /measurable_fun_prod1; exact.
     + by move=> z; rewrite lee_fin.
     + exact/EFin_measurable_fun.
-  - by move=> n y _; apply integral_ge0 => // z _; rewrite lee_fin.
+  - by move=> n y _; apply: integral_ge0 => // z _; rewrite lee_fin.
   - move=> y _ a b ab; apply: ge0_le_integral => //.
     + by move=> z _; rewrite lee_fin.
     + exact/EFin_measurable_fun.
     + by move=> z _; rewrite lee_fin.
     + exact/EFin_measurable_fun.
     + by move: ab => /ndf_ /lefP ab z _; rewrite lee_fin.
-apply eq_integral => y _; rewrite -monotone_convergence//; last 3 first.
+apply: eq_integral => y _; rewrite -monotone_convergence//; last 3 first.
   - by move=> n; exact/EFin_measurable_fun.
   - by move=> n z _; rewrite lee_fin.
   - by move=> z _ a b /ndf_ /lefP; rewrite lee_fin.
-by apply eq_integral => z _; apply/cvg_lim => //; exact: f_f.
+by apply: eq_integral => z _; apply/cvg_lim => //; exact: f_f.
 Qed.
 
 End integral_kcomp.
