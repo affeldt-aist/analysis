@@ -49,14 +49,90 @@ Import numFieldTopology.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Lemma aeT d (T : measurableType d) (R : realType)
+    (mu : {measure set T -> \bar R}) (f g : T -> R) :
+  ae_eq mu [set: T] (EFin \o f) (EFin \o g) <->
+  {ae mu, forall x : T, f x = g x}.
+Proof.
+split=> [[N [mN muN fgN]]|[N [mN muN fgN]]];
+  exists N; split => // t /= fg; apply: fgN => /=.
+  by apply/not_implyP; split => // -[].
+by move=> gf; apply: fg; rewrite gf.
+Qed.
+
+Module Lspace.
+Section Lspace.
+Context d (T : measurableType d) (R : realType).
+Variables (mu : {measure set T -> \bar R}) (p : nat).
+Record type := {
+  f :> T -> R ;
+  mf : measurable_fun [set: T] f ;
+  intf : (\int[mu]_x (`|f x| ^+ p)%:E < +oo)%E }.
+End Lspace.
+End Lspace.
+Coercion Lspace.f : Lspace.type >-> Funclass.
+Notation LspaceType := Lspace.type.
+
+Section canonical.
+Context d (T : measurableType d) (R : realType).
+Variables (mu : {measure set T -> \bar R}) (p : nat).
+
+Canonical Lspace_eqType := EqType (LspaceType mu p) gen_eqMixin.
+Canonical Lspace_choiceType := ChoiceType (LspaceType mu p) gen_choiceMixin.
+End canonical.
+
+From mathcomp Require Import generic_quotient.
+Local Open Scope quotient_scope.
+
+Section Lequiv.
+Context d (T : measurableType d) (R : realType).
+Variables (mu : {measure set T -> \bar R}) (p : nat).
+
+Definition Lequiv (f g : LspaceType mu p) :=
+  `[< {ae mu, forall x, f x = g x} >].
+
+Let Lequiv_refl : reflexive Lequiv.
+Proof. by move=> f; apply/asboolP/aeT/ae_eq_refl. Qed.
+
+Let Lequiv_sym : symmetric Lequiv.
+Proof.
+by move=> f g; apply/idP/idP => /asboolP/aeT fg; exact/asboolP/aeT/ae_eq_sym.
+Qed.
+
+Let Lequiv_trans : transitive Lequiv.
+Proof.
+move=> f g h /asboolP/aeT gf /asboolP/aeT fh; apply/asboolT/aeT.
+exact: ae_eq_trans fh.
+Qed.
+
+Canonical Lequiv_canonical := EquivRel
+  Lequiv Lequiv_refl Lequiv_sym Lequiv_trans.
+
+Definition Ltype := {eq_quot Lequiv}.
+
+Canonical Ltype_quotType := [quotType of Ltype].
+Canonical Ltype_eqType := [eqType of Ltype].
+Canonical Ltype_choiceType := [choiceType of Ltype].
+Canonical Ltype_eqQuotType := [eqQuotType Lequiv of Ltype].
+
+Lemma Lequiv_def (x y : LspaceType mu p) :
+  x == y %[mod Ltype] =
+  `[< ae_eq mu setT (EFin \o Lspace.f x) (EFin \o Lspace.f y) >].
+Proof.
+by apply/idP/idP; rewrite eqmodE /=; move=> /asboolP/aeT/asboolP.
+Qed.
+
+End Lequiv.
+
 Section Lspace.
 Context d (T : measurableType d) (R : realType).
 Variable mu : {measure set T -> \bar R}.
 
-Definition Lspace p := [set f : T -> R |
-  measurable_fun [set: T] f /\ (\int[mu]_x (`|f x| ^+ p)%:E < +oo)%E].
+Definition Lspace p := [set: Ltype mu p].
 
-Lemma Lspace1 : Lspace 1 =
+xxx
+
+Lemma Lspace1 : @Lspace 1%N =
   [set f : T -> R | mu.-integrable [set: T] (EFin \o f)].
 Proof.
 by rewrite /Lspace; apply/seteqP; split=> [f/= [mf foo]|f/= [mf foo]];
@@ -282,6 +358,9 @@ have h (Y : {RV P >-> R}) :
     exact/measurable_fun_exprn/measurable_fun_id.
   - by move=> x /=; apply: sqr_ge0.
   - by move=> x /=; apply: sqr_ge0.
+simpl.
+
+
   - by apply/aeW => t /=; rewrite real_normK// num_real.
 have := h [the {mfun T >-> R} of (X \- cst (fine ('E_P[X])))%R].
 by move=> /le_trans; apply; rewrite lee_pmul2l// lte_fin invr_gt0 exprn_gt0.

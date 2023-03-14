@@ -3240,6 +3240,9 @@ have [fgpx|fgnx] : f^\+ x <> g^\+ x \/ f^\- x <> g^\- x.
 - by apply: Bx; exact/DfgB/not_implyP.
 Qed.
 
+Lemma ae_eq_refl f : ae_eq f f.
+Proof. by exists set0; split => // t /=; apply. Qed.
+
 Lemma ae_eq_sym f g : ae_eq f g -> ae_eq g f.
 Proof.
 move=> [N1 [mN1 N10 subN1]]; exists N1; split => // x /= Dba; apply: subN1 => /=.
