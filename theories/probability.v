@@ -49,36 +49,40 @@ Import numFieldTopology.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-Lemma aeT d (T : measurableType d) (R : realType)
-    (mu : {measure set T -> \bar R}) (f g : T -> R) :
-  ae_eq mu [set: T] (EFin \o f) (EFin \o g) <->
-  {ae mu, forall x : T, f x = g x}.
+Lemma ae_imply d (T : measurableType d) (R : realType)
+    (mu : {measure set T -> \bar R}) (P Q : T -> Prop) :
+  (forall x, Q x -> P x) ->
+  {ae mu, forall x, Q x} -> {ae mu, forall x, P x}.
 Proof.
-split=> [[N [mN muN fgN]]|[N [mN muN fgN]]];
-  exists N; split => // t /= fg; apply: fgN => /=.
-  by apply/not_implyP; split => // -[].
-by move=> gf; apply: fg; rewrite gf.
+move=> QP [N [mN nuN QN]]; exists N; split => //.
+by apply: subset_trans QN; apply: subsetC.
 Qed.
 
-Module Lspace.
-Section Lspace.
+Lemma ae_imply2 {d} {T : ringOfSetsType d} {R : realFieldType}
+  (mu : {measure set T -> \bar R}) (P1 P2 P3 : T -> Prop) :
+  (forall x, P1 x -> P2 x -> P3 x) ->
+  {ae mu, forall x, P1 x} -> {ae mu, forall x, P2 x} -> {ae mu, forall x, P3 x}.
+Admitted.
+
+Module Lfun.
+Section lfun.
 Context d (T : measurableType d) (R : realType).
 Variables (mu : {measure set T -> \bar R}) (p : nat).
 Record type := {
   f :> T -> R ;
   mf : measurable_fun [set: T] f ;
   intf : (\int[mu]_x (`|f x| ^+ p)%:E < +oo)%E }.
-End Lspace.
-End Lspace.
-Coercion Lspace.f : Lspace.type >-> Funclass.
-Notation LspaceType := Lspace.type.
+End lfun.
+End Lfun.
+Notation LfunType := Lfun.type.
+Coercion Lfun.f : LfunType >-> Funclass.
 
 Section canonical.
 Context d (T : measurableType d) (R : realType).
 Variables (mu : {measure set T -> \bar R}) (p : nat).
 
-Canonical Lspace_eqType := EqType (LspaceType mu p) gen_eqMixin.
-Canonical Lspace_choiceType := ChoiceType (LspaceType mu p) gen_choiceMixin.
+Canonical Lfun_eqType := EqType (LfunType mu p) gen_eqMixin.
+Canonical Lfun_choiceType := ChoiceType (LfunType mu p) gen_choiceMixin.
 End canonical.
 
 From mathcomp Require Import generic_quotient.
@@ -88,38 +92,50 @@ Section Lequiv.
 Context d (T : measurableType d) (R : realType).
 Variables (mu : {measure set T -> \bar R}) (p : nat).
 
-Definition Lequiv (f g : LspaceType mu p) :=
-  `[< {ae mu, forall x, f x = g x} >].
+Definition Lequiv (f g : LfunType mu p) := `[< {ae mu, forall x, f x = g x} >].
 
 Let Lequiv_refl : reflexive Lequiv.
-Proof. by move=> f; apply/asboolP/aeT/ae_eq_refl. Qed.
+Proof.
+move=> f.
+exact/asboolP/(ae_imply _ (ae_eq_refl mu setT (EFin \o f : _ -> _))).
+Qed.
 
 Let Lequiv_sym : symmetric Lequiv.
 Proof.
-by move=> f g; apply/idP/idP => /asboolP/aeT fg; exact/asboolP/aeT/ae_eq_sym.
+by move=> f g; apply/idP/idP => /asboolP h; apply/asboolP; exact: ae_imply h.
 Qed.
 
 Let Lequiv_trans : transitive Lequiv.
 Proof.
-move=> f g h /asboolP/aeT gf /asboolP/aeT fh; apply/asboolT/aeT.
-exact: ae_eq_trans fh.
+move=> f g h /asboolP gf /asboolP fh.
+by apply/asboolP/(ae_imply2 _ gf fh) => x ->.
 Qed.
 
-Canonical Lequiv_canonical := EquivRel
-  Lequiv Lequiv_refl Lequiv_sym Lequiv_trans.
+Canonical Lequiv_canonical :=
+  EquivRel Lequiv Lequiv_refl Lequiv_sym Lequiv_trans.
 
 Definition Ltype := {eq_quot Lequiv}.
+(*Record LType := MemLType { Lfun_class : {eq_quot Lequiv} }.
+Coercion LfunType_of_LType (f : LType) : LfunType mu p := repr (Lfun_class f).*)
+
+(*Canonical Ltype_subType := [newType for Lfun_class].
+Definition Ltype_eqMixin := Eval hnf in [eqMixin of LType by <:].
+Canonical Ltype_eqType := Eval hnf in EqType LType Ltype_eqMixin.
+Definition Ltype_choiceMixin := Eval hnf in [choiceMixin of LType by <:].
+Canonical Ltype_choiceType := Eval hnf in ChoiceType LType Ltype_choiceMixin.*)
 
 Canonical Ltype_quotType := [quotType of Ltype].
 Canonical Ltype_eqType := [eqType of Ltype].
 Canonical Ltype_choiceType := [choiceType of Ltype].
 Canonical Ltype_eqQuotType := [eqQuotType Lequiv of Ltype].
 
-Lemma Lequiv_def (x y : LspaceType mu p) :
-  x == y %[mod Ltype] =
-  `[< ae_eq mu setT (EFin \o Lspace.f x) (EFin \o Lspace.f y) >].
+Lemma LequivP (f g : LfunType mu p) :
+  reflect {ae mu, forall x, f x = g x} (f == g %[mod Ltype]).
 Proof.
-by apply/idP/idP; rewrite eqmodE /=; move=> /asboolP/aeT/asboolP.
+apply/(iffP idP).
+  by rewrite eqmodE => /asboolP.
+move=> /asboolP.
+by rewrite eqmodE.
 Qed.
 
 End Lequiv.
@@ -130,19 +146,30 @@ Variable mu : {measure set T -> \bar R}.
 
 Definition Lspace p := [set: Ltype mu p].
 
-xxx
+Lemma Lspace1 (f : Ltype mu 1) : mu.-integrable setT (EFin \o repr f).
+Proof.
+have H1 := Lfun.intf (repr f).
+have H2 := Lfun.mf (repr f).
+split => //.
+exact/EFin_measurable_fun.
+Qed.
 
-Lemma Lspace1 : @Lspace 1%N =
+Lemma Lspace1' (f : LfunType mu 1) : \pi f \in @Lspace 1%N.
+Proof. by rewrite inE. Qed.
+
+(*Lemma Lspace1 : @Lspace 1%N =
   [set f : T -> R | mu.-integrable [set: T] (EFin \o f)].
 Proof.
 by rewrite /Lspace; apply/seteqP; split=> [f/= [mf foo]|f/= [mf foo]];
   split=> //; exact/EFin_measurable_fun.
-Qed.
+Qed.*)
 
-Lemma Lspace2 : Lspace 2 `<=`
-  [set f : T -> R | mu.-integrable [set: T] (EFin \o (fun x => f x ^+ 2))].
+Lemma Lspace2 (f : Ltype mu 2%N) :
+  mu.-integrable [set: T] (EFin \o (fun x => (repr f) x ^+ 2)).
 Proof.
-move=> f/= [mf foo]; split.
+have foo := Lfun.intf (repr f).
+have H2 := Lfun.mf (repr f).
+split.
 - exact/EFin_measurable_fun/measurable_fun_exprn.
 - rewrite (le_lt_trans _ foo)// ge0_le_integral//.
   + apply: measurable_funT_comp => //.
@@ -153,7 +180,7 @@ move=> f/= [mf foo]; split.
 Qed.
 
 End Lspace.
-Notation "mu .-Lspace p" := (Lspace mu p) : type_scope.
+Notation "mu .-Lspace p" := (@Lspace _ _ _ mu p) : type_scope.
 
 Definition random_variable (d : _) (T : measurableType d) (R : realType)
   (P : probability T R) := {mfun T >-> R}.
@@ -289,12 +316,17 @@ Context d (T : measurableType d) (R : realType) (P : probability T R).
 Definition variance (X : T -> R) := 'E_P[(X \- cst (fine 'E_P[X])) ^+ 2]%R.
 Local Notation "''V_' P [ X ]" := (variance X).
 
-Lemma varianceE (X : {RV P >-> R}) : P.-Lspace 1 X -> P.-Lspace 2 X ->
+Lemma varianceE (X : {RV P >-> R}) :
+  (* TODO: check what happens when X is not integrable *)
+  P.-integrable setT (EFin \o X) ->
+  P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+  (*X \in P.-Lspace 1 -> X \in P.-Lspace 2 ->*)
+  (* NB: Lspace 2 -> Lspace 1 *)
   'V_P[X] = 'E_P[X ^+ 2] - ('E_P[X]) ^+ 2.
 Proof.
 move=> X1 X2.
-have ? : P.-integrable [set: T] (EFin \o X) by rewrite Lspace1 in X1.
-have ? : P.-integrable [set: T] (EFin \o (X ^+ 2)%R)  by apply: Lspace2.
+(*have ? : P.-integrable [set: T] (EFin \o X) by rewrite Lspace1 in X1.
+have ? : P.-integrable [set: T] (EFin \o (X ^+ 2)%R)  by apply: Lspace2.*)
 have ? : 'E_P[X] \is a fin_num by rewrite fin_num_abs// integrable_expectation.
 rewrite /variance.
 rewrite [X in 'E_P[X]](_ : _ = (X ^+ 2 \- (2 * fine 'E_P[X]) \o* X \+
