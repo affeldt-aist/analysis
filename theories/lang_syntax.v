@@ -164,57 +164,68 @@ apply: (measurable_funT_comp (IHl _ _) (@measurable_fun_snd _ _ _ _)).
 apply: K.
 Qed.
 
-Lemma measurable_fun_normalize d d' (X : measurableType d) (Y : measurableType d') (k : R.-sfker X ~> Y) :
-  measurable_fun setT (normalize k point : X -> pprobability Y R).
+Lemma eq_probability d (Y : measurableType d) (m1 m2 : probability Y R) :
+  (m1 = m2 :> (set Y -> \bar R)) -> m1 = m2.
 Proof.
-(* have := measurable_kernel k set0 measurable0.
-rewrite /normalize /mnormalize.
-(* rewrite [X in measurable_fun X](_ : _ = (fun x : X =>
-                            if (k x [set: Y] == 0) || (k x [set: Y] == +oo)
-                            then fun U : set Y =>point U
-                            else fun U : set Y => k x U * ((fine (k x [set: Y]))^-1)%:E)); last first. *)
-suff: measurable_fun (T:=X) (U:=pprobability Y R) [set: X]
-  (fun x : X =>
-   fun U : set Y =>
-                           if (k x [set: Y] == 0) || (k x [set: Y] == +oo)
-                           then point U
-                           else k x U * ((fine (k x [set: Y]))^-1)%:E).
-have:= (@measurable_fun_if _ _ _ _ (fun x => _) (fun x U => k x U * ((fine (k x [set: Y]))^-1)%:E) (fun x => (k x [set: Y] == 0) || (k x [set: Y] == +oo))).
-(* move=> mX U mU.
-rewrite setTI. *)
-apply: measurability.
-reflexivity.
-move=> B [Z [r r01]] [Z0 mZ0 <-{Z}] <-{B}.
-rewrite /normalize.
-rewrite /mnormalize.
-rewrite setTI.
-rewrite /mset /preimage /= /mnormalize.
-rewrite [X in measurable X](_ : _ = (fun x : X =>
-                            if (k x [set: Y] == 0) || (k x [set: Y] == +oo)
-                            then fun U : set Y =>point U
-                            else fun U : set Y => k x U * ((fine (k x [set: Y]))^-1)%:E) @^-1`
-   [set mu | mu Z0 < r%:E]); last first.
-  apply/funext => x/=.
-  rewrite /mset/= /mnormalize.
-  case: ifP => //= ?.
-  rewrite diracE.
-  case: (point \in Z0) => /=.
-  admit.
- apply: measurable_fun_if.
-  reflexivity.
-  done.
-simpl.
-rewe
-move=> _ B.
-rewrite /pset/= => hB.
- => _ /= -[_ [r ->] <-].
-(* apply: (measurability (ErealGenInftyO.measurableE R)). *)
-apply: measurability => //.
-apply: measurableI => //.
-apply: measurable_fun_knormalize.
-have := measurable_kernel [the kernel _ _ _ of (normalize k : X -> pprobability Y R)].
-rewrite preimage. *)
-Admitted.
+move: m1 m2 => [m1 +] [m2 +] /= m1m2.
+rewrite -{}m1m2 => -[[c11 c12] [m01] [sf1] [sig1] [fin1] [sub1] [p1]]
+                    [[c21 c22] [m02] [sf2] [sig2] [fin2] [sub2] [p2]].
+have ? : c11 = c21 by exact: Prop_irrelevance.
+subst c21.
+have ? : c12 = c22 by exact: Prop_irrelevance.
+subst c22.
+have ? : m01 = m02 by exact: Prop_irrelevance.
+subst m02.
+have ? : sf1 = sf2 by exact: Prop_irrelevance.
+subst sf2.
+have ? : sig1 = sig2 by exact: Prop_irrelevance.
+subst sig2.
+have ? : fin1 = fin2 by exact: Prop_irrelevance.
+subst fin2.
+have ? : sub1 = sub2 by exact: Prop_irrelevance.
+subst sub2.
+have ? : p1 = p2 by exact: Prop_irrelevance.
+subst p2.
+by f_equal.
+Qed.
+
+Section measurable_fun_normalize.
+Context d d' (X : measurableType d) (Y : measurableType d').
+Variable k : R.-sfker X ~> Y.
+
+Lemma measurable_fun_normalize :
+  measurable_fun setT (fun x => normalize k point x : pprobability Y R).
+Proof.
+apply: (@measurability _ _ _ _ _ _
+  (@pset _ _ _ : set (set (pprobability Y R)))) => //.
+move=> _ -[_ [r r01] [Ys mYs <-]] <-.
+rewrite /normalize /mnormalize /mset /preimage/=.
+apply: emeasurable_fun_infty_o => //.
+rewrite /mnormalize/=.
+rewrite (_ : (fun x => _) = (fun x => if (k x setT == 0) || (k x setT == +oo)
+    then \d_point Ys else k x Ys * ((fine (k x setT))^-1)%:E)); last first.
+  by apply/funext => x/=; case: ifPn.
+apply: measurable_fun_if => //.
+- apply: (measurable_fun_bool true) => //.
+  rewrite (_ : _ @^-1` _ = [set t | k t setT == 0] `|`
+                           [set t | k t setT == +oo]); last first.
+    by apply/seteqP; split=> x /= /orP//.
+  by apply: measurableU; [exact: measurable_eq_cst|exact: measurable_eq_cst].
+- exact: measurable_fun_cst.
+- apply/emeasurable_funM.
+    by apply: (@measurable_funS _ _ _ _ setT) => //; exact/measurable_kernel.
+  apply/EFin_measurable_fun; rewrite setTI.
+  apply: (@measurable_fun_comp _ _ _ _ _ _ [set r : R | r != 0%R]).
+  + exact: open_measurable.
+  + by move=> /= _ [x /norP[s0 soo]] <-; rewrite -eqe fineK ?ge0_fin_numE ?ltey.
+  + apply: open_continuous_measurable_fun => //; apply/in_setP => x /= x0.
+    exact: inv_continuous.
+  + apply: (@measurable_fun_comp _ _ _ _ _ _ setT) => //.
+      exact: measurable_fun_fine.
+    by apply: (@measurable_funS _ _ _ _ setT) => //; exact: measurable_kernel.
+Qed.
+
+End measurable_fun_normalize.
 
 (* Fixpoint denoteType (t : stype) (e : @expD t) :=
   match e with
@@ -983,9 +994,9 @@ pose vy : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R := exec
 have -> : v1 = letin' (vx) (letin' (vy) (ret (measurable_fun_pair var2of3' var1of3'))).
 apply: (evalP_uniq ev1).
 apply/E_letin /E_letin.
-rewrite /vx /execP_cst /ssr_have /sval/=.
+rewrite /vx /execP_cst/= /sval/=.
 by case: cid => // ? h.
-rewrite /vy /execP_cst /ssr_have /sval/=.
+rewrite /vy /execP_cst /sval/=.
 by case: cid => // ? h.
 apply/E_return /E_pair.
 have -> : (var2of3' = (@mvarof R [:: (y, sreal); (x, sreal)] 1 (false_index_size (_ : (x \in map fst [:: (y, sreal); (x, sreal)]))))) by [].
@@ -997,9 +1008,9 @@ pose vx' : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=    
 have -> : v2 = letin' (vy') (letin' (vx') (ret (measurable_fun_pair var1of3' var2of3'))).
 apply: (evalP_uniq ev2).
 apply/E_letin /E_letin.
-rewrite /vy' /execP_cst /ssr_have /sval/=.
+rewrite /vy' /execP_cst /sval/=.
 case: cid => //.
-rewrite /vx' /execP_cst /ssr_have /sval/=.
+rewrite /vx' /execP_cst /sval/=.
 case: cid => //.
 apply/E_return /E_pair.
 have -> : (var1of3' = (@mvarof R [:: (x, sreal); (y, sreal)] 0 (false_index_size (_ : (x \in map fst [:: (x, sreal); (y, sreal)]))))) by [].
@@ -1009,13 +1020,13 @@ apply/(@E_var R [:: (x, sreal); (y, sreal)] y is_true_true).
 apply: letin'C; last by [].
 move=> x0 t0.
 rewrite (@evalP_uni_new y 1 vx vx'); last 2 first.
-  rewrite /vx /execP_cst /ssr_have /sval/=.
+  rewrite /vx /execP_cst /sval/=.
   by case: cid.
-  rewrite /vx' /execP_cst /ssr_have /sval/=.
+  rewrite /vx' /execP_cst /sval/=.
   by case: cid.
   by done.
 move=> x0 t0.
-  rewrite /vy /vy' /execP_cst /ssr_have /sval/=.
+  rewrite /vy /vy' /execP_cst /sval/=.
   case: cid => sy.
   case: cid => sy'.
   move=> er1 er2.

@@ -782,10 +782,10 @@ Section mnormalize.
 Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
 Variables (f : X -> {measure set Y -> \bar R}) (P : probability Y R).
 
-Definition mnormalize x U :=
+Definition mnormalize x :=
   let evidence := f x [set: Y] in
-  if (evidence == 0) || (evidence == +oo) then P U
-  else f x U * (fine evidence)^-1%:E.
+  if (evidence == 0) || (evidence == +oo) then fun U => P U
+  else fun U => f x U * (fine evidence)^-1%:E.
 
 Let mnormalize0 x : mnormalize x set0 = 0.
 Proof.
