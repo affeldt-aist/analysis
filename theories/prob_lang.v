@@ -1063,12 +1063,38 @@ HB.instance Definition _ :=
 
 End mswap.
 
+Section mswap_sfinite_kernel.
+Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
+          (Z : measurableType d3) (R : realType).
+Variable k : R.-sfker [the measurableType _ of (X * Y)%type] ~> Z.
+
+(* Import KSWAP_FINITE_KERNEL. *)
+
+Let mkswap_sfinite :
+  exists2 k_ : (R.-ker [the measurableType _ of (Y * X)%type] ~> Z)^nat,
+  forall n, measure_fam_uub (k_ n) &
+  forall x U, measurable U -> mkswap k x U = kseries k_ x U.
+Proof.
+have [k_ /= kE] := sfinite k.
+exists (fun n => mkswap (k_  n)).
+  move=> n.
+  have /measure_fam_uubP[M hM] := measure_uub (k_ n).
+  by exists M%:num => x/=; exact: hM.
+move=> xy U mU.
+by rewrite /mswap/= kE.
+Qed.
+
+HB.instance Definition _ :=
+  Kernel_isSFinite_subdef.Build _ _ _ Z R (mkswap k) mkswap_sfinite.
+
+End mswap_sfinite_kernel.
+
 (* Module KSWAP_FINITE_KERNEL. *)
 
 Section kswap_finite_kernel_finite.
 Context d d' d3 (X : measurableType d) (Y : measurableType d')
   (Z : measurableType d3) (R : realType)
-  (k : R.-fker [the measurableType _ of (Y * X)%type] ~> Z).
+  (k : R.-fker [the measurableType _ of (X * Y)%type] ~> Z).
 
 Let mkswap_finite : measure_fam_uub (mkswap k).
 Proof.
@@ -1084,26 +1110,6 @@ End kswap_finite_kernel_finite.
 (* End KSWAP_FINITE_KERNEL. *)
 
 (* Module MSWAP_SFINITE_KERNEL. *)
-Section mswap_sfinite_kernel.
-Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
-          (Z : measurableType d3) (R : realType).
-Variable k : R.-sfker [the measurableType _ of (Y * X)%type] ~> Z.
-
-(* Import KSWAP_FINITE_KERNEL. *)
-
-Let mkswap_sfinite : 
-  exists k_ : (R.-fker [the measurableType _ of (X * Y)%type] ~> Z)^nat,
-  forall x U, measurable U -> mkswap k x U = kseries k_ x U.
-Proof.
-have [k_ /= kE] := sfinite k.
-exists (fun n => mkswap (k_  n)).
-move=> xy U mU.
-by rewrite /mswap/= kE.
-Qed.
-
-HB.instance Definition _ :=
-  Kernel_isSFinite.Build _ _ _ Z R (mkswap k) mkswap_sfinite.
-End mswap_sfinite_kernel.
 
 Notation "l \; k" := (mkcomp l (mkswap k)) : ereal_scope.
 
@@ -1112,9 +1118,7 @@ Notation "l \; k" := (mkcomp l (mkswap k)) : ereal_scope.
 Section letin'.
 Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
           (Z : measurableType d3) (R : realType) (l : R.-sfker X ~> Y)
-    (k : R.-sfker [the measurableType (d', d).-prod of (Y * X)%type] ~> Z).
-
-Check [the R.-sfker X ~> Z of l \; k].
+          (k : R.-sfker [the measurableType (d, d').-prod of (X * Y)%type] ~> Z).
 
 Definition letin' (l : R.-sfker X ~> Y)
     (k : R.-sfker [the measurableType (d', d).-prod of (Y * X)%type] ~> Z) :=
