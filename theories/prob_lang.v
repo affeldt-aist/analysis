@@ -1029,7 +1029,7 @@ Notation var4of4' := (measurable_funT_comp (@measurable_fun_fst _ _ _ _) (measur
 Section mswap.
 Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
           (Z : measurableType d3) (R : realType).
-Variable k : R.-ker [the measurableType _ of (X * Y)%type] ~> Z.
+Variable k : R.-ker [the measurableType _ of (Y * X)%type] ~> Z.
 
 Definition mswap xy U := k (swap xy) U.
 
@@ -1059,19 +1059,19 @@ exact: measurable_fun_swap.
 Qed.
 
 HB.instance Definition _ :=
-  isKernel.Build _ _ [the measurableType _ of (Y * X)%type] Z R mkswap measurable_fun_kswap.
+  isKernel.Build _ _ [the measurableType _ of (X * Y)%type] Z R mkswap measurable_fun_kswap.
 
 End mswap.
 
 Section mswap_sfinite_kernel.
 Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
           (Z : measurableType d3) (R : realType).
-Variable k : R.-sfker [the measurableType _ of (X * Y)%type] ~> Z.
+Variable k : R.-sfker [the measurableType _ of (Y * X)%type] ~> Z.
 
 (* Import KSWAP_FINITE_KERNEL. *)
 
 Let mkswap_sfinite :
-  exists2 k_ : (R.-ker [the measurableType _ of (Y * X)%type] ~> Z)^nat,
+  exists2 k_ : (R.-ker [the measurableType _ of (X * Y)%type] ~> Z)^nat,
   forall n, measure_fam_uub (k_ n) &
   forall x U, measurable U -> mkswap k x U = kseries k_ x U.
 Proof.
@@ -1094,7 +1094,7 @@ End mswap_sfinite_kernel.
 Section kswap_finite_kernel_finite.
 Context d d' d3 (X : measurableType d) (Y : measurableType d')
   (Z : measurableType d3) (R : realType)
-  (k : R.-fker [the measurableType _ of (X * Y)%type] ~> Z).
+  (k : R.-fker [the measurableType _ of (Y * X)%type] ~> Z).
 
 Let mkswap_finite : measure_fam_uub (mkswap k).
 Proof.
@@ -1117,8 +1117,7 @@ Notation "l \; k" := (mkcomp l (mkswap k)) : ereal_scope.
 
 Section letin'.
 Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
-          (Z : measurableType d3) (R : realType) (l : R.-sfker X ~> Y)
-          (k : R.-sfker [the measurableType (d, d').-prod of (X * Y)%type] ~> Z).
+          (Z : measurableType d3) (R : realType).
 
 Definition letin' (l : R.-sfker X ~> Y)
     (k : R.-sfker [the measurableType (d', d).-prod of (Y * X)%type] ~> Z) :=
@@ -1195,47 +1194,3 @@ by rewrite letin'E/= -tt'; apply: eq_integral => // x _; rewrite retE.
 Qed.
 
 End letin'C.
-
-
-Module KCOMP_SWAP_FINITE_KERNEL.
-
-Section kcomp_swap_finite_kernel_kernel.
-Context d d' d3 (X : measurableType d) (Y : measurableType d')
-  (Z : measurableType d3) (R : realType) (l : R.-fker X ~> Y)
-  (k : R.-ker [the measurableType _ of (Y * X)%type] ~> Z).
-
-Lemma measurable_fun_kcomp_finite U :
-  measurable U -> measurable_fun setT ((l \; k) ^~ U).
-Proof.
-Admitted.
-
-HB.instance Definition _ :=
-  isKernel.Build _ _ X Z R (l \; k) measurable_fun_kcomp_finite.
-
-End kcomp_swap_finite_kernel_kernel.
-
-Section kcomp_finite_kernel_finite.
-Context d d' d3 (X : measurableType d) (Y : measurableType d')
-  (Z : measurableType d3) (R : realType).
-Variable l : R.-fker X ~> Y.
-Variable k : R.-fker [the measurableType _ of (Y * X)%type] ~> Z.
-
-Let mkcomp_swap_finite : measure_fam_uub (l \; k).
-Proof.
-have /measure_fam_uubP[r hr] := measure_uub k.
-have /measure_fam_uubP[s hs] := measure_uub l.
-apply/measure_fam_uubP; exists (PosNum [gt0 of (r%:num * s%:num)%R]) => x /=.
-apply: (@le_lt_trans _ _ (\int[l x]__ r%:num%:E)).
-  apply: ge0_le_integral => //.
-  - have /measurable_fun_prod1 := measurable_kernel k _ measurableT.
-    (* exact.
-  - exact/measurable_fun_cst.
-  - by move=> y _; exact/ltW/hr.
-by rewrite integral_cst//= EFinM lte_pmul2l. *)
-Admitted.
-
-HB.instance Definition _ :=
-  Kernel_isFinite.Build _ _ _ Z R (l \; k) mkcomp_swap_finite.
-
-End kcomp_finite_kernel_finite.
-End KCOMP_FINITE_KERNEL.
