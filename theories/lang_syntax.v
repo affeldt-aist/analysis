@@ -22,6 +22,9 @@ Local Open Scope string.
 
 Import Notations.
 
+Reserved Notation "l |- e -D-> v # mv" (at level 50).
+Reserved Notation "l |- e -P-> v" (at level 50).
+
 Section type_syntax.
 Variables (R : realType).
 
@@ -90,7 +93,7 @@ Inductive expD : context -> stype -> Type :=
 | exp_pair l t1 t2 : expD l t1 -> expD l t2 -> expD l (spair t1 t2)
 | exp_var l x t : t = nth sunit (map snd l) (seq.index x (map fst l)) ->
     expD l t
-| exp_bernoulli l (r : {nonneg R}) (r1 : (r%:num <= 1)%R) : 
+| exp_bernoulli l (r : {nonneg R}) (r1 : (r%:num <= 1)%R) :
     expD l (sprob sbool)
 | exp_poisson l : nat -> expD l sreal -> expD l sreal
 | exp_norm l t : expP l t -> expD l (sprob t)
@@ -248,9 +251,6 @@ End measurable_fun_normalize.
     existT _ (@varof l (seq.index x (map fst l)) (false_index_size H)) (@mvarof l (seq.index x (map fst l)) (false_index_size H))
   end. *)
 
-Reserved Notation "l |- e -D-> v # mv" (at level 50).
-Reserved Notation "l |- e -P-> v" (at level 50).
-
 Inductive evalD : forall (l : context) (T : stype) (e : @expD R l T) 
   (f : projT2 (typei (sprod (map (snd) l))) -> projT2 (typei T)),
   measurable_fun setT f -> Prop :=
@@ -330,6 +330,8 @@ with evalP : forall (l : context) (T : stype),
 where "l |- e -P-> v" := (@evalP l _ e v).
 
 End eval.
+Notation "l |- e -D-> v # mv" := (@evalD _ l _ e v mv).
+Notation "l |- e -P-> v" := (@evalP _ l _ e v).
 
 Section eval_prop.
 Variables (R : realType).
@@ -980,12 +982,38 @@ Let sfinVY z : sfinite_measure (VY z). Proof. exact: sfinite_kernel_measure. Qed
 HB.instance Definition _ z := @Measure_isSFinite_subdef.Build _ (mR R) R
   (VY z) (sfinVY z).
 
+End eval_prop.
+
+Declare Custom Entry expr.
+Notation "[ e ]" := e (e custom expr at level 50).
+Notation "x ':r'" := (@exp_real _ _ x) (in custom expr at level 0).
+Notation "ret x" := (@exp_return _ _ _ x) (in custom expr at level 2).
+Notation "% x" := (exp_var x _ erefl) (in custom expr at level 1).
+Notation "( x , y )" := (exp_pair x y) (in custom expr at level 1).
+Notation "'Let' x '<~' e 'In' f" := (exp_letin _ x erefl e f)
+  (in custom expr at level 3,
+   x constr,
+   e custom expr at level 3,
+   f custom expr at level 3,
+   left associativity).
+(*Notation "( x )" := x (in custom expr, x at level 50).*)
+Notation "{ x }" := x (in custom expr, x constr).
+Notation "x" := x (in custom expr at level 0, x ident).
+
+Section letinC.
+Variable R : realType.
+
 Lemma letinC12 v1 v2 t M :
   let x := "x" in
   let y := "y" in
   measurable M ->
-  @evalP R [::] (spair sreal sreal) (exp_letin _ x erefl (exp_return (exp_real 1)) (exp_letin _ y erefl (exp_return (exp_real 2)) (exp_return (exp_pair (exp_var x _ erefl) (exp_var y _ erefl))))) v1 ->
-  evalP (exp_letin _ y erefl (exp_return (exp_real 2)) (exp_letin _ x erefl (exp_return (exp_real 1)) (exp_return (exp_pair (exp_var x _ erefl) (exp_var y _ erefl))))) v2 ->
+  [::] |- [Let x <~ ret {1%R}:r In
+           Let y <~ ret {2%R}:r In
+           ret (%x , %y)] : @expP R _ _ -P-> v1
+  ->
+  [::] |- [Let y <~ ret {2%R}:r In
+           Let x <~ ret {1%R}:r In
+           ret (%x, %y)] -P-> v2 ->
   v1 t M = v2 t M.
 Proof.
 move=> x y mM ev1 ev2.
@@ -1019,12 +1047,12 @@ have -> : (var2of3' = (@mvarof R [:: (x, sreal); (y, sreal)] 1 (false_index_size
 apply/(@E_var R [:: (x, sreal); (y, sreal)] y is_true_true).
 apply: letin'C; last by [].
 move=> x0 t0.
-rewrite (@evalP_uni_new y 1 vx vx'); last 2 first.
+rewrite (@evalP_uni_new _ y 1 vx vx'); last 2 first.
   rewrite /vx /execP_cst /sval/=.
   by case: cid.
   rewrite /vx' /execP_cst /sval/=.
   by case: cid.
-  by done.
+  by [].
 move=> x0 t0.
   rewrite /vy /vy' /execP_cst /sval/=.
   case: cid => sy.
@@ -1035,7 +1063,7 @@ move=> x0 t0.
   exact: er1.
 Qed.
 
-End eval_prop.
+End letinC.
 
 Section example.
 
