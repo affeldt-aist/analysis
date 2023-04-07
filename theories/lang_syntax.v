@@ -62,6 +62,8 @@ Inductive stype :=
 | sprob : stype -> stype
 | sprod : list stype -> stype.
 
+Canonical stype_eqType := Equality.Pack (@gen_eqMixin stype).
+
 Fixpoint typei (t : stype) : {d & measurableType d} :=
   match t with
   | sunit => existT _ _ munit
@@ -250,6 +252,9 @@ End measurable_fun_normalize.
   | exp_var l x => forall (H : x \in (map fst l)),
     existT _ (@varof l (seq.index x (map fst l)) (false_index_size H)) (@mvarof l (seq.index x (map fst l)) (false_index_size H))
   end. *)
+
+Lemma mem_cons h (t : context) : h :: t =i h :: t.
+Proof. by []. Qed. 
 
 Inductive evalD : forall (l : context) (T : stype) (e : @expD R l T) 
   (f : projT2 (typei (sprod (map (snd) l))) -> projT2 (typei T)),
@@ -958,6 +963,33 @@ apply.
 exact/E_return/E_real.
 Qed.
 
+Require Import JMeq.
+
+Obligation Tactic := idtac.
+
+Program Fixpoint wP {st} {l : context} (x : string * stype) (e : @expP R l st) 
+  : { l' | @expP R l' st /\ l' =i x :: l} := 
+match e with
+| exp_return l0 _ e0 => @exp_return R (x :: l0) _ (wD x e0)
+| exp_if l0 _ e1 e2 e3 => @exp_if R (x :: l0) _ (wD x e1) (wP x e2) (wP x e3)
+| exp_letin l0 l1 _ _ x0 H e1 e2 => @exp_letin R (x :: l0) (x :: l1) _ _ x0 _ (wP x e1) (wP _ e2)
+| exp_sample_bern l0 _ _ => _
+| exp_score l0 e1 => _
+end with wD {st} {l : context} x (e : @expD R l st) :=
+match e with
+| _ => _
+end.
+Next Obligation.
+Admitted.
+Next Obligation.
+move=> st l x e l0 l1 ? ? x0 H e1 e2 l0l ? ?.
+rewrite H.
+
+
+
+
+
+
 Definition vx : R.-sfker munit ~> mR R := execP_cst [:: ("x", sreal)] [::] 1.
 Definition VX z : set (mR R) -> \bar R := vx z.
 Let VX0 z : (VX z) set0 = 0. Proof. by []. Qed.
@@ -985,18 +1017,19 @@ HB.instance Definition _ z := @Measure_isSFinite_subdef.Build _ (mR R) R
 End eval_prop.
 
 Declare Custom Entry expr.
-Notation "[ e ]" := e (e custom expr at level 50).
-Notation "x ':r'" := (@exp_real _ _ x) (in custom expr at level 0).
-Notation "ret x" := (@exp_return _ _ _ x) (in custom expr at level 2).
+Notation "[ e ]" := e (e custom expr at level 5).
+Notation "x ':r'" := (@exp_real _ _ x%R) (in custom expr at level 1).
+Notation "'Ret' x" := (@exp_return _ _ _ x) (in custom expr at level 2).
 Notation "% x" := (exp_var x _ erefl) (in custom expr at level 1).
 Notation "( x , y )" := (exp_pair x y) (in custom expr at level 1).
 Notation "'Let' x '<~' e 'In' f" := (exp_letin _ x erefl e f)
   (in custom expr at level 3,
    x constr,
-   e custom expr at level 3,
+   (* e custom expr at level 2, *)
    f custom expr at level 3,
    left associativity).
 (*Notation "( x )" := x (in custom expr, x at level 50).*)
+Notation "'If' e1 'Then' e2 'Else' e3" := (exp_if e1 e2 e3) (in custom expr at level 1).
 Notation "{ x }" := x (in custom expr, x constr).
 Notation "x" := x (in custom expr at level 0, x ident).
 
@@ -1007,19 +1040,23 @@ Lemma letinC12 v1 v2 t M :
   let x := "x" in
   let y := "y" in
   measurable M ->
-  [::] |- [Let x <~ ret {1%R}:r In
-           Let y <~ ret {2%R}:r In
-           ret (%x , %y)] : @expP R _ _ -P-> v1
+  [::] |- [Let x <~ Ret {1}:r In
+           Let y <~ Ret {2}:r In
+           Ret (%x , %y)] : @expP R _ _ -P-> v1
   ->
-  [::] |- [Let y <~ ret {2%R}:r In
-           Let x <~ ret {1%R}:r In
-           ret (%x, %y)] -P-> v2 ->
+  [::] |- [Let y <~ Ret {2}:r In
+           Let x <~ Ret {1}:r In
+           Ret (%x , %y)] -P-> v2 ->
   v1 t M = v2 t M.
 Proof.
+set d := (x in (projT1 x).-measurable _).
+rewrite -/d in M v1 v2 *.
 move=> x y mM ev1 ev2.
 pose vx : R.-sfker munit ~> mR R := execP_cst [:: (x, sreal)] [::] 1.
-pose vy : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R := execP_cst [:: (x, sreal)] [:: (x, sreal)] 2.
-have -> : v1 = letin' (vx) (letin' (vy) (ret (measurable_fun_pair var2of3' var1of3'))).
+pose vy : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=
+  execP_cst [:: (x, sreal)] [:: (x, sreal)] 2.
+have -> : v1 = 
+  letin' (vx) (letin' (vy) (ret (measurable_fun_pair var2of3' var1of3'))).
 apply: (evalP_uniq ev1).
 apply/E_letin /E_letin.
 rewrite /vx /execP_cst/= /sval/=.
@@ -1063,6 +1100,61 @@ move=> x0 t0.
   exact: er1.
 Qed.
 
+(* Lemma evalP_uni_new x r
+  (u : R.-sfker munit ~> mR R)
+  (v : R.-sfker prod_meas_obligation_2 prod_meas
+                (existT [eta measurableType] default_measure_display (mR R))
+                [::] ~> mR R) :
+  evalP (exp_return (exp_real r) : expP [::] sreal) u ->
+  evalP (exp_return (exp_real r) : expP [:: (x, sreal)] sreal) v ->
+  forall x0 t, v (x0, t) = u t. *)
+
+Lemma evalP_uniq_sub (st : stype) (u1 : R.-sfker munit ~> _) (u1' : R.-sfker      prod_meas_obligation_2 prod_meas
+                (existT [eta measurableType] _ (typei2 st))
+                [::] ~> _) M e1 e1' :
+  let x := "x" in
+  (* let y := "y" in *)
+  x \notin free_varsP e1 ->
+  measurable M ->
+  [::] |- [e1] -P-> u1 ->
+  (* evalP ([e1'] : expP [:: (y, st)] st) u1' -> *)
+  [:: (x, st)] |- [e1'] : expP [:: (x, st)] st -P-> u1' ->
+  forall y0 t, u1 t M = u1' (y0, t) M.
+Proof.
+move=> x xNe1 mst.
+move=> H1 H2.
+(* have -> : u1 = ret (kr r). *)
+have := @evalP_uniq R [::] st [e1] u1 _ H1.
+(* apply.
+apply/E_return /E_real. *)
+(* suff : u1' = ret (kr r) by move=> ->. *)
+have := @evalP_uniq R [:: (x, st)] st [e1'] u1' _ H2.
+apply.
+exact/E_return/E_real.
+Admitted.
+
+Lemma letinC  u1 u1' u2 u2' v1 v2 t M (e1 : expP [::] sreal) e1' (e2 : expP [:: ("x", sreal)] sreal) e2' :
+  let x := "x" in
+  let y := "y" in
+  "x" \notin free_varsP e2 ->
+  "y" \notin free_varsP e1 ->
+  measurable M ->
+  [::] |- [e1] -P-> u1 ->
+  [:: ("y", sreal)] |- [e1'] -P-> u1' ->
+  [:: ("x", sreal)] |- [e2] -P-> u2 ->
+  [::] |- [e2'] -P-> u2' ->
+  [::] |- [Let x <~ e1 In
+           Let y <~ e2 In
+           Ret (%x , %y)] : @expP R _ _ -P-> v1
+  ->
+  [::] |- [Let y <~ e2' In
+           Let x <~ e1' In
+           Ret (%x , %y)] -P-> v2 ->
+  v1 t M = v2 t M.
+Proof.
+rewrite /=.
+Admitted.
+
 End letinC.
 
 Section example.
@@ -1070,31 +1162,23 @@ Section example.
 Local Open Scope ring_scope.
 Variables (R : realType).
 
-Notation "r '%:r'" := (exp_real r) (at level 2, left associativity).
-Notation "% x" := (exp_var x _ erefl) (at level 4).
-Notation Ret := exp_return.
-Notation If := exp_if.
-Notation "'Let' x <= e1 'In' e2" := (exp_letin _ x erefl e1 e2) (at level 40, x, e1, e2 at next level).
+Example __ : @evalD R [::] _ [{3}:r] (cst 3) (kr 3).
+Proof. apply/E_real. Qed.
 
-Example __ : @evalD R [::] _ (exp_real 3) (cst 3) (kr 3).
-Proof. apply: E_real. Qed.
-
-Example ex_ret : @evalP R [::] _ (exp_return (exp_real 3)) (ret (kr 3)).
-Proof.
-apply/E_return/E_real.
-Qed.
+Example ex_ret : @evalP R [::] _ [Ret {3}:r] (ret (kr 3)).
+Proof. apply/E_return/E_real. Qed.
 
 Check ret (kr 3) : R.-sfker _ ~> (mR R).
 Check ret (kr 3) tt : {measure set mR R -> \bar R}.
 Goal (ret (kr 3) : R.-sfker _ ~> (mR R)) tt [set: R] = 1%:E.
 Proof. rewrite /= diracE in_setT //. Qed.
 
-Example pgm1 : expD [::] (sprob sbool) := exp_norm (
-  Let "x" <= exp_sample_bern [::] (2 / 7%:R)%:nng p27 In 
-  Let "r" <= If (@exp_var R [:: ("x", sbool)] "x" _ erefl) 
-    (Ret 3%:r) (Ret 10%:r) In
-  Let "_" <= exp_score 
-  (exp_poisson 4 (@exp_var R [:: ("r", sreal); ("x", sbool)] "r" _ erefl)) In Ret %"x"). 
+Example pgm1 : expD [::] (sprob sbool) := let x := "x" in exp_norm (
+  [Let "x" <~ {exp_sample_bern [::] (2 / 7%:R)%:nng p27} In 
+  Let "r" <~ If {(@exp_var R [:: ("x", sbool)] "x" _ erefl)} 
+    Then Ret {3}:r Else Ret {10}:r In
+  Let "_" <~ {exp_score 
+  (exp_poisson 4 (@exp_var R [:: ("r", sreal); ("x", sbool)] "r" _ erefl))} In Ret %x]). 
 
 Print pgm1.
 
