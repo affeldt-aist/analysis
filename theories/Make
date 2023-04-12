@@ -34,6 +34,8 @@ itv.v
 convex.v
 charge.v
 kernel.v
+prob_lang.v
+wip.v
 altreals/xfinmap.v
 altreals/discrete.v
 altreals/realseq.v
