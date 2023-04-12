@@ -42,6 +42,8 @@ charge.v
 kernel.v
 all_analysis.v
 showcase/uniform_bigO.v
+prob_lang.v
+prob_lang_wip.v
 altreals/xfinmap.v
 altreals/discrete.v
 altreals/realseq.v
