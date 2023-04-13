@@ -269,17 +269,79 @@ End measurable_fun_normalize.
     existT _ (@varof l (seq.index x (map fst l)) (false_index_size H)) (@mvarof l (seq.index x (map fst l)) (false_index_size H))
   end. *) 
 
-Definition eta1 x (l : context) t : (projT2 (@typei R (sprod [seq i.2 | i <- l])) -> projT2 (@typei R t)) -> 
-projT2 (@typei R (sprod (map snd (x :: l)))) -> projT2 (@typei R t).
-Admitted.
+Definition eta1 x (l : context) t
+  (f : projT2 (@typei R (sprod [seq i.2 | i <- l])) -> projT2 (@typei R t)) :
+  projT2 (@typei R (sprod (map snd (x :: l)))) -> projT2 (@typei R t) := f \o snd.
 
-Definition meta1 x (l : context) t (f : projT2 (@typei R (sprod (map snd l))) -> projT2 (@typei R t)) : measurable_fun setT (@eta1 x l t f).
-Admitted.
+Lemma meta1 x (l : context) t
+    (f : projT2 (@typei R (sprod (map snd l))) -> projT2 (@typei R t))
+    (mf : measurable_fun setT f) :
+  measurable_fun setT (@eta1 x l t f).
+Proof. by apply: (measurable_funT_comp mf); exact: measurable_fun_snd. Qed.
 
-Definition eta_kernel x (l : context) t (k : R.-sfker (@typei2 R (sprod (map snd l))) ~> @typei2 R t) : R.-sfker (@typei2 R (sprod (map snd (x :: l)))) ~> @typei2 R t.
-Admitted.
+Definition keta1 (x : string * stype) (l : context) t
+  (k : R.-sfker (@typei2 R (sprod (map snd l))) ~> @typei2 R t) :
+  (@typei2 R (sprod (map snd (x :: l)))) -> {measure set @typei2 R t -> \bar R} :=
+k \o snd.
 
-Inductive evalD : forall (l : context) (T : stype) (e : @expD R l T) 
+Section kernel_eta1.
+Variables (x : string * stype) (l : context) (t : stype)
+  (k : R.-sfker (@typei2 R (sprod (map snd l))) ~> @typei2 R t).
+
+Let mk U : measurable U -> measurable_fun setT ((@keta1 x l t k) ^~ U).
+Proof.
+move=> mU; rewrite (_ : (@keta1 x l t k) ^~ U = (k ^~ U) \o snd)//.
+apply: measurable_funT_comp.
+  exact: measurable_kernel.
+exact: measurable_fun_snd.
+Qed.
+
+HB.instance Definition _ :=
+  isKernel.Build _ _ _ _ _ (@keta1 x l t k) mk.
+End kernel_eta1.
+
+Section sfkernel.
+Variables (x : string * stype) (l : context) (t : stype)
+  (k : R.-sfker (@typei2 R (sprod (map snd l))) ~> @typei2 R t).
+
+Let sk : exists2 s : (R.-ker (@typei2 R (sprod (map snd (x :: l)))) ~> @typei2 R t)^nat,
+  forall n, measure_fam_uub (s n) &
+  forall x0 U, measurable U -> (@keta1 x l t k) x0 U = kseries s x0 U .
+Proof.
+have [s hs] := sfinite k.
+exists (fun n => (@keta1 x l t (s n))).
+move=> n.
+have [M hM] := measure_uub (s n).
+exists M => x0.
+rewrite /keta1/=.
+exact: hM.
+move=> x0 U mU.
+by rewrite /keta1/= hs.
+Qed.
+
+HB.instance Definition _ :=
+  Kernel_isSFinite_subdef.Build _ _ _ _ _ (@keta1 x l t k) sk.
+
+End sfkernel.
+
+Section fkernel_eta1.
+Variables (x : string * stype) (l : context) (t : stype)
+  (k : R.-fker (@typei2 R (sprod (map snd l))) ~> @typei2 R t).
+
+Let uub : measure_fam_uub (@keta1 x l t k).
+Proof.
+have [M hM] := measure_uub k.
+exists M => x0.
+rewrite /keta1/=.
+exact: hM.
+Qed.
+
+HB.instance Definition _ := @Kernel_isFinite.Build _ _ _ _ _
+  (@keta1 x l t k) uub.
+End fkernel_eta1.
+
+
+Inductive evalD : forall (l : context) (T : stype) (e : @expD R l T)
   (f : projT2 (typei (sprod (map snd l))) -> projT2 (typei T)),
   measurable_fun setT f -> Prop :=
 | E_unit l :
@@ -325,7 +387,7 @@ Inductive evalD : forall (l : context) (T : stype) (e : @expD R l T)
 
 | E_WD l (t : stype) (e : expD l t) x (xl : x \notin l) f mf :
   l |- e -D-> f # mf ->
-  (x :: l) |- expWD e xl -D-> (@eta1 x l t f) # (@meta1 x l t f)
+  (x :: l) |- expWD e xl -D-> (@eta1 x l t f) # (@meta1 x l t f mf)
 
 where "l |- e -D-> v # mv" := (@evalD l _ e v mv)
 
@@ -362,7 +424,7 @@ with evalP : forall (l : context) (T : stype),
 
 | E_WP l (t : stype) (e : expP l t) x (xl : x \notin l) k :
   l |- e -P-> k ->
-  (x :: l) |- expWP e xl -P-> (@eta_kernel x l t k)
+  (x :: l) |- expWP e xl -P-> [the R.-sfker _ ~> _ of (@keta1 x l t k)]
 where "l |- e -P-> v" := (@evalP l _ e v).
 
 End eval.
