@@ -1262,43 +1262,62 @@ Qed.
   evalP (exp_return (exp_real r) : expP [:: (x, sreal)] sreal) v ->
   forall x0 t, v (x0, t) = u t. *)
 
-Lemma evalP_uniq_sub (l : context) (st : stype) (u1 : R.-sfker _ ~> _) 
-  (u1' : R.-sfker prod_meas_obligation_2 prod_meas
-         (existT [eta measurableType] _ (typei2 st)) _ ~> _) 
-  (xtl : ("x", st) \notin l) M e :
+Ltac inj H := apply Classical_Prop.EqdepTheory.inj_pair2 in H.
+
+Lemma eta1_axiom (l : context) (st : stype) (f : typei2 (sprod (map snd l)) -> typei2 st) x y t : f t = (@eta1 R (x, st) l st f) (y, t).
+Admitted.
+
+Lemma evalP_uniq_sub (l : context) (st : stype) e (u1 : R.-sfker _ ~> _) 
+  (* (u1' : R.-sfker prod_meas_obligation_2 prod_meas
+         (existT [eta measurableType] _ (typei2 st)) _ ~> _)  *)
+  (xtl : ("x", st) \notin l) M y0 t :
   let x := "x" in
   (* let y := "y" in *)
   x \notin free_varsP e ->
   measurable M ->
-  l |- [e] -P-> u1 ->
+  l |- e -P-> u1 ->
   (* evalP ([e1'] : expP [:: (y, st)] st) u1' -> *)
-  ((x, st) :: l)%SEQ |- [{@expWP R l st (x, st) e xtl}] : expP ((x, st) :: l)%SEQ st -P-> u1' ->
-  forall y0 t, u1 t M = u1' (y0, t) M.
+  ((x, st) :: l)%SEQ |- (@expWP R l st (x, st) e xtl) : expP ((x, st) :: l)%SEQ st -P-> (eta_kernel (x, st) u1) ->
+  u1 t M = (eta_kernel (x, st) u1) (y0, t) M.
 Proof.
 move=> x xNe1 mst.
 move=> hu.
-have:= (@evalP_mut_ind R
-  (fun (l : _) (G := sprod (map snd l)) (st : stype) (e : expD l st) (f : projT2 (typei G) -> projT2 (typei st)) (mf : measurable_fun setT f) (h1 : l |- [e] -D-> f # mf) =>
-    forall (xtl : ("x", st) \notin l) (v : projT2 (typei G) -> projT2 (typei st)) (mv : measurable_fun setT v), ((x, st) :: l)%SEQ |- (@expWD R l st (x, st) e xtl) -D-> (@eta1 R (x, st) l st v) # (@meta1 R (x, st) l st v) -> f = v)
-  (* WIP: *)
-  (fun (l : _) (G := sprod (map snd l)) (t : stype) (e : expP l t) (u : R.-sfker projT2 (typei G) ~> projT2 (typei t)) (h1 : evalP e u) =>
-    forall (v : R.-sfker projT2 (typei G) ~> projT2 (typei t)), evalP e v -> u = v)
-  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ l st e). 
-  (* ; last exact: hu. *)
-(* have: (@evalP_mut_ind R
-  (fun (l : context) (st : stype) (e1 : expD l _) =>
-    forall (f : _ -> _) (f' : _ -> _) (xtl : ("x", st) \notin l) (xl : x \notin free_varsD e1) (mM : measurable M) (ev1 : l |- [e1] -D-> f # _) y0 t, ((x, st) :: l)%SEQ |- [{@expWD R l st (x, st) e1 xtl}] : expD ((x, st) :: l)%SEQ st -D-> f' # _ -> u1 t M = u1' (y0, t) M)
-  (fun (st : stype) u1 u1' M (e : expP _ _) (u : R.-sfker typei2 _ ~> projT2 (typei st)) (h1 : evalP e u) =>
-    forall (v : R.-sfker projT2 (typei _) ~> projT2 (typei st)), evalP e v -> u = v)
-  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ st); last exact: hu. *)
-(* have -> : u1 = ret (kr r). *)
-have := @evalP_uniq R [::] st [e1] u1 _ H1.
-(* apply.
-apply/E_return /E_real. *)
-(* suff : u1' = ret (kr r) by move=> ->. *)
-have := @evalP_uniq R [:: (x, st)] st [e1'] u1' _ H2.
-(* apply. *)
-(* exact/E_return/E_real. *)
+apply: (@evalP_mut_ind R
+  (fun (l : _) (st : stype) (e : expD l st) (f : projT2 (typei _) -> projT2 (typei st)) (mf : measurable_fun setT f) (h1 : l |- e -D-> f # mf) =>
+    forall (xtl : (x, st) \notin l) M y0 t, ((x, st) :: l)%SEQ |- (@expWD R l st (x, st) e xtl) -D-> (@eta1 R (x, st) l st f) # (@meta1 R (x, st) l st f) -> f t = (@eta1 R (x, st) l st f) (y0, t)
+    )
+  (fun (l : _) (st : stype) (e : expP l st) (u : R.-sfker _ ~> projT2 (typei st)) (h1 : evalP e u) =>
+    forall (xtl : (x, st) \notin l) M y0 t, ((x, st) :: l)%SEQ |- (@expWP R l st (x, st) e xtl) -P-> (@eta_kernel R (x, st) l st u) -> u t M = (@eta_kernel R (x, st) l st u) (y0, t) M)
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ l st e); last exact: hu.
+move=> l' ? ? ? ?.
+inversion 1.
+apply: eta1_axiom.
+move=> ? ? ? ? ? ?.
+inversion 1.
+apply: eta1_axiom.
+move=> ? ? ? ? ? ?.
+inversion 1.
+apply: eta1_axiom.
+move=> ??????????????????.
+inversion 1.
+apply: eta1_axiom.
+move=> ????????.
+inversion 1.
+apply: eta1_axiom.
+move=> ???????.
+inversion 1.
+apply: eta1_axiom.
+move=> ???????????.
+inversion 1.
+apply: eta1_axiom.
+move=> ??????????.
+inversion 1.
+apply: eta1_axiom.
+move=> ?????????????.
+inversion 1.
+apply: eta1_axiom.
+move=> ???????.
+inversion 1.
 Admitted.
 
 Lemma letinC u1 u1' u2 u2' v1 v2 t M (e1 : expP [::] sreal) e1' (e2 : expP [:: ("x", sreal)] sreal) e2' :
@@ -1307,10 +1326,10 @@ Lemma letinC u1 u1' u2 u2' v1 v2 t M (e1 : expP [::] sreal) e1' (e2 : expP [:: (
   "x" \notin free_varsP e2 ->
   "y" \notin free_varsP e1 ->
   measurable M ->
-  [::] |- [e1] -P-> u1 ->
-  [:: ("y", sreal)] |- [e1'] -P-> u1' ->
-  [:: ("x", sreal)] |- [e2] -P-> u2 ->
-  [::] |- [e2'] -P-> u2' ->
+  [::] |- e1 -P-> u1 ->
+  [:: ("y", sreal)] |- e1' -P-> u1' ->
+  [:: ("x", sreal)] |- e2 -P-> u2 ->
+  [::] |- e2' -P-> u2' ->
   [::] |- [Let x <~ e1 In
            Let y <~ e2 In
            Ret (%x , %y)] : @expP R _ _ -P-> v1
