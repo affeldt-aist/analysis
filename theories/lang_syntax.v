@@ -1145,7 +1145,7 @@ Definition X := @typei2 R A.
 Definition Y := @typei2 R B.
 Definition Z := @typei2 R C. *)
 
-Definition execP l t (e : @expP R l t) (H : {subset free_varsP e <= map fst l}):
+Definition execP l t (e : @expP R l t) :
   R.-sfker (@typei2 R (sprod (map snd l))) ~> @typei2 R t.
 Proof.
 have /cid h := @evalP_full l t e.
@@ -1320,157 +1320,6 @@ Notation "'If' e1 'Then' e2 'Else' e3" := (exp_if e1 e2 e3) (in custom expr at l
 Notation "{ x }" := x (in custom expr, x constr).
 Notation "x" := x (in custom expr at level 0, x ident).
 
-Section letinC.
-Variable R : realType.
-
-(* Check [Let "x" <~ Ret {1}:r In Ret %{"x"}].
-Check [Let "x" <~ Ret {1}:r In
-        Let "y" <~ Ret {2}:r In
-        Ret (%{"x"} # {[:: ("y", sreal); ("x", sreal)]}, %{"y"} # {[:: ("y", sreal); ("x", sreal)]})]. *)
-
-(* Lemma letinC12 v1 v2 t M :
-  let x := "x" in
-  let y := "y" in
-  (* let s1 := [:: (y, sreal); (x, sreal)] in
-  let s2 := [:: (x, sreal); (y, sreal)] in *)
-  measurable M ->
-  [::] |- [Let x <~ Ret {1}:r In
-           Let y <~ Ret {2}:r In
-           Ret (%x, %y)] : @expP R _ _ -P-> v1
-  ->
-  [::] |- [Let y <~ Ret {2}:r In
-           Let x <~ Ret {1}:r In
-           Ret (%x, %y)] -P-> v2 ->
-  v1 t M = v2 t M.
-Proof.
-set d := (x in (projT1 x).-measurable _).
-rewrite -/d in M v1 v2 *.
-move=> x y mM ev1 ev2.
-pose vx : R.-sfker munit ~> mR R := execP_cst [:: (x, sreal)] [::] 1.
-pose vy : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=
-  execP_cst [:: (x, sreal)] [:: (x, sreal)] 2.
-have -> : v1 =
-  letin' (vx) (letin' (vy) (ret (measurable_fun_pair var2of3' var1of3'))).
-apply: (evalP_uniq ev1).
-apply/E_letin /E_letin.
-rewrite /vx /execP_cst/= /sval/=.
-by case: cid => // ? h.
-rewrite /vy /execP_cst /sval/=.
-by case: cid => // ? h.
-apply/E_return /E_pair.
-have -> : (var2of3' = (@mvarof R [:: (y, sreal); (x, sreal)] 1 (false_index_size (_ : (x \in map fst [:: (y, sreal); (x, sreal)]))))) by [].
-apply/(@E_var R [:: (y, sreal); (x, sreal)] x).
-have -> : (var1of4' = (@mvarof R [:: (y, sreal); (x, sreal)] 0 (false_index_size (_ : (y \in map fst [:: (y, sreal); (x, sreal)]))))) by [].
-apply/(@E_var R [:: (y, sreal); (x, sreal)] y is_true_true).
-pose vy' : R.-sfker munit ~> mR R := execP_cst  [::] [::] 2.
-pose vx' : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=    execP_cst [:: (y, sreal)] [:: (y, sreal)] 1.
-have -> : v2 = letin' (vy') (letin' (vx') (ret (measurable_fun_pair var1of3' var2of3'))).
-apply: (evalP_uniq ev2).
-apply/E_letin /E_letin.
-rewrite /vy' /execP_cst /sval/=.
-case: cid => //.
-rewrite /vx' /execP_cst /sval/=.
-case: cid => //.
-apply/E_return /E_pair.
-have -> : (var1of3' = (@mvarof R [:: (x, sreal); (y, sreal)] 0 (false_index_size (_ : (x \in map fst [:: (x, sreal); (y, sreal)]))))) by [].
-apply/(@E_var R [:: (x, sreal); (y, sreal)] x is_true_true).
-have -> : (var2of3' = (@mvarof R [:: (x, sreal); (y, sreal)] 1 (false_index_size (_ : (y \in map fst [:: (x, sreal); (y, sreal)]))))) by [].
-apply/(@E_var R [:: (x, sreal); (y, sreal)] y is_true_true).
-apply: letin'C; last by [].
-move=> x0 t0.
-rewrite (@evalP_uni_new _ y 1 vx vx'); last 2 first.
-  rewrite /vx /execP_cst /sval/=.
-  by case: cid.
-  rewrite /vx' /execP_cst /sval/=.
-  by case: cid.
-  by [].
-move=> x0 t0.
-  rewrite /vy /vy' /execP_cst /sval/=.
-  case: cid => sy.
-  case: cid => sy'.
-  move=> er1 er2.
-  apply/esym/evalP_uni_new.
-  exact: er2.
-  exact: er1.
-Qed. *)
-
-(* Lemma evalP_uni_new x r
-  (u : R.-sfker munit ~> mR R)
-  (v : R.-sfker prod_meas_obligation_2 prod_meas
-                (existT [eta measurableType] default_measure_display (mR R))
-                [::] ~> mR R) :
-  evalP (exp_return (exp_real r) : expP [::] sreal) u ->
-  evalP (exp_return (exp_real r) : expP [:: (x, sreal)] sreal) v ->
-  forall x0 t, v (x0, t) = u t. *)
-
-Ltac inj H := apply Classical_Prop.EqdepTheory.inj_pair2 in H.
-
-Lemma evalP_uniq_sub (l : context) (st : stype) e (u1 : R.-sfker _ ~> _)
-  (* (u1' : R.-sfker prod_meas_obligation_2 prod_meas
-         (existT [eta measurableType] _ (typei2 st)) _ ~> _)  *)
-  (xtl : ("x", st) \notin l) M y0 t :
-  let x := "x" in
-  (* let y := "y" in *)
-  x \notin free_varsP e ->
-  measurable M ->
-  l |- e -P-> u1 ->
-  (* evalP ([e1'] : expP [:: (y, st)] st) u1' -> *)
-  ((x, st) :: l)%SEQ |- (@expWP R l st (x, st) e xtl) : expP ((x, st) :: l)%SEQ st -P-> (keta1 u1) ->
-  u1 t M = (@keta1 R (x, st) _ _ u1) (y0, t) M.
-Proof.
-move=> x xNe1 mst.
-move=> hu.
-by rewrite /keta1 /=.
-(*
-apply: (@evalP_mut_ind R
-  (fun (l : _) (st : stype) (e : expD l st) (f : projT2 (typei _) -> projT2 (typei st)) (mf : measurable_fun setT f) (h1 : l |- e -D-> f # mf) =>
-    forall (xtl : (x, st) \notin l) M y0 t, ((x, st) :: l)%SEQ |- (@expWD R l st (x, st) e xtl) -D-> (@eta1 R (x, st) l st f) # (meta1 mf) -> f t = (@eta1 R (x, st) l st f) (y0, t)
-    )
-  (fun (l : _) (st : stype) (e : expP l st) (u : R.-sfker _ ~> projT2 (typei st)) (h1 : evalP e u) =>
-    forall (xtl : (x, st) \notin l) M y0 t, ((x, st) :: l)%SEQ |- (@expWP R l st (x, st) e xtl) -P-> (@keta1 R (x, st) l st u) -> u t M = (@keta1 R (x, st) l st u) (y0, t) M)
-  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ l st e); last exact: hu.
-move=> l' ? ? ? ?.
-by inversion 1.*)
-Qed.
-
-Lemma letinC ta tb (l0 := [:: ("a", ta); ("b", tb)]) st
-  (e1 : @expP R l0 st) (e2 : expP l0 st) v1 v2 :
-  "x" \notin free_varsP e2 ->
-  "y" \notin free_varsP e1 ->
-  l0 |- [Let "x" <~ e1 In
-         Let "y" <~ %WP {"x"} # e2 In
-         Ret (%{"x"}, %{"y"})] -P-> v1
-  ->
-  l0 |- [Let "y" <~ e2 In
-         Let "x" <~ %WP {"y"} # e1 In
-         Ret (%{"x"}, %{"y"})] -P-> v2 ->
-  v1 = v2.
-Admitted.
-
-(*Lemma letinC (l : context) st v1 v2 t M (e1 : @expP R l st) (e2 : expP l st)
-(Hx1 : "x" \in map fst ([:: ("y", st); ("x", st)] ++ l)%SEQ)
-(Hy1 : "y" \in map fst ([:: ("y", st); ("x", st)] ++ l)%SEQ)
-(Hx2 : "x" \in map fst ([:: ("x", st); ("y", st)] ++ l)%SEQ)
-(Hy2 : "y" \in map fst ([:: ("x", st); ("y", st)] ++ l)%SEQ)
-(xtl : ("x", st) \notin l) (ytl : ("y", st) \notin l) :
-  let x := "x" in
-  let y := "y" in
-  "x" \notin free_varsP e2 ->
-  "y" \notin free_varsP e1 ->
-  measurable M ->
-  l |- [Let x <~ e1 In
-        Let y <~ {(@expWP R l st (x, st) e2 xtl)} In
-        Ret (%x # Hx1, %y # Hy1)] : @expP R _ _ -P-> v1
-  ->
-  l |- [Let y <~ e2 In
-        Let x <~ {(@expWP R l st (y, st) e1 ytl)} In
-        Ret (%x # Hx2, %y # Hy2)] -P-> v2 ->
-  v1 t M = v2 t M.
-Proof.
-rewrite /=.
-Admitted.*)
-
-End letinC.
 
 Section example.
 
@@ -1590,3 +1439,336 @@ apply/E_norm /E_letin /E_letin /E_letin.
 Qed.
 
 End example.
+
+Section letinC.
+Variable R : realType.
+
+(* Check [Let "x" <~ Ret {1}:r In Ret %{"x"}].
+Check [Let "x" <~ Ret {1}:r In
+        Let "y" <~ Ret {2}:r In
+        Ret (%{"x"} # {[:: ("y", sreal); ("x", sreal)]}, %{"y"} # {[:: ("y", sreal); ("x", sreal)]})]. *)
+
+Lemma letinC12 v1 v2 t M :
+  let x := "x" in
+  let y := "y" in
+  (* let s1 := [:: (y, sreal); (x, sreal)] in
+  let s2 := [:: (x, sreal); (y, sreal)] in *)
+  measurable M ->
+  [::] |- [Let x <~ Ret {1}:r In
+           Let y <~ Ret {2}:r In
+           Ret (%x, %y)] : @expP R _ _ -P-> v1
+  ->
+  [::] |- [Let y <~ Ret {2}:r In
+           Let x <~ Ret {1}:r In
+           Ret (%x, %y)] -P-> v2 ->
+  v1 t M = v2 t M.
+Proof.
+set d := (x in (projT1 x).-measurable _).
+rewrite -/d in M v1 v2 *.
+move=> x y mM ev1 ev2.
+pose vx : R.-sfker munit ~> mR R := execP_cst [:: (x, sreal)] [::] 1.
+pose vy : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=
+  execP_cst [:: (x, sreal)] [:: (x, sreal)] 2.
+have -> : v1 =
+  letin' (vx) (letin' (vy) (ret (measurable_fun_pair var2of3' var1of3'))).
+apply: (evalP_uniq ev1).
+apply/E_letin /E_letin.
+rewrite /vx /execP_cst/= /sval/=.
+by case: cid => // ? h.
+rewrite /vy /execP_cst /sval/=.
+by case: cid => // ? h.
+apply/E_return /E_pair.
+have -> : (var2of3' = (@mvarof R [:: (y, sreal); (x, sreal)] 1 )) by [].
+apply/(@E_var R [:: (y, sreal); (x, sreal)] x).
+have -> : (var1of4' = (@mvarof R [:: (y, sreal); (x, sreal)] 0 )) by [].
+apply/(@E_var R [:: (y, sreal); (x, sreal)] y).
+pose vy' : R.-sfker munit ~> mR R := execP_cst  [::] [::] 2.
+pose vx' : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=    execP_cst [:: (y, sreal)] [:: (y, sreal)] 1.
+have -> : v2 = letin' (vy') (letin' (vx') (ret (measurable_fun_pair var1of3' var2of3'))).
+apply: (evalP_uniq ev2).
+apply/E_letin /E_letin.
+rewrite /vy' /execP_cst /sval/=.
+case: cid => //.
+rewrite /vx' /execP_cst /sval/=.
+case: cid => //.
+apply/E_return /E_pair.
+have -> : (var1of3' = (@mvarof R [:: (x, sreal); (y, sreal)] 0 )) by [].
+apply/(@E_var R [:: (x, sreal); (y, sreal)] x).
+have -> : (var2of3' = (@mvarof R [:: (x, sreal); (y, sreal)] 1 )) by [].
+apply/(@E_var R [:: (x, sreal); (y, sreal)] y).
+apply: letin'C; last by [].
+move=> x0 t0.
+rewrite (@evalP_uni_new _ y 1 vx vx'); last 2 first.
+  rewrite /vx /execP_cst /sval/=.
+  by case: cid.
+  rewrite /vx' /execP_cst /sval/=.
+  by case: cid.
+  by [].
+move=> x0 t0.
+  rewrite /vy /vy' /execP_cst /sval/=.
+  case: cid => sy.
+  case: cid => sy'.
+  move=> er1 er2.
+  apply/esym/evalP_uni_new.
+  exact: er2.
+  exact: er1.
+Qed.
+
+(* Lemma evalP_uni_new x r
+  (u : R.-sfker munit ~> mR R)
+  (v : R.-sfker prod_meas_obligation_2 prod_meas
+                (existT [eta measurableType] default_measure_display (mR R))
+                [::] ~> mR R) :
+  evalP (exp_return (exp_real r) : expP [::] sreal) u ->
+  evalP (exp_return (exp_real r) : expP [:: (x, sreal)] sreal) v ->
+  forall x0 t, v (x0, t) = u t. *)
+
+Ltac inj H := apply Classical_Prop.EqdepTheory.inj_pair2 in H.
+
+Lemma evalP_uniq_sub (l : context) (st : stype) e (u1 : R.-sfker _ ~> _)
+  (* (u1' : R.-sfker prod_meas_obligation_2 prod_meas
+         (existT [eta measurableType] _ (typei2 st)) _ ~> _)  *)
+  (xtl : ("x", st) \notin l) M y0 t :
+  let x := "x" in
+  (* let y := "y" in *)
+  x \notin free_varsP e ->
+  measurable M ->
+  l |- e -P-> u1 ->
+  (* evalP ([e1'] : expP [:: (y, st)] st) u1' -> *)
+  ((x, st) :: l)%SEQ |- (@expWP R l st (x, st) e xtl) : expP ((x, st) :: l)%SEQ st -P-> (keta1 u1) ->
+  u1 t M = (@keta1 R (x, st) _ _ u1) (y0, t) M.
+Proof.
+move=> x xNe1 mst.
+move=> hu.
+by rewrite /keta1 /=.
+(*
+apply: (@evalP_mut_ind R
+  (fun (l : _) (st : stype) (e : expD l st) (f : projT2 (typei _) -> projT2 (typei st)) (mf : measurable_fun setT f) (h1 : l |- e -D-> f # mf) =>
+    forall (xtl : (x, st) \notin l) M y0 t, ((x, st) :: l)%SEQ |- (@expWD R l st (x, st) e xtl) -D-> (@eta1 R (x, st) l st f) # (meta1 mf) -> f t = (@eta1 R (x, st) l st f) (y0, t)
+    )
+  (fun (l : _) (st : stype) (e : expP l st) (u : R.-sfker _ ~> projT2 (typei st)) (h1 : evalP e u) =>
+    forall (xtl : (x, st) \notin l) M y0 t, ((x, st) :: l)%SEQ |- (@expWP R l st (x, st) e xtl) -P-> (@keta1 R (x, st) l st u) -> u t M = (@keta1 R (x, st) l st u) (y0, t) M)
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ l st e); last exact: hu.
+move=> l' ? ? ? ?.
+by inversion 1.*)
+Qed.
+
+(* Lemma letinC ta tb (l0 := [:: ("a", ta); ("b", tb)]) st
+  (e1 : @expP R l0 st) (e2 : expP l0 st) :
+  "x" \notin free_varsP e2 ->
+  "y" \notin free_varsP e1 ->
+  [Let "x" <~ e1 In
+   Let "y" <~ %WP {"x"} # e2 In
+   Ret (%{"x"}, %{"y"})] =
+  [Let "y" <~ e2 In
+   Let "x" <~ %WP {"y"} # e1 In
+   Ret (%{"x"}, %{"y"})] :> expP _ _.
+Admitted. *)
+
+Lemma eval_exec l st e1 : l |- e1 -P-> @execP R l st e1.
+Proof.
+rewrite /execP/= /sval.
+by case: cid.
+Qed.
+
+Lemma execP_keta st (e : expP [::] st) (x : string) : execP [%WP x # e] = @keta1 R (x, st) [::] st (execP e).
+Proof.
+apply: (@evalP_uniq R _ _ [%WP x # e]).
+exact/eval_exec.
+apply: E_WP.
+exact/eval_exec.
+Qed.
+
+(* Lemma prod_measurable (B : set bool) : measurable B. *)
+
+Lemma letinC st
+  (e1 : @expP R [::] st) (e2 : expP [::] st) (v1 v2 : R.-sfker munit ~> typei2 (spair st st)) :
+  (* "x" \notin free_varsP e2 ->
+  "y" \notin free_varsP e1 -> *)
+  [::] |- [Let "x" <~ e1 In
+         Let "y" <~ %WP {"x"} # e2 In
+         Ret (%{"x"}, %{"y"})] -P-> v1
+  ->
+  [::] |- [Let "y" <~ e2 In
+         Let "x" <~ %WP {"y"} # e1 In
+         Ret (%{"x"}, %{"y"})] -P-> v2 ->
+  v1 = v2.
+Proof.
+move=> (* xN yN *) ev1 ev2.
+set x := "x".
+set y := "y".
+pose k1 : R.-sfker _ ~> typei2 st := @execP R [::] st e1.
+pose k2' : R.-sfker _ ~> _ := @execP R [:: (x, st)] st [%WP x # e2].
+pose vx := letin' k1
+          (letin' k2'
+            (ret
+               (measurable_fun_pair
+                  (* (T:= (typei2 st * (typei2 st * munit))%type)
+                  (T1 := typei2 st) (T2 := typei2 st) *)
+                  (f := fst \o snd) (g:= fst) var2of4' var1of2))).
+have ev1' : [::] |- [Let x <~ e1 In Let y <~ %WP x # e2 In Ret (% x, % y)] -P-> vx.
+apply/E_letin.
+rewrite /k1.
+apply: eval_exec.
+apply/E_letin.
+rewrite /k2'.
+apply: eval_exec.
+apply/E_return /E_pair.
+have -> : (var2of4' = (@mvarof R [:: (y, st); (x, st)] 1)) by [].
+apply (@E_var R [:: (y, st); (x, st)] x).
+have -> : (var1of2 = (@mvarof R [:: (y, st); (x, st)] 0)) by [].
+apply/(@E_var R [:: (y, st); (x, st)] y).
+have -> := (evalP_uniq ev1 ev1').
+
+pose k2 : R.-sfker _ ~> typei2 st := @execP R [::] st e2.
+pose k1' : R.-sfker _ ~> _ := @execP R [:: (y, st)] st [%WP y # e1].
+pose vy := letin' k2
+          (letin' k1'
+            (ret
+               (measurable_fun_pair
+                  (* (T:= (typei2 st * (typei2 st * munit))%type)
+                  (T1 := typei2 st) (T2 := typei2 st) *)
+                  (f := fst) (g:= fst \o snd) var1of2 var2of4'))).
+have ev2' : [::] |- [Let y <~ e2 In Let x <~ %WP y # e1 In Ret (% x, % y)] -P-> vy.
+apply/E_letin.
+apply/eval_exec.
+apply/E_letin.
+apply/eval_exec.
+apply/E_return /E_pair.
+have -> : (var1of2 = (@mvarof R [:: (x, st); (y, st)] 0)) by [].
+apply/(@E_var R [:: (x, st); (y, st)] x).
+have -> : (var2of4' = (@mvarof R [:: (x, st); (y, st)] 1)) by [].
+apply/(@E_var R [:: (x, st); (y, st)] y).
+have -> := (evalP_uniq ev2 ev2').
+
+rewrite/vx/vy.
+apply: eq_sfkernel => t U.
+apply: (@letin'C _ _ _ (typei2 st) (typei2 st) munit).
+- by rewrite /k1/k1' execP_keta.
+- by rewrite /k2/k2' execP_keta.
+- rewrite /= in U *.
+rewrite measurable_prod_measurableType.
+apply: sub_sigma_algebra.
+Admitted.
+
+Lemma letinC_new st
+  (e1 : @expP R [::] st) (e2 : expP [::] st) :
+  "x" \notin free_varsP e2 ->
+  "y" \notin free_varsP e1 ->
+  execP [Let "x" <~ e1 In
+         Let "y" <~ %WP {"x"} # e2 In
+         Ret (%{"x"}, %{"y"})] =
+  execP [Let "y" <~ e2 In
+         Let "x" <~ %WP {"y"} # e1 In
+         Ret (%{"x"}, %{"y"})].
+Proof.
+move=> xn yn.
+apply/letinC/eval_exec/eval_exec.
+Qed.
+
+Lemma execP_ketaAB (ta tb : stype) (l0 := [:: ("r", ta); ("_", tb)]) st (e : expP l0 st) : execP [%WP {"x"} # e] = @keta1 R ("x", st) l0 st (execP e).
+Proof.
+apply: (@evalP_uniq R _ _ [%WP {"x"} # e]).
+exact/eval_exec.
+apply: E_WP.
+exact/eval_exec.
+Qed.
+
+Lemma letinC_g ta tb (l0 := [:: ("r", ta); ("_", tb)]) st
+  (e1 : @expP R l0 st) (e2 : expP l0 st) v1 v2 :
+  "x" \notin free_varsP e2 ->
+  "y" \notin free_varsP e1 ->
+  l0 |- [Let "x" <~ e1 In
+         Let "y" <~ %WP {"x"} # e2 In
+         Ret (%{"x"}, %{"y"})] -P-> v1
+  ->
+  l0 |- [Let "y" <~ e2 In
+         Let "x" <~ %WP {"y"} # e1 In
+         Ret (%{"x"}, %{"y"})] -P-> v2 ->
+  v1 = v2.
+Proof.
+move=> _ _ ev1 ev2.
+set x := "x".
+set y := "y".
+pose k1 : R.-sfker _ ~> typei2 st := @execP R l0 st e1.
+pose k2' : R.-sfker _ ~> _ := @execP R ((x, st) :: l0) st [%WP x # e2].
+pose vx := letin' k1
+          (letin' k2'
+            (ret
+               (measurable_fun_pair
+                  (* (T:= (typei2 st * (typei2 st * munit))%type)
+                  (T1 := typei2 st) (T2 := typei2 st) *)
+                  (f := fst \o snd) (g:= fst) var2of4' var1of2))).
+have ev1' : l0 |- [Let x <~ e1 In Let y <~ %WP x # e2 In Ret (% x, % y)] -P-> vx.
+  apply/E_letin.
+  rewrite /k1.
+  apply: eval_exec.
+  apply/E_letin.
+  rewrite /k2'.
+  apply: eval_exec.
+  apply/E_return /E_pair.
+  have -> : (var2of4' = (@mvarof R [:: (y, st), (x, st) & l0] 1)) by [].
+  apply (@E_var R [:: (y, st), (x, st) & l0] x).
+  have -> : (var1of2 = (@mvarof R [:: (y, st), (x, st) & l0] 0)) by [].
+  by apply/(@E_var R [:: (y, st), (x, st) & l0] y).
+have -> := (evalP_uniq ev1 ev1').
+
+pose k2 : R.-sfker _ ~> typei2 st := @execP R l0 st e2.
+pose k1' : R.-sfker _ ~> _ := @execP R [:: (y, st) & l0] st [%WP y # e1].
+pose vy := letin' k2
+          (letin' k1'
+            (ret
+               (measurable_fun_pair
+                  (* (T:= (typei2 st * (typei2 st * munit))%type)
+                  (T1 := typei2 st) (T2 := typei2 st) *)
+                  (f := fst) (g:= fst \o snd) var1of2 var2of4'))).
+have ev2' : l0 |- [Let y <~ e2 In Let x <~ %WP y # e1 In Ret (% x, % y)] -P-> vy.
+apply/E_letin.
+apply/eval_exec.
+apply/E_letin.
+apply/eval_exec.
+apply/E_return /E_pair.
+have -> : (var1of2 = (@mvarof R [:: (x, st), (y, st) & l0] 0)) by [].
+apply (@E_var R [:: (x, st), (y, st) & l0] x).
+have -> : (var2of4' = (@mvarof R [:: (x, st), (y, st) & l0] 1)) by [].
+apply/(@E_var R [:: (x, st), (y, st) & l0] y).
+have -> := (evalP_uniq ev2 ev2').
+rewrite/vx/vy.
+apply: eq_sfkernel => t U.
+apply: (@letin'C _ _ _ (typei2 st) (typei2 st) _).
+Eval compute in free_varsP e1.
+- admit. 
+(* by rewrite /k1/k1' execP_ketaAB. *)
+- 
+by rewrite /k2/k2' execP_ketaAB.
+- rewrite /= in U *.
+rewrite measurable_prod_measurableType.
+apply: sub_sigma_algebra.
+
+
+Admitted.
+
+(*Lemma letinC (l : context) st v1 v2 t M (e1 : @expP R l st) (e2 : expP l st)
+(Hx1 : "x" \in map fst ([:: ("y", st); ("x", st)] ++ l)%SEQ)
+(Hy1 : "y" \in map fst ([:: ("y", st); ("x", st)] ++ l)%SEQ)
+(Hx2 : "x" \in map fst ([:: ("x", st); ("y", st)] ++ l)%SEQ)
+(Hy2 : "y" \in map fst ([:: ("x", st); ("y", st)] ++ l)%SEQ)
+(xtl : ("x", st) \notin l) (ytl : ("y", st) \notin l) :
+  let x := "x" in
+  let y := "y" in
+  "x" \notin free_varsP e2 ->
+  "y" \notin free_varsP e1 ->
+  measurable M ->
+  l |- [Let x <~ e1 In
+        Let y <~ {(@expWP R l st (x, st) e2 xtl)} In
+        Ret (%x # Hx1, %y # Hy1)] : @expP R _ _ -P-> v1
+  ->
+  l |- [Let y <~ e2 In
+        Let x <~ {(@expWP R l st (y, st) e1 ytl)} In
+        Ret (%x # Hx2, %y # Hy2)] -P-> v2 ->
+  v1 t M = v2 t M.
+Proof.
+rewrite /=.
+Admitted.*)
+
+End letinC.
