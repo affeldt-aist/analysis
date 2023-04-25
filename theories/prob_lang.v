@@ -1076,7 +1076,7 @@ Let mkswap_sfinite :
   forall x U, measurable U -> mkswap k x U = kseries k_ x U.
 Proof.
 have [k_ /= kE] := sfinite k.
-exists (fun n => mkswap (k_  n)).
+exists (fun n => [the R.-ker _ ~> _ of mkswap (k_  n)]).
   move=> n.
   have /measure_fam_uubP[M hM] := measure_uub (k_ n).
   by exists M%:num => x/=; exact: hM.
@@ -1111,7 +1111,10 @@ End kswap_finite_kernel_finite.
 
 (* Module MSWAP_SFINITE_KERNEL. *)
 
-Notation "l \; k" := (mkcomp l (mkswap k)) : ereal_scope.
+Reserved Notation "f .; g" (at level 60, right associativity,
+  format "f  .; '/ '  g").
+
+Notation "l .; k" := (mkcomp l [the _.-ker _ ~> _ of mkswap k]) : ereal_scope.
 
 (* TODO: move to kernel.v *)
 
@@ -1121,7 +1124,7 @@ Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
 
 Definition letin' (l : R.-sfker X ~> Y)
     (k : R.-sfker [the measurableType (d', d).-prod of (Y * X)%type] ~> Z) :=
-  locked [the R.-sfker X ~> Z of l \; k].
+  locked [the R.-sfker X ~> Z of l .; k].
 
 Lemma letin'E (l : R.-sfker X ~> Y)
     (k : R.-sfker [the measurableType (d', d).-prod of (Y * X)%type] ~> Z) x U :
