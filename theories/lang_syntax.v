@@ -690,7 +690,7 @@ exact: (proj1_sig h).
 Defined.
 
 Lemma evalP_execP l t e : l # e -P-> @execP l t e.
-Proof. by rewrite /execP/= /sval /ssr_have/=; case: cid. Qed.
+Proof. by rewrite /execP/= /sval ?/ssr_have/=; case: cid. Qed.
 
 Definition execD l t (e : @expD R l t) :
   {f : (@typei2 R (slist (map snd l))) -> @typei2 R t & measurable_fun setT f}.
@@ -702,7 +702,7 @@ Defined.
 Lemma evalD_execD l t e : let: x := @execD l t e in
   l # e -D-> projT1 x ; projT2 x.
 Proof.
-rewrite /execD /ssr_have /= /sval /=; case: cid => f [mf ef].
+rewrite /execD ?/ssr_have /= /sval /=; case: cid => f [mf ef].
 by case: cid.
 Defined.
 
@@ -972,11 +972,40 @@ Section letinC.
 Local Open Scope lang_scope.
 Variable R : realType.
 
+Check [Let "x" <~ Ret %{"y"} In Ret %{"x"}].
+
 Lemma execP_WP_keta1 x l (st : stype_eqType) (e : expP l st) (xl : x.1 \notin map fst l) :
   execP (@expWP R l st _ e xl) = [the _.-sfker _ ~> _ of keta1 (execP e)].
 Proof.
 apply: evalP_uniq; first exact/evalP_execP.
 by apply: E_WP; exact: evalP_execP.
+Qed.
+
+Lemma execD_real l r :
+  @execD R l _ [r :r] = existT _ (cst r) (kr r).
+Proof.
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ev2 := (E_real l r).
+have fcstr := (evalD_uniq ev1 ev2).
+subst.
+congr existT.
+apply Prop_irrelevance.
+Qed.
+
+Lemma execD_var l x :
+  let i := seq.index x (map fst l) in
+  @execD R l _ [%x] = existT _ (varof i) (@mvarof R l i).
+Proof.
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ev2 := (E_var R l x).
+have fcstr := (evalD_uniq ev1 ev2).
+subst.
+congr existT.
+apply Prop_irrelevance.
 Qed.
 
 Lemma execP_letin l x t1 t2 (e1 : expP l t1) (e2 : expP ((x, t1) :: l) t2) :
@@ -1013,6 +1042,49 @@ have h : projT1 lhs = projT1 rhs.
   exact: evalD_execD.
   by apply: E_pair; exact: evalD_execD.
 exact: eq_sigT_hprop.
+Qed.
+
+Lemma ex_var_ret l : @execP R l _ [Let "x" <~ Ret {1}:r In Ret %{"x"}] = letin' (ret (kr 1)) (ret var1of2).
+Proof.
+rewrite execP_letin; congr letin'.
+by rewrite execP_ret execD_real.
+by rewrite execP_ret execD_var; congr ret.
+Qed.
+
+Lemma letin_pair l : @letin' _ _ _ _ _ _ R (ret (kr 1))
+  (letin' (ret (kr 2))
+     (ret
+        (measurable_fun_pair (T:=typei2 (slist [:: sreal, sreal & [seq i.2 | i <- l]])) (T1:=
+           typei2 sreal) (T2:=typei2 sreal)
+           (f:=fun H : R * (R * projT2 (prod_meas [seq typei i | i <- [seq i.2 | i <- l]])) => H.2.1)
+           (g:=fst) (mvarof (R:=R) (l:=[:: ("y", sreal), ("x", sreal) & l]) (i:=1))
+           (mvarof (R:=R) (l:=[:: ("y", sreal), ("x", sreal) & l]) (i:=0)))))
+    = ret (measurable_fun_pair (kr 1) (kr 2)).
+Proof.
+apply: eq_sfkernel => ? U.
+rewrite retE diracE.
+rewrite letin'E.
+under eq_integral.
+  move=> x xS.
+  rewrite letin'E.
+  under eq_integral do rewrite retE diracE /=.
+  over.
+rewrite !retE !integral_dirac //=.
+by rewrite indicT //= 2!mul1e.
+apply (@measurable_fun_pair _ _ _ (mR R) _ _ (cst 1) id).
+Admitted.
+
+Lemma ex_var_ret2 l : 
+  @execP R l _ [Let "x" <~ Ret {1}:r In Let "y" <~ Ret {2}:r In 
+    Ret (%{"x"}, %{"y"})] = 
+  @execP R l _ [Let "y" <~ Ret {2}:r In Let "x" <~ Ret {1}:r In
+    Ret (%{"x"}, %{"y"})].
+Proof.
+rewrite !execP_letin !execP_ret !execD_real.
+rewrite !execD_pair !execD_var /=.
+rewrite letin_pair /=.
+by rewrite execP_ret execD_real.
+by rewrite execP_ret execD_var; congr ret.
 Qed.
 
 Lemma letinC_new l t1 t2 (e1 : @expP R l t1) (e2 : expP l t2)
