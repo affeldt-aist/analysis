@@ -850,9 +850,66 @@ Let sfinVY z : sfinite_measure (VY z). Proof. exact: sfinite_kernel_measure. Qed
 HB.instance Definition _ z := @Measure_isSFinite_subdef.Build _ (mR R) R
   (VY z) (sfinVY z).*)
 
+Lemma execP_WP_keta1 x l (st : stype_eqType) (e : expP l st) (xl : x.1 \notin map fst l) :
+  execP (@expWP R l st _ e xl) = [the _.-sfker _ ~> _ of keta1 (execP e)].
+Proof.
+apply: evalP_uniq; first exact/evalP_execP.
+by apply: E_WP; exact: evalP_execP.
+Qed.
+
+Lemma execP_letin l x t1 t2 (e1 : expP l t1) (e2 : expP ((x, t1) :: l) t2) :
+  execP [Let x <~ e1 In e2] = letin' (execP e1) (execP e2) :> (R.-sfker _ ~> _).
+Proof.
+apply: evalP_uniq; first exact/evalP_execP.
+by apply: E_letin; exact/evalP_execP.
+Qed.
+
+Lemma execP_ret l t (e : @expD R l t) : execP [Ret e] = ret (projT2 (execD e)).
+Proof.
+apply: evalP_uniq; first exact: evalP_execP.
+by apply: E_return; exact: evalD_execD.
+Qed.
+
+Lemma execD_pair l (G := slist (map snd l)) t1 t2
+  (x : @expD R l t1)
+  (y : @expD R l t2) :
+  let f := projT1 (execD x) in
+  let g := projT1 (execD y) in
+  let mf := projT2 (execD x) in
+  let mg := projT2 (execD y) in
+  execD [(x, y)] =
+  @existT _ _ (fun z => (f z, g z))
+  (@measurable_fun_pair _ _ _ (typei2 (slist (map snd l))) (typei2 t1) (typei2 t2)
+    f g mf mg).
+Proof.
+move=> f g mf mg.
+rewrite /f /g /mf /mg.
+set lhs := LHS.
+set rhs := RHS.
+have h : projT1 lhs = projT1 rhs.
+  apply: (@evalD_uniq l _ [(x, y)] (projT1 lhs) (projT1 rhs) (projT2 lhs) (projT2 rhs)).
+  exact: evalD_execD.
+  by apply: E_pair; exact: evalD_execD.
+exact: eq_sigT_hprop.
+Qed.
+
+Lemma execD_var l (x : string) :
+  let i := seq.index x (map fst l) in
+  @execD l _ [% {x} ] = existT _ (varof (map snd l) i) (@mvarof R (map snd l) i).
+Proof.
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ev2 := (E_var R l x).
+have fcstr := (evalD_uniq ev1 ev2).
+subst.
+congr existT.
+apply Prop_irrelevance.
+Qed.
+
 End eval_prop.
 
-Section example.
+Section staton_bus.
 Local Open Scope ring_scope.
 Local Open Scope lang_scope.
 Variables (R : realType).
@@ -970,68 +1027,11 @@ apply/E_norm/E_letin.
     exact: (E_var _ _ "x").
 Qed.
 
-End example.
+End staton_bus.
 
 Section letinC.
 Local Open Scope lang_scope.
 Variable R : realType.
-
-Lemma execP_WP_keta1 x l (st : stype_eqType) (e : expP l st) (xl : x.1 \notin map fst l) :
-  execP (@expWP R l st _ e xl) = [the _.-sfker _ ~> _ of keta1 (execP e)].
-Proof.
-apply: evalP_uniq; first exact/evalP_execP.
-by apply: E_WP; exact: evalP_execP.
-Qed.
-
-Lemma execP_letin l x t1 t2 (e1 : expP l t1) (e2 : expP ((x, t1) :: l) t2) :
-  execP [Let x <~ e1 In e2] = letin' (execP e1) (execP e2) :> (R.-sfker _ ~> _).
-Proof.
-apply: evalP_uniq; first exact/evalP_execP.
-by apply: E_letin; exact/evalP_execP.
-Qed.
-
-Lemma execP_ret l t (e : @expD R l t) : execP [Ret e] = ret (projT2 (execD e)).
-Proof.
-apply: evalP_uniq; first exact: evalP_execP.
-by apply: E_return; exact: evalD_execD.
-Qed.
-
-Lemma execD_pair l (G := slist (map snd l)) t1 t2
-  (x : @expD R l t1)
-  (y : @expD R l t2) :
-  let f := projT1 (execD x) in
-  let g := projT1 (execD y) in
-  let mf := projT2 (execD x) in
-  let mg := projT2 (execD y) in
-  execD [(x, y)] =
-  @existT _ _ (fun z => (f z, g z))
-  (@measurable_fun_pair _ _ _ (typei2 (slist (map snd l))) (typei2 t1) (typei2 t2)
-    f g mf mg).
-Proof.
-move=> f g mf mg.
-rewrite /f /g /mf /mg.
-set lhs := LHS.
-set rhs := RHS.
-have h : projT1 lhs = projT1 rhs.
-  apply: (@evalD_uniq R l _ [(x, y)] (projT1 lhs) (projT1 rhs) (projT2 lhs) (projT2 rhs)).
-  exact: evalD_execD.
-  by apply: E_pair; exact: evalD_execD.
-exact: eq_sigT_hprop.
-Qed.
-
-Lemma execD_var l (x : string) :
-  let i := seq.index x (map fst l) in
-  @execD R l _ [%x] = existT _ (varof (map snd l) i) (@mvarof R (map snd l) i).
-Proof.
-rewrite /execD /=.
-case: cid => f ?.
-case: cid => ? ev1.
-have ev2 := (E_var R l x).
-have fcstr := (evalD_uniq ev1 ev2).
-subst.
-congr existT.
-apply Prop_irrelevance.
-Qed.
 
 Lemma letinC_new l t1 t2 (e1 : @expP R l t1) (e2 : expP l t2)
   (xl : "x" \notin map fst l) (yl : "y" \notin map fst l) :
@@ -1048,27 +1048,26 @@ rewrite 4!execP_letin.
 rewrite 2!execP_WP_keta1.
 rewrite 2!execP_ret /=.
 rewrite 2!execD_pair/=.
+rewrite (execD_var _ _ "x")/= (execD_var _ _ "y")/=.
 apply: trans_eq.
   apply: trans_eq; last first.
-  have := @letin'C _ _ _ _ _ _ _ (execP e1) (execP (@expWP _ _ _ ("y", t2) e1 yl)) _
-                                 (execP e2) (execP (@expWP _ _ _ ("x", t1) e2 xl)) _.
-  apply.
-  rewrite -/typei.
-  admit.
-  admit.
-  exact: x.
-  rewrite -/typei.
-  exact: mU.
+    apply: (@letin'C _ _ _ _ _ _ _ (execP e1) (execP (@expWP _ _ _ ("y", t2) e1 yl)) _
+                                   (execP e2) (execP (@expWP _ _ _ ("x", t1) e2 xl)) _).
+    - by rewrite -/typei => y z; rewrite execP_WP_keta1.
+    - by move=> y z; rewrite execP_WP_keta1.
+    - exact: x.
+    - by rewrite -/typei; exact: mU.
+  rewrite -/typei execP_WP_keta1/=.
+  set lhs := measurable_fun_pair _ _.
+  set rhs := measurable_fun_pair _ _.
+  by have -> : lhs = rhs by exact: Prop_irrelevance.
 rewrite -/typei.
+rewrite (execD_var _ _ "x")/= (execD_var _ _ "y")/=.
 rewrite execP_WP_keta1/=.
-(*rewrite execD_var/=.
 set lhs := measurable_fun_pair _ _.
 set rhs := measurable_fun_pair _ _.
-have -> : lhs = rhs.
-  admit.
-done.
-rewrite -/typei.*)
-Abort.
+by have -> : lhs = rhs by exact: Prop_irrelevance.
+Qed.
 
 Lemma letinC l t1 t2 (e1 : @expP R l t1) (e2 : expP l t2)
   (xl : "x" \notin map fst l) (yl : "y" \notin map fst l)
@@ -1126,10 +1125,10 @@ apply/funext => x.
 apply: (@letin'C _ _ _ (typei2 t1) (typei2 t2)).
 - move=> ST /= TATBU.
   rewrite /k1' /k1.
-  by rewrite (@execP_WP_keta1 ("y", t2) _ _ e1).
+  by rewrite (@execP_WP_keta1 _ ("y", t2) _ _ e1).
 - move=> ST /= TATBU.
   rewrite /k2 /k2'.
-  by rewrite (@execP_WP_keta1 ("x", t1) _ _ e2).
+  by rewrite (@execP_WP_keta1 _ ("x", t1) _ _ e2).
 - by [].
 Qed.
 
