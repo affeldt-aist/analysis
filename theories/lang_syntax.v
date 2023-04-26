@@ -30,7 +30,6 @@ Reserved Notation "l # e -P-> v" (at level 40).
 Section type_syntax.
 Variables (R : realType).
 
-
 Section string_eq.
 
 Definition string_eqMixin := @EqMixin string eqb eqb_spec.
@@ -140,13 +139,13 @@ Notation "'If' e1 'Then' e2 'Else' e3" := (exp_if e1 e2 e3) (in custom expr at l
 Notation "{ x }" := x (in custom expr, x constr) : lang_scope.
 Notation "x" := x (in custom expr at level 0, x ident) : lang_scope.
 
-Section eval.
-Variables (R : realType).
+Section varof.
+Context {R : realType}.
 
-Fixpoint varof (l : seq (string * stype)) (i : nat) :
-  typei2 (slist (map snd l)) -> @typei2 R (nth sunit (map snd l) i) :=
+Fixpoint varof (l : seq stype) (i : nat) :
+  typei2 (slist l) -> @typei2 R (nth sunit l i) :=
   match
-    l return (typei2 (slist (map snd l)) -> typei2 (nth sunit (map snd l) i))
+    l return (typei2 (slist l) -> typei2 (nth sunit l i))
   with
   | [::] => match i with | O => id | j.+1 => id end
   | _ :: _ => match i with
@@ -155,12 +154,17 @@ Fixpoint varof (l : seq (string * stype)) (i : nat) :
                end
   end.
 
-Lemma mvarof (l : seq (string * stype)%type) (i : nat) :
-  measurable_fun setT (@varof l i).
+Lemma mvarof (l : seq stype) (i : nat) : measurable_fun setT (@varof l i).
 Proof.
 elim: l i => //= h t ih [|j]; first exact: measurable_fun_fst.
 exact: (measurable_funT_comp (ih _) (@measurable_fun_snd _ _ _ _)).
 Qed.
+End varof.
+Arguments varof {R} l i.
+Arguments mvarof {R} l i.
+
+Section eval.
+Variables (R : realType).
 
 Lemma eq_probability d (Y : measurableType d) (m1 m2 : probability Y R) :
   (m1 = m2 :> (set Y -> \bar R)) -> m1 = m2.
@@ -338,7 +342,7 @@ Inductive evalD : forall (l : context) (T : stype) (e : @expD R l T)
 
 | E_var (l : context) (x : string) :
   let i := seq.index x (map fst l) in
-  l # exp_var x _ erefl -D-> @varof l i ; @mvarof l i
+  l # exp_var x _ erefl -D-> varof (map snd l) i ; mvarof (map snd l) i
 
 | E_bernoulli l (r : {nonneg R}) (r1 : (r%:num <= 1)%R) :
   l # exp_bernoulli r r1 -D->
@@ -690,7 +694,7 @@ exact: (proj1_sig h).
 Defined.
 
 Lemma evalP_execP l t e : l # e -P-> @execP l t e.
-Proof. by rewrite /execP/= /sval /ssr_have/=; case: cid. Qed.
+Proof. by rewrite /execP/= /sval ?/ssr_have/=; case: cid. Qed.
 
 Definition execD l t (e : @expD R l t) :
   {f : (@typei2 R (slist (map snd l))) -> @typei2 R t & measurable_fun setT f}.
@@ -702,7 +706,7 @@ Defined.
 Lemma evalD_execD l t e : let: x := @execD l t e in
   l # e -D-> projT1 x ; projT2 x.
 Proof.
-rewrite /execD /ssr_have /= /sval /=; case: cid => f [mf ef].
+rewrite /execD ?/ssr_have /= /sval /=; case: cid => f [mf ef].
 by case: cid.
 Defined.
 
@@ -947,8 +951,8 @@ apply/E_norm/E_letin.
     * rewrite /exp_var' /=.
       rewrite (_ : left_pf _ _ _ = erefl) //.
       set l := (X in X # _ -D-> _ ; _).
-      rewrite (_ : var1of2 = @mvarof R l 0)//.
-      exact: (E_var R l "x").
+      rewrite (_ : var1of2 = @mvarof R (map snd l) 0)//.
+      exact: (E_var _ _ "x").
     * exact/E_return/E_real.
     * exact/E_return/E_real.
 - apply: E_letin.
@@ -956,14 +960,14 @@ apply/E_norm/E_letin.
     rewrite /exp_var'/=.
     rewrite (_ : left_pf _ _ _ = erefl) //.
     set l := (X in X # _ -D-> _ ; _).
-    rewrite (_ : var1of2 = @mvarof R l 0)//.
-    exact: (@E_var R l "r").
+    rewrite (_ : var1of2 = @mvarof R (map snd l) 0)//.
+    exact: (E_var _ _ "r").
   + apply/E_return.
     rewrite /exp_var'/=.
     rewrite (_ : right_pf _ _ _ = erefl) //.
     set l := (X in X # _ -D-> _ ; _).
-    rewrite (_ : var3of4' = @mvarof R l 2)//.
-    exact: (@E_var R l "x").
+    rewrite (_ : var3of4' = @mvarof R (map snd l) 2)//.
+    exact: (E_var _ _ "x").
 Qed.
 
 End example.
@@ -1015,6 +1019,20 @@ have h : projT1 lhs = projT1 rhs.
 exact: eq_sigT_hprop.
 Qed.
 
+Lemma execD_var l (x : string) :
+  let i := seq.index x (map fst l) in
+  @execD R l _ [%x] = existT _ (varof (map snd l) i) (@mvarof R (map snd l) i).
+Proof.
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ev2 := (E_var R l x).
+have fcstr := (evalD_uniq ev1 ev2).
+subst.
+congr existT.
+apply Prop_irrelevance.
+Qed.
+
 Lemma letinC_new l t1 t2 (e1 : @expP R l t1) (e2 : expP l t2)
   (xl : "x" \notin map fst l) (yl : "y" \notin map fst l) :
   forall U, measurable U ->
@@ -1030,10 +1048,26 @@ rewrite 4!execP_letin.
 rewrite 2!execP_WP_keta1.
 rewrite 2!execP_ret /=.
 rewrite 2!execD_pair/=.
-have := @letin'C _ _ _ _ _ _ _ (execP e1) (execP (@expWP _ _ _ ("y", t2) e1 yl)) _
-                               (execP e2) (execP (@expWP _ _ _ ("x", t1) e2 xl)) _.
+apply: trans_eq.
+  apply: trans_eq; last first.
+  have := @letin'C _ _ _ _ _ _ _ (execP e1) (execP (@expWP _ _ _ ("y", t2) e1 yl)) _
+                                 (execP e2) (execP (@expWP _ _ _ ("x", t1) e2 xl)) _.
+  apply.
+  rewrite -/typei.
+  admit.
+  admit.
+  exact: x.
+  rewrite -/typei.
+  exact: mU.
 rewrite -/typei.
-rewrite !execP_WP_keta1/=.
+rewrite execP_WP_keta1/=.
+(*rewrite execD_var/=.
+set lhs := measurable_fun_pair _ _.
+set rhs := measurable_fun_pair _ _.
+have -> : lhs = rhs.
+  admit.
+done.
+rewrite -/typei.*)
 Abort.
 
 Lemma letinC l t1 t2 (e1 : @expP R l t1) (e2 : expP l t2)
@@ -1064,9 +1098,9 @@ have ev1' : l # [Let "x" <~ e1 In Let "y" <~ {@expWP _ _ _ ("x", t1) e2 xl} In R
   apply: E_letin; first exact: evalP_execP.
   apply: E_letin; first exact: evalP_execP.
   apply/E_return/E_pair.
-  - have -> : var2of4' = @mvarof R [:: ("y", t2), ("x", t1) & l] 1 by [].
+  - have -> : var2of4' = @mvarof R (t2 :: t1 :: map snd l) 1 by [].
     exact: E_var.
-  - have -> : var1of2 = @mvarof R [:: ("y", t2), ("x", t1) & l] 0 by [].
+  - have -> : var1of2 = @mvarof R (t2 :: t1 :: map snd l) 0 by [].
     exact: E_var.
 rewrite (evalP_uniq ev1 ev1').
 pose k2 : R.-sfker _ ~> typei2 t2 := @execP R l t2 e2.
@@ -1082,9 +1116,9 @@ have ev2' : l # [Let "y" <~ e2 In Let "x" <~ {@expWP _ _ _ ("y", t2) e1 yl} In R
   apply: E_letin; first exact: evalP_execP.
   apply: E_letin; first exact: evalP_execP.
   apply/E_return/E_pair.
-  - have -> : var1of2 = @mvarof R [:: ("x", t1), ("y", t2) & l] 0 by [].
+  - have -> : var1of2 = @mvarof R (t1 :: t2 :: map snd l) 0 by [].
     exact: E_var.
-  - have -> : var2of4' = @mvarof R [:: ("x", t1), ("y", t2) & l] 1 by [].
+  - have -> : var2of4' = @mvarof R (t1 :: t2 :: map snd l) 1 by [].
     exact: E_var.
 rewrite (evalP_uniq ev2 ev2').
 rewrite /vx /vy => t U/=.
@@ -1137,9 +1171,9 @@ have -> : v1 = letin' vx (letin' vy (ret (measurable_fun_pair var2of3' var1of3')
   apply: E_letin; first exact: evalP_execP.
   apply: E_letin; first exact: evalP_execP.
   apply/E_return/E_pair.
-  - have -> : var2of3' = @mvarof R [:: ("y", sreal); ("x", sreal)] 1 by [].
+  - have -> : var2of3' = @mvarof R [:: sreal; sreal] 1 by [].
     exact: E_var.
-  - have -> : var1of4' = @mvarof R [:: ("y", sreal); ("x", sreal)] 0 by [].
+  - have -> : var1of4' = @mvarof R [:: sreal; sreal] 0 by [].
     exact: E_var.
 pose vy' : R.-sfker munit ~> mR R := execP_ret_real [::] 2.
 pose vx' : R.-sfker [the measurableType _ of (mR R * munit)%type] ~> mR R :=
@@ -1149,9 +1183,9 @@ have -> : v2 = letin' vy' (letin' vx' (ret (measurable_fun_pair var1of3' var2of3
   apply: E_letin; first exact: evalP_execP.
   apply: E_letin; first exact: evalP_execP.
   apply/E_return/E_pair.
-  - have -> : var1of3' = @mvarof R [:: ("x", sreal); ("y", sreal)] 0 by [].
+  - have -> : var1of3' = @mvarof R [:: sreal; sreal] 0 by [].
     exact: E_var.
-  - have -> : var2of3' = @mvarof R [:: ("x", sreal); ("y", sreal)] 1 by [].
+  - have -> : var2of3' = @mvarof R [:: sreal; sreal] 1 by [].
     exact: E_var.
 apply/funext => -[].
 apply: letin'C; [ | | by []].
