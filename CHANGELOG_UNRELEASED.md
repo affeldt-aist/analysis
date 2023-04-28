@@ -12,6 +12,8 @@
   + lemma `measurable_fun_bigcup`
 - in `sequences.v`:
   + lemma `eq_eseriesl`
+- in `ereal.v`:
+  + lemmas `compreDr`, `compreN`
 
 ### Changed
 
