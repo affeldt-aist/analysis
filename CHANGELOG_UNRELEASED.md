@@ -14,6 +14,9 @@
   + lemma `eq_eseriesl`
 - in `ereal.v`:
   + lemmas `compreDr`, `compreN`
+- in `constructive_ereal.v`:
+  + lemmas `lee_sqr`, `lte_sqr`, `lee_sqrE`, `lte_sqrE`, `sqre_ge0`,
+    `EFin_expe`, `sqreD`, `sqredD`
 
 ### Changed
 
