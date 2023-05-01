@@ -97,6 +97,7 @@ with expP : context -> stype -> Type :=
 | exp_if l t : expD l sbool -> expP l t -> expP l t -> expP l t
 | exp_letin l t1 t2 (x : string) :
   expP l t1 -> expP ((x, t1) :: l) t2 -> expP l t2
+| exp_letin_forget l t1 t2 : expP l t1 -> expP l t2 -> expP l t2
 (* | exp_sample : forall t l, expD (sprob t) l -> expP t l *)
 | exp_sample_bern l (r : {nonneg R}) (r1 : (r%:num <= 1)%R) : expP l sbool
 | exp_score l : expD l sreal -> expP l sunit
@@ -124,6 +125,7 @@ Arguments exp_norm {R l _}.
 Arguments expWP {R l st x}.
 Arguments exp_if {R l t}.
 Arguments exp_letin {R l _ _}.
+Arguments exp_letin_forget {R l _ _}.
 Arguments exp_sample_bern {R} l r.
 Arguments exp_score {R l}.
 Arguments exp_return {R l _}.
@@ -142,6 +144,10 @@ Notation "'Let' x '<~' e 'In' f" := (exp_letin x e f)
    f custom expr at level 3,
    left associativity) : lang_scope.
 (*Notation "( x )" := x (in custom expr, x at level 50).*)
+Notation "e ';' f" := (exp_letin_forget e f)
+  (in custom expr at level 3,
+   (* e custom expr at level 2, *)
+   f custom expr at level 3) : lang_scope.
 Notation "'If' e1 'Then' e2 'Else' e3" := (exp_if e1 e2 e3) (in custom expr at level 1) : lang_scope.
 Notation "{ x }" := x (in custom expr, x constr) : lang_scope.
 Notation "x" := x (in custom expr at level 0, x ident) : lang_scope.
@@ -202,35 +208,10 @@ Section measurable_fun_normalize.
 Context d d' (X : measurableType d) (Y : measurableType d').
 Variable k : R.-sfker X ~> Y.
 
+(* TODO: rm *)
 Lemma measurable_fun_normalize :
   measurable_fun setT (fun x => normalize k point x : pprobability Y R).
-Proof.
-apply: (@measurability _ _ _ _ _ _
-  (@pset _ _ _ : set (set (pprobability Y R)))) => //.
-move=> _ -[_ [r r01] [Ys mYs <-]] <-.
-rewrite /normalize /mnormalize /mset /preimage/=.
-apply: emeasurable_fun_infty_o => //.
-rewrite /mnormalize/=.
-rewrite (_ : (fun x => _) = (fun x => if (k x setT == 0) || (k x setT == +oo)
-    then \d_point Ys else k x Ys * ((fine (k x setT))^-1)%:E)); last first.
-  by apply/funext => x/=; case: ifPn.
-apply: measurable_fun_if => //.
-- apply: (measurable_fun_bool true) => //.
-  rewrite (_ : _ @^-1` _ = [set t | k t setT == 0] `|`
-                           [set t | k t setT == +oo]); last first.
-    by apply/seteqP; split=> x /= /orP//.
-  by apply: measurableU; exact: kernel_measurable_eq_cst.
-- exact: measurable_fun_cst.
-- apply/emeasurable_funM; first exact/measurable_funTS/measurable_kernel.
-  apply/EFin_measurable_fun; rewrite setTI.
-  apply: (@measurable_fun_comp _ _ _ _ _ _ [set r : R | r != 0%R]).
-  + exact: open_measurable.
-  + by move=> /= _ [x /norP[s0 soo]] <-; rewrite -eqe fineK ?ge0_fin_numE ?ltey.
-  + apply: open_continuous_measurable_fun => //; apply/in_setP => x /= x0.
-    exact: inv_continuous.
-  + apply: measurable_funT_comp; last exact/measurable_funTS/measurable_kernel.
-    exact: measurable_fun_fine.
-Qed.
+Proof. exact: measurable_fun_mnormalize. Qed.
 
 End measurable_fun_normalize.
 
@@ -304,6 +285,167 @@ HB.instance Definition _ := @Kernel_isFinite.Build _ _ _ _ _
   (@keta1 x l t k) uub.
 End fkernel_eta1.
 
+Section kfst.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-sfker [the measurableType _ of X] ~> Z.
+
+Definition kfst : X * Y -> {measure set Z -> \bar R} := k \o fst.
+
+End kfst.
+
+Section kernel_kfst.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-sfker [the measurableType _ of X] ~> Z.
+
+Let mk U : measurable U -> measurable_fun setT (@kfst _ _ _ _ Y _ k ^~ U).
+Proof.
+move=> mU; rewrite (_ : kfst k ^~ U = (k ^~ U) \o fst)//.
+apply: measurable_funT_comp.
+  exact: measurable_kernel.
+exact: measurable_fun_fst.
+Qed.
+
+HB.instance Definition _ := isKernel.Build _ _ _ _ _ (kfst k) mk.
+End kernel_kfst.
+
+Section sfkernel_kfst.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-sfker [the measurableType _ of X] ~> Z.
+
+Let sk : exists2 s : (R.-ker [the measurableType _ of (X * Y)%type] ~> Z)^nat,
+  forall n, measure_fam_uub (s n) &
+  forall x0 U, measurable U -> kfst k x0 U = kseries s x0 U.
+Proof.
+have [s hs] := sfinite k.
+exists (fun n => [the _.-ker _ ~> _ of kfst (s n)]).
+  move=> n.
+  have [M hM] := measure_uub (s n).
+  exists M => x0.
+  exact: hM.
+move=> x0 U mU.
+by rewrite /kfst hs.
+Qed.
+
+HB.instance Definition _ :=
+  Kernel_isSFinite_subdef.Build _ _ _ _ _ (kfst k) sk.
+
+End sfkernel_kfst.
+
+Section fkernel_kfst.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-fker [the measurableType _ of X] ~> Z.
+
+Let uub : measure_fam_uub (@kfst _ _ _ _ Y _ k).
+Proof.
+have [M hM] := measure_uub k.
+exists M => x0.
+exact: hM.
+Qed.
+
+HB.instance Definition _ := @Kernel_isFinite.Build _ _ _ _ _
+  (kfst k) uub.
+End fkernel_kfst.
+
+Section ksnd.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-sfker [the measurableType _ of Y] ~> Z.
+
+Definition ksnd : X * Y -> {measure set Z -> \bar R} := k \o snd.
+
+End ksnd.
+
+Section kernel_ksnd.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-sfker [the measurableType _ of Y] ~> Z.
+
+Let mk U : measurable U -> measurable_fun setT (@ksnd _ _ _ X _ _ k ^~ U).
+Proof.
+move=> mU; rewrite (_ : ksnd k ^~ U = (k ^~ U) \o snd)//.
+apply: measurable_funT_comp.
+  exact: measurable_kernel.
+exact: measurable_fun_snd.
+Qed.
+
+HB.instance Definition _ := isKernel.Build _ _ _ _ _ (ksnd k) mk.
+End kernel_ksnd.
+
+Section sfkernel_ksnd.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-sfker [the measurableType _ of Y] ~> Z.
+
+Let sk : exists2 s : (R.-ker [the measurableType _ of (X * Y)%type] ~> Z)^nat,
+  forall n, measure_fam_uub (s n) &
+  forall x0 U, measurable U -> ksnd k x0 U = kseries s x0 U.
+Proof.
+have [s hs] := sfinite k.
+exists (fun n => [the _.-ker _ ~> _ of ksnd (s n)]).
+  move=> n.
+  have [M hM] := measure_uub (s n).
+  exists M => x0.
+  exact: hM.
+move=> x0 U mU.
+by rewrite /ksnd hs.
+Qed.
+
+HB.instance Definition _ :=
+  Kernel_isSFinite_subdef.Build _ _ _ _ _ (ksnd k) sk.
+
+End sfkernel_ksnd.
+
+Section fkernel_ksnd.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable k : R.-fker [the measurableType _ of Y] ~> Z.
+
+Let uub : measure_fam_uub (@ksnd _ _ _ X _ _ k).
+Proof.
+have [M hM] := measure_uub k.
+exists M => x0.
+exact: hM.
+Qed.
+
+HB.instance Definition _ := @Kernel_isFinite.Build _ _ _ _ _
+  (ksnd k) uub.
+End fkernel_ksnd.
+
+Section kcomp_forget_def.
+Context d1 d2 d3 (X : measurableType d1) (Y : measurableType d2)
+  (Z : measurableType d3).
+Variable l : R.-sfker X ~> Y.
+Variable k : R.-sfker X ~> Z.
+
+Definition kcomp_forget := l .; ksnd k.
+
+End kcomp_forget_def.
+
+Section letin_forget.
+Variables (d d' d3 : _) (X : measurableType d) (Y : measurableType d')
+          (Z : measurableType d3).
+
+Definition letin_forget (l : R.-sfker X ~> Y)
+    (k : R.-sfker X ~> Z) :=
+  locked [the R.-sfker X ~> Z of kcomp_forget l k].
+
+Lemma letin_forgetE (l : R.-sfker X ~> Y)
+    (k : R.-sfker X ~> Z) x U :
+  letin_forget l k x U = k x U * l x [set: Y].
+Proof.
+rewrite /letin_forget; unlock => /=.
+rewrite /kcomp/=.
+rewrite /mswap/=.
+rewrite /ksnd/=.
+by rewrite integral_cst.
+Qed.
+
+End letin_forget.
+
 Fixpoint free_varsD l t (e : @expD R l t) : seq string :=
   match e with
   | exp_var _ x (*_*) _ _             => [:: x]
@@ -320,6 +462,7 @@ with free_varsP T l (e : expP T l) : seq _ :=
   match e with
   | exp_if _ _ e1 e2 e3     => free_varsD e1 ++ free_varsP e2 ++ free_varsP e3
   | exp_letin _ _ _ x e1 e2 => free_varsP e1 ++ rem x (free_varsP e2)
+  | exp_letin_forget _ _ x e1 e2 => free_varsP e1 ++ free_varsP e2
   | exp_sample_bern _ _ _   => [::]
   | exp_score _ e           => free_varsD e
   | exp_return _ _ e        => free_varsD e
@@ -398,6 +541,14 @@ with evalP : forall (l : context) (T : stype),
   l # e1 -P-> k1 ->
   ((x, t1) :: l)%SEQ # e2 -P-> k2 ->
   l # exp_letin x e1 e2 -P-> letin' k1 k2
+
+| E_letin_forget (l : context) (G := slist (map snd l)) (t1 t2 : stype)
+  (e1 : expP l t1) (e2 : expP l t2)
+  (k1 : R.-sfker (typei2 G) ~> typei2 t1)
+  (k2 : R.-sfker (typei2 G) ~> typei2 t2) :
+  l # e1 -P-> k1 ->
+  l # e2 -P-> k2 ->
+  l # exp_letin_forget e1 e2 -P-> letin' k1 (ksnd k2)
 
 | E_WP l (t : stype) (e : expP l t) x (xl : x.1 \notin map fst l) k :
   l # e -P-> k ->
@@ -522,6 +673,12 @@ all: (rewrite {l G t e u v mu mv hu}).
   inj_ex H8; subst e5.
   inj_ex H7; subst e4.
   by rewrite (IH1 _ H4) (IH2 _ H11).
+- move=> l G t1 t2 e1 e2 k1 k2 ev1 IH1 ev2 IH2 k.
+  inversion 1; subst l0 t0 t3.
+  inj_ex H9; subst k.
+  inj_ex H7; subst e5.
+  inj_ex H6; subst e4.
+  by rewrite (IH1 _ H4) (IH2 _ H10).
 - move=> l t e0 x xl k1 ev IH {}k.
   inversion 1; subst l0 t0 x0.
   inj_ex H4; subst e0.
@@ -619,6 +776,12 @@ all: rewrite {l t e u v hu}.
   inj_ex H7; subst e4.
   inj_ex H8; subst e5.
   by rewrite (IH1 _ H4) (IH2 _ H11).
+- move=> l G t1 t2 e1 e2 k1 k2 ev1 IH1 ev2 IH2 k.
+  inversion 1; subst l0 t3 t0.
+  inj_ex H9; subst k.
+  inj_ex H6; subst e4.
+  inj_ex H7; subst e5.
+  by rewrite (IH1 _ H4) (IH2 _ H10).
 - move=> l t e x xl k1 ev IH {}k.
   inversion 1; subst x0 l0 t0.
   inj_ex H4; subst e0.
@@ -653,6 +816,8 @@ all: rewrite {l t e}.
   by exists (ite mf k2 k3); exact: E_ifP.
 - move=> l t1 t2 x e1 [k1 ev1] e2 [k2 ev2].
   by exists (letin' k1 k2); exact: E_letin.
+- move=> l t1 t2 e1 [k1 ev1] e2 [k2 ev2].
+  by exists (letin_forget k1 k2); exact: E_letin_forget.
 - move=> l r r1.
   by exists (sample [the pprobability _ _ of bernoulli r1]); exact: E_sample.
 - move=> l e [f [mf f_mf]].
@@ -687,6 +852,8 @@ all: rewrite {l t e}.
   by exists (ite mf k2 k3); exact: E_ifP.
 - move=> l t1 t2 x e1 [k1 ev1] e2 [k2 ev2].
   by exists (letin' k1 k2); exact: E_letin.
+- move=> l t1 t2 e1 [k1 ev1] e2 [k2 ev2].
+  by exists (letin_forget k1 k2); exact: E_letin_forget.
 - move=> l r r1.
   by exists (sample [the pprobability _ _ of bernoulli r1]); exact: E_sample.
 - by move=> l e [f [mf H]]; exists (score mf); exact: E_score.
@@ -731,7 +898,7 @@ apply: (@expP_mut_rec R
     free_varsD e = [::] -> expD [::] t)
   (fun (l : context) (t : stype) (e : expP l t) =>
     free_varsP e = [::] -> expP [::] t)
-  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ l t e).
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ l t e).
 - move=> l0 st x e0 H1 xl H2.
 (* apply (expWD e0 x). *)
 admit.
@@ -812,6 +979,7 @@ match e with
 | exp_return l0 _ e0 => @exp_return R (x :: l0) _ (wD x e0)
 | exp_if l0 _ e1 e2 e3 => @exp_if R (x :: l0) _ (wD x e1) (wP x e2) (wP x e3)
 | exp_letin l0 _ _ x0 e1 e2 => @exp_letin R (x :: l0) _ _ x0 (wP x e1) (wP _ e2)
+| exp_letin_forget l0 _ _ e1 e2 => @exp_letin_forget R l0 _ _ (wP x e1) (wP _ e2)
 | exp_sample_bern l0 _ _ => _
 | exp_score l0 e1 => _
 | expWP l0 _ x e0 xl => _
@@ -823,6 +991,14 @@ Next Obligation.
 Admitted.
 Next Obligation.
 move=> st l x e l0 ? ? x0 e1 e2 l0l ? ?.
+Admitted.
+Next Obligation.
+Admitted.
+Next Obligation.
+Admitted.
+Next Obligation.
+Admitted.
+Next Obligation.
 Admitted.
 Next Obligation.
 Admitted.
@@ -929,6 +1105,11 @@ Qed.
 
 End eval_prop.
 
+
+Class infer_set (P : Set) := InferSet : P.
+#[global] Hint Mode infer_set ! : typeclass_instances.
+#[global] Hint Extern 0 (infer_set _) => (exact) : typeclass_instances.
+
 Section staton_bus.
 Local Open Scope ring_scope.
 Local Open Scope lang_scope.
@@ -989,6 +1170,14 @@ Example staton_bus_exp := exp_norm (
    Let "_" <~ {exp_score (exp_poisson 4 [%1{"r"}])} In
    Ret %1{"x"}]).
 
+Example staton_bus_exp_test := exp_norm ([
+  Let "x" <~ {exp_sample_bern [::] (2 / 7%:R)%:nng p27} In
+  Let "r" <~ If %1{"x"} Then Ret {3}:r Else Ret {10}:r In
+  { exp_score (exp_poisson 4 [%1{"r"}])}
+  ;
+  Ret {expWD [%1{"x"}] (_ : infer _)}
+  ]).
+
 Definition sample_bern : R.-sfker munit ~> mbool :=
   sample [the probability _ _ of bernoulli p27].
 Definition ite_3_10 :
@@ -1031,6 +1220,36 @@ apply/E_norm/E_letin.
     rewrite (_ : var3of4' = @mvarof R (map snd l) 2)//.
     exact: (E_var _ _ "x").
 Qed.
+
+Local Definition kstaton_bus_test'' :=
+  letin' sample_bern
+    (letin' ite_3_10
+      (letin_forget score_poi (ret var2of3'))).
+
+Example eval_staton_bus_exp_test :
+  [::] # staton_bus_exp_test -D-> _ ; measurable_fun_normalize kstaton_bus_test''.
+Proof.
+apply/E_norm/E_letin.
+- exact/E_sample.
+- apply/E_letin.
+  + apply/E_ifP.
+    * rewrite /exp_var' /=.
+      rewrite (_ : left_pf _ _ _ = erefl) //.
+      set l := (X in X # _ -D-> _ ; _).
+      rewrite (_ : var1of2 = @mvarof R (map snd l) 0)//.
+      exact: (E_var _ _ "x").
+    * exact/E_return/E_real.
+    * exact/E_return/E_real.
+- apply: E_letin_forget.
+  + apply/E_score/E_poisson.
+    rewrite /exp_var'/=.
+    rewrite (_ : left_pf _ _ _ = erefl) //.
+    set l := (X in X # _ -D-> _ ; _).
+    rewrite (_ : var1of2 = @mvarof R (map snd l) 0)//.
+    exact: (E_var _ _ "r").
+  + apply/E_return.
+    set l := (X in X # _ -D-> _ ; _).
+Abort.
 
 End staton_bus.
 
