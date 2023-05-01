@@ -43,6 +43,8 @@ theories/itv.v
 theories/convex.v
 theories/charge.v
 theories/kernel.v
+theories/prob_lang.v
+theories/wip.v
 theories/altreals/xfinmap.v
 theories/altreals/discrete.v
 theories/altreals/realseq.v
