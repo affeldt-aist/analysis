@@ -117,7 +117,7 @@ Section expectation_lemmas.
 Local Open Scope ereal_scope.
 Context d (T : measurableType d) (R : realType) (P : probability T R).
 
-Lemma expectation_fin_num (X : {RV P >-> R}) : P.-integrable setT (EFin \o X) ->
+Lemma expectation_fin_num (X : {RV P >-> R}) : P.-integrable setT X ->
   'E_P[X] \is a fin_num.
 Proof. by move=> ?; rewrite unlock integral_fune_fin_num. Qed.
 
@@ -128,13 +128,13 @@ Lemma expectation_indic (A : set T) (mA : measurable A) : 'E_P[\1_A] = P A.
 Proof. by rewrite unlock integral_indic// setIT. Qed.
 
 Lemma integrable_expectation (X : {RV P >-> R})
-  (iX : P.-integrable [set: T] (EFin \o X)) : `| 'E_P[X] | < +oo.
+  (iX : P.-integrable [set: T] X) : `| 'E_P[X] | < +oo.
 Proof.
 move: iX => [? Xoo]; rewrite (le_lt_trans _ Xoo)// unlock.
 exact: le_trans (le_abse_integral _ _ _).
 Qed.
 
-Lemma expectationM (X : {RV P >-> R}) (iX : P.-integrable [set: T] (EFin \o X))
+Lemma expectationM (X : {RV P >-> R}) (iX : P.-integrable [set: T] X)
   (k : R) : 'E_P[k \o* X] = k%:E * 'E_P [X].
 Proof.
 rewrite unlock; under eq_integral do rewrite EFinM.
@@ -162,25 +162,25 @@ move=> mX mY X0 Y0 XY; rewrite unlock ae_ge0_le_integral => //.
 Qed.
 
 Lemma expectationD (X Y : {RV P >-> R}) :
-    P.-integrable [set: T] (EFin \o X) -> P.-integrable [set: T] (EFin \o Y) ->
+    P.-integrable [set: T] X -> P.-integrable [set: T] Y ->
   'E_P[X \+ Y] = 'E_P[X] + 'E_P[Y].
 Proof. by move=> ? ?; rewrite unlock integralD_EFin. Qed.
 
 Lemma expectationB (X Y : {RV P >-> R}) :
-    P.-integrable [set: T] (EFin \o X) -> P.-integrable [set: T] (EFin \o Y) ->
+    P.-integrable [set: T] X -> P.-integrable [set: T] Y ->
   'E_P[X \- Y] = 'E_P[X] - 'E_P[Y].
 Proof. by move=> ? ?; rewrite unlock integralB_EFin. Qed.
 
 Lemma expectation_sum (X : seq {RV P >-> R}) :
-    (forall Xi, Xi \in X -> P.-integrable [set: T] (EFin \o Xi)) ->
+    (forall Xi, Xi \in X -> P.-integrable [set: T] Xi) ->
   'E_P[\sum_(Xi <- X) Xi] = \sum_(Xi <- X) 'E_P[Xi].
 Proof.
 elim: X => [|X0 X IHX] intX; first by rewrite !big_nil expectation_cst.
-have intX0 : P.-integrable [set: T] (EFin \o X0).
+have intX0 : P.-integrable [set: T] X0.
   by apply: intX; rewrite in_cons eqxx.
-have {}intX Xi : Xi \in X -> P.-integrable [set: T] (EFin \o Xi).
+have {}intX Xi : Xi \in X -> P.-integrable [set: T] Xi.
   by move=> XiX; apply: intX; rewrite in_cons XiX orbT.
-rewrite !big_cons expectationD ?IHX// (_ : _ \o _ = fun x =>
+rewrite !big_cons expectationD ?IHX//= (_ : _ \o _ = fun x =>
     \sum_(f <- map (fun x : {RV P >-> R} => EFin \o x) X) f x).
   by apply: integrable_sum => // _ /mapP[h hX ->]; exact: intX.
 by apply/funext => t/=; rewrite big_map sumEFin mfun_sum.
@@ -199,9 +199,9 @@ Local Open Scope ereal_scope.
 Context d (T : measurableType d) (R : realType) (P : probability T R).
 
 Lemma covarianceE (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P X Y = 'E_P[X * Y] - 'E_P[X] * 'E_P[Y].
 Proof.
 move=> X1 Y1 XY1.
@@ -211,8 +211,8 @@ rewrite unlock [X in 'E_P[X]](_ : _ = (X \* Y \- fine 'E_P[X] \o* Y
     \- fine 'E_P[Y] \o* X \+ fine ('E_P[X] * 'E_P[Y]) \o* cst 1)%R); last first.
   apply/funeqP => x /=; rewrite mulrDr !mulrDl/= mul1r fineM// mulrNN addrA.
   by rewrite mulrN mulNr [Z in (X x * Y x - Z)%R]mulrC.
-have ? : P.-integrable [set: T] (EFin \o (X \* Y \- fine 'E_P[X] \o* Y)%R).
-  rewrite compreBr => [|//]; apply: integrableB; [exact: measurableT|by []|].
+have ? : P.-integrable [set: T] (X \* Y \- fine 'E_P[X] \o* Y)%R.
+  rewrite /= compreBr => [|//]; apply: integrableB; [exact: measurableT|by []|].
   by rewrite compre_scale; [apply: integrablerM|].
 rewrite expectationD/=; last 2 first.
   - rewrite compreBr; last by [].
@@ -235,9 +235,9 @@ by rewrite unlock; congr expectation; apply/funeqP => x /=; rewrite mulrC.
 Qed.
 
 Lemma covariance_fin_num (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P X Y \is a fin_num.
 Proof.
 by move=> X1 Y1 XY1; rewrite covarianceE// fin_numB fin_numM expectation_fin_num.
@@ -254,9 +254,9 @@ Lemma covariance_cst_r (X : {RV P >-> R}) c : covariance P X (cst c) = 0.
 Proof. by rewrite covarianceC covariance_cst_l. Qed.
 
 Lemma covarianceZl a (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P (a \o* X)%R Y = a%:E * covariance P X Y.
 Proof.
 move=> X1 Y1 XY1.
@@ -270,9 +270,9 @@ by rewrite -muleA -muleBr// fin_num_adde_defr// expectation_fin_num.
 Qed.
 
 Lemma covarianceZr a (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P X (a \o* Y)%R = a%:E * covariance P X Y.
 Proof.
 move=> X1 Y1 XY1.
@@ -280,9 +280,9 @@ by rewrite [in RHS]covarianceC covarianceC covarianceZl; last rewrite mulrC.
 Qed.
 
 Lemma covarianceNl (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P (\- X)%R Y = - covariance P X Y.
 Proof.
 move=> X1 Y1 XY1.
@@ -291,16 +291,16 @@ by rewrite covarianceZl// EFinN mulNe mul1e.
 Qed.
 
 Lemma covarianceNr (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P X (\- Y)%R = - covariance P X Y.
 Proof. by move=> X1 Y1 XY1; rewrite !(covarianceC X) covarianceNl 1?mulrC. Qed.
 
 Lemma covarianceNN (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) ->
-    P.-integrable setT (EFin \o Y) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X ->
+    P.-integrable setT Y ->
+    P.-integrable setT (X * Y)%R ->
   covariance P (\- X)%R (\- Y)%R = covariance P X Y.
 Proof.
 move=> X1 Y1 XY1.
@@ -311,11 +311,11 @@ by rewrite mulrN compreN; [apply: integrableN XY1|].
 Qed.
 
 Lemma covarianceDl (X Y Z : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Y) -> P.-integrable setT (EFin \o (Y ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Z) -> P.-integrable setT (EFin \o (Z ^+ 2)%R) ->
-    P.-integrable setT (EFin \o (X * Z)%R) ->
-    P.-integrable setT (EFin \o (Y * Z)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
+    P.-integrable setT Y -> P.-integrable setT (Y ^+ 2)%R ->
+    P.-integrable setT Z -> P.-integrable setT (Z ^+ 2)%R ->
+    P.-integrable setT (X * Z)%R ->
+    P.-integrable setT (Y * Z)%R ->
   covariance P (X \+ Y)%R Z = covariance P X Z + covariance P Y Z.
 Proof.
 move=> X1 X2 Y1 Y2 Z1 Z2 XZ1 YZ1.
@@ -330,11 +330,11 @@ by rewrite addeACA 2?covarianceE.
 Qed.
 
 Lemma covarianceDr (X Y Z : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Y) -> P.-integrable setT (EFin \o (Y ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Z) -> P.-integrable setT (EFin \o (Z ^+ 2)%R) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
-    P.-integrable setT (EFin \o (X * Z)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
+    P.-integrable setT Y -> P.-integrable setT (Y ^+ 2)%R ->
+    P.-integrable setT Z -> P.-integrable setT (Z ^+ 2)%R ->
+    P.-integrable setT (X * Y)%R ->
+    P.-integrable setT (X * Z)%R ->
   covariance P X (Y \+ Z)%R = covariance P X Y + covariance P X Z.
 Proof.
 move=> X1 X2 Y1 Y2 Z1 Z2 XY1 XZ1.
@@ -342,11 +342,11 @@ by rewrite covarianceC covarianceDl ?(covarianceC X) 1?mulrC.
 Qed.
 
 Lemma covarianceBl (X Y Z : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Y) -> P.-integrable setT (EFin \o (Y ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Z) -> P.-integrable setT (EFin \o (Z ^+ 2)%R) ->
-    P.-integrable setT (EFin \o (X * Z)%R) ->
-    P.-integrable setT (EFin \o (Y * Z)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
+    P.-integrable setT Y -> P.-integrable setT (Y ^+ 2)%R ->
+    P.-integrable setT Z -> P.-integrable setT (Z ^+ 2)%R ->
+    P.-integrable setT (X * Z)%R ->
+    P.-integrable setT (Y * Z)%R ->
   covariance P (X \- Y)%R Z = covariance P X Z - covariance P Y Z.
 Proof.
 move=> X1 X2 Y1 Y2 Z1 Z2 XZ1 YZ1.
@@ -359,11 +359,11 @@ rewrite covarianceDl ?covarianceNl/=; [by []..|exact: X2| | |by []| |by []|].
 Qed.
 
 Lemma covarianceBr (X Y Z : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Y) -> P.-integrable setT (EFin \o (Y ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Z) -> P.-integrable setT (EFin \o (Z ^+ 2)%R) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
-    P.-integrable setT (EFin \o (X * Z)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
+    P.-integrable setT Y -> P.-integrable setT (Y ^+ 2)%R ->
+    P.-integrable setT Z -> P.-integrable setT (Z ^+ 2)%R ->
+    P.-integrable setT (X * Y)%R ->
+    P.-integrable setT (X * Z)%R ->
   covariance P X (Y \- Z)%R = covariance P X Y - covariance P X Z.
 Proof.
 move=> X1 X2 Y1 Y2 Z1 Z2 XY1 XZ1.
@@ -380,12 +380,12 @@ Definition variance (X : T -> R) := covariance P X X.
 Local Notation "''V_' P [ X ]" := (variance X).
 
 Lemma varianceE (X : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[X] = 'E_P[X ^+ 2] - ('E_P[X]) ^+ 2.
 Proof. by move=> X1 X2; rewrite /variance covarianceE. Qed.
 
 Lemma variance_fin_num (X : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o X ^+ 2)%R ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[X] \is a fin_num.
 Proof. by move=> /[dup]; apply: covariance_fin_num. Qed.
 
@@ -402,7 +402,7 @@ by apply/funext => x; rewrite /GRing.exp/GRing.mul/= subrr mulr0.
 Qed.
 
 Lemma varianceZ a (X : {RV P >-> R}) :
-  P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+  P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[(a \o* X)%R] = (a ^+ 2)%:E * 'V_P[X].
 Proof.
 move=> X1 X2; rewrite /variance covarianceZl/=.
@@ -415,20 +415,20 @@ move=> X1 X2; rewrite /variance covarianceZl/=.
 Qed.
 
 Lemma varianceN (X : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[(\- X)%R] = 'V_P[X].
 Proof. by move=> X1 X2; rewrite /variance covarianceNN. Qed.
 
 Lemma varianceD (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Y) -> P.-integrable setT (EFin \o (Y ^+ 2)%R) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
+    P.-integrable setT Y -> P.-integrable setT (Y ^+ 2)%R ->
+    P.-integrable setT (X * Y)%R ->
   'V_P[X \+ Y]%R = 'V_P[X] + 'V_P[Y] + 2%:E * covariance P X Y.
 Proof.
 move=> X1 X2 Y1 Y2 XY1.
 rewrite -['V_P[_]]/(covariance P (X \+ Y)%R (X \+ Y)%R).
-have XY : P.-integrable [set: T] (EFin \o (X \+ Y)%R).
-  by rewrite compreDr; [apply: integrableD X1 Y1|].
+have XY : P.-integrable [set: T] (X \+ Y)%R.
+  by rewrite /= compreDr; [apply: integrableD X1 Y1|].
 rewrite covarianceDl/=; [|by []..| | |]; last 3 first.
 - rewrite -expr2 sqrrD compreDr; [apply: integrableD Y2 => [//|]|by []].
   rewrite compreDr; [apply: integrableD X2 _ => [//|]|by []].
@@ -443,9 +443,9 @@ by rewrite -[2%R]/(1 + 1)%R EFinD muleDl ?mul1e// covariance_fin_num.
 Qed.
 
 Lemma varianceB (X Y : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
-    P.-integrable setT (EFin \o Y) -> P.-integrable setT (EFin \o (Y ^+ 2)%R) ->
-    P.-integrable setT (EFin \o (X * Y)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
+    P.-integrable setT Y -> P.-integrable setT (Y ^+ 2)%R ->
+    P.-integrable setT (X * Y)%R ->
   'V_P[(X \- Y)%R] = 'V_P[X] + 'V_P[Y] - 2%:E * covariance P X Y.
 Proof.
 move=> X1 X2 Y1 Y2 XY1.
@@ -457,7 +457,7 @@ rewrite varianceD/= ?varianceN ?covarianceNr ?muleN; [by []..|exact: X2| | |].
 Qed.
 
 Lemma varianceD_cst_l c (X : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[(cst c \+ X)%R] = 'V_P[X].
 Proof.
 move=> X1 X2.
@@ -470,7 +470,7 @@ by rewrite variance_cst add0e covariance_cst_l mule0 adde0.
 Qed.
 
 Lemma varianceD_cst_r (X : {RV P >-> R}) c :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[(X \+ cst c)%R] = 'V_P[X].
 Proof.
 move=> X1 X2.
@@ -479,7 +479,7 @@ exact: varianceD_cst_l.
 Qed.
 
 Lemma varianceB_cst_l c (X : {RV P >-> R}) :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[(cst c \- X)%R] = 'V_P[X].
 Proof.
 move=> X1 X2.
@@ -490,7 +490,7 @@ by rewrite varianceN.
 Qed.
 
 Lemma varianceB_cst_r (X : {RV P >-> R}) c :
-    P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o (X ^+ 2)%R) ->
+    P.-integrable setT X -> P.-integrable setT (X ^+ 2)%R ->
   'V_P[(X \- cst c)%R] = 'V_P[X].
 Proof.
 by move=> X1 X2; rewrite -[(X \- cst c)%R]/(X \+ (cst (- c)))%R varianceD_cst_r.
@@ -649,7 +649,7 @@ Local Open Scope ereal_scope.
 Context d (T : measurableType d) (R : realType) (P : probability T R).
 
 Lemma dRV_expectation (X : {dRV P >-> R}) :
-  P.-integrable [set: T] (EFin \o X) ->
+  P.-integrable [set: T] X ->
   'E_P[X] = \sum_(n <oo) enum_prob X n * (dRV_enum X n)%:E.
 Proof.
 move=> ix; rewrite unlock.
@@ -697,7 +697,7 @@ Qed.
 Definition pmf (X : {RV P >-> R}) (r : R) : R := fine (P (X @^-1` [set r])).
 
 Lemma expectation_pmf (X : {dRV P >-> R}) :
-    P.-integrable [set: T] (EFin \o X) -> 'E_P[X] =
+    P.-integrable [set: T] X -> 'E_P[X] =
   \sum_(n <oo | n \in dRV_dom X) (pmf X (dRV_enum X n))%:E * (dRV_enum X n)%:E.
 Proof.
 move=> iX; rewrite dRV_expectation// [in RHS]eseries_mkcond.

@@ -63,7 +63,8 @@ Reserved Notation "\int [ mu ]_ ( i 'in' D ) F"
 Reserved Notation "\int [ mu ]_ i F"
   (at level 36, F at level 36, mu at level 10, i at level 0,
     right associativity, format "'[' \int [ mu ]_ i '/  '  F ']'").
-Reserved Notation "mu .-integrable" (at level 2, format "mu .-integrable").
+Reserved Notation "mu .-integrable D f" (at level 2,
+  D, f at next level, format "mu .-integrable  D  f").
 Reserved Notation "m1 '\x' m2" (at level 40, m2 at next level).
 Reserved Notation "m1 '\x^' m2" (at level 40, m2 at next level).
 
@@ -2839,8 +2840,26 @@ case: fi => mf; apply: le_lt_trans; apply: ge0_le_integral => //.
 Qed.
 
 End integrable.
-Notation "mu .-integrable" := (integrable mu) : type_scope.
+
 Arguments eq_integrable {d T R mu D} mD f.
+
+Structure int_notation d (T : measurableType d) (R : realType)
+    (mu : set T -> \bar R) (D : set T) := {
+  int_notation_cdom : Type ;
+  int_notation_prop : (T -> int_notation_cdom) -> Prop
+}.
+Arguments Build_int_notation {d T R} mu D.
+
+Canonical integrable_ereal d (T : measurableType d) (R : realType)
+  (mu : {measure set T -> \bar R}) (D : set T) :=
+  Build_int_notation mu D (\bar R) (@integrable _ _ _ mu D).
+
+Canonical integrable_real d (T : measurableType d) (R : realType)
+  (mu : {measure set T -> \bar R}) (D : set T) :=
+  Build_int_notation mu D R (fun f => @integrable _ _ _ mu D (EFin \o f)).
+
+Notation "mu .-integrable D f" :=
+  (@int_notation_prop _ _ _ mu D _ f) : type_scope.
 
 Section sequence_measure.
 Local Open Scope ereal_scope.
@@ -2849,7 +2868,7 @@ Variable m_ : {measure set T -> \bar R}^nat.
 Let m := mseries m_ O.
 
 Lemma integral_measure_series (D : set T) (mD : measurable D) (f : T -> \bar R) :
-  (forall n, integrable (m_ n) D f) ->
+  (forall n, (m_ n).-integrable D f) ->
   measurable_fun D f ->
   \sum_(n <oo) `|\int[m_ n]_(x in D) f^\- x | < +oo%E ->
   \sum_(n <oo) `|\int[m_ n]_(x in D) f^\+ x | < +oo%E ->
@@ -2860,16 +2879,17 @@ rewrite ge0_integral_measure_series//; last exact/emeasurable_fun_funepos.
 rewrite ge0_integral_measure_series//; last exact/emeasurable_fun_funeneg.
 transitivity (\sum_(n <oo) (fine (\int[m_ n]_(x in D) f^\+ x))%:E -
               \sum_(n <oo) (fine (\int[m_ n]_(x in D) f^\- x))%:E).
-  by congr (_ - _); apply: eq_eseriesr => n _; rewrite fineK//;
-    [exact: integrable_pos_fin_num|exact: integrable_neg_fin_num].
+  congr (_ - _); apply: eq_eseriesr => n _; rewrite fineK//;
+    [by apply: integrable_pos_fin_num => //; exact: fi|
+     by apply: integrable_neg_fin_num => //; exact: fi].
 have fineKn : \sum_(n <oo) `|\int[m_ n]_(x in D) f^\- x| =
           \sum_(n <oo) `|(fine (\int[m_ n]_(x in D) f^\- x))%:E|.
   apply: eq_eseriesr => n _; congr abse; rewrite fineK//.
-  exact: integrable_neg_fin_num.
+  by apply: integrable_neg_fin_num => //; exact: fi.
 have fineKp : \sum_(n <oo) `|\int[m_ n]_(x in D) f^\+ x| =
           \sum_(n <oo) `|(fine (\int[m_ n]_(x in D) f^\+ x))%:E|.
   apply: eq_eseriesr => n _; congr abse; rewrite fineK//.
-  exact: integrable_pos_fin_num.
+  by apply: integrable_pos_fin_num => //; exact: fi.
 rewrite nneseries_esum; last by move=> n _; exact/fine_ge0/integral_ge0.
 rewrite nneseries_esum; last by move=> n _; exact/fine_ge0/integral_ge0.
 rewrite -esumB//; last 4 first.
@@ -2881,7 +2901,8 @@ rewrite -summable_eseries_esum; last first.
   apply: (@le_lt_trans _ _ (\esum_(i in (fun=> true))
      `|(fine (\int[m_ i]_(x in D) f x))%:E|)).
     by apply: le_esum => k _; rewrite -EFinB -fineB// -?integralE//;
-      [exact: integrable_pos_fin_num|exact: integrable_neg_fin_num].
+      [by apply: integrable_pos_fin_num => //; exact: fi|
+       by apply: integrable_neg_fin_num => //; exact: fi].
   rewrite -nneseries_esum; last by [].
   apply: (@le_lt_trans _ _
       (\sum_(n <oo) `|(fine (\int[m_ n]_(x in D) f^\+ x))%:E| +
@@ -2889,12 +2910,13 @@ rewrite -summable_eseries_esum; last first.
     rewrite -nneseriesD//; apply: lee_nneseries => // n _.
     rewrite integralE fineB// ?EFinB.
     - exact: (le_trans (lee_abs_sub _ _)).
-    - exact: integrable_pos_fin_num.
-    - exact: integrable_neg_fin_num.
+    - by apply: integrable_pos_fin_num => //; exact: fi.
+    - by apply: integrable_neg_fin_num => //; exact: fi.
   apply: lte_add_pinfty; first by rewrite -fineKp.
   by rewrite -fineKn; exact: fmoo.
 by apply: eq_eseriesr => k _; rewrite !fineK// -?integralE//;
-  [exact: integrable_neg_fin_num|exact: integrable_pos_fin_num].
+  [by apply: integrable_neg_fin_num => //; exact: fi|
+   by apply: integrable_pos_fin_num => //; exact: fi].
 Qed.
 
 End sequence_measure.
@@ -2958,10 +2980,10 @@ apply: le_lt_trans ifoo; apply: subset_integral => //.
 exact: measurable_funT_comp.
 Qed.
 
-Lemma integrable_mkcond D f : measurable D ->
+Lemma integrable_mkcond D (f : T -> \bar R) : measurable D ->
   mu.-integrable D f <-> mu.-integrable setT (f \_ D).
 Proof.
-move=> mD; rewrite /integrable [in X in X <-> _]integral_mkcond.
+move=> mD; rewrite /= /integrable [in X in X <-> _]integral_mkcond.
 under [in X in X <-> _]eq_integral do rewrite restrict_abse.
 split => [|] [mf foo].
 - by split; [exact/(measurable_restrict _ _ _ _).1|
@@ -2974,8 +2996,8 @@ End integrable_lemmas.
 Arguments integrable_mkcond {d T R mu D} f.
 
 Lemma finite_measure_integrable_cst d (T : measurableType d) (R : realType)
-    (mu : {finite_measure set T -> \bar R}) k :
-  mu.-integrable [set: T] (EFin \o cst k).
+    (mu : {finite_measure set T -> \bar R}) (k : R) :
+  mu.-integrable [set: T] (cst k).
 Proof.
 split; first exact/EFin_measurable_fun/measurable_fun_cst.
 have [k0|k0] := leP 0 k.
@@ -3171,7 +3193,7 @@ End linearity.
 Lemma integralB_EFin d (T : measurableType d) (R : realType)
   (mu : {measure set T -> \bar R}) (D : set T) (f1 f2 : T -> R)
   (mD : measurable D) :
-  mu.-integrable D (EFin \o f1) -> mu.-integrable D (EFin \o f2) ->
+  mu.-integrable D f1 -> mu.-integrable D f2 ->
   (\int[mu]_(x in D) ((f1 x)%:E - (f2 x)%:E) =
     (\int[mu]_(x in D) (f1 x)%:E - \int[mu]_(x in D) (f2 x)%:E))%E.
 Proof.
