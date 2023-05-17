@@ -879,9 +879,9 @@ Lemma bernoulli_andE t U :
 Proof.
 rewrite /bernoulli_and 3!letin_sample_bernoulli/= /mand/= muleDr//= -muleDl//.
 rewrite !muleA -addeA -muleDl// -!EFinM !onem1S/= -splitr mulr1.
-have -> : (1 / 2 * (1 / 2) = 1 / 4 :> R)%R by rewrite mulf_div mulr1// -natrM.
+have -> : (1 / 2 * (1 / 2) = 1 / 4%:R :> R)%R by rewrite mulf_div mulr1// -natrM.
 rewrite /bernoulli/= measure_addE/= /mscale/= -!EFinM; congr( _ + (_ * _)%:E).
-have -> : (1 / 2 = 2 / 4 :> R)%R.
+have -> : (1 / 2 = 2 / 4%:R :> R)%R.
   by apply/eqP; rewrite eqr_div// ?pnatr_eq0// mul1r -natrM.
 by rewrite onem1S// -mulrDl.
 Qed.
