@@ -95,8 +95,8 @@ Lemma measurable_fun_mscore U : measurable_fun setT f ->
   measurable_fun setT (mscore ^~ U).
 Proof.
 move=> mr; under eq_fun do rewrite mscoreE/=.
-have [U0|U0] := eqVneq U set0; first exact: measurable_fun_cst.
-by apply: measurable_funT_comp => //; exact: measurable_funT_comp.
+have [U0|U0] := eqVneq U set0; first exact: measurable_cst.
+by apply: measurableT_comp => //; exact: measurableT_comp.
 Qed.
 
 End mscore.
@@ -160,13 +160,12 @@ Lemma measurable_fun_k i U : measurable U -> measurable_fun setT (k mf i ^~ U).
 Proof.
 move=> /= mU; rewrite /k /= (_ : (fun x => _) =
   (fun x => if i%:R%:E <= x < i.+1%:R%:E then x else 0) \o (mscore f ^~ U)) //.
-apply: measurable_funT_comp => /=; last exact/measurable_fun_mscore.
+apply: measurableT_comp => /=; last exact/measurable_fun_mscore.
 rewrite (_ : (fun x => _) = (fun x => x *
     (\1_(`[i%:R%:E, i.+1%:R%:E [%classic : set _) x)%:E)); last first.
   apply/funext => x; case: ifPn => ix; first by rewrite indicE/= mem_set ?mule1.
   by rewrite indicE/= memNset ?mule0// /= in_itv/=; exact/negP.
-apply: emeasurable_funM => /=; first exact: measurable_fun_id.
-apply/EFin_measurable_fun.
+apply: emeasurable_funM => //=; apply/EFin_measurable_fun.
 by rewrite (_ : \1__ = mindic R (emeasurable_itv `[(i%:R)%:E, (i.+1%:R)%:E[)).
 Qed.
 
@@ -259,9 +258,8 @@ move=> /= mcU; rewrite /kiteT.
 rewrite (_ : (fun _ => _) =
     (fun x => if x.2 then k x.1 U else mzero U)); last first.
   by apply/funext => -[t b]/=; case: ifPn.
-apply: (@measurable_fun_if_pair _ _ _ _ (k ^~ U) (fun=> mzero U)).
-  exact/measurable_kernel.
-exact: measurable_fun_cst.
+apply: (@measurable_fun_if_pair _ _ _ _ (k ^~ U) (fun=> mzero U)) => //.
+exact/measurable_kernel.
 Qed.
 
 #[export]
@@ -276,7 +274,7 @@ Let sfinite_kiteT : exists2 k_ : (R.-ker _ ~> _)^nat,
   forall n, measure_fam_uub (k_ n) &
   forall x U, measurable U -> kiteT k x U = mseries (k_ ^~ x) 0 U.
 Proof.
-have [k_ hk /=] := sfinite k.
+have [k_ hk /=] := sfinite_kernel k.
 exists (fun n => [the _.-ker _ ~> _ of kiteT (k_ n)]) => /=.
   move=> n; have /measure_fam_uubP[r k_r] := measure_uub (k_ n).
   by exists r%:num => /= -[x []]; rewrite /kiteT//= /mzero//.
@@ -316,8 +314,7 @@ move=> /= mcU; rewrite /kiteF.
 rewrite (_ : (fun x => _) =
     (fun x => if x.2 then mzero U else k x.1 U)); last first.
   by apply/funext => -[t b]/=; rewrite if_neg//; case: ifPn.
-apply: (@measurable_fun_if_pair _ _ _ _ (fun=> mzero U) (k ^~ U)).
-  exact: measurable_fun_cst.
+apply: (@measurable_fun_if_pair _ _ _ _ (fun=> mzero U) (k ^~ U)) => //.
 exact/measurable_kernel.
 Qed.
 
@@ -334,7 +331,7 @@ Let sfinite_kiteF : exists2 k_ : (R.-ker _ ~> _)^nat,
   forall n, measure_fam_uub (k_ n) &
   forall x U, measurable U -> kiteF k x U = mseries (k_ ^~ x) 0 U.
 Proof.
-have [k_ hk /=] := sfinite k.
+have [k_ hk /=] := sfinite_kernel k.
 exists (fun n => [the _.-ker _ ~> _ of kiteF (k_ n)]) => /=.
   move=> n; have /measure_fam_uubP[r k_r] := measure_uub (k_ n).
   by exists r%:num => /= -[x []]; rewrite /kiteF//= /mzero//.
@@ -409,7 +406,7 @@ Definition ret (f : X -> Y) (mf : measurable_fun setT f)
   : R.-pker X ~> Y := [the R.-pker _ ~> _ of kdirac mf].
 
 Definition sample (P : pprobability Y R) : R.-pker X ~> Y :=
-  [the R.-pker _ ~> _ of kprobability (measurable_fun_cst P)].
+  [the R.-pker _ ~> _ of kprobability (measurable_cst P)].
 
 Definition normalize (k : R.-sfker X ~> Y) P : X -> probability Y R :=
   fun x => [the probability _ _ of mnormalize k P x].
@@ -486,9 +483,8 @@ Lemma letin_kret (k : R.-sfker X ~> Y)
 Proof.
 move=> mU; rewrite letinE.
 under eq_integral do rewrite retE.
-rewrite integral_indic ?setIT//.
-move/measurable_fun_prod1 : mf => /(_ x measurableT U mU).
-by rewrite setTI.
+rewrite integral_indic ?setIT// -[X in measurable X]setTI.
+exact: (measurableT_comp mf).
 Qed.
 
 Lemma letin_retk
@@ -498,8 +494,7 @@ Lemma letin_retk
   letin (ret mf) k x U = k (x, f x) U.
 Proof.
 move=> mU; rewrite letinE retE integral_dirac ?indicT ?mul1e//.
-have /measurable_fun_prod1 := measurable_kernel k _ mU.
-exact.
+exact: (measurableT_comp (measurable_kernel k _ mU)).
 Qed.
 
 End letin_return.
@@ -517,8 +512,8 @@ Section hard_constraint.
 Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
 
 Definition fail :=
-  letin (score (@measurable_fun_cst _ _ X _ setT (0%R : R)))
-        (ret (@measurable_fun_cst _ _ _ Y setT point)).
+  letin (score (@measurable_cst _ _ X _ setT (0%R : R)))
+        (ret (@measurable_cst _ _ _ Y setT point)).
 
 Lemma failE x U : fail x U = 0.
 Proof. by rewrite /fail letinE ge0_integral_mscale//= normr0 mul0e. Qed.
@@ -528,13 +523,13 @@ Arguments fail {d d' X Y R}.
 
 Module Notations.
 
-Notation var1of2 := (@measurable_fun_fst _ _ _ _).
-Notation var2of2 := (@measurable_fun_snd _ _ _ _).
-Notation var1of3 := (measurable_funT_comp (@measurable_fun_fst _ _ _ _)
-                                         (@measurable_fun_fst _ _ _ _)).
-Notation var2of3 := (measurable_funT_comp (@measurable_fun_snd _ _ _ _)
-                                         (@measurable_fun_fst _ _ _ _)).
-Notation var3of3 := (@measurable_fun_snd _ _ _ _).
+Notation var1of2 := (@measurable_fst _ _ _ _).
+Notation var2of2 := (@measurable_snd _ _ _ _).
+Notation var1of3 := (measurableT_comp (@measurable_fst _ _ _ _)
+                                         (@measurable_fst _ _ _ _)).
+Notation var2of3 := (measurableT_comp (@measurable_snd _ _ _ _)
+                                         (@measurable_fst _ _ _ _)).
+Notation var3of3 := (@measurable_snd _ _ _ _).
 
 Notation mR := Real_sort__canonical__measure_Measurable.
 Notation munit := Datatypes_unit__canonical__measure_Measurable.
@@ -545,10 +540,10 @@ End Notations.
 Section cst_fun.
 Context d (T : measurableType d) (R : realType).
 
-Definition kr (r : R) := @measurable_fun_cst _ _ T _ setT r.
+Definition kr (r : R) := @measurable_cst _ _ T _ setT r.
 Definition k3 : measurable_fun _ _ := kr 3%:R.
 Definition k10 : measurable_fun _ _ := kr 10%:R.
-Definition ktt := @measurable_fun_cst _ _ T _ setT tt.
+Definition ktt := @measurable_cst _ _ T _ setT tt.
 
 End cst_fun.
 Arguments kr {d T R}.
@@ -572,7 +567,7 @@ Qed.
 Lemma scoreE d' (T' : measurableType d') (x : T * T') (U : set T') (f : R -> R)
     (r : R) (r0 : (0 <= r)%R)
     (f0 : (forall r, 0 <= r -> 0 <= f r)%R) (mf : measurable_fun setT f) :
-  score (measurable_funT_comp mf var2of2)
+  score (measurableT_comp mf var2of2)
     (x, r) (curry (snd \o fst) x @^-1` U) =
   (f r)%:E * \d_x.2 U.
 Proof. by rewrite /score/= /mscale/= ger0_norm// f0. Qed.
@@ -581,7 +576,7 @@ Lemma score_score (f : R -> R) (g : R * unit -> R)
     (mf : measurable_fun setT f)
     (mg : measurable_fun setT g) :
   letin (score mf) (score mg) =
-  score (measurable_funM mf (measurable_fun_prod2 tt mg)).
+  score (measurable_funM mf (measurableT_comp mg (measurable_pair2 tt))).
 Proof.
 apply/eq_sfkernel => x U.
 rewrite {1}/letin; unlock.
@@ -653,8 +648,7 @@ rewrite integral_kcomp; [|by []|].
 - apply: eq_integral => y _.
   apply: eq_integral => z _.
   by rewrite (vv' y).
-have /measurable_fun_prod1 := @measurable_kernel _ _ _ _ _ v _ mA.
-exact.
+exact: (measurableT_comp (measurable_kernel v _ mA)).
 Qed.
 
 End letinA.
@@ -699,10 +693,10 @@ HB.instance Definition _ z := @Measure_isSFinite_subdef.Build _ Y R
 Lemma letinC z A : measurable A ->
   letin t
   (letin u'
-  (ret (measurable_fun_pair var2of3 var3of3))) z A =
+  (ret (measurable_fun_prod var2of3 var3of3))) z A =
   letin u
   (letin t'
-  (ret (measurable_fun_pair var3of3 var2of3))) z A.
+  (ret (measurable_fun_prod var3of3 var2of3))) z A.
 Proof.
 move=> mA.
 rewrite !letinE.
@@ -774,11 +768,7 @@ Qed.
 
 Lemma mpoisson k : measurable_fun setT (poisson k).
 Proof.
-apply: measurable_funM => /=.
-  apply: measurable_funM => //=; last exact: measurable_fun_cst.
-  exact/measurable_fun_exprn/measurable_fun_id.
-apply: measurable_funT_comp; last exact: measurable_fun_opp.
-by apply: continuous_measurable_fun; exact: continuous_expR.
+by apply: measurable_funM => /=; [exact: measurable_funM|exact: measurableT_comp].
 Qed.
 
 Definition poisson3 := poisson 4 3%:R. (* 0.168 *)
@@ -801,11 +791,8 @@ Proof. by move=> r0; rewrite /exp_density mulr_ge0// expR_ge0. Qed.
 
 Lemma mexp_density x : measurable_fun setT (exp_density x).
 Proof.
-apply: measurable_funM => /=; first exact: measurable_fun_id.
-apply: measurable_funT_comp.
-  by apply: continuous_measurable_fun; exact: continuous_expR.
-apply: measurable_funM => /=; first exact: measurable_fun_opp.
-exact: measurable_fun_cst.
+apply: measurable_funM => //=; apply: measurableT_comp => //.
+exact: measurable_funM.
 Qed.
 
 End exponential.
@@ -909,7 +896,7 @@ Definition kstaton_bus : R.-sfker T ~> mbool :=
   letin (sample [the probability _ _ of bernoulli p27])
   (letin
     (letin (ite var2of2 (ret k3) (ret k10))
-      (score (measurable_funT_comp mh var3of3)))
+      (score (measurableT_comp mh var3of3)))
     (ret var2of3)).
 
 Definition staton_bus := normalize kstaton_bus.
