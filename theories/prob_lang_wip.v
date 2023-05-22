@@ -75,7 +75,7 @@ Let mgauss01_sigma_additive : semi_sigma_additive mgauss01.
 Proof.
 move=> /= F mF tF mUF.
 rewrite /mgauss01/= integral_bigcup//=; last first.
-  split.
+  apply/integrableP; split.
     apply/EFin_measurable_fun.
     exact: measurable_funS (measurable_fun_gauss_density 0 1).
   rewrite (_ : (fun x => _) = (EFin \o gauss01_density)); last first.
