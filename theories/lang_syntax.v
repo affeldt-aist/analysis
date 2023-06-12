@@ -837,7 +837,7 @@ all: rewrite {g t e u v eu}.
   by rewrite (IH _ H3).
 Qed.
 
-Lemma evalD_full g t (e : expD g t) :
+Lemma evalD_total g t (e : expD g t) :
   exists f (mf : measurable_fun _ f), @evalD R g t e f mf.
 Proof.
 apply: (@expD_mut_ind R
@@ -872,7 +872,7 @@ all: rewrite {g t e}.
   by exists (kweak k); exact: evalP_weak.
 Qed.
 
-Lemma evalP_full g t (e : expP g t) : exists (k : pval R g t), @evalP R g t e k.
+Lemma evalP_total g t (e : expP g t) : exists (k : pval R g t), @evalP R g t e k.
 Proof.
 apply: (@expP_mut_ind R
   (fun g t (e : expD g t) => exists f (mf : measurable_fun _ f), evalD e mf)
@@ -914,7 +914,7 @@ Implicit Type g : ctx.
 
 Definition execD g t (e : expD g t) :
     {f : dval R g t & measurable_fun setT f} :=
-  let: exist _ H := cid (evalD_full e) in
+  let: exist _ H := cid (evalD_total e) in
   existT _ _ (projT1 (cid H)).
 
 Lemma evalD_execD g t e :
@@ -922,7 +922,7 @@ Lemma evalD_execD g t e :
  by rewrite /execD /=; case: cid => f [mf ?] /=; case: cid. Qed.
 
 Definition execP g t (e : expP g t) : pval R g t :=
-  proj1_sig (cid (evalP_full e)).
+  proj1_sig (cid (evalP_total e)).
 
 Lemma evalP_execP g t (e : expP g t) : e -P-> execP e.
 Proof. by rewrite /execP; case: cid. Qed.
@@ -936,6 +936,16 @@ rewrite /execD /=.
 case: cid => f ?.
 case: cid => ? ev1.
 have ev2 := eval_real g r.
+have ? := evalD_uniq ev1 ev2; subst f.
+by congr existT; exact: Prop_irrelevance.
+Qed.
+
+Lemma execD_bool g b : @execD g _ (exp_bool b) = existT _ (cst b) (kb b).
+Proof.
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ev2 := @eval_bool R g b.
 have ? := evalD_uniq ev1 ev2; subst f.
 by congr existT; exact: Prop_irrelevance.
 Qed.
@@ -1236,12 +1246,6 @@ Proof. rewrite /= diracE in_setT //. Qed.
 
 Local Notation "# x" := (@exp_var' R x%string _ _) (in custom expr at level 1).
 
-(* Example staton_bus_exp : expD [::] (Prob Bool) := exp_normalize (
-  [let "x" := Sample {(@exp_bernoulli _ [::] (2 / 7%:R)%:nng p27)} in
-   let "r" := if #{"x"} then return {3}:R else return {10}:R in
-   let "_" := Score {exp_poisson 4 [#{"r"}]} in
-   return #{"x"}]). *)
-
 Definition sample_bern : R.-sfker munit ~> mbool :=
   sample_cst [the probability _ _ of bernoulli p27].
 
@@ -1317,3 +1321,86 @@ Lemma exec_staton_bus : projT1 (execD staton_bus_exp) =
 Proof. by rewrite execD_normalize exec_kstaton_bus. Qed.
 
 End staton_bus.
+
+Section bernoulli_example.
+Local Open Scope ring_scope.
+Local Open Scope lang_scope.
+Import Notations.
+Context {R : realType}.
+
+Local Notation "# str" := (@exp_var' R str%string _ _) (in custom expr at level 1).
+
+Check [{3}:R].
+Compute [let "x" := Sample {(@exp_bernoulli R [::] (2 / 7%:R)%:nng p27)} in
+   let "r" := if #{"x"} then return {3}:R else return {10}:R in
+   let "_" := Score {(exp_poisson 4 [#{"r"}])} in
+   return %{"x"}].
+
+Lemma p13 : (1 / 3%:R)%:nng%:num <= 1 :> R. Proof. by rewrite p1S. Qed.
+
+Definition bern13 := bernoulli p13.
+
+Definition lhs : pval R [::] _ := execP [let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng p13} in if #{"x"} then return {exp_bool true} else return {exp_bool false}].
+
+Lemma __ U : lhs tt U = bern13 U.
+Proof.
+rewrite /lhs execP_letin execP_sample_bern execP_if 2!execP_ret 2!execD_bool /=.
+have -> : (@execD R _ _ (exp_var "x" (left_pf "x" Bool [::])) =
+          execD [% {"x"}]).
+  by congr execD; congr exp_var; exact: Prop_irrelevance.
+rewrite execD_var.
+rewrite letin'E /=.
+rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
+rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
+rewrite 2!iteE //=.
+by rewrite /bern13 /bernoulli measure_addE.
+Qed.
+
+Definition lhs1 : pval R [::] _ := execP [let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng p13} in return #{"x"}].
+
+Lemma ex_bern13 U : lhs1 tt U = bern13 U.
+Proof.
+rewrite /lhs1 execP_letin execP_sample_bern execP_ret /=.
+have -> : (@execD R _ _ (exp_var "x" (left_pf "x" Bool [::])) =
+          execD [% {"x"}]).
+  by congr execD; congr exp_var; exact: Prop_irrelevance.
+rewrite execD_var.
+rewrite letin'E /=.
+rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
+rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
+by rewrite /bern13 /bernoulli measure_addE.
+Qed.
+
+Definition rhs := execD (exp_normalize [let "x" := Sample {@exp_bernoulli R [::] (1 / 2%:R)%:nng p12} in let "r" := if #{"x"} then Score {(1 / 3)}:R else Score {(2 / 3)}:R in return #{"x"}]).
+
+Lemma ex_rhs U : projT1 rhs tt U = bern13 U.
+Proof.
+rewrite /rhs execD_normalize 2!execP_letin execP_sample_bern execP_if.
+have -> : (@execD R _ _ (exp_var "x" (left_pf "x" Bool [::])) =
+        execD [% {"x"}]).
+  by congr execD; congr exp_var; exact: Prop_irrelevance.
+rewrite execD_var !execP_ret //= 2!execP_score 2!execD_real /=.
+rewrite normalizeE !letin'E /=.
+under eq_integral.
+  move=> x _.
+  rewrite !letin'E.
+  under eq_integral do rewrite retE /=.
+  over.
+rewrite /= !integral_measure_add //=.
+rewrite !ge0_integral_mscale //=.
+rewrite !integral_dirac // !integral_indic // !iteE /=.
+rewrite !indicE 2!in_setT /= !mul1e.
+rewrite /mscale /= 2!diracE !setT_unit.
+have ->/= : (tt \in xpredpT `&` [set tt]) by admit.
+rewrite !mule1.
+rewrite !letin'E !iteE /=.
+rewrite !ge0_integral_mscale //=.
+have -> : (((1 / 2)%:E * `|1 / 3|%:E + (`1-(1 / 2))%:E * `|2 / 3|%:E)%E == 0%E)
+  || (((1 / 2)%:E * `|1 / 3|%:E + (`1-(1 / 2))%:E * `|2 / 3|%:E)%E == +oo%E) = false by admit.
+rewrite !integral_dirac //.
+rewrite !indicE !diracE !in_setT /=.
+rewrite !mul1e.
+rewrite /exp_var' /=.
+Abort.
+
+End bernoulli_example.
