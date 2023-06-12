@@ -12,14 +12,14 @@ Require Import lebesgue_measure  numfun lebesgue_integral exp kernel.
 (*                                                                            *)
 (*       bernoulli r1 == Bernoulli probability with r1 a proof that           *)
 (*                       r : {nonneg R} is smaller than 1                     *)
-(*                                                                            *)
+(* uniform_probability a b ab0 == uniform probability over the interval [a,b] *)
 (*       sample_cst P == sample according to the probability P                *)
 (*          letin l k == execute l, augment the context, and execute k        *)
 (*             ret mf == access the context with f and return the result      *)
 (*           score mf == observe t from d, where f is the density of d and    *)
 (*                       t occurs in f                                        *)
 (*                       e.g., score (r e^(-r * t)) = observe t from exp(r)   *)
-(*     pnormalize k P == normalize the kernel k into a probability kernel,    *)
+(*      normalize k P == normalize the kernel k into a probability kernel,    *)
 (*                       P is a default probability in case normalization is  *)
 (*                       not possible                                         *)
 (*       ite mf k1 k2 == access the context with the boolean function f and   *)
@@ -41,9 +41,6 @@ Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
 
 (* TODO: PR *)
-Lemma onem1' (R : numDomainType) (p : R) : (p + `1- p = 1)%R.
-Proof. by rewrite /onem addrCA subrr addr0. Qed.
-
 Lemma onem_nonneg_proof (R : numDomainType) (p : {nonneg R}) :
   (p%:num <= 1 -> 0 <= `1-(p%:num))%R.
 Proof. by rewrite /onem/= subr_ge0. Qed.
@@ -52,6 +49,39 @@ Definition onem_nonneg (R : numDomainType) (p : {nonneg R})
    (p1 : (p%:num <= 1)%R) :=
   NngNum (onem_nonneg_proof p1).
 (* /TODO: PR *)
+
+Lemma invr_nonneg_proof (R : numDomainType) (p : {nonneg R}) :
+  (0 <= (p%:num)^-1)%R.
+Proof. by rewrite invr_ge0. Qed.
+
+Definition invr_nonneg (R : numDomainType) (p : {nonneg R}) :=
+  NngNum (invr_nonneg_proof p).
+
+(* TODO: move *)
+Lemma eq_probability R d (Y : measurableType d) (m1 m2 : probability Y R) :
+  (m1 =1 m2 :> (set Y -> \bar R)) -> m1 = m2.
+Proof.
+move: m1 m2 => [m1 +] [m2 +] /= m1m2.
+move/funext : m1m2 => <- -[[c11 c12] [m01] [sf1] [sig1] [fin1] [sub1] [p1]]
+                    [[c21 c22] [m02] [sf2] [sig2] [fin2] [sub2] [p2]].
+have ? : c11 = c21 by [].
+subst c21.
+have ? : c12 = c22 by [].
+subst c22.
+have ? : m01 = m02 by [].
+subst m02.
+have ? : sf1 = sf2 by [].
+subst sf2.
+have ? : sig1 = sig2 by [].
+subst sig2.
+have ? : fin1 = fin2 by [].
+subst fin2.
+have ? : sub1 = sub2 by [].
+subst sub2.
+have ? : p1 = p2 by [].
+subst p2.
+by f_equal.
+Qed.
 
 Section bernoulli.
 Variables (R : realType) (p : {nonneg R}) (p1 : (p%:num <= 1)%R).
@@ -69,12 +99,45 @@ Local Close Scope ring_scope.
 Let bernoulli_setT : bernoulli [set: _] = 1.
 Proof.
 rewrite /bernoulli/= /measure_add/= /msum 2!big_ord_recr/= big_ord0 add0e/=.
-by rewrite /mscale/= !diracT !mule1 -EFinD onem1'.
+by rewrite /mscale/= !diracT !mule1 -EFinD add_onemK.
 Qed.
 
-HB.instance Definition _ := @Measure_isProbability.Build _ _ R bernoulli bernoulli_setT.
+HB.instance Definition _ :=
+  @Measure_isProbability.Build _ _ R bernoulli bernoulli_setT.
 
 End bernoulli.
+
+Lemma integral_bernoulli {R : realType}
+    (p : {nonneg R}) (p1 : (p%:num <= 1)%R) (f : bool -> set bool -> _) U :
+  (forall x y, 0 <= f x y) ->
+  \int[bernoulli p1]_y (f y ) U =
+  p%:num%:E * f true U + (`1-(p%:num))%:E * f false U.
+Proof.
+move=> f0.
+rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
+by rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
+Qed.
+
+Section uniform_probability.
+Context {R : realType}.
+Variables (a b : R) (ab0 : (0 < b - a)%R).
+
+Definition uniform_probability := mscale (invr_nonneg (NngNum (ltW ab0)))
+  (mrestr lebesgue_measure (measurable_itv `[a, b])).
+
+HB.instance Definition _ := Measure.on uniform_probability.
+
+Let uniform_probability_setT : uniform_probability [set: _] = 1.
+Proof.
+rewrite /uniform_probability /mscale/= /mrestr/=.
+rewrite setTI lebesgue_measure_itv hlength_itv/= lte_fin.
+by rewrite -subr_gt0 ab0 -EFinD -EFinM mulVf// gt_eqF// subr_gt0.
+Qed.
+
+HB.instance Definition _ := @Measure_isProbability.Build _ _ R
+  uniform_probability uniform_probability_setT.
+
+End uniform_probability.
 
 Section mscore.
 Context d (T : measurableType d) (R : realType).
@@ -405,7 +468,7 @@ Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
 Definition ret (f : X -> Y) (mf : measurable_fun setT f)
   : R.-pker X ~> Y := [the R.-pker _ ~> _ of kdirac mf].
 
-Definition sample_cst (P : pprobability Y R) : R.-pker X ~> Y :=
+Definition sample_cst(P : pprobability Y R) : R.-pker X ~> Y :=
   [the R.-pker _ ~> _ of kprobability (measurable_cst P)].
 
 Definition sample (P : X -> pprobability Y R) (mP : measurable_fun setT P) : R.-pker X ~> Y :=
@@ -457,6 +520,15 @@ by case: ifPn => fx /=; rewrite /mzero ?(adde0,add0e).
 Qed.
 
 End insn2_lemmas.
+
+Lemma normalize_kdirac (R : realType)
+    d (T : measurableType d) d' (T' : measurableType d') (x : T) (r : T') P :
+  normalize (kdirac (measurable_cst r)) P x = \d_r :> probability T' R.
+Proof.
+apply: eq_probability => U.
+rewrite normalizeE /= diracE in_setT/=.
+by rewrite onee_eq0/= indicE in_setT/= -div1r divr1 mule1.
+Qed.
 
 Section insn3.
 Context d d' d3 (X : measurableType d) (Y : measurableType d')
@@ -590,14 +662,14 @@ Fixpoint acc (l : seq {d & measurableType d}) n :
                end
   end.
 
-Lemma macc (l : seq {d & measurableType d}) n :
+Lemma measurable_acc (l : seq {d & measurableType d}) n :
   measurable_fun setT (@acc l n).
 Proof.
 by elim: l n => //= h t ih [|m] //; exact: (measurableT_comp (ih _)).
 Qed.
 End acc.
 Arguments acc : clear implicits.
-Arguments macc : clear implicits.
+Arguments measurable_acc : clear implicits.
 
 Section rpair_pairA.
 Context d0 d1 d2 (T0 : measurableType d0) (T1 : measurableType d1)
@@ -693,13 +765,17 @@ Definition acc0of2 : [the measurableType _ of (T0 * T1)%type] -> T0 :=
   @acc Of2 0 \o pairAr munit tt.
 
 Lemma macc0of2 : measurable_fun setT acc0of2.
-Proof. by apply: measurableT_comp; [exact: (macc Of2 0)|exact: mpairAr]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of2 0)|exact: mpairAr].
+Qed.
 
 Definition acc1of2 : [the measurableType _ of (T0 * T1)%type] -> T1 :=
   acc Of2 1 \o pairAr munit tt.
 
 Lemma macc1of2 : measurable_fun setT acc1of2.
-Proof. by apply: measurableT_comp; [exact: (macc Of2 1)|exact: mpairAr]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of2 1)|exact: mpairAr].
+Qed.
 
 Definition Of3 := [:: existT _ _ T0; existT _ _ T1; existT _ d2 T2].
 
@@ -707,39 +783,53 @@ Definition acc1of3 : [the measurableType _ of (T0 * T1 * T2)%type] -> T1 :=
   acc Of3 1 \o pairAAr.
 
 Lemma macc1of3 : measurable_fun setT acc1of3.
-Proof. by apply: measurableT_comp; [exact: (macc Of3 1)|exact: mpairAAr]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of3 1)|exact: mpairAAr].
+Qed.
 
 Definition acc2of3 : [the measurableType _ of (T0 * T1 * T2)%type] -> T2 :=
   acc Of3 2 \o pairAAr.
 
 Lemma macc2of3 : measurable_fun setT acc2of3.
-Proof. by apply: measurableT_comp; [exact: (macc Of3 2)|exact: mpairAAr]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of3 2)|exact: mpairAAr].
+Qed.
 
 Definition acc0of3' : [the measurableType _ of (T0 * (T1 * T2))%type] -> T0 :=
   acc Of3 0 \o pairAArAi.
 
 Lemma macc0of3' : measurable_fun setT acc0of3'.
-Proof. by apply: measurableT_comp; [exact: (macc Of3 0)|exact: mpairAArAi]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of3 0)|exact: mpairAArAi].
+Qed.
 
 Definition acc1of3' : [the measurableType _ of (T0 * (T1 * T2))%type] -> T1 :=
   acc Of3 1 \o pairAArAi.
 
 Lemma macc1of3' : measurable_fun setT acc1of3'.
-Proof. by apply: measurableT_comp; [exact: (macc Of3 1)|exact: mpairAArAi]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of3 1)|exact: mpairAArAi].
+Qed.
 
 Definition acc2of3' : [the measurableType _ of (T0 * (T1 * T2))%type] -> T2 :=
   acc Of3 2 \o pairAArAi.
 
 Lemma macc2of3' : measurable_fun setT acc2of3'.
-Proof. by apply: measurableT_comp; [exact: (macc Of3 2)|exact: mpairAArAi]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of3 2)|exact: mpairAArAi].
+Qed.
 
-Definition Of4 := [:: existT _ _ T0; existT _ _ T1; existT _ d2 T2; existT _ d3 T3].
+Definition Of4 :=
+  [:: existT _ _ T0; existT _ _ T1; existT _ d2 T2; existT _ d3 T3].
 
-Definition acc2of4' : [the measurableType _ of (T0 * (T1 * (T2 * T3)))%type] -> T2 :=
+Definition acc2of4' :
+    [the measurableType _ of (T0 * (T1 * (T2 * T3)))%type] -> T2 :=
   acc Of4 2 \o pairAAArAAi.
 
 Lemma macc2of4' : measurable_fun setT acc2of4'.
-Proof. by apply: measurableT_comp; [exact: (macc Of4 2)|exact: mpairAAARAAAi]. Qed.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of4 2)|exact: mpairAAARAAAi].
+Qed.
 
 End accessor_functions.
 Arguments macc0of2 {d0 d1 _ _}.
@@ -947,6 +1037,7 @@ End constants.
 Arguments p12 {R}.
 Arguments p14 {R}.
 Arguments p27 {R}.
+Arguments p1S {R}.
 
 Section poisson.
 Variable R : realType.
@@ -967,7 +1058,7 @@ move=> r0; rewrite /poisson mulr_gt0 ?expR_gt0//.
 by rewrite divr_gt0// ?exprn_gt0// invr_gt0 ltr0n fact_gt0.
 Qed.
 
-Lemma mpoisson k : measurable_fun setT (poisson k).
+Lemma measurable_poisson k : measurable_fun setT (poisson k).
 Proof.
 by apply: measurable_funM => /=;
   [exact: measurable_funM|exact: measurableT_comp].
@@ -1113,7 +1204,7 @@ Section staton_bus_poisson.
 Import Notations.
 Context d (T : measurableType d) (R : realType).
 Let poisson4 := @poisson R 4%N.
-Let mpoisson4 := @mpoisson R 4%N.
+Let mpoisson4 := @measurable_poisson R 4%N.
 
 Definition kstaton_bus_poisson : R.-sfker (mR R) ~> mbool :=
   kstaton_bus _ mpoisson4.
