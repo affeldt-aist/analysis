@@ -1007,6 +1007,15 @@ have ? := evalD_uniq ev1 (@eval_var R g str); subst f.
 by congr existT; exact: Prop_irrelevance.
 Qed.
 
+Lemma execD_bernoulli g r (r1 : (r%:num <= 1)%R) :
+  @execD g _ (exp_bernoulli r r1) = existT _ (cst [the probability _ _ of bernoulli r1]) (measurable_cst _).
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ? := evalD_uniq ev1 (@eval_bernoulli R g r r1); subst f.
+by congr existT; exact: Prop_irrelevance.
+Qed.
+
 Lemma execD_poisson g n (e : exp D g Real) :
   execD (exp_poisson n e) =
     existT _ (poisson n \o (projT1 (execD e)))
@@ -1242,7 +1251,7 @@ Definition score_poi :
   score (measurableT_comp (mpoisson 4) (@macc0of2 _ _ _ _)).
 
 Example kstaton_bus_exp : exp P [::] Bool :=
-  [let "x" := Sample {(@exp_bernoulli R [::] (2 / 7%:R)%:nng p27)} in
+  [let "x" := Sample {(exp_bernoulli (2 / 7%:R)%:nng p27)} in
    let "r" := if #{"x"} then return {3}:R else return {10}:R in
    let "_" := Score {(exp_poisson 4 [#{"r"}])} in
    return %{"x"}].
@@ -1300,8 +1309,9 @@ rewrite (execD_var _ "x") /=.
 by have -> : @macc_typ _ [:: Unit; Real; Bool] 2 = macc2of4'.
 Qed.
 
-Lemma exec_staton_bus : projT1 (execD staton_bus_exp) =
-  normalize kstaton_bus'' point.
+
+Lemma exec_staton_bus : execD staton_bus_exp =
+  existT _ (normalize kstaton_bus'' point)(measurable_fun_mnormalize _).
 Proof. by rewrite execD_normalize exec_kstaton_bus. Qed.
 
 End staton_bus.
@@ -1357,34 +1367,19 @@ rewrite 2!iteE //=.
 by rewrite /bern13 /bernoulli measure_addE.
 Qed.
 
-Definition lhs1 := execD
-  (exp_normalize [let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng p13} in
-   return #{"x"}]).
+Definition lhs1 : {f : dval R [::] _ & measurable_fun _ f} := execD
+  (exp_bernoulli (1 / 3%:R)%:nng p13).
+
+(* Definition lhs1 : {f : dval R [::] _ & measurable_fun _ f} := execD
+  (exp_normalize [let "x" := Sample {exp_bernoulli (1 / 3%:R)%:nng p13} 
+  in return #{"x"}]). *)
 
 Lemma execD_exp_var_left_pf :
   @execD R _ _ (exp_var "x" (ctx_prf_head "x" Bool [::])) = execD [% {"x"}].
 Proof. by congr execD; congr exp_var; exact: Prop_irrelevance. Qed.
 
 Lemma ex_lhs U : projT1 lhs1 tt U = bern13 U.
-Proof.
-rewrite /lhs1.
-rewrite execD_normalize execP_letin execP_sample_bern execP_return /=.
-rewrite normalizeE.
-rewrite execD_exp_var_left_pf.
-rewrite execD_var/=.
-rewrite letin'E /=.
-rewrite (@integral_bernoulli _ _ _ (fun b U => \d_b U))//.
-rewrite 2!diracE 2!in_setT /= 2!mule1.
-rewrite -EFinD/= eqe.
-rewrite /onem addrA addrAC subrr add0r oner_eq0/=.
-rewrite letin'E /=.
-rewrite (@integral_bernoulli _ _ _ (fun b U => \d_b U))//.
-rewrite /bern13 /bernoulli measure_addE/=.
-rewrite muleDl//; congr (_ + _)%E;
-  rewrite -!EFinM;
-  congr (_%:E);
-  by rewrite indicE /=/onem; case: (_ \in _); field.
-Qed.
+Proof. by rewrite /lhs1 execD_bernoulli. Qed.
 
 Definition rhs := execD (exp_normalize
   [let "x" := Sample {@exp_bernoulli R [::] (1 / 2%:R)%:nng p12} in
@@ -1438,7 +1433,7 @@ rewrite muleDl//; congr (_ + _)%E;
   by rewrite indicE /onem; case: (_ \in _); field.
 Qed.
 
-Lemma ex_barn13 U : projT1 lhs1 tt U = projT1 rhs tt U.
+Lemma ex_bern13 U : projT1 lhs1 tt U = projT1 rhs tt U.
 Proof. by rewrite ex_lhs ex_rhs. Qed.
 
 End bernoulli_example.
