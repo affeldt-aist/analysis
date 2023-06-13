@@ -928,7 +928,7 @@ Definition execP g t (e : expP g t) : pval R g t :=
 Lemma evalP_execP g t (e : expP g t) : e -P-> execP e.
 Proof. by rewrite /execP; case: cid. Qed.
 
-Definition execP_ret_real g (r : R) : pval R g Real :=
+Definition execP_return_real g (r : R) : pval R g Real :=
   execP (exp_return (exp_real r)).
 
 Lemma execD_real g r : @execD g _ [r :R] = existT _ (cst r) (kr r).
@@ -947,6 +947,16 @@ rewrite /execD /=.
 case: cid => f ?.
 case: cid => ? ev1.
 have ev2 := @eval_bool R g b.
+have ? := evalD_uniq ev1 ev2; subst f.
+by congr existT; exact: Prop_irrelevance.
+Qed.
+
+Lemma execD_unit g : @execD g _ exp_unit = existT _ (cst tt) ktt.
+Proof.
+rewrite /execD /=.
+case: cid => f ?.
+case: cid => ? ev1.
+have ev2 := @eval_unit R g.
 have ? := evalD_uniq ev1 ev2; subst f.
 by congr existT; exact: Prop_irrelevance.
 Qed.
@@ -1036,7 +1046,7 @@ apply: evalP_uniq; first exact/evalP_execP.
 exact/eval_score/evalD_execD.
 Qed.
 
-Lemma execP_ret g t (e : expD g t) : execP [return e] = ret (projT2 (execD e)).
+Lemma execP_return g t (e : expD g t) : execP [return e] = ret (projT2 (execD e)).
 Proof.
 apply: evalP_uniq; first exact/evalP_execP.
 by apply: eval_return; exact/evalD_execD.
@@ -1061,8 +1071,8 @@ Lemma ex_var_ret g :
   letin' (ret (kr 1)) (ret (@macc0of2 _ _ _ _)).
 Proof.
 rewrite execP_letin; congr letin'.
-by rewrite execP_ret execD_real.
-by rewrite execP_ret execD_var; congr ret.
+by rewrite execP_return execD_real.
+by rewrite execP_return execD_var; congr ret.
 Qed.
 
 (* generic version *)
@@ -1080,7 +1090,7 @@ move=> U mU; apply/funext => x.
 rewrite 4!execP_letin.
 rewrite (@execP_weak _ [::] g).
 rewrite (@execP_weak _ [::] g).
-rewrite 2!execP_ret/=.
+rewrite 2!execP_return/=.
 rewrite 2!execD_pair/=.
 rewrite !(execD_var _ "x")/= !(execD_var _ "y")/=.
 have -> : @macc_typ _ [:: t2, t1 & map snd g] 0 = macc0of3' by [].
@@ -1118,7 +1128,7 @@ Lemma letinC12 : forall U, measurable U ->
 Proof.
 move=> U mU.
 apply: funext => x.
-rewrite !execP_letin !execP_ret !execD_real !execD_pair.
+rewrite !execP_letin !execP_return !execD_real !execD_pair.
 rewrite (execD_var _ "x")/= (execD_var _ "y")/=.
 (* TODO: Use letinC *)
 Abort.
@@ -1181,7 +1191,7 @@ Lemma letinA12 : forall U, measurable U ->
                    return %{"x"}] ^~ U.
 Proof.
 move=> U mU.
-rewrite !execP_letin !execP_ret !execD_real !execD_var /=.
+rewrite !execP_letin !execP_return !execD_real !execD_var /=.
 apply: funext=> x.
 exact: letin'A.
 Qed.
@@ -1267,7 +1277,7 @@ Proof.
 rewrite /kstaton_bus''.
 rewrite 3!execP_letin execP_sample_bern.
 congr letin'.
-rewrite !execP_if !execP_ret !execD_real.
+rewrite !execP_if !execP_return !execD_real.
 have -> : @execD R _ _ (exp_var "x" (ctx_prf_head "x" Bool [::])) = execD [% {"x"}].
   by congr execD; congr exp_var; exact: Prop_irrelevance.
 rewrite execD_var /= /ite_3_10.
@@ -1329,7 +1339,7 @@ Definition lhs : pval R [::] _ := execP
 
 Lemma __ U : lhs tt U = bern13 U.
 Proof.
-rewrite /lhs execP_letin execP_sample_bern execP_if 2!execP_ret 2!execD_bool /=.
+rewrite /lhs execP_letin execP_sample_bern execP_if 2!execP_return 2!execD_bool /=.
 have -> : @execD R _ _ (exp_var "x" (ctx_prf_head "x" Bool [::])) =
           execD [% {"x"}].
   by congr execD; congr exp_var; exact: Prop_irrelevance.
@@ -1352,7 +1362,7 @@ Proof. by congr execD; congr exp_var; exact: Prop_irrelevance. Qed.
 Lemma ex_lhs U : projT1 lhs1 tt U = bern13 U.
 Proof.
 rewrite /lhs1.
-rewrite execD_normalize execP_letin execP_sample_bern execP_ret /=.
+rewrite execD_normalize execP_letin execP_sample_bern execP_return /=.
 rewrite normalizeE.
 rewrite execD_exp_var_left_pf.
 rewrite execD_var/=.
@@ -1380,7 +1390,7 @@ Proof.
 rewrite /rhs.
 rewrite execD_normalize 2!execP_letin execP_sample_bern execP_if /=.
 rewrite execD_exp_var_left_pf.
-rewrite execD_var !execP_ret/= 2!execP_score 2!execD_real /=.
+rewrite execD_var !execP_return/= 2!execP_score 2!execD_real /=.
 rewrite normalizeE.
 rewrite !letin'E/=.
 under eq_integral.
@@ -1426,3 +1436,46 @@ Lemma ex_barn13 U : projT1 lhs1 tt U = projT1 rhs tt U.
 Proof. by rewrite ex_lhs ex_rhs. Qed.
 
 End bernoulli_example.
+
+Section score_fail.
+Local Open Scope ring_scope.
+Local Open Scope lang_scope.
+Import Notations.
+Context {R : realType}.
+
+Local Notation "# str" := (@exp_var' R str%string _ _) (in custom expr at level 1).
+
+(* lhs *)
+Definition scorer (r : {nonneg R}) : expP [::] Unit := [Score {r%:num}:R].
+
+Definition ex_fail g : @expP R g Unit := 
+  [let "x" := Score {0}:R in return {exp_unit}].
+
+Lemma ex_fail_fail g x U : execP (ex_fail g) x U = fail tt U.
+Proof.
+rewrite execP_letin execP_score execD_real execP_return execD_unit/=.
+rewrite letin'E integral_indic//= /mscale/= normr0 mul0e.
+by rewrite /kcomp /kscore /= ge0_integral_mscale//= normr0 mul0e.
+Qed.
+
+(* rhs *)
+Definition iffail (r : {nonneg R}) (r1 : (r%:num <= 1)%R) : expP [::] Unit := [let "x" := Sample {exp_bernoulli r r1} in if #{"x"} then return {exp_unit} else {ex_fail _}].
+
+Lemma ex_score_fail r (r1 : (r%:num <= 1)%R) : execP (scorer r) = execP (iffail r1).
+Proof.
+rewrite /scorer /iffail.
+rewrite execP_score execD_real /= score_fail.
+rewrite execP_letin execP_sample_bern execP_if execP_return execD_unit.
+set tmp := (execD [# {"x"}]).
+have -> : tmp = execD [% {"x"}].
+  by congr execD; congr exp_var; exact: Prop_irrelevance.
+rewrite execD_var/=.
+apply: eq_sfkernel=> /= x U.
+rewrite /kcomp/= letin'E/=.
+congr integral; apply: funext=> b.
+rewrite 2!iteE.
+case: b => //=.
+by rewrite (@ex_fail_fail [:: ("x", Bool)]).
+Qed.
+
+End score_fail.
