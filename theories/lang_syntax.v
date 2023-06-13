@@ -1374,22 +1374,33 @@ rewrite 2!iteE //=.
 by rewrite /bern13 /bernoulli measure_addE.
 Qed.
 
-Definition lhs1 : pval R [::] _ := execP
-  [let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng p13} in
-   return #{"x"}].
+Definition lhs1 := execD
+  (exp_normalize [let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng p13} in
+   return #{"x"}]).
 
 Lemma execD_exp_var_left_pf :
   @execD R _ _ (exp_var "x" (left_pf "x" Bool [::])) = execD [% {"x"}].
 Proof. by congr execD; congr exp_var; exact: Prop_irrelevance. Qed.
 
-Lemma ex_bern13 U : lhs1 tt U = bern13 U.
+Lemma ex_lhs U : projT1 lhs1 tt U = bern13 U.
 Proof.
-rewrite /lhs1 execP_letin execP_sample_bern execP_ret /=.
+rewrite /lhs1.
+rewrite execD_normalize execP_letin execP_sample_bern execP_ret /=.
+rewrite normalizeE.
 rewrite execD_exp_var_left_pf.
 rewrite execD_var/=.
 rewrite letin'E /=.
 rewrite (@integral_bernoulli _ _ _ (fun b U => \d_b U))//.
-by rewrite /bern13 /bernoulli measure_addE.
+rewrite 2!diracE 2!in_setT /= 2!mule1.
+rewrite -EFinD/= eqe.
+rewrite /onem addrA addrAC subrr add0r oner_eq0/=.
+rewrite letin'E /=.
+rewrite (@integral_bernoulli _ _ _ (fun b U => \d_b U))//.
+rewrite /bern13 /bernoulli measure_addE/=.
+rewrite muleDl//; congr (_ + _)%E;
+  rewrite -!EFinM;
+  congr (_%:E);
+  by rewrite indicE /=/onem; case: (_ \in _); field.
 Qed.
 
 Definition rhs := execD (exp_normalize
@@ -1443,5 +1454,8 @@ rewrite muleDl//; congr (_ + _)%E;
   congr (_%:E);
   by rewrite indicE /onem; case: (_ \in _); field.
 Qed.
+
+Lemma ex_barn13 U : projT1 lhs1 tt U = projT1 rhs tt U.
+Proof. by rewrite ex_lhs ex_rhs. Qed.
 
 End bernoulli_example.
