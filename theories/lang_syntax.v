@@ -954,6 +954,28 @@ Definition execD g t (e : exp D g t) :
   let: exist _ H := cid (evalD_total e) in
   existT _ _ (projT1 (cid H)).
 
+Lemma eq_execD g t (p1 p2 : @exp R D g t) : 
+  projT1 (execD p1) = projT1 (execD p2) -> execD p1 = execD p2.
+Proof.
+rewrite /execD /=.
+case: cid => /= f1 [mf1 ev1].
+case: cid => /= f2 [mf2 ev2] f12.
+subst f2.
+have ? : mf1 = mf2.
+  exact: Prop_irrelevance.
+subst mf2.
+congr existT.
+rewrite /sval.
+case: cid => mf1' ev1'.
+have ? : mf1 = mf1'.
+  exact: Prop_irrelevance.
+subst mf1'.
+case: cid => mf2' ev2'.
+have ? : mf1 = mf2'.
+  exact: Prop_irrelevance.
+by subst mf2'.
+Qed.
+
 Lemma evalD_execD g t e :
   let: x := @execD g t e in e -D-> projT1 x ; projT2 x.
  by rewrite /execD /=; case: cid => f [mf ?] /=; case: cid. Qed.
@@ -1250,6 +1272,10 @@ Context {R : realType}.
 Definition exp_var' (str : string) (t : typ) (g : find str t) :=
   @exp_var R (untag (ctx_of g)) str t (ctx_prf g).
 
+Lemma execD_var' str t (f : find str t) H : 
+  @execD R _ t (exp_var' f) = execD (exp_var str H).
+Proof. by rewrite /exp_var'; have -> : ctx_prf f = H. Qed.
+
 Local Notation "# str" := (@exp_var' str%string _ _) (in custom expr at level 1).
 
 Local Open Scope lang_scope.
@@ -1259,6 +1285,8 @@ Example e3 : exp P [::] _ :=
    let "z" := return #{"y"} in return #{"z"}].
 
 End exp_var'.
+
+Arguments execD_var' {R} str.
 
 Section staton_bus.
 Local Open Scope ring_scope.
@@ -1368,62 +1396,23 @@ Context {R : realType}.
 
 Local Notation "# str" := (@exp_var' R str%string _ _) (in custom expr at level 1).
 
-(*Check [{3}:R].
-Compute [let "x" := Sample {(@exp_bernoulli R [::] (2 / 7%:R)%:nng p27)} in
-   let "r" := if #{"x"} then return {3}:R else return {10}:R in
-   let "_" := Score {(exp_poisson 4 [#{"r"}])} in
-   return %{"x"}].*)
-
 Let p13 : (1 / 3%:R)%:nng%:num <= 1 :> R. Proof. by rewrite p1S. Qed.
 
-Definition bern13 := bernoulli p13.
-
-Definition lhs : pval R [::] _ := execP
-  [let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng p13} in
-   if #{"x"} then
-     return {exp_bool true}
-   else
-     return {exp_bool false}].
-
-Lemma __ U : lhs tt U = bern13 U.
-Proof.
-rewrite /lhs execP_letin execP_sample_bern execP_if 2!execP_return 2!execD_bool /=.
-have -> : @execD R _ _ (exp_var "x" (ctx_prf_head "x" Bool [::])) =
-          execD [% {"x"}].
-  by congr execD; congr exp_var; exact: Prop_irrelevance.
-rewrite execD_var/=.
-rewrite letin'E /=.
-rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
-rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
-rewrite 2!iteE //=.
-by rewrite /bern13 /bernoulli measure_addE.
-Qed.
-
-Definition lhs1 : {f : dval R [::] _ & measurable_fun _ f} := execD
-  (exp_bernoulli (1 / 3%:R)%:nng p13).
-
-(* Definition lhs1 : {f : dval R [::] _ & measurable_fun _ f} := execD
-  (exp_normalize [let "x" := Sample {exp_bernoulli (1 / 3%:R)%:nng p13} 
-  in return #{"x"}]). *)
-
-Lemma execD_exp_var_left_pf :
-  @execD R _ _ (exp_var "x" (ctx_prf_head "x" Bool [::])) = execD [% {"x"}].
-Proof. by congr execD; congr exp_var; exact: Prop_irrelevance. Qed.
-
-Lemma ex_lhs U : projT1 lhs1 tt U = bern13 U.
-Proof. by rewrite /lhs1 execD_bernoulli. Qed.
-
-Definition rhs := execD (exp_normalize
+Definition bernoulli12_score := exp_normalize
   [let "x" := Sample {@exp_bernoulli R [::] (1 / 2%:R)%:nng p12} in
    let "r" := if #{"x"} then Score {(1 / 3)}:R else Score {(2 / 3)}:R in
-   return #{"x"}]).
+   return #{"x"}].
 
-Lemma ex_rhs (U : set bool) : projT1 rhs tt U = bern13 U.
+Lemma exec_bernoulli_score : 
+  execD (exp_bernoulli (1 / 3%:R)%:nng p13) = execD bernoulli12_score.
 Proof.
-rewrite /rhs.
+apply: eq_execD.
+rewrite /bernoulli12_score.
 rewrite execD_normalize 2!execP_letin execP_sample_bern execP_if /=.
-rewrite execD_exp_var_left_pf.
-rewrite execD_var !execP_return/= 2!execP_score 2!execD_real /=.
+rewrite execD_var'.
+rewrite (execD_var _ "x") !execP_return/= 2!execP_score 2!execD_real /=.
+rewrite execD_bernoulli/=.
+apply: funext=> g; apply: eq_probability; apply: funext=> U.
 rewrite normalizeE.
 rewrite !letin'E/=.
 under eq_integral.
@@ -1446,27 +1435,20 @@ rewrite -EFinD/= eqe.
 rewrite /onem [X in X - _](splitr 1) addrK -mulrDr mulf_eq0.
 rewrite mulf_eq0 !oner_eq0/= invr_eq0/= pnatr_eq0/= -mulrDl mulf_eq0 invr_eq0.
 rewrite pnatr_eq0/=.
-rewrite !letin'E/=.
-rewrite !iteE/=.
+rewrite !letin'E/= !iteE/=.
 rewrite !ge0_integral_mscale//=.
 rewrite ger0_norm// ?divr_ge0 ?ler0n//.
 rewrite !integral_dirac//=.
 rewrite !indicE !in_setT /= !mul1e.
 rewrite ger0_norm// ?divr_ge0 ?ler0n//.
-set tmp := (execD [# {"x"}]).
-have -> : tmp = execD [% {"x"}].
-  by congr execD; congr exp_var; exact: Prop_irrelevance.
-rewrite execD_var/=.
-rewrite /bern13 /bernoulli/= measure_addE/=.
+rewrite (execD_var' "x") (execD_var _ "x")/=.
+rewrite /bernoulli/= measure_addE/=.
 rewrite /mscale/= !mul1r.
 rewrite muleDl//; congr (_ + _)%E;
   rewrite -!EFinM;
   congr (_%:E);
   by rewrite indicE /onem; case: (_ \in _); field.
 Qed.
-
-Lemma ex_bern13 U : projT1 lhs1 tt U = projT1 rhs tt U.
-Proof. by rewrite ex_lhs ex_rhs. Qed.
 
 End bernoulli_example.
 
@@ -1516,7 +1498,16 @@ Qed.
 
 End score_fail.
 
-Section normalize_return_r.
+(* TODO: move *)
+Lemma normalize_kdirac (R : realType) d (T : measurableType d) d' (T' : measurableType d') (x : T) (r : T') P :
+  normalize (kdirac (measurable_cst r)) P x = \d_r :> probability T' R.
+Proof.
+apply: eq_probability; apply: funext=> ?.
+rewrite normalizeE /= diracE in_setT/=.
+by rewrite onee_eq0/= indicE in_setT/= -div1r divr1 mule1.
+Qed.
+
+Section normalize_return.
 Local Open Scope lang_scope.
 Import Notations.
 Context (R : realType).
@@ -1528,17 +1519,15 @@ Goal projT1 (execD (exp_normalize [return {1}:R])) =
   normalize (ret (kr 1)) point :> dval R [::] _.
 Proof. by rewrite execD_normalize execP_return execD_real. Qed.
 
-Lemma ex_normalize_return_r g r x U :
-  projT1 (execD (exp_normalize [return {r}:R] : exp D g _)) x U =
-  dirac (cst r x) U :> \bar R.
+Lemma exec_normalize_return g x r :
+  projT1 (@execD _ g _ (exp_normalize [return {r}:R])) x = \d_r
+  :> probability _ R.
 Proof.
-rewrite execD_normalize execP_return execD_real.
-rewrite normalizeE/= diracE in_setT/=.
-by rewrite onee_eq0/= indicE in_setT/= -div1r divr1 mule1.
+by rewrite execD_normalize execP_return execD_real/= normalize_kdirac.
 Qed.
 
 Goal @ret _ _ _ _ R _ (kr 1) tt [set (1%R : mR R)] = 1%:E.
 Proof.
 rewrite retE diracE/= mem_set//. Qed.
 
-End normalize_return_r.
+End normalize_return.
