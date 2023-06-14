@@ -1272,6 +1272,10 @@ Context {R : realType}.
 Definition exp_var' (str : string) (t : typ) (g : find str t) :=
   @exp_var R (untag (ctx_of g)) str t (ctx_prf g).
 
+Lemma exp_var'E str t (f : find str t) H :
+  exp_var' f = exp_var str H.
+Proof. by rewrite /exp_var'; have -> : ctx_prf f = H. Qed.
+
 Lemma execD_var' str t (f : find str t) H : 
   @execD R _ t (exp_var' f) = execD (exp_var str H).
 Proof. by rewrite /exp_var'; have -> : ctx_prf f = H. Qed.
