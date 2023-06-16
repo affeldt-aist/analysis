@@ -29,7 +29,6 @@ From mathcomp Require Import ring lra.
 (*              mctx g := the measurable type corresponding to the context g  *)
 (*                        It is formed of nested pairings of measurable       *)
 (*                        spaces. It is of type measurableType (mctx_disp g)  *)
-(*                                    *)
 (*                flag == a flag is either D (deterministic) or               *)
 (*                        P (probabilistic)                                   *)
 (*           exp f g t == syntax of expressions with flag f of type t         *)
@@ -260,14 +259,6 @@ HB.instance Definition _ z := @isMeasure.Build _ R Y (U' z) (U0 z) (U_ge0 z)
 Let sfinU z : sfinite_measure (U' z). Proof. exact: sfinite_kernel_measure. Qed.
 HB.instance Definition _ z := @Measure_isSFinite_subdef.Build _ Y R
   (U' z) (sfinU z).
-
-(* TODO: remove? *)
-Check (ret (measurable_fun_prod (measurable_acc
-  [:: existT _ _ Y; existT _ _ X; existT _ _ Z] 1) (measurable_acc
-  [:: existT _ _ Y; existT _ _ X; existT _ _ Z]
-  0))).
-
-Check (ret (kr 1)) : R.-sfker munit ~> mR R.
 
 Lemma letin'C z A : measurable A ->
   letin' t
@@ -1172,140 +1163,6 @@ End execution_functions.
 Arguments execD_var {R g} str.
 Arguments execP_weak {R} g h x {t} e.
 
-Section letinC.
-Local Open Scope lang_scope.
-Variable R : realType.
-
-Lemma ex_var_ret g :
-  @execP R g _ [let "x" := return {1}:R in return #{"x"}] =
-  letin' (ret (kr 1)) (ret (@macc0of2 _ _ _ _)).
-Proof.
-rewrite execP_letin execP_return execD_real/=; congr letin'.
-by rewrite execP_return exp_var'E (execD_var "x")/=; congr ret.
-Qed.
-
-(* generic version *)
-Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
-  (xl : "x" \notin map fst g) (yl : "y" \notin map fst g) :
-  forall U, measurable U ->
-  execP [let "x" := e1 in
-         let "y" := {@exp_weak _ _ [::] _ _ ("x", t1) e2 xl} in
-         return (%{"x"}, %{"y"})] ^~ U =
-  execP [let "y" := e2 in
-         let "x" := {@exp_weak _ _ [::] _ _ ("y", t2) e1 yl} in
-         return (%{"x"}, %{"y"})] ^~ U.
-Proof.
-move=> U mU; apply/funext => x.
-rewrite 4!execP_letin.
-rewrite 2!(execP_weak [::] g).
-rewrite 2!execP_return/=.
-rewrite 2!execD_pair/=.
-rewrite !(execD_var "x")/=.
-rewrite !(execD_var "y")/=.
-have -> : measurable_acc_typ [:: t2, t1 & map snd g] 0 = macc0of3' by [].
-have -> : measurable_acc_typ [:: t2, t1 & map snd g] 1 = macc1of3' by [].
-rewrite (letin'C _ _ (execP e2)
-  ([the R.-sfker _ ~> _ of @kweak _ [::] _ ("y", t2) _ (execP e1)]));
-  [ |by [] | by [] |by []].
-have -> : measurable_acc_typ [:: t1, t2 & map snd g] 0 = macc0of3' by [].
-by have -> : measurable_acc_typ [:: t1, t2 & map snd g] 1 = macc1of3' by [].
-Qed.
-
-(* letinC with a concrete context *)
-Lemma letinC_list (g := [:: ("a", Unit); ("b", Bool)]) t1 t2
-    (e1 : @exp R P g t1)
-    (e2 : exp P g t2) :
-  forall U, measurable U ->
-  execP [let "x" := e1 in
-         let "y" := e2 :+ {"x"} in
-         return (%{"x"}, %{"y"})] ^~ U =
-  execP [let "y" := e2 in
-         let "x" := e1 :+ {"y"} in
-         return (%{"x"}, %{"y"})] ^~ U.
-Proof.
-move=> U mU.
-exact: letinC.
-Qed.
-
-Lemma letinC12 : forall U, measurable U ->
-  @execP R [::] _ [let "x" := return {1}:R in
-                   let "y" := return {2}:R in
-                   return (%{"x"}, %{"y"})] ^~ U =
-  execP [let "y" := return {2}:R in
-         let "x" := return {1}:R in
-         return (%{"x"}, %{"y"})] ^~ U.
-Proof.
-move=> U mU.
-apply: funext => x.
-rewrite !execP_letin !execP_return !execD_real !execD_pair.
-rewrite (execD_var "x")/=.
-rewrite (execD_var "y")/=.
-(* TODO: Use letinC *)
-Abort.
-
-(* TODO *)
-Lemma execP_LetInL g t1 t2 x (e1 : @exp R P g t1) (e1' : exp P g t1)
-   (e2 : exp P ((x, t1) :: g) t2) :
-  forall U, measurable U ->
-  execP e1 = execP e1' ->
-  execP [let x := e1 in e2] ^~ U =
-  execP [let x := e1' in e2] ^~ U.
-Proof.
-by move=> U mU e1e1'; rewrite !execP_letin e1e1'.
-Qed.
-
-Lemma execP_LetInR g t1 t2 x (e1 : @exp R P g t1)
-    (e2 : exp P _ t2) (e2' : exp P ((x, t1) :: g) t2) :
-  forall U, measurable U ->
-  execP e2 = execP e2' ->
-  execP [let x := e1 in e2] ^~ U =
-  execP [let x := e1 in e2'] ^~ U.
-Proof.
-by move=> U mU e1e1'; rewrite !execP_letin e1e1'.
-Qed.
-
-End letinC.
-
-Section letinA.
-Local Open Scope lang_scope.
-Variable R : realType.
-
-Lemma letinA g (xg : "x" \notin map fst g) t1 t2 t3
-  (e1 : @exp R P g t1)
-  (e2 : exp P [:: ("x", t1) & g] t2)
-  (e3 : exp P [:: ("y", t2) & g] t3) :
-  forall U, measurable U ->
-  execP [let "x" := e1 in
-         let "y" := e2 in
-         {@exp_weak _ _ [:: ("y", t2)] _ _ ("x", t1) e3 xg}] ^~ U =
-  execP [let "y" :=
-           let "x" := e1 in e2 in
-         e3] ^~ U.
-Proof.
-move=> U mU; apply/funext=> x.
-rewrite !execP_letin.
-rewrite (execP_weak [:: ("y", t2)]).
-apply: letin'A => //= y z.
-rewrite /kweak /mctx_strong /=.
-by destruct z.
-Qed.
-
-Lemma letinA12 : forall U, measurable U ->
-  @execP R [::] _ [let "y" := return {1}:R in
-                   let "x" := return {2}:R in
-                   return %{"x"}] ^~ U =
-  @execP R [::] _ [let "x" :=
-                   let "y" := return {1}:R in return {2}:R in
-                   return %{"x"}] ^~ U.
-Proof.
-move=> U mU.
-rewrite !execP_letin !execP_return !execD_real !execD_var /=.
-apply: funext=> x.
-exact: letin'A.
-Qed.
-
-End letinA.
-
 Section staton_bus.
 Local Open Scope ring_scope.
 Local Open Scope lang_scope.
@@ -1513,9 +1370,6 @@ Local Open Scope ring_scope.
 Import Notations.
 Context (R : realType).
 
-Check dirac 1%:E.
-Check [the R.-sfker _ ~> mR R of kdirac (kr 1)] 1%:E.
-
 Definition exp_sample_pair : exp D [::] _ :=
   [Normalize let "x" := Sample {exp_bernoulli (1 / 2%:R)%:nng (p1S R 1)} in
    let "y" := Sample {exp_bernoulli (1 / 3%:R)%:nng (p1S R 2)} in
@@ -1535,7 +1389,7 @@ rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
 rewrite mem_set// memNset//= !mule1 eqe ifF; last first.
   apply/negbTE/negP => /orP[/eqP|//].
   by rewrite /onem; lra.
-rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !letin'E !integral_measure_add //= !ge0_integral_mscale //= /onem.
 rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
 rewrite mem_set// memNset//= mule0 adde0 !mule1.
 by congr (_%:E); field.
@@ -1571,3 +1425,137 @@ congr (_%:E); lra.
 Qed.
 
 End sample_pair.
+
+Section letinC.
+Local Open Scope lang_scope.
+Variable R : realType.
+
+Lemma ex_var_ret g :
+  @execP R g _ [let "x" := return {1}:R in return #{"x"}] =
+  letin' (ret (kr 1)) (ret (@macc0of2 _ _ _ _)).
+Proof.
+rewrite execP_letin execP_return execD_real/=; congr letin'.
+by rewrite execP_return exp_var'E (execD_var "x")/=; congr ret.
+Qed.
+
+(* generic version *)
+Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
+  (xl : "x" \notin map fst g) (yl : "y" \notin map fst g) :
+  forall U, measurable U ->
+  execP [let "x" := e1 in
+         let "y" := {@exp_weak _ _ [::] _ _ ("x", t1) e2 xl} in
+         return (%{"x"}, %{"y"})] ^~ U =
+  execP [let "y" := e2 in
+         let "x" := {@exp_weak _ _ [::] _ _ ("y", t2) e1 yl} in
+         return (%{"x"}, %{"y"})] ^~ U.
+Proof.
+move=> U mU; apply/funext => x.
+rewrite 4!execP_letin.
+rewrite 2!(execP_weak [::] g).
+rewrite 2!execP_return/=.
+rewrite 2!execD_pair/=.
+rewrite !(execD_var "x")/=.
+rewrite !(execD_var "y")/=.
+have -> : measurable_acc_typ [:: t2, t1 & map snd g] 0 = macc0of3' by [].
+have -> : measurable_acc_typ [:: t2, t1 & map snd g] 1 = macc1of3' by [].
+rewrite (letin'C _ _ (execP e2)
+  ([the R.-sfker _ ~> _ of @kweak _ [::] _ ("y", t2) _ (execP e1)]));
+  [ |by [] | by [] |by []].
+have -> : measurable_acc_typ [:: t1, t2 & map snd g] 0 = macc0of3' by [].
+by have -> : measurable_acc_typ [:: t1, t2 & map snd g] 1 = macc1of3' by [].
+Qed.
+
+(* letinC with a concrete context *)
+Lemma letinC_list (g := [:: ("a", Unit); ("b", Bool)]) t1 t2
+    (e1 : @exp R P g t1)
+    (e2 : exp P g t2) :
+  forall U, measurable U ->
+  execP [let "x" := e1 in
+         let "y" := e2 :+ {"x"} in
+         return (%{"x"}, %{"y"})] ^~ U =
+  execP [let "y" := e2 in
+         let "x" := e1 :+ {"y"} in
+         return (%{"x"}, %{"y"})] ^~ U.
+Proof.
+move=> U mU.
+exact: letinC.
+Qed.
+
+Lemma letinC12 : forall U, measurable U ->
+  @execP R [::] _ [let "x" := return {1}:R in
+                   let "y" := return {2}:R in
+                   return (%{"x"}, %{"y"})] ^~ U =
+  execP [let "y" := return {2}:R in
+         let "x" := return {1}:R in
+         return (%{"x"}, %{"y"})] ^~ U.
+Proof.
+move=> U mU.
+apply: funext => x.
+rewrite !execP_letin !execP_return !execD_real !execD_pair.
+rewrite (execD_var "x")/=.
+rewrite (execD_var "y")/=.
+(* TODO: Use letinC *)
+Abort.
+
+(* TODO *)
+Lemma execP_LetInL g t1 t2 x (e1 : @exp R P g t1) (e1' : exp P g t1)
+   (e2 : exp P ((x, t1) :: g) t2) :
+  forall U, measurable U ->
+  execP e1 = execP e1' ->
+  execP [let x := e1 in e2] ^~ U =
+  execP [let x := e1' in e2] ^~ U.
+Proof.
+by move=> U mU e1e1'; rewrite !execP_letin e1e1'.
+Qed.
+
+Lemma execP_LetInR g t1 t2 x (e1 : @exp R P g t1)
+    (e2 : exp P _ t2) (e2' : exp P ((x, t1) :: g) t2) :
+  forall U, measurable U ->
+  execP e2 = execP e2' ->
+  execP [let x := e1 in e2] ^~ U =
+  execP [let x := e1 in e2'] ^~ U.
+Proof.
+by move=> U mU e1e1'; rewrite !execP_letin e1e1'.
+Qed.
+
+End letinC.
+
+Section letinA.
+Local Open Scope lang_scope.
+Variable R : realType.
+
+Lemma letinA g (xg : "x" \notin map fst g) t1 t2 t3
+  (e1 : @exp R P g t1)
+  (e2 : exp P [:: ("x", t1) & g] t2)
+  (e3 : exp P [:: ("y", t2) & g] t3) :
+  forall U, measurable U ->
+  execP [let "x" := e1 in
+         let "y" := e2 in
+         {@exp_weak _ _ [:: ("y", t2)] _ _ ("x", t1) e3 xg}] ^~ U =
+  execP [let "y" :=
+           let "x" := e1 in e2 in
+         e3] ^~ U.
+Proof.
+move=> U mU; apply/funext=> x.
+rewrite !execP_letin.
+rewrite (execP_weak [:: ("y", t2)]).
+apply: letin'A => //= y z.
+rewrite /kweak /mctx_strong /=.
+by destruct z.
+Qed.
+
+Lemma letinA12 : forall U, measurable U ->
+  @execP R [::] _ [let "y" := return {1}:R in
+                   let "x" := return {2}:R in
+                   return %{"x"}] ^~ U =
+  @execP R [::] _ [let "x" :=
+                   let "y" := return {1}:R in return {2}:R in
+                   return %{"x"}] ^~ U.
+Proof.
+move=> U mU.
+rewrite !execP_letin !execP_return !execD_real !execD_var /=.
+apply: funext=> x.
+exact: letin'A.
+Qed.
+
+End letinA.
