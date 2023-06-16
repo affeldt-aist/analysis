@@ -1386,10 +1386,10 @@ Context {R : realType}.
 
 Let p13 : (1 / 3%:R)%:nng%:num <= 1 :> R. Proof. by rewrite p1S. Qed.
 
-Definition bernoulli12_score := exp_normalize
-  [let "x" := Sample {@exp_bernoulli R [::] (1 / 2%:R)%:nng p12} in
-   let "r" := if #{"x"} then Score {(1 / 3)}:R else Score {(2 / 3)}:R in
-   return #{"x"}].
+Definition bernoulli12_score := [Normalize
+  let "x" := Sample {@exp_bernoulli R [::] (1 / 2%:R)%:nng p12} in
+  let "r" := if #{"x"} then Score {(1 / 3)}:R else Score {(2 / 3)}:R in
+  return #{"x"}].
 
 Lemma exec_bernoulli_score :
   execD (exp_bernoulli (1 / 3%:R)%:nng p13) = execD bernoulli12_score.
@@ -1506,3 +1506,68 @@ Goal @ret _ _ _ _ R _ (kr 1) tt [set (1%R : mR R)] = 1%:E.
 Proof. by rewrite retE diracE/= mem_set. Qed.
 
 End normalize_return.
+
+Section sample_pair.
+Local Open Scope lang_scope.
+Local Open Scope ring_scope.
+Import Notations.
+Context (R : realType).
+
+Check dirac 1%:E.
+Check [the R.-sfker _ ~> mR R of kdirac (kr 1)] 1%:E.
+
+Definition exp_sample_pair : exp D [::] _ :=
+  [Normalize let "x" := Sample {exp_bernoulli (1 / 2%:R)%:nng (p1S R 1)} in
+   let "y" := Sample {exp_bernoulli (1 / 3%:R)%:nng (p1S R 2)} in
+   return (%{"x"}, %{"y"})].
+
+Lemma exec_sample_pair : 
+  (projT1 (execD exp_sample_pair)) tt [set p | p.1 || p.2 = true] = (2 / 3%:R)%:E.
+Proof.
+rewrite execD_normalize.
+rewrite normalizeE/=.
+rewrite !execP_letin !execP_sample !execD_bernoulli execP_return /=.
+rewrite execD_pair (execD_var "x") (execD_var "y") /=.
+rewrite !letin'E integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e.
+rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
+rewrite mem_set// memNset//= !mule1 eqe ifF; last first.
+  apply/negbTE/negP => /orP[/eqP|//].
+  by rewrite /onem; lra.
+rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
+rewrite mem_set// memNset//= mule0 adde0 !mule1.
+by congr (_%:E); field.
+Qed.
+
+Goal @execP R [::] _ [let "x" := Sample {exp_bernoulli (1 / 2%:R)%:nng p12} in
+       let "y" := Sample {exp_bernoulli (1 / 3%:R)%:nng (p1S R 2)} in
+       return (%{"x"}, %{"y"})] tt [set p | p.1 && p.2] = (1 / 6%:R)%:E.
+Proof.
+rewrite !execP_letin !execP_sample !execD_bernoulli execP_return /=.
+rewrite execD_pair (execD_var "x") (execD_var "y") /=.
+rewrite letin'E integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e.
+rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
+rewrite mem_set// memNset//=.
+congr (_%:E); lra.
+Qed.
+
+Goal @execP R [::] _ [let "x" := Sample {exp_bernoulli (1 / 2%:R)%:nng (p1S R 1)} in
+       let "y" := Sample {exp_bernoulli (1 / 3%:R)%:nng (p1S R 2)} in
+       return (%{"x"}, %{"y"})] tt [set (true, false)] = (1 / 3%:R)%:E.
+Proof.
+rewrite !execP_letin !execP_sample !execD_bernoulli execP_return /=.
+rewrite execD_pair (execD_var "x") (execD_var "y") /=.
+rewrite letin'E integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e.
+rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
+rewrite memNset// mem_set// !memNset//=.
+rewrite /= !mule0 mule1 !add0e mule0 adde0.
+congr (_%:E); lra.
+Qed.
+
+End sample_pair.
