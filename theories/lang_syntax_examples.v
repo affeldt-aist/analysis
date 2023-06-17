@@ -8,6 +8,12 @@ Require Import lebesgue_measure numfun lebesgue_integral kernel prob_lang.
 Require Import lang_syntax_util lang_syntax.
 From mathcomp Require Import ring lra.
 
+(******************************************************************************)
+(*   Examples using the Probabilistic Programming Language of lang_syntax.v   *)
+(*                                                                            *)
+(* staton_bus_syntax == example from [Staton, ESOP 2017]                      *)
+(******************************************************************************)
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
@@ -54,6 +60,26 @@ Let kstaton_bus' :=
   letin' sample_bern
     (letin' ite_3_10
       (letin' score_poisson4 (ret macc2of4'))).
+
+(*Lemma kstaton_bus'E : kstaton_bus' = kstaton_bus _ (measurable_poisson 4).
+Proof.
+apply/eq_sfkernel => -[] U.
+rewrite /kstaton_bus' /kstaton_bus.
+rewrite letin'_letin.
+rewrite /sample_bern.
+congr (letin _ _ tt U).
+
+apply: eq_sfkernel => /= -[[] b] V.
+rewrite /mswap letin'_letin /letin/=.
+rewrite /ite_3_10.*)
+
+(*Variables (d d' d3 d4 : _) (X : measurableType d) (Y : measurableType d')
+          (Z : measurableType d3) (U : measurableType d4).
+
+Lemma mkwap_letin (l : R.-sfker (X * U)%type ~> Y)
+    (k : R.-sfker ((X * U) * Y)%type ~> Z) :
+  mkswap (letin l k) = letin (mkswap l) k.
+*)
 
 Lemma eval_staton_bus0 : staton_bus_syntax0 -P> kstaton_bus'.
 Proof.
@@ -380,24 +406,24 @@ Section letinA.
 Local Open Scope lang_scope.
 Variable R : realType.
 
-Lemma letinA g (xg : "x" \notin map fst g) t1 t2 t3
+Lemma letinA g x y t1 t2 t3 (xg : x \notin map fst ((y, t2) :: g))
   (e1 : @exp R P g t1)
-  (e2 : exp P [:: ("x", t1) & g] t2)
-  (e3 : exp P [:: ("y", t2) & g] t3) :
+  (e2 : exp P [:: (x, t1) & g] t2)
+  (e3 : exp P [:: (y, t2) & g] t3) :
   forall U, measurable U ->
-  execP [let "x" := e1 in
-         let "y" := e2 in
-         {@exp_weak _ _ [:: ("y", t2)] _ _ ("x", t1) e3 xg}] ^~ U =
-  execP [let "y" :=
-           let "x" := e1 in e2 in
+  execP [let x := e1 in
+         let y := e2 in
+         {@exp_weak _ _ [:: (y, t2)] _ _ (x, t1) e3 xg}] ^~ U =
+  execP [let y :=
+           let x := e1 in e2 in
          e3] ^~ U.
 Proof.
-move=> U mU; apply/funext=> x.
+move=> U mU; apply/funext=> z1.
 rewrite !execP_letin.
-rewrite (execP_weak [:: ("y", t2)]).
-apply: letin'A => //= y z.
+rewrite (execP_weak [:: (y, t2)]).
+apply: letin'A => //= z2 z3.
 rewrite /kweak /mctx_strong /=.
-by destruct z.
+by destruct z3.
 Qed.
 
 Lemma letinA12 : forall U, measurable U ->
@@ -415,3 +441,213 @@ exact: letin'A.
 Qed.
 
 End letinA.
+
+Lemma letin'_sample_bernoulli d d' (T : measurableType d)
+    (T' : measurableType d') (R : realType)(r : {nonneg R}) (r1 : (r%:num <= 1)%R)
+    (u : R.-sfker [the measurableType _ of (bool * T)%type] ~> T') x y :
+  letin' (sample_cst (bernoulli r1)) u x y =
+  r%:num%:E * u (true, x) y + (`1- (r%:num))%:E * u (false, x) y.
+Proof.
+rewrite letin'E/=.
+rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
+by rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
+Qed.
+
+Section letin'_return.
+Context d d' d3 (X : measurableType d) (Y : measurableType d')
+  (Z : measurableType d3) (R : realType).
+
+Lemma letin'_kret (k : R.-sfker X ~> Y)
+  (f : Y * X -> Z) (mf : measurable_fun setT f) x U :
+  measurable U ->
+  letin' k (ret mf) x U = k x (curry f ^~ x @^-1` U).
+Proof.
+move=> mU; rewrite letin'E.
+under eq_integral do rewrite retE.
+rewrite integral_indic ?setIT// -[X in measurable X]setTI.
+exact: (measurableT_comp mf).
+Qed.
+
+Lemma letin'_retk
+  (f : X -> Y) (mf : measurable_fun setT f)
+  (k : R.-sfker [the measurableType _ of (Y * X)%type] ~> Z)
+  x U : measurable U ->
+  letin' (ret mf) k x U = k (f x, x) U.
+Proof.
+move=> mU; rewrite letin'E retE integral_dirac ?indicT ?mul1e//.
+exact: (measurableT_comp (measurable_kernel k _ mU)).
+Qed.
+
+End letin'_return.
+
+Section letin'_ite.
+Context d d2 d3 (T : measurableType d) (T2 : measurableType d2)
+  (Z : measurableType d3) (R : realType).
+Variables (k1 k2 : R.-sfker T ~> Z)
+  (u : R.-sfker [the measurableType _ of (Z * T)%type] ~> T2)
+  (f : T -> bool) (mf : measurable_fun setT f)
+  (t : T) (U : set T2).
+
+Lemma letin'_iteT : f t -> letin' (ite mf k1 k2) u t U = letin' k1 u t U.
+Proof.
+move=> ftT.
+rewrite !letin'E/=.
+apply: eq_measure_integral => V mV _.
+by rewrite iteE ftT.
+Qed.
+
+Lemma letin'_iteF : ~~ f t -> letin' (ite mf k1 k2) u t U = letin' k2 u t U.
+Proof.
+move=> ftF.
+rewrite !letin'E/=.
+apply: eq_measure_integral => V mV _.
+by rewrite iteE (negbTE ftF).
+Qed.
+
+End letin'_ite.
+
+Module StatonBusA.
+Section staton_bus.
+Local Open Scope ring_scope.
+Local Open Scope lang_scope.
+Import Notations.
+Context {R : realType}.
+
+Definition staton_bus_syntax0 : @exp R _ [::] _ :=
+  [let "x" := Sample {exp_bernoulli (2 / 7%:R)%:nng p27} in
+   let "_" :=
+     let "r" := if #{"x"} then return {3}:R else return {10}:R in
+     Score {exp_poisson 4 [#{"r"}]} in
+   return %{"x"}].
+
+Definition staton_bus_syntax : exp _ [::] _ :=
+  [Normalize {staton_bus_syntax0}].
+
+Let sample_bern : R.-sfker munit ~> mbool :=
+  sample_cst [the probability _ _ of bernoulli p27].
+
+Let ite_3_10 :
+  R.-sfker [the measurableType _ of (mbool * munit)%type] ~> (mR R) :=
+  ite macc0of2 (ret k3) (ret k10).
+
+Let score_poisson4 :
+  R.-sfker [the measurableType _ of (mR R * (mbool * munit))%type] ~> munit :=
+  score (measurableT_comp (measurable_poisson 4) macc0of3').
+
+(* same as kstaton_bus _ (measurable_poisson 4) but expressed with letin'
+   instead of letin *)
+Let kstaton_bus' :=
+  letin' sample_bern
+  (letin'
+    (letin' ite_3_10
+      score_poisson4)
+    (ret macc1of3')).
+
+Lemma eval_staton_bus0 : staton_bus_syntax0 -P> kstaton_bus'.
+Proof.
+apply: eval_letin; first by apply: eval_sample; exact: eval_bernoulli.
+apply: eval_letin.
+  apply: eval_letin.
+    apply/evalP_if; [|exact/eval_return/eval_real..].
+    rewrite exp_var'E.
+    by apply/execD_evalD; rewrite (execD_var "x")/=; congr existT.
+  apply/eval_score/eval_poisson.
+  rewrite exp_var'E.
+  by apply/execD_evalD; rewrite (execD_var "r")/=; congr existT.
+apply/eval_return.
+by apply/execD_evalD; rewrite (execD_var "x")/=; congr existT.
+Qed.
+
+Lemma exec_staton_bus0 : execP staton_bus_syntax0 = kstaton_bus'.
+Proof.
+rewrite 3!execP_letin execP_sample/= execD_bernoulli.
+rewrite /kstaton_bus'; congr letin'.
+rewrite !execP_if !execP_return !execD_real/=.
+rewrite exp_var'E (execD_var "x")/=.
+have -> : measurable_acc_typ [:: Bool] 0 = macc0of2 by [].
+congr letin'.
+  rewrite execP_score execD_poisson/=.
+  rewrite exp_var'E (execD_var "r")/=.
+  by have -> : measurable_acc_typ [:: Real; Bool] 0 = macc0of3' by [].
+by rewrite (execD_var "x") /=; congr ret.
+Qed.
+
+Let poisson4 := @poisson R 4%N.
+
+Lemma exec_staton_bus0' t U : execP staton_bus_syntax0 t U =
+  ((2 / 7%:R)%:E * (poisson4 3%:R)%:E * \d_true U +
+  (5%:R / 7%:R)%:E * (poisson4 10%:R)%:E * \d_false U)%E.
+Proof.
+rewrite exec_staton_bus0.
+rewrite /kstaton_bus'.
+rewrite letin'_sample_bernoulli.
+rewrite -!muleA; congr (_ * _ + _ * _)%E.
+- rewrite letin'_kret//.
+  rewrite letin'_iteT//.
+  rewrite letin'_retk//.
+  rewrite /score_poisson4.
+  rewrite /score/= /mscale/= ger0_norm//= poisson_ge0//.
+  by rewrite /acc0of3'/=.
+- by rewrite onem27.
+- rewrite letin'_kret//.
+  rewrite letin'_iteF//.
+  rewrite letin'_retk//.
+  rewrite /score_poisson4.
+  rewrite /score/= /mscale/= ger0_norm//= poisson_ge0//.
+  by rewrite /acc0of3'/=.
+Qed.
+
+Lemma exec_staton_bus : execD staton_bus_syntax =
+  existT _ (normalize kstaton_bus' point) (measurable_mnormalize _).
+Proof. by rewrite execD_normalize exec_staton_bus0. Qed.
+
+End staton_bus.
+
+End StatonBusA.
+
+Section staton_bus_letinA.
+Local Open Scope ring_scope.
+Local Open Scope lang_scope.
+Import Notations.
+Context {R : realType}.
+
+Lemma test :
+  execP staton_bus_syntax0 = @execP R _ _ StatonBusA.staton_bus_syntax0.
+Proof.
+rewrite /staton_bus_syntax0.
+rewrite /StatonBusA.staton_bus_syntax0.
+rewrite execP_letin.
+rewrite [in RHS]execP_letin.
+congr (letin' _).
+pose f := @found _ Unit "x" Bool [::].
+have r_f : "r" \notin [seq i.1 | i <- ("_", Unit) :: untag (ctx_of f)] by [].
+set e1 := exp_if _ _ _.
+set e2 := exp_score _.
+set e3 := (exp_return _ in RHS).
+apply/eq_sfkernel => /= x U.
+have Htmp := @letinA _ _ _ _ _ _ (lookup Unit (("_", Unit) :: untag (ctx_of f)) "x")(*t3*) r_f e1 e2 e3.
+
+have mU : (@mtyp_disp R (lookup Unit (("_", Unit) :: untag (ctx_of f)) "x")).-measurable U.
+  simpl.
+  rewrite /lookup/=.
+  rewrite /mtyp_disp /=.
+  by [].
+move: Htmp.
+move=> /(_ U mU).
+move=> /(congr1 (fun f => f x)).
+move=> <-.
+set e3' := exp_return _.
+set e3'' := exp_weak _ _ _ _.
+rewrite !execP_letin.
+have: execP e3' = execP (e3'' e3 r_f).
+rewrite /e3'.
+rewrite execP_return/= execD_var/=.
+rewrite /e3''.
+have -> := @execP_weak R [:: ("_", Unit)] (untag (ctx_of f)) ("r", Real) _ e3 r_f.
+rewrite /= /e3.
+rewrite execP_return execD_var//=.
+by apply/eq_sfkernel => /= -[[] [a [b []]]] U0.
+by move=> <-.
+Qed.
+
+End staton_bus_letinA.
