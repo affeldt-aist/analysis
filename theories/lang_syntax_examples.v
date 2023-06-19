@@ -45,7 +45,7 @@ Local Open Scope ereal_scope.
 (* letin' versions of rewriting laws *)
 Lemma letin'_sample_bernoulli d d' (T : measurableType d)
     (T' : measurableType d') (R : realType)(r : {nonneg R}) (r1 : (r%:num <= 1)%R)
-    (u : R.-sfker [the measurableType _ of (bool * T)%type] ~> T') x y :
+    (u : R.-sfker bool * T ~> T') x y :
   letin' (sample_cst (bernoulli r1)) u x y =
   r%:num%:E * u (true, x) y + (`1- (r%:num))%:E * u (false, x) y.
 Proof.
@@ -69,11 +69,9 @@ rewrite integral_indic ?setIT// -[X in measurable X]setTI.
 exact: (measurableT_comp mf).
 Qed.
 
-Lemma letin'_retk
-  (f : X -> Y) (mf : measurable_fun setT f)
-  (k : R.-sfker [the measurableType _ of (Y * X)%type] ~> Z)
-  x U : measurable U ->
-  letin' (ret mf) k x U = k (f x, x) U.
+Lemma letin'_retk (f : X -> Y) (mf : measurable_fun setT f)
+    (k : R.-sfker Y * X ~> Z) x U :
+  measurable U -> letin' (ret mf) k x U = k (f x, x) U.
 Proof.
 move=> mU; rewrite letin'E retE integral_dirac ?indicT ?mul1e//.
 exact: (measurableT_comp (measurable_kernel k _ mU)).
@@ -85,7 +83,7 @@ Section letin'_ite.
 Context d d2 d3 (T : measurableType d) (T2 : measurableType d2)
   (Z : measurableType d3) (R : realType).
 Variables (k1 k2 : R.-sfker T ~> Z)
-  (u : R.-sfker [the measurableType _ of (Z * T)%type] ~> T2)
+  (u : R.-sfker Z * T ~> T2)
   (f : T -> bool) (mf : measurable_fun setT f)
   (t : T) (U : set T2).
 
@@ -149,10 +147,10 @@ Local Open Scope lang_scope.
 Import Notations.
 Context {R : realType}.
 
-Definition bernoulli13_score := [Normalize
-  let "x" := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng (p1S 2)} in
-  let "r" := if #{"x"} then Score {(1 / 3)}:R else Score {(2 / 3)}:R in
-  return #{"x"}].
+Definition bernoulli13_score (x := "x") (y := "y") := [Normalize
+  let x := Sample {@exp_bernoulli R [::] (1 / 3%:R)%:nng (p1S 2)} in
+  let y := if #x then Score {(1 / 3)}:R else Score {(2 / 3)}:R in
+  return #x].
 
 Lemma exec_bernoulli13_score :
   execD (exp_bernoulli (1 / 5%:R)%:nng (p1S 4)) = execD bernoulli13_score.
@@ -270,10 +268,10 @@ Section hard_constraint.
 Local Open Scope ring_scope.
 Local Open Scope lang_scope.
 Import Notations.
-Context {R : realType}.
+Context {R : realType} {str : string}.
 
 Definition hard_constraint g : @exp R _ g _ :=
-  [let "x" := Score {0}:R in return TT].
+  [let str := Score {0}:R in return TT].
 
 Lemma exec_hard_constraint g mg U : execP (hard_constraint g) mg U = fail' (false, tt) U.
 Proof.
@@ -304,7 +302,7 @@ Section sample_pair.
 Local Open Scope lang_scope.
 Local Open Scope ring_scope.
 Import Notations.
-Context {R : realType}.
+Context {R : realType} {str0 str1 : string}.
 
 Definition sample_pair_syntax0 : @exp R _ [::] _ :=
   [let "x" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
@@ -418,15 +416,12 @@ Definition staton_bus_syntax0 : @exp R _ [::] _ :=
 
 Definition staton_bus_syntax := [Normalize {staton_bus_syntax0}].
 
-Let sample_bern : R.-sfker munit ~> mbool :=
-  sample_cst [the probability _ _ of bernoulli p27].
+Let sample_bern : R.-sfker munit ~> mbool := sample_cst (bernoulli p27).
 
-Let ite_3_10 :
-  R.-sfker [the measurableType _ of (mbool * munit)%type] ~> (mR R) :=
+Let ite_3_10 : R.-sfker mbool * munit ~> (mR R) :=
   ite macc0of2 (ret k3) (ret k10).
 
-Let score_poisson4 :
-  R.-sfker [the measurableType _ of (mR R * (mbool * munit))%type] ~> munit :=
+Let score_poisson4 : R.-sfker mR R * (mbool * munit) ~> munit :=
   score (measurableT_comp (measurable_poisson 4) macc0of2).
 
 Let kstaton_bus' :=
@@ -474,8 +469,8 @@ Let staton_bus_probability U :=
   ((2 / 7)%:E * (poisson4 3)%:E * \d_true U +
   (5 / 7)%:E * (poisson4 10)%:E * \d_false U)%E.
 
-Lemma exec_staton_bus0' t U :
-  execP staton_bus_syntax0 t U = staton_bus_probability U.
+Lemma exec_staton_bus0' U :
+  execP staton_bus_syntax0 tt U = staton_bus_probability U.
 Proof.
 rewrite exec_staton_bus0 /staton_bus_probability /kstaton_bus'.
 rewrite letin'_sample_bernoulli.
@@ -514,15 +509,12 @@ Definition staton_busA_syntax0 : @exp R _ [::] _ :=
 Definition staton_busA_syntax : exp _ [::] _ :=
   [Normalize {staton_busA_syntax0}].
 
-Let sample_bern : R.-sfker munit ~> mbool :=
-  sample_cst [the probability _ _ of bernoulli p27].
+Let sample_bern : R.-sfker munit ~> mbool := sample_cst (bernoulli p27).
 
-Let ite_3_10 :
-  R.-sfker [the measurableType _ of (mbool * munit)%type] ~> (mR R) :=
+Let ite_3_10 : R.-sfker mbool * munit ~> (mR R) :=
   ite macc0of2 (ret k3) (ret k10).
 
-Let score_poisson4 :
-  R.-sfker [the measurableType _ of (mR R * (mbool * munit))%type] ~> munit :=
+Let score_poisson4 : R.-sfker mR R * (mbool * munit) ~> munit :=
   score (measurableT_comp (measurable_poisson 4) macc0of3').
 
 (* same as kstaton_bus _ (measurable_poisson 4) but expressed with letin'
@@ -611,16 +603,176 @@ Qed.
 
 Let poisson4 := @poisson R 4%N.
 
-Lemma exec_staton_busA0' t U : execP staton_busA_syntax0 t U =
+Lemma exec_staton_busA0' U : execP staton_busA_syntax0 tt U =
   ((2 / 7%:R)%:E * (poisson4 3%:R)%:E * \d_true U +
   (5%:R / 7%:R)%:E * (poisson4 10%:R)%:E * \d_false U)%E.
 Proof. by rewrite -staton_bus_staton_busA exec_staton_bus0'. Qed.
 
 End staton_busA.
 
+Section variables.
+Local Open Scope lang_scope.
+Import Notations.
+Context (R : realType).
+
+Definition v1 x : @exp R P [::] _ := [
+  let x := return {1}:R in
+  return %x].
+
+Definition v2 (a b c d : string) (H : infer (b != a)) : @exp R P [::] _ := [
+  let a := return {1}:R in
+  let b := return {true}:B in
+  (* let c := return {3}:R in
+  let d := return {4}:R in *)
+  return (#a, #b)].
+
+(* Problem: pair of variables *)
+Definition v3 (a b c d : string) (H1 : infer (b != a)) (H2 : infer (c != a))
+  (H3 : infer (c != b)) (H4 : infer (a != b)) : @exp R P [::] _ := [
+  let a := return {1}:R in
+  let b := return {2}:R in
+  let c := return {3}:R in
+  (* let d := return {4}:R in *)
+  return {@exp_pair R [:: (c, _); (b, _); (a, _)] _ _ (exp_var' a _) (exp_var' b _)}].
+
+End variables.
+
 Section letinC.
 Local Open Scope lang_scope.
-Variable R : realType.
+Variable (R : realType).
+
+Structure tagged_typ := Tag_typ {untag_typ : typ}.
+
+Structure find_typ str t (g : find str t) := Find_typ {
+  typ_of : tagged_typ ;
+  typ_prf : untag_typ typ_of = @lookup stype_eqType Unit
+    (untag (@ctx_of stype_eqType Unit _ _ g)) str}.
+
+Lemma typ_prf_head str t g : t = lookup Unit ((str, t) :: g) str.
+Proof. by rewrite /lookup /= !eqxx. Qed.
+
+Lemma typ_prf_tail str t g str' t' :
+  str' != str ->
+  t = lookup Unit g str ->
+  t = lookup Unit ((str', t') :: g) str.
+Proof.
+move=> str'str tg /=; rewrite /lookup/=.
+by case: ifPn => //=; rewrite (negbTE str'str).
+Qed.
+
+Definition recurse_tag_typ t := Tag_typ t.
+Canonical found_tag_typ t := recurse_tag_typ t.
+
+Canonical found_typ str t (g : find (t0 := Unit) str t) : find_typ 
+  (found str t (untag (ctx_of g)))
+  :=
+  @Find_typ str t (found str t (untag (ctx_of g))) (found_tag_typ t)
+  (ctx_prf_head (t0 := Unit) str t (untag (ctx_of g))).
+  (* (ctx_prf (found str t (untag (ctx_of g)))). *)
+    (* (@Find _ _ str t (found_tag ((str, t) :: (untag (ctx_of g))))
+    (ctx_prf _)) t
+    (@typ_prf_head str t (untag (ctx_of g))). *)
+
+Canonical recurse_typ str str' (t t' : typ) {H : infer (str' != str)}
+    (g : find (t0 := Unit) str t) : find_typ (recurse Unit _) :=
+  @Find_typ str t (recurse Unit g) (recurse_tag_typ t)
+  (ctx_prf_tail Unit H (ctx_prf g)).
+
+Definition tmp1 g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+  str1 str2
+  (* (str1 := "x") (str2 := "y")  *)
+  (xl : str1 \notin dom g) (yl : str2 \notin dom g) : 
+    find_typ (found str1 t1 [:: (str1, t1); (str2, t2)]).
+apply: (@Find_typ _ _ _ (found_tag_typ t1)) => //.
+apply: typ_prf_head.
+Show Proof.
+Defined.
+
+Definition tmp2 g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+  str1 str2 (H : infer (str1 != str2))
+  (* (str1 := "x") (str2 := "y")  *)
+  (xl : str1 \notin dom g) (yl : str2 \notin dom g) :
+    find_typ (found str2 t2 [:: (str1, t1); (str2, t2)]).
+Proof.
+apply: (@Find_typ _ _ _ (recurse_tag_typ t2)).
+have ? := (typ_prf_tail _ H).
+(* by done. *)
+apply: typ_prf_head.
+Show Proof.
+Defined.
+
+Lemma __ (g := [::]) t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+  (str0 str1 : string) (H : infer (str0 != str1))
+  (* (str0 := "x") (str1 := "y") *)
+  (xl : str0 \notin dom g) (yl : str1 \notin dom g) :
+  let h1 := tmp1 e1 e2 xl yl in 
+  (* lookup Unit ((str1, t2) :: [::] ++ (str0, t1) :: g) str0 *)
+  t1 = untag_typ (typ_of h1).
+Proof.
+move=> h1.
+Eval compute in (typ_of h1).
+rewrite /lookup/=.
+Abort.
+
+Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+  (str1 str2 : string) (H : infer (str2 != str1))
+  (xl : str1 \notin dom g) (yl : str2 \notin dom g) :
+  forall U, measurable U ->
+  execP [let str1 := e1 in
+         let str2 := {exp_weak _ [::] _ (str1, t1) e2 xl} in
+         return #str1] ^~ U =
+  execP [let str2 := e2 in
+         let str1 := {exp_weak _ [::] _ (str2, t2) e1 yl} in
+         return #str1] ^~ U.
+move=> U mU; apply/funext => x.
+rewrite 4!execP_letin.
+rewrite 2!(execP_weak [::] g).
+rewrite 2!execP_return/=.
+rewrite !exp_var'E.
+Abort.
+
+Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+  (str1 str2 : string)
+  (* (str1 := "x") (str2 := "y") *)
+  (H1 : infer (str2 != str1)) (H2 : infer (str1 != str2))
+  (xl : str1 \notin dom g) (yl : str2 \notin dom g) :
+  forall U, measurable U ->
+  execP [
+    let str1 := e1 in
+    let str2 := {exp_weak _ [::] _ (str1, t1) e2 xl} in
+    return (#str1, #str2)] ^~ U =
+  execP [
+    let str2 := e2 in
+    let str1 := {exp_weak _ [::] _ (str2, t2) e1 yl} in
+    (* return (#str1, #str2)] *)
+    return {@exp_pair R [:: (str1, t1), (str2, t2) & g] _ _ [#str1] [#str2]}]
+    ^~ U.
+Proof.
+move=> U mU; apply/funext => x.
+rewrite 4!execP_letin.
+rewrite 2!(execP_weak [::] g).
+rewrite 2!execP_return/=.
+rewrite 2!execD_pair/=.
+rewrite !exp_var'E.
+apply /(ctx_prf_tail _ H1) /ctx_prf_head.
+apply /ctx_prf_head.
+apply /ctx_prf_head.
+apply /(ctx_prf_tail _ H2) /ctx_prf_head.
+move=> h1 h2 h3 h4.
+(* rewrite (execD_var str1)/=. *)
+Abort.
+         
+(* Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+  (str0 := "x") (str1 := "y") (xl : str0 \notin dom g) (yl : str1 \notin dom g) :
+  let h1 := tmp e1 e2 xl yl in
+  let h2 := tmp e1 e2 xl yl in
+  forall (U : set (mtyp (Pair (untag_typ (typ_of h1)) (untag_typ (typ_of h2))))), measurable U ->
+  execP [let str0 := e1 in
+         let str1 := {exp_weak _ [::] _ (str0, t1) e2 xl} in
+         return (%str0, %str1)] ^~ U =
+  execP [let str1 := e2 in
+         let str0 := {exp_weak _ [::] _ (str1, t2) e1 yl} in
+         return (%str0, %str1)] ^~ U. *)
 
 (* version parameterized by any context g *)
 Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
@@ -643,7 +795,7 @@ rewrite !(execD_var "y")/=.
 have -> : measurable_acc_typ [:: t2, t1 & map snd g] 0 = macc0of3' by [].
 have -> : measurable_acc_typ [:: t2, t1 & map snd g] 1 = macc1of3' by [].
 rewrite (letin'C _ _ (execP e2)
-  ([the R.-sfker _ ~> _ of @kweak _ [::] _ ("y", t2) _ (execP e1)]));
+  [the R.-sfker _ ~> _ of @kweak _ [::] _ ("y", t2) _ (execP e1)]);
   [ |by [] | by [] |by []].
 have -> : measurable_acc_typ [:: t1, t2 & map snd g] 0 = macc0of3' by [].
 by have -> : measurable_acc_typ [:: t1, t2 & map snd g] 1 = macc1of3' by [].
