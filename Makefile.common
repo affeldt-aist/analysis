@@ -110,16 +110,14 @@ doc: __always__ Makefile.coq
 	cp -r $(COQFILES) -t _build_doc/ --parents
 	cp _CoqProject Makefile* _build_doc
 	mkdir -p _build_doc/htmldoc
-	. $(MATHCOMP)etc/utils/builddoc_lib.sh; \
-		cd _build_doc && mangle_sources $(COQFILES)
+#	. $(MATHCOMP)etc/utils/builddoc_lib.sh; \
+#		cd _build_doc && mangle_sources $(COQFILES)
 	+cd _build_doc && $(COQMAKE)
 # let's forget about the dependency graph for the time being...
 #	cd _build_doc && grep -v vio: .Makefile.coq.d > depend
 #	cd _build_doc && cat depend | $(MATHCOMP)etc/buildlibgraph $(COQFILES) > htmldoc/depend.js
-	cd _build_doc && $(COQBIN)coqdoc -t "MathComp Analysis" \
-		-g --utf8 -R theories mathcomp.analysis \
-		--parse-comments \
-		--multi-index $(COQFILES) -d htmldoc
+	cd _build_doc/classical && ~/git/coq2html/coq2html -external https://math-comp.github.io/htmldoc_1_17_0/ mathcomp -external https://math-comp.github.io/analysis/htmldoc_0_6_3/ mathcomp.classical -base mathcomp.classical -d ../htmldoc *.glob *.v
+	cd _build_doc/theories && ~/git/coq2html/coq2html -external https://math-comp.github.io/htmldoc_1_17_0/ mathcomp -external https://math-comp.github.io/analysis/htmldoc_0_6_3/ mathcomp.analysis -base mathcomp.analysis -d ../htmldoc *.glob *.v
 	cp $(MATHCOMP)etc/artwork/coqdoc.css _build_doc/htmldoc
 
 doc-clean:
