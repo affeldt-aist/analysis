@@ -5188,7 +5188,7 @@ Let hoelder0 (f g : T -> R) (p q : R) :
 Proof.
 move=> mf mg p0 q0 pq f0; rewrite f0 mul0e.
 suff: 'N_1 [(f \* g)%R] = 0%E by move=> ->.
-move: f0; rewrite /L_norm; move/powere_pos_eq0.
+move: f0; rewrite /L_norm => /powere_pos_eq0_eq0.
 rewrite /= invr1 powere_pose1// => [fp|]; last first.
   by apply: integral_ge0 => x _; rewrite lee_fin; apply: power_pos_ge0.
 have {fp}f0 : ae_eq mu setT (fun x => (`|f x| `^ p)%:E) (cst 0).
@@ -5196,13 +5196,13 @@ have {fp}f0 : ae_eq mu setT (fun x => (`|f x| `^ p)%:E) (cst 0).
   - apply: measurableT_comp => //; apply: measurableT_comp_power_pos.
     exact: measurableT_comp.
   - under eq_integral => x _ do rewrite ger0_norm ?power_pos_ge0//.
-    apply: fp; rewrite (lt_le_trans _ (integral_ge0 _ _))// => x _.
+    apply: fp; apply: integral_ge0 => t _.
     exact: power_pos_ge0.
 rewrite (ae_eq_integral (cst 0)%E) => [|//||//|].
 - by rewrite integral0.
 - apply: measurableT_comp => //; apply: measurableT_comp_power_pos => //.
   by apply: measurableT_comp => //; exact: measurable_funM.
-- apply: filterS f0 => x /(_ I) /= [] /power_pos_eq0 fp0 _.
+- apply: filterS f0 => x /(_ I) /= [] /power_pos_eq0_eq0 fp0 _.
   by rewrite power_posr1// normrM fp0 mul0r.
 Qed.
 
