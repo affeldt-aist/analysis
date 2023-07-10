@@ -397,7 +397,7 @@ Arguments exp_unit {R g}.
 Arguments exp_bool {R g}.
 Arguments exp_real {R g}.
 Arguments exp_pair {R g t1 t2}.
-Arguments exp_var {R g} _ {t}.
+Arguments exp_var {R g} _ {t} H.
 Arguments exp_bernoulli {R g}.
 Arguments exp_poisson {R g}.
 Arguments exp_normalize {R g _}.
@@ -420,6 +420,8 @@ Notation "'return' e" := (@exp_return _ _ _ e)
   (in custom expr at level 2) : lang_scope.
 Notation "% str" := (@exp_var _ _ str%string _ erefl)
   (in custom expr at level 1, format "% str") : lang_scope.
+(* Notation "% str H" := (@exp_var _ _ str%string _ H)
+  (in custom expr at level 1, format "% str H") : lang_scope. *)
 Notation "# str" := (@exp_var' _ str%string _ _)
   (in custom expr at level 1, format "# str").
 Notation "e :+ str" := (exp_weak _ [::] _ (str, _) e erefl)
@@ -590,8 +592,11 @@ Inductive evalD : forall g t, exp D g t ->
   e -D> f ; mf ->
   [\pi_2 e] -D> snd \o f ; measurableT_comp measurable_snd mf
 
-| eval_var g str : let i := index str (dom g) in
-  [%str] -D> acc_typ (map snd g) i ; measurable_acc_typ (map snd g) i
+(* | eval_var g str : let i := index str (dom g) in
+  [% str] -D> acc_typ (map snd g) i ; measurable_acc_typ (map snd g) i *)
+
+| eval_varH g str H : let i := index str (dom g) in
+  (exp_var str H) -D> acc_typ (map snd g) i ; measurable_acc_typ (map snd g) i
 
 | eval_bernoulli g (r : {nonneg R}) (r1 : (r%:num <= 1)%R) :
   (exp_bernoulli r r1 : exp D g _) -D> cst (bernoulli r1) ;
@@ -604,7 +609,7 @@ Inductive evalD : forall g t, exp D g t ->
 
 | eval_normalize g t (e : exp P g t) k :
   e -P> k ->
-  exp_normalize e -D> normalize k point ; measurable_mnormalize k
+  [Normalize e] -D> normalize k point ; measurable_mnormalize k
 
 | evalD_if g t e f mf (e1 : exp D g t) f1 mf1 e2 f2 mf2 :
   e -D> f ; mf -> e1 -D> f1 ; mf1 -> e2 -D> f2 ; mf2 ->
@@ -697,10 +702,18 @@ all: (rewrite {g t e u v mu mv hu}).
   clear H9.
   inj_ex H7; subst e1.
   by rewrite (ih _ _ H4).
-- move=> g str n {}v {}mv.
+(* - move=> g str n {}v {}mv.
   inversion 1; subst g0.
   inj_ex H6; rewrite -H6.
   by inj_ex H7.
+  inj_ex H8; rewrite -H8.
+  by inj_ex H9. *)
+- move=> g str H n {}v {}mv.
+  inversion 1; subst g0.
+  (* inj_ex H7; rewrite -H7.
+  by inj_ex H8. *)
+  inj_ex H9; rewrite -H9.
+  by inj_ex H10.
 - move=> g r r1 {}v {}mv.
   inversion 1; subst g0 r0.
   inj_ex H3; subst v.
@@ -812,10 +825,18 @@ all: rewrite {g t e u v eu}.
   clear H9.
   inj_ex H7; subst e1.
   by rewrite (ih _ _ H4).
-- move=> g x n {}v {}mv.
+(* - move=> g str n {}v {}mv.
   inversion 1; subst g0.
-  inj_ex H7; subst v.
-  by inj_ex H6.
+  inj_ex H6; rewrite -H6.
+  by inj_ex H7.
+  inj_ex H8; rewrite -H8.
+  by inj_ex H9. *)
+- move=> g str H n {}v {}mv.
+  inversion 1; subst g0.
+  (* inj_ex H7; rewrite -H7.
+  by inj_ex H8. *)
+  inj_ex H9; rewrite -H9.
+  by inj_ex H10.
 - move=> g r r1 {}v {}mv.
   inversion 1; subst g0 r0.
   inj_ex H3; subst v.
@@ -907,7 +928,7 @@ all: rewrite {dp g t}.
   by exists (fst \o f); eexists; exact: eval_proj1.
 - move=> g t1 t2 e [f [mf H]].
   by exists (snd \o f); eexists; exact: eval_proj2.
-- by move=> g x t tE; subst t; eexists; eexists; exact: eval_var.
+- by move=> g x t tE; subst t; eexists; eexists; exact: eval_varH.
 - by move=> r r1; eexists; eexists; exact: eval_bernoulli.
 - move=> g h e [f [mf H]].
   by exists (poisson h \o f); eexists; exact: eval_poisson.
@@ -1038,9 +1059,14 @@ by move=> f mf; apply/execD_evalD/eval_proj2; exact: evalD_execD.
 Qed.
 
 Lemma execD_var g str : let i := index str (dom g) in
-  @execD g _ [%str] = existT _ (acc_typ (map snd g) i)
+  @execD g _ [% str] = existT _ (acc_typ (map snd g) i)
                       (measurable_acc_typ (map snd g) i).
-Proof. by move=> i; apply/execD_evalD; exact: eval_var. Qed.
+Proof. by move=> i; apply/execD_evalD; exact: eval_varH. Qed.
+
+Lemma execD_varH g str (H : nth Unit (map snd g) (index str (dom g)) = lookup Unit g str) : let i := index str (dom g) in
+  @execD g _ (exp_var str H) = existT _ (acc_typ (map snd g) i)
+                      (measurable_acc_typ (map snd g) i).
+Proof. by move=> i; apply/execD_evalD; exact: eval_varH. Qed.
 
 Lemma execD_bernoulli g r (r1 : (r%:num <= 1)%R) :
   @execD g _ (exp_bernoulli r r1) =
@@ -1048,7 +1074,7 @@ Lemma execD_bernoulli g r (r1 : (r%:num <= 1)%R) :
 Proof. exact/execD_evalD/eval_bernoulli. Qed.
 
 Lemma execD_normalize g t (e : exp P g t) :
-  @execD g _ (exp_normalize e) =
+  @execD g _ [Normalize e] =
   existT _ (normalize (execP e) point : _ -> pprobability _ _)
            (measurable_mnormalize (execP e)).
 Proof. exact/execD_evalD/eval_normalize/evalP_execP. Qed.
