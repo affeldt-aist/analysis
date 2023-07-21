@@ -526,7 +526,7 @@ rewrite -!muleA; congr (_ * _ + _ * _)%E.
   by rewrite /score/= /mscale/= ger0_norm//= poisson_ge0// /acc0of2/=.
 - by rewrite onem27.
 - rewrite letin'_iteF// letin'_retk// letin'_kret// /score_poisson4.
-  rewrite /score/= /mscale/= ger0_norm//= poisson_ge0// /acc0of2/=.
+  by rewrite /score/= /mscale/= ger0_norm//= poisson_ge0// /acc0of2/=.
 Qed.
 
 End staton_bus.
@@ -718,7 +718,9 @@ rewrite !exp_var'E.
   (*
   rewrite (@execD_var _ g2 str1 h2).
   have : projT2 (execD [% str1 h4]) = macc1of3'. *)
+(*
   have H := (@letin'C _ _ _ _ _ _ R (execP e1) [the R.-sfker _ ~> _ of kweak [::] g (str1, t1) (execP e2)] (execP e2) [the R.-sfker _ ~> _ of kweak [::] g (str2, t2) (execP e1)]).
+*)
   (* have ? := (@execP_weak R [::] g (str1, t1) t2 e2 xl).
   (* rewrite letin'C. *)
   rewrite (@execD_var R g1 str1 h4). *)
@@ -745,12 +747,80 @@ rewrite !exp_var'E.
   exact: Prop_irrelevance.
   subst mx1' mx2' mx3'.
   clear p' p1' p2' p3'.
-  have ? : x0 = @acc1of3' _ _ _ _ _ _.
-  have : (exp_var str1 h4 : (@exp R D _ _)) -D> @acc1of3' _ _ _ _ _ _ ; macc1of3'.
-  apply/execD_evalD.
-  rewrite /execD.
-  admit.
-  admit.
+  have ? : x0 = @acc1of3' _ _ _ _ _ (projT2 (measurable_of_seq (map snd g))).
+    have : (exp_var str1 h4 : (@exp R D _ _)) -D> (@acc1of3' _ _ _ _ _ (projT2 (measurable_of_seq (map snd g)))) ; macc1of3'.
+      set localg := @untag stype_eqType (@ctx_of stype_eqType Unit str1 t1
+        (@recurse stype_eqType Unit str1 t1 str2 t2 H1 (@found stype_eqType Unit str1 t1 g))).
+
+      set Y : exp D localg t1 := exp_var str1 h4.
+      have K1 := @eval_var R localg str1.
+      pose X : @exp R D localg (lookup Unit localg str1) := [%str1].
+      cbv zeta in K1.
+      rewrite -/X in K1.
+
+      Fail Check X = Y.
+      have ? : t1 = lookup Unit localg str1 by [].
+      pose from_exp_t1 Z := @eq_rect _ t1 (@exp R D localg) Z _ h4.
+      pose to_exp_t1 Z := @eq_rect _ _ (@exp R D localg) Z _ (esym h4).
+      Check X = from_exp_t1 Y.
+
+      have XY : X = from_exp_t1 Y.
+        rewrite /from_exp_t1.
+        clear.
+        rewrite {}/X {}/Y.
+        rewrite {}/localg.
+        move: h4.
+        move H : (untag _) => h.
+        clear H.
+        move=> h4.
+        subst t1.
+        exact: eq_rect_eq.
+
+      have YX : Y = to_exp_t1 X.
+        rewrite /to_exp_t1.
+        clear.
+        rewrite {}/X {}/Y.
+        rewrite {}/localg.
+        move: h4.
+        move H : (untag _) => h.
+        clear H.
+        move=> h4.
+        subst t1.
+        exact: eq_rect_eq.
+
+      rewrite YX.
+
+      Fail Check execD X = execD Y.
+      pose from_semval_t1 Z := (@eq_rect _ _ (fun x => {f : dval R localg x & measurable_fun [set: mctx localg] f}) Z _ h4).
+      Check execD X = from_semval_t1 (execD Y).
+      pose to_semval_t1 Z := (@eq_rect _ _ (fun x => {f : dval R localg x & measurable_fun [set: mctx localg] f}) Z _ (esym h4)).
+
+      set semval0 := (X in _ -D> X; _) in K1.
+      set msemval0 := (X in _ -D> _; X) in K1.
+
+      pose type_of_acc1of3' :=
+        (projT2 (@measurable_of_typ R t2) * (projT2 (@measurable_of_typ R t1) * projT2 (@measurable_of_seq  R [seq i.2 | i <- g])))%type ->
+       projT2 (@measurable_of_typ R t1).
+      set type_of_semval0 := projT2 (@measurable_of_seq R [seq i.2 | i <- localg]) -> projT2 (@measurable_of_typ R (nth Unit [seq i.2 | i <- localg] (index str1 (dom localg)))).
+      have K3 : type_of_semval0 = type_of_acc1of3'.
+        rewrite /type_of_semval0/= /type_of_acc1of3'/=.
+        by rewrite (negbTE H1)//= eqxx//.
+      Fail Check acc1of3' (T2:=projT2 (measurable_of_seq [seq i.2 | i <- g])) = semval0.
+      pose from_type_of_semval0 Z := (@eq_rect _ _ (fun x => x) Z _ K3).
+      Check acc1of3' (T2:=projT2 (measurable_of_seq [seq i.2 | i <- g])) = from_type_of_semval0 semval0.
+
+      have access_function_eq : acc1of3' (T2:=projT2 (measurable_of_seq [seq i.2 | i <- g])) = from_type_of_semval0 semval0.
+        clear.
+        rewrite {}/from_type_of_semval0.
+        rewrite {}/semval0 in K3 *.
+        have K3' : type_of_semval0 = type_of_acc1of3' by done.
+        rewrite (Prop_irrelevance K3 K3').
+
+      Fail apply: eval_var.
+        admit.
+      admit.
+move=> K.
+    exact: (evalD_uniq p K).
   subst.
   have -> : mx0 = @macc1of3' _ _ _ _ _ _.
   done.
@@ -769,7 +839,7 @@ rewrite !exp_var'E.
   subst.
   have -> : mx3 = @macc1of3' _ _ _ _ _ _.
   done.
-  exact: H.
+  by apply: letin'C.
 Abort.
 
 Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
