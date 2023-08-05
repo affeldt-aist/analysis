@@ -1135,13 +1135,13 @@ Lemma measurable_fun_if (g h : T1 -> T2) D (mD : measurable D)
   measurable_fun D (fun t => if f t then g t else h t).
 Proof.
 move=> mx my /= _ B mB; rewrite (_ : _ @^-1` B =
-  ((f @^-1` [set true]) `&` (g @^-1` B) `&` (f @^-1` [set true])) `|`
-  ((f @^-1` [set false]) `&` (h @^-1` B) `&` (f @^-1` [set false]))).
+   ((f @^-1` [set true]) `&` (g @^-1` B)) `|`
+   ((f @^-1` [set false]) `&` (h @^-1` B))).
   rewrite setIUr; apply: measurableU.
-  - by rewrite setIAC setIid setIA; apply: mx => //; exact: mf.
-  - by rewrite setIAC setIid setIA; apply: my => //; exact: mf.
-apply/seteqP; split=> [t /=| t]; first by case: ifPn => ft; [left|right].
-by move=> /= [|]; case: ifPn => ft; case=> -[].
+  - by rewrite setIA; apply: mx => //; exact: mf.
+  - by rewrite setIA; apply: my => //; exact: mf.
+apply/seteqP; split=> [t /=| t /= [] [] ->//].
+by case: ifPn => ft; [left|right].
 Qed.
 
 Lemma measurable_fun_ifT (g h : T1 -> T2) (f : T1 -> bool)

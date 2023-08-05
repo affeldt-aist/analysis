@@ -346,7 +346,7 @@ by rewrite /mseries eseries0.
 Qed.
 
 #[export]
-HB.instance Definition _ t := @Kernel_isSFinite_subdef.Build _ _ _ _ _
+HB.instance Definition _ := @Kernel_isSFinite_subdef.Build _ _ _ _ _
   (kiteT k) sfinite_kiteT.
 End sfkiteT.
 
@@ -361,7 +361,7 @@ by rewrite /= /mzero.
 Qed.
 
 #[export]
-HB.instance Definition _ t := Kernel_isFinite.Build _ _ _ _ _
+HB.instance Definition _ := Kernel_isFinite.Build _ _ _ _ _
   (kiteT k) kiteT_uub.
 End fkiteT.
 
@@ -429,6 +429,7 @@ Section ite.
 Context d d' (T : measurableType d) (T' : measurableType d') (R : realType).
 Variables (f : T -> bool) (u1 u2 : R.-sfker T ~> T').
 
+(* NB: not used? *)
 Definition mite (mf : measurable_fun setT f) : T -> set T' -> \bar R :=
   fun t => if f t then u1 t else u2 t.
 
@@ -468,7 +469,7 @@ Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
 Definition ret (f : X -> Y) (mf : measurable_fun setT f)
   : R.-pker X ~> Y := [the R.-pker _ ~> _ of kdirac mf].
 
-Definition sample_cst(P : pprobability Y R) : R.-pker X ~> Y :=
+Definition sample_cst (P : pprobability Y R) : R.-pker X ~> Y :=
   [the R.-pker _ ~> _ of kprobability (measurable_cst P)].
 
 Definition sample (P : X -> pprobability Y R) (mP : measurable_fun setT P) : R.-pker X ~> Y :=

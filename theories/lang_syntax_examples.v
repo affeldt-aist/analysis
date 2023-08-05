@@ -128,7 +128,7 @@ Qed.
 
 Local Close Scope lang_scope.
 
-Section simple_example.
+Section trivial_example.
 Local Open Scope lang_scope.
 Import Notations.
 Context (R : realType).
@@ -139,7 +139,7 @@ Proof.
 by rewrite execD_normalize execP_return execD_real/= normalize_kdirac.
 Qed.
 
-End simple_example.
+End trivial_example.
 
 Section bernoulli_examples.
 Local Open Scope ring_scope.
@@ -235,16 +235,17 @@ rewrite muleDl//; congr (_ + _)%E;
   by rewrite indicE /onem; case: (_ \in _); field.
 Qed.
 
-(* https://dl.acm.org/doi/pdf/10.1145/2933575.2935313 (Sect.4) *)
-Definition bernoulli14_score52_syntax0 := [Normalize
+(* https://dl.acm.org/doi/pdf/10.1145/2933575.2935313 (Sect. 4) *)
+Definition bernoulli14_score52_syntax := [Normalize
   let "x" := Sample {@exp_bernoulli R [::] (1 / 4%:R)%:nng (p1S 3)} in
   let "r" := if #{"x"} then Score {5}:R else Score {2}:R in
   return #{"x"}].
 
-Axiom p511 : ((5%:R / 11%:R)%:nng%:num <= (1 : R)).
+Let p511 : ((5%:R / 11%:R)%:nng%:num <= (1 : R)).
+Proof. by rewrite /=; lra. Qed.
 
-Lemma exec_bernoulli14_score52_syntax0 :
-  execD bernoulli14_score52_syntax0 = execD (exp_bernoulli (5%:R / 11%:R)%:nng p511).
+Lemma exec_bernoulli14_score52_syntax :
+  execD bernoulli14_score52_syntax = execD (exp_bernoulli (5%:R / 11%:R)%:nng p511).
 Proof.
 apply: eq_execD.
 rewrite execD_bernoulli/= execD_normalize 2!execP_letin.
@@ -475,7 +476,7 @@ Definition staton_bus_syntax0 : @exp R _ [::] _ :=
   [let "x" := Sample {exp_bernoulli (2 / 7%:R)%:nng p27} in
    let "r" := if #{"x"} then return {3}:R else return {10}:R in
    let "_" := Score {exp_poisson 4 [#{"r"}]} in
-   return %{"x"}].
+   return #{"x"}].
 
 Definition staton_bus_syntax := [Normalize {staton_bus_syntax0}].
 
@@ -503,8 +504,8 @@ apply: eval_letin.
   apply/eval_score/eval_poisson.
   rewrite exp_var'E.
   by apply/execD_evalD; rewrite (execD_var "r")/=; congr existT.
-apply/eval_return.
-by apply/execD_evalD; rewrite (execD_var "x")/=; congr existT.
+apply/eval_return/execD_evalD.
+by rewrite exp_var'E (execD_var "x")/=; congr existT.
 Qed.
 
 Lemma exec_staton_bus0 : execP staton_bus_syntax0 = kstaton_bus'.
@@ -519,7 +520,7 @@ rewrite execP_score execD_poisson/=.
 rewrite exp_var'E (execD_var "r")/=.
 have -> : measurable_acc_typ [:: Real; Bool] 0 = macc0of2 by [].
 congr letin'.
-by rewrite (execD_var "x") /=; congr ret.
+by rewrite exp_var'E (execD_var "x") /=; congr ret.
 Qed.
 
 Lemma exec_staton_bus : execD staton_bus_syntax =
@@ -588,17 +589,16 @@ Let kstaton_busA' :=
     (letin' ite_3_10
       score_poisson4)
     (ret macc1of3')).
-(*TODO: Lemma kstaton_bus'E : kstaton_bus' = kstaton_bus _ (measurable_poisson 4).
+
+Lemma kstaton_busA'E : kstaton_busA' = kstaton_bus _ (measurable_poisson 4).
 Proof.
 apply/eq_sfkernel => -[] U.
-rewrite /kstaton_bus' /kstaton_bus.
+rewrite /kstaton_busA' /kstaton_bus.
 rewrite letin'_letin.
 rewrite /sample_bern.
 congr (letin _ _ tt U).
-
-apply: eq_sfkernel => /= -[[] b] V.
-rewrite /mswap letin'_letin /letin/=.
-rewrite /ite_3_10.*)
+rewrite 2!letin'_letin/=.
+Abort.
 
 Lemma eval_staton_busA0 : staton_busA_syntax0 -P> kstaton_busA'.
 Proof.
@@ -658,7 +658,7 @@ set e3' := exp_return _.
 set e3_weak := exp_weak _ _ _ _.
 rewrite !execP_letin.
 suff: execP e3' = execP (e3_weak e3 r_f) by move=> <-.
-rewrite execP_return/= execD_var/= /e3_weak.
+rewrite execP_return/= exp_var'E (execD_var "x") /= /e3_weak.
 rewrite (@execP_weak R [:: ("_", Unit)] (untag (ctx_of f)) ("r", Real) _ e3 r_f).
 rewrite execP_return exp_var'E/= (execD_var "x") //=.
 by apply/eq_sfkernel => /= -[[] [a [b []]]] U0.
@@ -673,7 +673,7 @@ Proof. by rewrite -staton_bus_staton_busA exec_staton_bus0'. Qed.
 
 End staton_busA.
 
-Section variables.
+Section pending_issue_with_pair_of_variables.
 Local Open Scope lang_scope.
 Import Notations.
 Context (R : realType).
@@ -691,7 +691,7 @@ Definition v2 (a b c d : string) (H : infer (b != a)) : @exp R P [::] _ := [
 
 (* Problem: pair of variables *)
 Definition v3 (a b c d : string) (H1 : infer (b != a)) (H2 : infer (c != a))
-  (H3 : infer (c != b)) (H4 : infer (a != b)) (H5 : infer (a != c)) 
+  (H3 : infer (c != b)) (H4 : infer (a != b)) (H5 : infer (a != c))
   (H6 : infer (b != c)) : @exp R P [::] _ := [
   let a := return {1}:R in
   let b := return {2}:R in
@@ -700,7 +700,7 @@ Definition v3 (a b c d : string) (H1 : infer (b != a)) (H2 : infer (c != a))
   (* return (#b, #a)]. *)
   return {@exp_pair R [:: (c, _); (b, _); (a, _)] _ _ (exp_var' a _) (exp_var' b _)}].
 
-End variables.
+End pending_issue_with_pair_of_variables.
 
 Section letinC.
 Local Open Scope lang_scope.
@@ -708,56 +708,8 @@ Variable (R : realType).
 
 Require Import Classical_Prop.
 
-(* Lemma prop_ (a b c : eqType) (H1 : a = c) (H2 : b = c) : a = b -> . *)
-
 Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
   (str1 str2 : string)
-  (* (str1 := "x") (str2 := "y") *)
-  (H1 : infer (str2 != str1)) (H2 : infer (str1 != str2))
-  (xl : str1 \notin dom g) (yl : str2 \notin dom g) :
-  forall U, measurable U ->
-  execP [
-    let str1 := e1 in
-    let str2 := {exp_weak _ [::] _ (str1, t1) e2 xl} in
-    return #str1] ^~ U =
-  execP [
-    let str2 := e2 in
-    let str1 := {exp_weak _ [::] _ (str2, t2) e1 yl} in
-    return #str1]
-    ^~ U.
-Proof.
-move=> U mU; apply/funext => x.
-rewrite 4!execP_letin.
-rewrite 2!(execP_weak [::] g).
-rewrite 2!execP_return/=.
-set g1 := [:: (str1, t1), (str2, t2) & g].
-rewrite !exp_var'E /=.
-have H : nth Unit [seq i.2 | i <- [:: (str1, t1), (str2, t2) & g]]
-         (index str1 (dom [:: (str1, t1), (str2, t2) & g])) = lookup Unit [:: (str1, t1), (str2, t2) & g] str1.
-  rewrite /= eqxx /=.
-  admit.
-have : t1 = nth Unit [seq i.2 | i <- [:: (str1, t1), (str2, t2) & g]]
-      (index str1 (dom [:: (str1, t1), (str2, t2) & g])).
-  by rewrite /= eqxx.
-  move=>->.
-(* have Hexp := (exp_var'E str1 [:: (str1, t1), (str2, t2) & g] (found str1 _ [:: (str1, t1), (str2, t2) & g])).
-have := Hexp R H.
-
-rewrite !exp_var'E /=.
-admit. admit.
-move=> h1 h2.
-have H : nth Unit [seq i.2 | i <- [:: (str2, t2), (str1, t1) & g]]
-         (index str1 (dom [:: (str2, t2), (str1, t1) & g])) =
-       lookup Unit [:: (str2, t2), (str1, t1) & g] str1.
-  admit.
-have Hexec1 := (@execD_varH R [:: (str2, t2), (str1, t1) & g] str1 H).
-have : h2 = H.
-rewrite Hexec1. *)
-Abort.
-
-Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
-  (str1 str2 : string)
-  (* (str1 := "x") (str2 := "y") *)
   (H1 : infer (str2 != str1)) (H2 : infer (str1 != str2))
   (xl : str1 \notin dom g) (yl : str2 \notin dom g) :
   forall U, measurable U ->
@@ -811,7 +763,7 @@ have -> : measurable_acc_typ [:: t1, t2 & map snd g] 0 = macc0of3' by [].
 by have -> : measurable_acc_typ [:: t1, t2 & map snd g] 1 = macc1of3' by [].
 Qed.
 
-Lemma letinC_xy g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+Lemma letinC_xy_with_exp_var' g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
   (str1 := "x") (str2 := "y")
   (xl : str1 \notin dom g) (yl : str2 \notin dom g) :
   forall U, measurable U ->
@@ -822,7 +774,7 @@ Lemma letinC_xy g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
   execP [
     let str2 := e2 in
     let str1 := {exp_weak _ [::] _ (str2, t2) e1 yl} in
-    (* return (#str1, #str2)] *)
+(*    return (#str1, #str2)]*)
     return {@exp_pair R [:: (str1, t1), (str2, t2) & g] _ _ [#str1] [#str2]}]
     ^~ U.
 Proof.
@@ -830,7 +782,7 @@ by move=> U mU; rewrite letinC.
 Qed.
 
 (* version parameterized by any context g *)
-Lemma letinC_ g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
+Lemma letinC_xy_with_exp_var g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   (xl : "x" \notin dom g) (yl : "y" \notin dom g) :
   forall U, measurable U ->
   execP [let "x" := e1 in
