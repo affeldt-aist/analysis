@@ -17,7 +17,7 @@ Require Import lang_syntax_util.
 (*      lang_extrinsic == non-intrinsic definition of expression              *)
 (*   lang_intrinsic_ty == intrinsically-typed syntax                          *)
 (*   lang_intrinsic_sc == intrinsically-scoped syntax                         *)
-(* lang_intrinsic_tysc == intrinsically-typed/scoped syntax                  *)
+(* lang_intrinsic_tysc == intrinsically-typed/scoped syntax                   *)
 (*                                                                            *)
 (******************************************************************************)
 
