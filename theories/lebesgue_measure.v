@@ -838,7 +838,7 @@ suff : (lebesgue_measure (`]a - 1, a]%classic%R : set R) =
   rewrite [in X in X == _]/= EFinN EFinB fin_num_oppeB// addeA subee// add0e.
   by rewrite addeC -sube_eq ?fin_num_adde_defl// subee// => /eqP.
 rewrite -setUitv1// ?bnd_simp; last by rewrite ltr_subl_addr ltr_addl.
-rewrite measureU //; apply/seteqP; split => // x []/=. 
+rewrite measureU //; apply/seteqP; split => // x []/=.
 by rewrite in_itv/= => + xa; rewrite xa ltxx andbF.
 Qed.
 

@@ -23,6 +23,9 @@
 - in `exp.v`:
   + lemmas `concave_ln`, `conjugate_powR`
 
+- in `convex.v`:
+  + `convType` on `realDomainType`, `realFieldType` and `realType`
+
 ### Changed
 
 - `mnormalize` moved from `kernel.v` to `measure.v` and generalized
@@ -37,6 +40,9 @@
 ### Deprecated
 
 ### Removed
+
+- in `convex.v`:
+  + instance of `convType` for `R^o` with `R : realDomainType`
 
 ### Infrastructure
 
