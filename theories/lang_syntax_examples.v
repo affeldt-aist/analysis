@@ -172,17 +172,17 @@ rewrite !ge0_integral_mscale //=; last 2 first.
   by move=> b _; rewrite integral_ge0.
 rewrite !integral_dirac// !indicE !in_setT !mul1e.
 rewrite iteE/= !ge0_integral_mscale//=.
-rewrite ger0_norm//; last by lra.
+rewrite ger0_norm//.
 rewrite !integral_indic//= !iteE/= /mscale/=.
 rewrite setTI diracE !in_setT !mule1.
-rewrite ger0_norm//; last by lra.
+rewrite ger0_norm//.
 rewrite -EFinD/= eqe ifF; last first.
   apply/negbTE/negP => /orP[/eqP|//].
   by rewrite /onem; lra.
 rewrite !letin'E/= !iteE/=.
 rewrite !ge0_integral_mscale//=.
-rewrite ger0_norm//; last by lra.
-rewrite !integral_dirac//= !indicE !in_setT /= !mul1e ger0_norm//; last by lra.
+rewrite ger0_norm//.
+rewrite !integral_dirac//= !indicE !in_setT /= !mul1e ger0_norm//.
 rewrite exp_var'E (execD_var "x")/=.
 rewrite /bernoulli/= measure_addE/= /mscale/= !mul1r.
 rewrite muleDl//; congr (_ + _)%E;
@@ -216,17 +216,17 @@ rewrite !ge0_integral_mscale //=; last 2 first.
   by move=> b _; rewrite integral_ge0.
 rewrite !integral_dirac// !indicE !in_setT !mul1e.
 rewrite iteE/= !ge0_integral_mscale//=.
-rewrite ger0_norm//; last by lra.
+rewrite ger0_norm//.
 rewrite !integral_indic//= !iteE/= /mscale/=.
 rewrite setTI diracE !in_setT !mule1.
-rewrite ger0_norm//; last by lra.
+rewrite ger0_norm//.
 rewrite -EFinD/= eqe ifF; last first.
   apply/negbTE/negP => /orP[/eqP|//].
   by rewrite /onem; lra.
 rewrite !letin'E/= !iteE/=.
 rewrite !ge0_integral_mscale//=.
-rewrite ger0_norm//; last by lra.
-rewrite !integral_dirac//= !indicE !in_setT /= !mul1e ger0_norm//; last by lra.
+rewrite ger0_norm//.
+rewrite !integral_dirac//= !indicE !in_setT /= !mul1e ger0_norm//.
 rewrite exp_var'E (execD_var "x")/=.
 rewrite /bernoulli/= measure_addE/= /mscale/= !mul1r.
 rewrite muleDl//; congr (_ + _)%E;
@@ -264,16 +264,16 @@ rewrite !ge0_integral_mscale //=; last 2 first.
   by move=> b _; rewrite integral_ge0.
 rewrite !integral_dirac// !indicE !in_setT !mul1e.
 rewrite iteE/= !ge0_integral_mscale//=.
-rewrite ger0_norm/=; last by lra.
+rewrite ger0_norm//.
 rewrite !integral_indic//= !iteE/= /mscale/=.
 rewrite setTI diracE !in_setT !mule1.
-rewrite ger0_norm/=; last by lra.
+rewrite ger0_norm//.
 rewrite -EFinD/= eqe ifF; last first.
   apply/negbTE/negP => /orP[/eqP|//].
   by rewrite /onem; lra.
 rewrite !letin'E/= !iteE/=.
 rewrite !ge0_integral_mscale//=.
-rewrite ger0_norm/=; last by lra.
+rewrite ger0_norm//.
 rewrite !integral_dirac//= !indicE !in_setT /= !mul1e ger0_norm//.
 rewrite /bernoulli/= measure_addE/= /mscale/= !mul1r.
 rewrite muleDl//; congr (_ + _)%E;
@@ -523,7 +523,7 @@ by rewrite (execD_var "x") /=; congr ret.
 Qed.
 
 Lemma exec_staton_bus : execD staton_bus_syntax =
-  existT _ (normalize kstaton_bus' point) (measurable_mnormalize _).
+  existT _ (normalize kstaton_bus' point) (measurable_fun_mnormalize _).
 Proof. by rewrite execD_normalize exec_staton_bus0. Qed.
 
 Let poisson4 := @poisson R 4%N.
@@ -630,7 +630,7 @@ by rewrite exp_var'E (execD_var "x") /=; congr ret.
 Qed.
 
 Lemma exec_statonA_bus : execD staton_busA_syntax =
-  existT _ (normalize kstaton_busA' point) (measurable_mnormalize _).
+  existT _ (normalize kstaton_busA' point) (measurable_fun_mnormalize _).
 Proof. by rewrite execD_normalize exec_staton_busA0. Qed.
 
 (* equivalence between staton_bus and staton_busA *)

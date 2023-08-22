@@ -623,12 +623,14 @@ Definition kr (r : R) := @measurable_cst _ _ T _ setT r.
 Definition k3 : measurable_fun _ _ := kr 3%:R.
 Definition k10 : measurable_fun _ _ := kr 10%:R.
 Definition ktt := @measurable_cst _ _ T _ setT tt.
+Definition kb (b : bool) := @measurable_cst _ _ T _ setT b.
 
 End cst_fun.
 Arguments kr {d T R}.
 Arguments k3 {d T R}.
 Arguments k10 {d T R}.
 Arguments ktt {d T}.
+Arguments kb {d T}.
 
 Section iter_mprod.
 Import Notations.

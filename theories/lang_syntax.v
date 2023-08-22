@@ -609,7 +609,7 @@ Inductive evalD : forall g t, exp D g t ->
 
 | eval_normalize g t (e : exp P g t) k :
   e -P> k ->
-  [Normalize e] -D> normalize k point ; measurable_mnormalize k
+  [Normalize e] -D> normalize k point ; measurable_fun_mnormalize k
 
 | evalD_if g t e f mf (e1 : exp D g t) f1 mf1 e2 f2 mf2 :
   e -D> f ; mf -> e1 -D> f1 ; mf1 -> e2 -D> f2 ; mf2 ->
@@ -1076,7 +1076,7 @@ Proof. exact/execD_evalD/eval_bernoulli. Qed.
 Lemma execD_normalize g t (e : exp P g t) :
   @execD g _ [Normalize e] =
   existT _ (normalize (execP e) point : _ -> pprobability _ _)
-           (measurable_mnormalize (execP e)).
+           (measurable_fun_mnormalize (execP e)).
 Proof. exact/execD_evalD/eval_normalize/evalP_execP. Qed.
 
 Lemma execD_poisson g n (e : exp D g Real) :
