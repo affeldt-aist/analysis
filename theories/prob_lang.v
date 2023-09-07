@@ -735,6 +735,13 @@ Definition pairAAr : ([the measurableType _ of T0 * T1 * T2] ->
 Lemma mpairAAr : measurable_fun setT pairAAr.
 Proof. by do 2 apply: measurableT_comp => //. Qed.
 
+Definition pairAAAr : ([the measurableType _ of T0 * T1 * T2 * T3] ->
+    [the measurableType _ of T0 * (T1 * (T2 * (T3 * munit)))])%type :=
+  pairA \o pairA \o pairA \o rpair munit tt.
+
+Lemma mpairAAAr : measurable_fun setT pairAAAr.
+Proof. by do 3 apply: measurableT_comp => //. Qed.
+
 Definition pairAArAi : ([the measurableType _ of T0 * (T1 * T2)] ->
     [the measurableType _ of T0 * (T1 * (T2 * munit))])%type :=
   pairAAr \o pairAi.
@@ -752,6 +759,7 @@ Proof. by do 5 apply: measurableT_comp => //=. Qed.
 End rpair_pairA_comp.
 Arguments pairAr {d0 d1 T0 T1 d} T.
 Arguments pairAAr {d0 d1 d2 T0 T1 T2}.
+Arguments pairAAAr {d0 d1 d2 d3 T0 T1 T2 T3}.
 Arguments pairAArAi {d0 d1 d2 T0 T1 T2}.
 Arguments pairAAArAAi {d0 d1 d2 d3 T0 T1 T2 T3}.
 
@@ -823,6 +831,14 @@ Qed.
 Definition Of4 :=
   [:: existT _ _ T0; existT _ _ T1; existT _ d2 T2; existT _ d3 T3].
 
+Definition acc1of4 : [the measurableType _ of (T0 * T1 * T2 * T3)%type] -> T1 :=
+  acc Of4 1 \o pairAAAr.
+
+Lemma macc1of4 : measurable_fun setT acc1of4.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of4 1)|exact: mpairAAAr].
+Qed.
+
 Definition acc2of4' :
     [the measurableType _ of (T0 * (T1 * (T2 * T3)))%type] -> T2 :=
   acc Of4 2 \o pairAAArAAi.
@@ -830,6 +846,14 @@ Definition acc2of4' :
 Lemma macc2of4' : measurable_fun setT acc2of4'.
 Proof.
 by apply: measurableT_comp; [exact: (measurable_acc Of4 2)|exact: mpairAAARAAAi].
+Qed.
+
+Definition acc3of4 : [the measurableType _ of (T0 * T1 * T2 * T3)%type] -> T3 :=
+  acc Of4 3 \o pairAAAr.
+
+Lemma macc3of4 : measurable_fun setT acc3of4.
+Proof.
+by apply: measurableT_comp; [exact: (measurable_acc Of4 3)|exact: mpairAAAr].
 Qed.
 
 End accessor_functions.
@@ -840,7 +864,9 @@ Arguments macc1of3 {d0 d1 d2 _ _ _}.
 Arguments macc1of3' {d0 d1 d2 _ _ _}.
 Arguments macc2of3 {d0 d1 d2 _ _ _}.
 Arguments macc2of3' {d0 d1 d2 _ _ _}.
+Arguments macc1of4 {d0 d1 d2 d3 _ _ _ _}.
 Arguments macc2of4' {d0 d1 d2 d3 _ _ _ _}.
+Arguments macc3of4 {d0 d1 d2 d3 _ _ _ _}.
 
 Section insn1_lemmas.
 Import Notations.
@@ -1045,22 +1071,27 @@ Variable R : realType.
 Local Open Scope ring_scope.
 
 (* density function for Poisson *)
-Definition poisson k r : R := r ^+ k / k`!%:R^-1 * expR (- r).
+Definition poisson k r : R :=
+  if r > 0 then r ^+ k / k`!%:R^-1 * expR (- r) else 1%:R.
 
-Lemma poisson_ge0 k r : 0 <= r -> 0 <= poisson k r.
+Lemma poisson_ge0 k r : 0 <= poisson k r.
 Proof.
-move=> r0; rewrite /poisson mulr_ge0 ?expR_ge0//.
-by rewrite mulr_ge0// exprn_ge0.
+rewrite /poisson; case: ifPn => r0//.
+by rewrite mulr_ge0 ?expR_ge0// mulr_ge0// exprn_ge0 ?ltW.
 Qed.
 
 Lemma poisson_gt0 k r : 0 < r -> 0 < poisson k.+1 r.
 Proof.
-move=> r0; rewrite /poisson mulr_gt0 ?expR_gt0//.
+move=> r0; rewrite /poisson r0 mulr_gt0  ?expR_gt0//.
 by rewrite divr_gt0// ?exprn_gt0// invr_gt0 ltr0n fact_gt0.
 Qed.
 
 Lemma measurable_poisson k : measurable_fun setT (poisson k).
 Proof.
+rewrite /poisson; apply: measurable_fun_if => //.
+  apply: (measurable_fun_bool true).
+  rewrite (_ : _ @^-1` _ = `]0, +oo[%classic)//.
+  by apply/seteqP; split => x /=; rewrite in_itv/= andbT.
 by apply: measurable_funM => /=;
   [exact: measurable_funM|exact: measurableT_comp].
 Qed.
@@ -1295,3 +1326,574 @@ by rewrite addr_gt0// mulr_gt0//= ?divr_gt0// ?ltr0n// exp_density_gt0 ?ltr0n.
 Qed.
 
 End staton_bus_exponential.
+
+(* X + Y is a measurableType if X and Y are *)
+Canonical sum_pointedType (X Y : pointedType) :=
+  PointedType (X + Y) (@inl X Y point).
+
+Section measurable_sum.
+Context d d' (X : measurableType d) (Y : measurableType d').
+
+Definition measurable_sum : set (set (X + Y)) := setT.
+
+Let sum0 : measurable_sum set0. Proof. by []. Qed.
+
+Let sumC A : measurable_sum A -> measurable_sum (~` A). Proof. by []. Qed.
+
+Let sumU (F : (set (X + Y))^nat) : (forall i, measurable_sum (F i)) ->
+  measurable_sum (\bigcup_i F i).
+Proof. by []. Qed.
+
+HB.instance Definition _ := @isMeasurable.Build default_measure_display (X + Y)%type
+  (Pointed.class _) measurable_sum sum0 sumC sumU.
+
+End measurable_sum.
+
+Lemma measurable_fun_sum dA dB d' (A : measurableType dA) (B : measurableType dB)
+    (Y : measurableType d') (f : A -> Y) (g : B -> Y) :
+  measurable_fun setT f -> measurable_fun setT g ->
+  measurable_fun setT (fun tb : A + B =>
+    match tb with inl a => f a | inr b => g b end).
+Proof.
+move=> mx my/= _ Z mZ /=; rewrite setTI /=.
+rewrite (_ : _ @^-1` Z = inl @` (f @^-1` Z) `|` inr @` (g @^-1` Z)).
+  exact: measurableU.
+apply/seteqP; split.
+  by move=> [a Zxa|b Zxb]/=; [left; exists a|right; exists b].
+by move=> z [/= [a Zxa <-//=]|]/= [b Zyb <-//=].
+Qed.
+
+(* TODO: measurable_fun_if_pair -> measurable_fun_if_pair_bool? *)
+Lemma measurable_fun_if_pair_nat d d' (X : measurableType d)
+    (Y : measurableType d') (f g : X -> Y) (n : nat) :
+  measurable_fun setT f -> measurable_fun setT g ->
+  measurable_fun setT (fun xn => if xn.2 == n then f xn.1 else g xn.1).
+Proof.
+move=> mx my; apply: measurable_fun_ifT => //=.
+- have h : measurable_fun [set: nat] (fun t => t == n) by [].
+  exact: (@measurableT_comp _ _ _ _ _ _ _ _ _ h).
+- exact: measurableT_comp.
+- exact: measurableT_comp.
+Qed.
+
+Module CASE_NAT.
+Section case_nat.
+Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
+
+Section case_nat_ker.
+Variable k : R.-ker X ~> Y.
+
+Definition case_nat_ j : X * nat -> {measure set Y -> \bar R} :=
+  fun xn => if xn.2 == j then k xn.1 else [the measure _ _ of mzero].
+
+Let measurable_fun_case_nat_ m U : measurable U ->
+  measurable_fun setT (case_nat_ m ^~ U).
+Proof.
+move=> mU; rewrite /case_nat_ (_ : (fun _ => _) =
+    (fun x => if x.2 == m then k x.1 U else mzero U)) /=; last first.
+  by apply/funext => -[t b]/=; case: ifPn.
+apply: (@measurable_fun_if_pair_nat _ _ _ _ (k ^~ U) (fun=> mzero U)) => //.
+exact/measurable_kernel.
+Qed.
+
+#[export]
+HB.instance Definition _ j := isKernel.Build _ _ _ _ _
+  (case_nat_ j) (measurable_fun_case_nat_ j).
+End case_nat_ker.
+
+Section sfcase_nat.
+Variable k : R.-sfker X ~> Y.
+
+Let sfcase_nat_ j  : exists2 k_ : (R.-ker _ ~> _)^nat,
+  forall n, measure_fam_uub (k_ n) &
+  forall x U, measurable U -> case_nat_ k j x U = mseries (k_ ^~ x) 0 U.
+Proof.
+have [k_ hk /=] := sfinite_kernel k.
+exists (fun n => [the _.-ker _ ~> _ of case_nat_ (k_ n) j]) => /=.
+  move=> n; have /measure_fam_uubP[r k_r] := measure_uub (k_ n).
+  exists r%:num => /= -[x [|n']]; rewrite /case_nat_//= /mzero//.
+    by case: ifPn => //= ?; rewrite /mzero.
+  by case: ifPn => // ?; rewrite /= /mzero.
+move=> [x b] U mU; rewrite /case_nat_; case: ifPn => hb; first by rewrite hk.
+by rewrite /mseries eseries0.
+Qed.
+
+#[export]
+HB.instance Definition _ j := @Kernel_isSFinite_subdef.Build _ _ _ _ _
+  (case_nat_ k j) (sfcase_nat_ j).
+End sfcase_nat.
+
+Section fkcase_nat.
+Variable k : R.-fker X ~> Y.
+
+Let case_nat_uub (m : nat) : measure_fam_uub (case_nat_ k m).
+Proof.
+have /measure_fam_uubP[M hM] := measure_uub k.
+exists M%:num => /= -[]; rewrite /case_nat_ => t [|m']/=.
+  by case: ifPn => //= ?; rewrite /mzero//=.
+by case: ifPn => //= ?; rewrite /mzero//=.
+Qed.
+
+#[export]
+HB.instance Definition _ j := Kernel_isFinite.Build _ _ _ _ _
+  (case_nat_ k j) (case_nat_uub j).
+End fkcase_nat.
+
+End case_nat.
+End CASE_NAT.
+
+Import CASE_NAT.
+
+Section case_nat.
+Context d d' (T : measurableType d) (T' : measurableType d') (R : realType).
+
+Import CASE_NAT.
+
+(* case analysis on the nat datatype *)
+Definition case_nat (t : R.-sfker T ~> nat) (u_ : (R.-sfker T ~> T')^nat)
+    : R.-sfker T ~> T' :=
+  [the R.-sfker T ~> nat of t] \;
+  [the R.-sfker T * nat ~> T' of
+    kseries (fun n => [the R.-sfker T * nat ~> T' of case_nat_ (u_ n) n])].
+
+End case_nat.
+
+Definition measure_sum_display :
+  (measure_display * measure_display) -> measure_display.
+Proof. exact. Qed.
+
+Definition image_classes d1 d2
+    (T1 : measurableType d1) (T2 : measurableType d2) (T : Type)
+    (f1 : T1 -> T) (f2 : T2 -> T)  :=
+  <<s image_class setT f1 measurable `|`
+      image_class setT f2 measurable >>.
+
+Section sum_salgebra_instance.
+Context d1 d2 (T1 : measurableType d1) (T2 : measurableType d2).
+Let f1 : T1 -> T1 + T2 := @inl T1 T2.
+Let f2 : T2 -> T1 + T2 := @inr T1 T2.
+
+Lemma sum_salgebra_set0 : image_classes f1 f2 (set0 : set (T1 + T2)).
+Proof. exact: sigma_algebra0. Qed.
+
+Lemma sum_salgebra_setC A : image_classes f1 f2 A ->
+  image_classes f1 f2 (~` A).
+Proof. exact: sigma_algebraC. Qed.
+
+Lemma sum_salgebra_bigcup (F : _^nat) : (forall i, image_classes f1 f2 (F i)) ->
+  image_classes f1 f2 (\bigcup_i (F i)).
+Proof. exact: sigma_algebra_bigcup. Qed.
+
+HB.instance Definition sum_salgebra_mixin :=
+  @isMeasurable.Build (measure_sum_display (d1, d2))
+    (T1 + T2)%type (Pointed.class _) (image_classes f1 f2)
+    (sum_salgebra_set0) (sum_salgebra_setC) (sum_salgebra_bigcup).
+
+End sum_salgebra_instance.
+Reserved Notation "p .-sum" (at level 1, format "p .-sum").
+Reserved Notation "p .-sum.-measurable"
+ (at level 2, format "p .-sum.-measurable").
+Notation "p .-sum" := (measure_sum_display p) : measure_display_scope.
+Notation "p .-sum.-measurable" :=
+  ((p.-sum).-measurable : set (set (_ + _))) :
+    classical_set_scope.
+
+Module CASE_SUM.
+
+Section case_suml.
+Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
+Let A : measurableType _ := unit.
+
+Section kcase_suml.
+Variable k : R.-ker X ~> Y.
+
+Definition case_suml (a : A) : X * A -> {measure set Y -> \bar R} :=
+  fun xa => k xa.1.
+
+Let measurable_fun_case_suml a U : measurable U ->
+  measurable_fun setT (case_suml a ^~ U).
+Proof.
+move=> /= mU; rewrite /case_suml.
+have h := measurable_kernel k _ mU.
+rewrite (_ : (fun x : X * unit => k x.1 U) = (fun x : X => k x U) \o fst) //.
+by apply: measurableT_comp => //.
+Qed.
+
+#[export]
+HB.instance Definition _ a := isKernel.Build _ _ _ _ _
+  (case_suml a) (measurable_fun_case_suml a).
+End kcase_suml.
+
+Section sfkcase_suml.
+Variable k : R.-sfker X ~> Y.
+
+Let sfinite_case_suml (a : A) : exists2 k_ : (R.-ker _ ~> _)^nat,
+  forall n, measure_fam_uub (k_ n) &
+  forall x U, measurable U -> case_suml k a x U = mseries (k_ ^~ x) 0 U.
+Proof.
+have [k_ hk /=] := sfinite_kernel k.
+exists (fun n => [the _.-ker _ ~> _ of case_suml (k_ n) a]) => /=.
+  move=> n; have /measure_fam_uubP[r k_r] := measure_uub (k_ n).
+  by exists r%:num => /= -[x []]; rewrite /case_suml//= /mzero//.
+move=> [x b] U mU; rewrite /case_suml /=.
+by rewrite /mseries hk.
+Qed.
+
+#[export]
+HB.instance Definition _ (a : A) := @Kernel_isSFinite_subdef.Build _ _ _ _ _
+  (case_suml k a) (sfinite_case_suml a).
+End sfkcase_suml.
+
+Section fkcase_suml.
+Variable k : R.-fker X ~> Y.
+
+Let case_suml_uub (a : A) : measure_fam_uub (case_suml k a).
+Proof.
+have /measure_fam_uubP[M hM] := measure_uub k.
+by exists M%:num => /= -[]; rewrite /case_suml.
+Qed.
+
+#[export]
+HB.instance Definition _ a := Kernel_isFinite.Build _ _ _ _ _
+  (case_suml k a) (case_suml_uub a).
+End fkcase_suml.
+
+End case_suml.
+
+Section case_sumr.
+Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
+Let B : measurableType _ := bool.
+
+Section kcase_sumr.
+Variable k : R.-ker X ~> Y.
+
+Definition case_sumr (b : B) : X * B -> {measure set Y -> \bar R} :=
+  fun xa => if xa.2 == b then k xa.1 else [the measure _ _ of mzero].
+
+Let measurable_fun_case_sumr b U : measurable U ->
+  measurable_fun setT (case_sumr b ^~ U).
+Proof.
+move=> /= mU; rewrite /case_suml.
+have h := measurable_kernel k _ mU.
+rewrite /case_sumr.
+rewrite (_ : (fun x : X * bool => case_sumr b x U) =
+  (fun x : X * bool => (if x.2 == b then k x.1 U else [the {measure set Y -> \bar R} of mzero] U))); last first.
+  apply/funext => x.
+  rewrite /case_sumr.
+  by case: ifPn.
+apply: measurable_fun_ifT => //=.
+  rewrite (_ : (fun t : X * bool => t.2 == b) = (fun t : bool => t == b) \o snd)//.
+  apply: measurableT_comp => //.
+rewrite (_ : (fun t : X * bool => k t.1 U) = (fun t : X => k t U) \o fst)//.
+by apply: measurableT_comp => //.
+Qed.
+
+#[export]
+HB.instance Definition _ b := isKernel.Build _ _ _ _ _
+  (case_sumr b) (measurable_fun_case_sumr b).
+End kcase_sumr.
+
+Section sfkcase_sumr.
+Variable k : R.-sfker X ~> Y.
+
+Let sfinite_case_sumr b : exists2 k_ : (R.-ker _ ~> _)^nat,
+  forall n, measure_fam_uub (k_ n) &
+  forall x U, measurable U -> case_sumr k b x U = mseries (k_ ^~ x) 0 U.
+Proof.
+have [k_ hk /=] := sfinite_kernel k.
+exists (fun n => [the _.-ker _ ~> _ of case_sumr (k_ n) b]) => /=.
+  move=> n; have /measure_fam_uubP[r k_r] := measure_uub (k_ n).
+  by exists r%:num => /= -[x []]; rewrite /case_sumr//=; case: ifPn => // _;
+    rewrite /= (le_lt_trans _ (k_r x))// /mzero//.
+move=> [x [|]] U mU; rewrite /case_sumr /=; case: b => //=; rewrite ?hk//;
+by rewrite /mseries/= eseries0.
+Qed.
+
+#[export]
+HB.instance Definition _ b := @Kernel_isSFinite_subdef.Build _ _ _ _ _
+  (case_sumr k b) (sfinite_case_sumr b).
+End sfkcase_sumr.
+
+Section fkcase_sumr.
+Variable k : R.-fker X ~> Y.
+
+Let case_sumr_uub b : measure_fam_uub (case_sumr k b).
+Proof.
+have /measure_fam_uubP[M hM] := measure_uub k.
+by exists M%:num => /= -[]; rewrite /case_sumr => x [|] /=; case: b => //=;
+  rewrite (le_lt_trans _ (hM x))// /mzero.
+Qed.
+
+#[export]
+HB.instance Definition _ b := Kernel_isFinite.Build _ _ _ _ _
+  (case_sumr k b) (case_sumr_uub b).
+End fkcase_sumr.
+
+End case_sumr.
+End CASE_SUM.
+
+Section case_sum'.
+
+Section kcase_sum'.
+Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
+Let A : measurableType _ := unit.
+Let B : measurableType _ := bool.
+Variables (k : (A + B)%type -> R.-sfker X ~> Y).
+
+Definition case_sum' : X * (A + B)%type -> {measure set Y -> \bar R} :=
+  fun xab => match xab with
+             | (x, inl a) => CASE_SUM.case_suml (k xab.2) a (x, a)
+             | (x, inr b) => CASE_SUM.case_sumr (k xab.2) b (x, b)
+             end.
+
+Let measurable_fun_case_sum' U : measurable U ->
+  measurable_fun setT (case_sum' ^~ U).
+Proof.
+rewrite /= => mU.
+apply: (measurability (ErealGenInftyO.measurableE R)) => //.
+move=> /= _ [_ [x ->] <-]; apply: measurableI => //.
+rewrite /case_sum' /CASE_SUM.case_suml /CASE_SUM.case_sumr /=.
+rewrite (_ :
+  (fun x : X * (unit + bool) => (let (x0, s) := x in
+   match s with inl _ => k x.2 x0 | inr b => if b == b then k x.2 x0 else mzero
+   end) U) =
+  (fun x : X * (unit + bool) => k x.2 x.1 U)); last first.
+  by apply/funext => -[x1 [a|b]] //; rewrite eqxx.
+rewrite (_ : _ @^-1` _ =
+  ([set x1 | k (inl tt) x1 U < x%:E] `*` inl @` [set tt]) `|`
+  ([set x1 | k (inr false) x1 U < x%:E] `*` inr @` [set false]) `|`
+  ([set x1 | k (inr true) x1 U < x%:E] `*` inr @` [set true])); last first.
+  apply/seteqP; split.
+  - move=> z /=; rewrite in_itv/=; move: z => [z [[]|[|]]]//= ?.
+    + by do 2 left; split => //; exists tt.
+    + by right; split => //; exists true.
+    + by left; right; split => //; exists false.
+  - move=> z /=; rewrite in_itv/=; move: z => [z [[]|[|]]]//=.
+    - move=> [[[]//|]|].
+      + by move=> [_ []].
+      + by move=> [_ []].
+    - move=> [[|]|[]//].
+      + by move=> [_ []].
+      + by move=> [_ [] [|]].
+    - move=> [[|[]//]|].
+      + by move=> [_ []].
+      + by move=> [_ [] [|]].
+pose h1 := [set xub : X * (unit + bool) | k (inl tt) xub.1 U < x%:E].
+have mh1 : measurable h1.
+  rewrite -[X in measurable X]setTI; apply: emeasurable_fun_infty_o => //=.
+  have H : measurable_fun [set: X] (fun x => k (inl tt) x U) by exact/measurable_kernel.
+  move=> _ /= C mC; rewrite setTI.
+  have := H measurableT _ mC; rewrite setTI => {}H.
+  rewrite [X in measurable X](_ : _ = ((fun x => k (inl tt) x U) @^-1` C) `*` setT)//.
+    exact: measurableM.
+  by apply/seteqP; split => [z//=| z/= []].
+set h2 := [set xub : X * (unit + bool)| k (inr false) xub.1 U < x%:E].
+have mh2 : measurable h2.
+  rewrite -[X in measurable X]setTI.
+  apply: emeasurable_fun_infty_o => //=.
+  have H : measurable_fun [set: X] (fun x => k (inr false) x U) by exact/measurable_kernel.
+  move=> _ /= C mC; rewrite setTI.
+  have := H measurableT _ mC; rewrite setTI => {}H.
+  rewrite [X in measurable X](_ : _ = ((fun x => k (inr false) x U) @^-1` C) `*` setT)//.
+    exact: measurableM.
+  by apply/seteqP; split => [z //=|z/= []].
+set h3 := [set xub : X * (unit + bool)| k (inr true) xub.1 U < x%:E].
+have mh3 : measurable h3.
+  rewrite -[X in measurable X]setTI.
+  apply: emeasurable_fun_infty_o => //=.
+  have H : measurable_fun [set: X] (fun x => k (inr true) x U) by exact/measurable_kernel.
+  move=> _ /= C mC; rewrite setTI.
+  have := H measurableT _ mC; rewrite setTI => {}H.
+  rewrite [X in measurable X](_ : _ = ((fun x => k (inr true) x U) @^-1` C) `*` setT)//.
+    exact: measurableM.
+  by apply/seteqP; split=> [z//=|z/= []].
+apply: measurableU.
+- apply: measurableU.
+  + apply: measurableM => //.
+    rewrite [X in measurable X](_ : _ = ysection h1 (inl tt))//.
+    * by apply: measurable_ysection.
+    * by apply/seteqP; split => z /=; rewrite /ysection /= inE.
+  + apply: measurableM => //.
+    rewrite [X in measurable X](_ : _ = ysection h2 (inr false))//.
+    * by apply: measurable_ysection.
+    * by apply/seteqP; split => z /=; rewrite /ysection /= inE.
+- apply: measurableM => //.
+  rewrite [X in measurable X](_ : _ = ysection h3 (inr true))//.
+  + by apply: measurable_ysection.
+  + by apply/seteqP; split => z /=; rewrite /ysection /= inE.
+Qed.
+
+#[export]
+HB.instance Definition _ := isKernel.Build _ _ _ _ _
+  (case_sum') (measurable_fun_case_sum').
+End kcase_sum'.
+
+Section sfkcase_sum'.
+Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
+Let A : measurableType _ := unit.
+Let B : measurableType _ := bool.
+Variables (k : (A + B)%type -> R.-sfker X ~> Y).
+
+Let sfinite_case_sum' : exists2 k_ : (R.-ker _ ~> _)^nat,
+  forall n, measure_fam_uub (k_ n) &
+  forall x U, measurable U -> case_sum' k x U = mseries (k_ ^~ x) 0 U.
+Proof.
+rewrite /=.
+set f : A + B -> (R.-fker _ ~> _)^nat :=
+  fun ab : A + B => sval (cid (sfinite_kernel (k ab))).
+set Hf := fun ab : A + B => svalP (cid (sfinite_kernel (k ab))).
+rewrite /= in Hf.
+exists (fun n => [the R.-ker _ ~> _ of case_sum' (fun ab => [the R.-fker _ ~> _ of f ab n])]).
+  move=> n /=.
+  have [rtt Hrtt] := measure_uub (f (inl tt) n).
+  have [rfalse Hrfalse] := measure_uub (f (inr false) n).
+  have [rtrue Hrtrue] := measure_uub (f (inr true) n).
+  exists (maxr rtt (maxr rfalse rtrue)) => //= -[x [[]|[|]]] /=.
+  by rewrite 2!EFin_max lt_maxr Hrtt.
+  by rewrite /CASE_SUM.case_sumr /= 2!EFin_max 2!lt_maxr Hrtrue 2!orbT.
+  by rewrite /CASE_SUM.case_sumr /= 2!EFin_max 2!lt_maxr Hrfalse orbT.
+move=> [x [[]|[|]]] U mU/=-.
+by rewrite (Hf (inl tt) x _ mU).
+by rewrite (Hf (inr true) x _ mU).
+by rewrite (Hf (inr false) x _ mU).
+Qed.
+
+#[export]
+HB.instance Definition _ := @Kernel_isSFinite_subdef.Build _ _ _ _ _
+  (case_sum' k) (sfinite_case_sum').
+End sfkcase_sum'.
+
+End case_sum'.
+
+Section case_sum.
+Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
+Let A : measurableType _ := unit.
+Let B : measurableType _ := bool.
+
+Import CASE_SUM.
+
+(* case analysis on the datatype unit + bool *)
+Definition case_sum (f : R.-sfker X ~> (A + B)%type)
+    (k : (A + B)%type-> R.-sfker X ~> Y) : R.-sfker X ~> Y :=
+  [the R.-sfker X ~> (A + B)%type of f] \;
+  [the R.-sfker X * (A + B) ~> Y of case_sum' k].
+
+End case_sum.
+
+(* counting measure as a kernel *)
+Section kcounting.
+Context d (G : measurableType d) (R : realType).
+
+Definition kcounting : G -> {measure set nat -> \bar R} := fun=> counting.
+
+Let mkcounting U : measurable U -> measurable_fun setT (kcounting ^~ U).
+Proof. by []. Qed.
+
+HB.instance Definition _ := isKernel.Build _ _ _ _ _ kcounting mkcounting.
+
+Let sfkcounting : exists2 k_ : (R.-ker _ ~> _)^nat,
+  forall n, measure_fam_uub (k_ n) &
+  forall x U, measurable U -> kcounting x U = mseries (k_ ^~ x) 0 U.
+Proof.
+exists (fun n => [the R.-fker _ ~> _ of
+  @kdirac _ _ G nat R _ (@measurable_cst _ _ _ _ setT n)]).
+  by move=> n /=; exact: measure_uub.
+by move=> g U mU; rewrite /kcounting/= counting_dirac.
+Qed.
+
+HB.instance Definition _ :=
+  Kernel_isSFinite_subdef.Build _ _ _ _ R kcounting sfkcounting.
+
+End kcounting.
+
+(* formalization of the iterate construct of Staton ESOP 2017, Sect. 4.2 *)
+Section iterate.
+Context d {G : measurableType d} {R : realType}.
+Let A : measurableType _ := unit.
+Let B : measurableType _ := bool.
+
+(* formalization of iterate^n
+   Gamma |-p iterate^n t from x = u : B *)
+Variables (t : R.-sfker (G * A) ~> (A + B)%type)
+          (u : G -> A) (mu : measurable_fun setT u).
+
+Fixpoint iterate_ n : R.-sfker G ~> B :=
+  match n with
+  | 0%N => case_sum (letin (ret mu) t)
+             (fun x => match x with
+                       | inl a => fail
+                       | inr b => ret (measurable_cst b)
+                       end)
+  | m.+1 => case_sum (letin (ret mu) t)
+              (fun x => match x with
+                        | inl a => iterate_ m
+                        | inr b => fail
+                        end)
+  end.
+
+(* formalization of iterate (A = unit, B = bool)
+ Gamma, x : A |-p t : A + B    Gamma |-d u : A
+-----------------------------------------------
+    Gamma |-p iterate t from x = u : B *)
+Definition iterate : R.-sfker G ~> B := case_nat (kcounting R) iterate_.
+
+End iterate.
+
+(* an s-finite kernel to test that two expressions are different *)
+Section lift_neq.
+Context {R : realType} d (G : measurableType d).
+Variables (f : G -> bool) (g : G -> bool).
+
+Definition flift_neq  : G -> bool := fun x' => f x' != g x'.
+
+Hypotheses (mf : measurable_fun setT f) (mg : measurable_fun setT g).
+
+(* see also emeasurable_fun_neq *)
+Lemma measurable_fun_flift_neq : measurable_fun setT flift_neq.
+Proof.
+apply: (measurable_fun_bool true).
+rewrite /flift_neq /= (_ : _ @^-1` _ = ([set x | f x] `&` [set x | ~~ g x]) `|`
+                                       ([set x | ~~ f x] `&` [set x | g x])).
+  apply: measurableU; apply: measurableI.
+  - by rewrite -[X in measurable X]setTI; exact: mf.
+  - rewrite [X in measurable X](_ : _ = ~` [set x | g x]); last first.
+      by apply/seteqP; split => x /= /negP.
+    by apply: measurableC; rewrite -[X in measurable X]setTI; exact: mg.
+  - rewrite [X in measurable X](_ : _ = ~` [set x | f x]); last first.
+      by apply/seteqP; split => x /= /negP.
+    by apply: measurableC; rewrite -[X in measurable X]setTI; exact: mf.
+  - by rewrite -[X in measurable X]setTI; exact: mg.
+by apply/seteqP; split => x /=; move: (f x) (g x) => [|] [|]//=; intuition.
+Qed.
+
+Definition lift_neq : R.-sfker G ~> bool := ret measurable_fun_flift_neq.
+
+End lift_neq.
+
+Section von_neumann_trick.
+Context d {T : measurableType d} {R : realType}.
+
+Definition kinrtt {d1 d2} {T1 : measurableType d1} {T2 : measurableType d2} :=
+  @measurable_cst _ _ T1 _ setT (@inl unit T2 tt).
+
+Definition finlb d1 d2 (T1 : measurableType d1) (T2 : measurableType d2)
+    : T1 * bool -> T2 + bool := fun t1b => inr t1b.2.
+
+Lemma minlb {d1 d2} {T1 : measurableType d1} {T2 : measurableType d2} :
+  measurable_fun setT (@finlb _ _ T1 T2).
+Proof. exact: measurableT_comp. Qed.
+
+Variable (D : pprobability bool R (* biased coin *)).
+
+Definition von_neumann_trick' : R.-sfker (T * unit) ~> (unit + bool)%type :=
+  letin (sample_cst D)
+    (letin (sample_cst D)
+      (letin (lift_neq macc1of3 macc2of3)
+        (ite (macc3of4)
+           (letin (ret macc1of4) (ret minlb))
+           (ret kinrtt)))).
+
+Definition von_neumann_trick : R.-sfker T ~> bool :=
+  iterate von_neumann_trick' ktt.
+
+End von_neumann_trick.
