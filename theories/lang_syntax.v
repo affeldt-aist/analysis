@@ -378,9 +378,9 @@ Inductive exp : flag -> ctx -> typ -> Type :=
 | exp_sample g t : exp D g (Prob t) -> exp P g t
 | exp_score g : exp D g Real -> exp P g Unit
 | exp_return g t : exp D g t -> exp P g t
-| exp_if dp g t : exp D g Bool -> exp dp g t -> exp dp g t -> exp dp g t
-| exp_weak dp g h t x : exp dp (g ++ h) t ->
-  x.1 \notin dom (g ++ h) -> exp dp (g ++ x :: h) t.
+| exp_if z g t : exp D g Bool -> exp z g t -> exp z g t -> exp z g t
+| exp_weak z g h t x : exp z (g ++ h) t ->
+  x.1 \notin dom (g ++ h) -> exp z (g ++ x :: h) t.
 Arguments exp_var {g} _ {t}.
 
 Definition exp_var' (str : string) (t : typ) (g : find str t) :=
@@ -405,8 +405,8 @@ Arguments exp_letin {R g} & {_ _}.
 Arguments exp_sample {R g t}.
 Arguments exp_score {R g}.
 Arguments exp_return {R g} & {_}.
-Arguments exp_if {R dp g t}.
-Arguments exp_weak {R} dp g h {t} x.
+Arguments exp_if {R z g t}.
+Arguments exp_weak {R} z g h {t} x.
 Arguments exp_var' {R} str {t} g.
 
 Declare Custom Entry expr.
@@ -418,8 +418,8 @@ Notation "r ':R'" := (@exp_real _ _ r%R)
   (in custom expr at level 1, format "r :R") : lang_scope.
 Notation "'return' e" := (@exp_return _ _ _ e)
   (in custom expr at level 2) : lang_scope.
-Notation "% str" := (@exp_var _ _ str%string _ erefl)
-  (in custom expr at level 1, format "% str") : lang_scope.
+(*Notation "% str" := (@exp_var _ _ str%string _ erefl)
+  (in custom expr at level 1, format "% str") : lang_scope.*)
 (* Notation "% str H" := (@exp_var _ _ str%string _ H)
   (in custom expr at level 1, format "% str H") : lang_scope. *)
 Notation "# str" := (@exp_var' _ str%string _ _)
@@ -595,8 +595,8 @@ Inductive evalD : forall g t, exp D g t ->
 (* | eval_var g str : let i := index str (dom g) in
   [% str] -D> acc_typ (map snd g) i ; measurable_acc_typ (map snd g) i *)
 
-| eval_varH g str H : let i := index str (dom g) in
-  (exp_var str H) -D> acc_typ (map snd g) i ; measurable_acc_typ (map snd g) i
+| eval_var g x H : let i := index x (dom g) in
+  exp_var x H -D> acc_typ (map snd g) i ; measurable_acc_typ (map snd g) i
 
 | eval_bernoulli g (r : {nonneg R}) (r1 : (r%:num <= 1)%R) :
   (exp_bernoulli r r1 : exp D g _) -D> cst (bernoulli r1) ;
@@ -909,16 +909,14 @@ all: rewrite {g t e u v eu}.
   by rewrite (ih _ H4).
 Qed.
 
-Definition eval_total_statement dp g t : @exp R dp g t -> Prop :=
-  match dp with
+Lemma eval_total z g t (e : @exp R z g t) :
+  (match z with
   | D => fun e => exists f mf, e -D> f ; mf
   | P => fun e => exists k, e -P> k
-  end.
-
-Lemma eval_total dp g t (e : @exp R dp g t) : eval_total_statement e.
+  end) e.
 Proof.
 elim: e.
-all: rewrite {dp g t}.
+all: rewrite {z g t}.
 - by do 2 eexists; exact: eval_unit.
 - by do 2 eexists; exact: eval_bool.
 - by do 2 eexists; exact: eval_real.
@@ -928,7 +926,7 @@ all: rewrite {dp g t}.
   by exists (fst \o f); eexists; exact: eval_proj1.
 - move=> g t1 t2 e [f [mf H]].
   by exists (snd \o f); eexists; exact: eval_proj2.
-- by move=> g x t tE; subst t; eexists; eexists; exact: eval_varH.
+- by move=> g x t tE; subst t; eexists; eexists; exact: eval_var.
 - by move=> r r1; eexists; eexists; exact: eval_bernoulli.
 - move=> g h e [f [mf H]].
   by exists (poisson h \o f); eexists; exact: eval_poisson.
@@ -1058,15 +1056,16 @@ Proof.
 by move=> f mf; apply/execD_evalD/eval_proj2; exact: evalD_execD.
 Qed.
 
-Lemma execD_var g str : let i := index str (dom g) in
-  @execD g _ [% str] = existT _ (acc_typ (map snd g) i)
+Lemma execD_var_erefl g str : let i := index str (dom g) in
+  @execD g _ (exp_var str erefl) = existT _ (acc_typ (map snd g) i)
                       (measurable_acc_typ (map snd g) i).
-Proof. by move=> i; apply/execD_evalD; exact: eval_varH. Qed.
+Proof. by move=> i; apply/execD_evalD; exact: eval_var. Qed.
 
-Lemma execD_varH g str (H : nth Unit (map snd g) (index str (dom g)) = lookup Unit g str) : let i := index str (dom g) in
-  @execD g _ (exp_var str H) = existT _ (acc_typ (map snd g) i)
-                      (measurable_acc_typ (map snd g) i).
-Proof. by move=> i; apply/execD_evalD; exact: eval_varH. Qed.
+Lemma execD_var g x (H : nth Unit (map snd g) (index x (dom g)) = lookup Unit g x) :
+  let i := index x (dom g) in
+  @execD g _ (exp_var x H) = existT _ (acc_typ (map snd g) i)
+                                      (measurable_acc_typ (map snd g) i).
+Proof. by move=> i; apply/execD_evalD; exact: eval_var. Qed.
 
 Lemma execD_bernoulli g r (r1 : (r%:num <= 1)%R) :
   @execD g _ (exp_bernoulli r r1) =
@@ -1115,6 +1114,6 @@ Lemma execP_weak g h x t (e : exp P (g ++ h) t)
 Proof. exact/execP_evalP/evalP_weak/evalP_execP. Qed.
 
 End execution_functions.
-Arguments execD_var {R g} str.
+Arguments execD_var_erefl {R g} str.
 Arguments execP_weak {R} g h x {t} e.
 Arguments exp_var'E {R} str.

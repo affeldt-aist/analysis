@@ -50,7 +50,7 @@ Structure tagged_ctx := Tag {untag : ctx}.
 
 Structure find str t := Find {
   ctx_of : tagged_ctx ;
-  ctx_prf : t = lookup (untag ctx_of) str}.
+  #[canonical=no] ctx_prf : t = lookup (untag ctx_of) str}.
 
 Lemma ctx_prf_head str t g : t = lookup ((str, t) :: g) str.
 Proof. by rewrite /lookup /= !eqxx. Qed.
