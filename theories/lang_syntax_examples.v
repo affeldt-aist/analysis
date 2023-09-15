@@ -463,14 +463,14 @@ Section letinA.
 Local Open Scope lang_scope.
 Variable R : realType.
 
-Lemma letinA g x y t1 t2 t3 (xg : x \notin dom ((y, t2) :: g))
+Lemma letinA g x y t1 t2 t3 (xyg : x \notin dom ((y, t2) :: g))
   (e1 : @exp R P g t1)
   (e2 : exp P [:: (x, t1) & g] t2)
   (e3 : exp P [:: (y, t2) & g] t3) :
   forall U, measurable U ->
   execP [let x := e1 in
          let y := e2 in
-         {@exp_weak _ _ [:: (y, t2)] _ _ (x, t1) e3 xg}] ^~ U =
+         {@exp_weak _ _ [:: (y, t2)] _ _ (x, t1) e3 xyg}] ^~ U =
   execP [let y :=
            let x := e1 in e2 in
          e3] ^~ U.
@@ -711,18 +711,18 @@ Variable (R : realType).
 
 Require Import Classical_Prop.
 
-Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   (x y : string)
-  (yx : infer (y != x)) (xy : infer (x != y))
-  (xl : x \notin dom g) (yl : y \notin dom g) :
+  (xy : infer (x != y)) (yx : infer (y != x))
+  (xg : x \notin dom g) (yg : y \notin dom g) :
   forall U, measurable U ->
   execP [
     let x := e1 in
-    let y := {exp_weak _ [::] _ (x, t1) e2 xl} in
+    let y := {exp_weak _ [::] _ (x, t1) e2 xg} in
     return (#x, #y)] ^~ U =
   execP [
     let y := e2 in
-    let x := {exp_weak _ [::] _ (y, t2) e1 yl} in
+    let x := {exp_weak _ [::] _ (y, t2) e1 yg} in
     return (#x, #y)] ^~ U.
 Proof.
 move=> U mU; apply/funext => z.
@@ -755,17 +755,17 @@ rewrite !exp_var'E.
   by have -> : measurable_acc_typ [:: t1, t2 & map snd g] 1 = macc1of3' by [].
 Qed.
 
-Example letinC_ground_variables g t1 t2 (e1 : @exp R P g t1) (e2 : @exp R P g t2)
+Example letinC_ground_variables g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   (x := "x") (y := "y")
-  (xl : x \notin dom g) (yl : y \notin dom g) :
+  (xg : x \notin dom g) (yg : y \notin dom g) :
   forall U, measurable U ->
   execP [
     let x := e1 in
-    let y := {exp_weak _ [::] _ (x, t1) e2 xl} in
+    let y := {exp_weak _ [::] _ (x, t1) e2 xg} in
     return (#x, #y)] ^~ U =
   execP [
     let y := e2 in
-    let x := {exp_weak _ [::] _ (y, t2) e1 yl} in
+    let x := {exp_weak _ [::] _ (y, t2) e1 yg} in
     return (#x, #y)] ^~ U.
 Proof. by move=> U mU; rewrite letinC. Qed.
 
