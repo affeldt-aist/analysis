@@ -263,7 +263,7 @@ Lemma exec_sample_and0 (A : set bool) :
                                              (1 - 1 / 6)%:E * \d_false A)%E.
 Proof.
 rewrite !execP_letin !execP_sample !execD_bernoulli execP_return /=.
-rewrite (@execD_bin _ _ binop_and) !exp_var'E (execD_var_erefl "x") (execD_var_erefl "y") /=.
+rewrite !(@execD_bin _ _ binop_and) !exp_var'E (execD_var_erefl "x") (execD_var_erefl "y") /=.
 rewrite letin'E integral_measure_add//= !ge0_integral_mscale//= /onem.
 rewrite !integral_dirac//= !diracT !mul1e.
 rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
@@ -297,12 +297,6 @@ rewrite !muleDr// -!addeA.
 by congr (_ + _)%E; rewrite ?addeA !muleA -?muleDl//;
 congr (_ * _)%E; congr (_%:E); field.
 Qed.
-
-Definition sample_add_syntax0 : @exp R _ [::] _ :=
-  [let "x" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
-   let "y" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
-   let "z" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
-   return #{"x"} && #{"y"} && #{"z"}].
 
 End sample_pair.
 
@@ -447,6 +441,81 @@ rewrite muleDl//; congr (_ + _)%E;
 Qed.
 
 End bernoulli_examples.
+
+Section binomial_examples.
+Context {R : realType}.
+Open Scope lang_scope.
+Open Scope ring_scope.
+
+Definition sample_binomial3 : @exp R _ [::] _ :=
+  [let "x" := Sample {exp_binomial 3 (1 / 2)%:nng (p1S 1)} in
+   return #{"x"}].
+
+Open Scope real_scope.
+
+Lemma measurable_fun_dirac (U : set (@mtyp R Real)) : measurable U ->
+  measurable_fun [set: mR R] (fun x : mR R => \d_x U : \bar R).
+Proof.
+move=> mU _ /= Y mY; rewrite setTI.
+have [Y0|Y0] := boolP (0%E \in Y).
+  have [Y1|Y1] := boolP (1%E \in Y).
+  + rewrite [X in measurable X](_ : _ = setT)//.
+    apply/seteqP; split => //= r _ /=.
+    rewrite diracE; case: (_ \in _) => //=.
+    by rewrite inE in Y1.
+    by rewrite inE in Y0.
+  + rewrite [X in measurable X](_ : _ = ~` U)//.
+      exact: measurableC.
+    apply/seteqP; split => [//= r /= YrU|r].
+    move/mem_set; move: YrU; rewrite diracE.
+    case: (_ \in _) => //=.
+    move/mem_set.
+    by rewrite (negbTE Y1).
+    move/mem_set.
+    rewrite inE/=.
+    rewrite -notin_set.
+    rewrite diracE.
+    case: (_ \in _) => //= _.
+    by rewrite inE in Y0.
+  have [Y1|Y1] := boolP (1%E \in Y).
+  admit.
+  admit.
+Admitted.
+
+Lemma exec_sample_binomial3 t U : measurable U ->
+  execP sample_binomial3 t U = ((1 / 8)%:E * \d_(0%:R : mR R) U +
+                                (3 / 8)%:E * \d_(1%:R : mR R) U +
+                                (3 / 8)%:E * \d_(2%:R : mR R) U +
+                                (1 / 8)%:E * \d_(3%:R : mR R) U)%E.
+Proof.
+move=> mU; rewrite /sample_binomial3 execP_letin execP_sample execP_return.
+rewrite exp_var'E (execD_var_erefl "x") !execD_binomial/=.
+rewrite letin'E ge0_integral_measure_sum//=; last first.
+  exact: measurable_fun_dirac.
+rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=; [|exact: measurable_fun_dirac..].
+rewrite !integral_dirac// /bump; [|exact: measurable_fun_dirac..].
+rewrite indicT !binS/= !bin0 bin1 bin2 bin_small// addn0.
+rewrite expr0 mulr1 mul1r subn0.
+rewrite -2!addeA !mul1r !mul1e.
+congr _%E.
+congr (_ + _)%:E.
+  congr (_ * _).
+  by field.
+congr (_ + _).
+  congr (_ * _).
+  rewrite expr1 /onem.
+  by field.
+congr (_ + _).
+  congr (_ * _).
+  rewrite /onem/=.
+  by field.
+rewrite addr0.
+congr (_ * _).
+rewrite /onem/=.
+by field.
+Qed.
+
+End binomial_examples.
 
 Section hard_constraint'.
 Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
@@ -772,6 +841,9 @@ Variable (R : realType).
 
 Require Import Classical_Prop. (* TODO: mv *)
 
+Let weak_head g {t1 t2} x (e : @exp R P g t2) (xg : x \notin dom g) :=
+  exp_weak P [::] _ (x, t1) e xg.
+
 Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   (x y : string)
   (xy : infer (x != y)) (yx : infer (y != x))
@@ -779,11 +851,11 @@ Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   forall U, measurable U ->
   execP [
     let x := e1 in
-    let y := {exp_weak _ [::] _ (x, t1) e2 xg} in
+    let y := {weak_head e2 xg} in
     return (#x, #y)] ^~ U =
   execP [
     let y := e2 in
-    let x := {exp_weak _ [::] _ (y, t2) e1 yg} in
+    let x := {weak_head e1 yg} in
     return (#x, #y)] ^~ U.
 Proof.
 move=> U mU; apply/funext => z.
