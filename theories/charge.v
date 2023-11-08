@@ -876,7 +876,7 @@ Proof. by move=> U mU; rewrite fin_num_measure. Qed.
 HB.instance Definition _ := @Measure_isFinite.Build _ _ _
   jordan_neg finite_jordan_neg.
 
-Lemma jordan_decomp (A : set T) (mA : measurable A) : nu E = (cadd jordan_pos (cscale (-1) jordan_neg)) E.
+Lemma jordan_decomp (A : set T) (mA : measurable A) : nu A = (cadd jordan_pos (cscale (-1) jordan_neg)) A.
 Proof.
 rewrite /jordan_pos /jordan_neg/= /measure_of_charge/= charge_addE/=.
 rewrite /cscale/= /crestr0/= -[in LHS](setIT E) mem_set//.
