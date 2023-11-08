@@ -411,7 +411,8 @@ Qed.
 HB.instance Definition _ := isCharge.Build _ _ _ cadd
   cadd0 cadd_finite cadd_sigma_additive.
 
-Lemma charge_addE : forall E,measurable E -> [ the charge _ _ of cadd] E = m1 E + m2 E.
+(* needed? *)
+Lemma charge_addE : forall E,[ the charge _ _ of cadd] E = m1 E + m2 E.
 Proof. by rewrite /cadd. Qed.
 
 End charge_add.
@@ -875,60 +876,44 @@ Proof. by move=> U mU; rewrite fin_num_measure. Qed.
 HB.instance Definition _ := @Measure_isFinite.Build _ _ _
   jordan_neg finite_jordan_neg.
 
+(*
 Lemma jordan_decomp : nu = [the charge _ _ of (cadd jordan_pos (cscale (-1) jordan_neg))].
+*)
+
+Lemma jordan_decompE (E : set T) (mE : measurable E) : nu E = (cadd jordan_pos (cscale (-1) jordan_neg)) E.
 Proof.
 rewrite /jordan_pos /jordan_neg/= /measure_of_charge/=.
 rewrite /cscale/= /crestr0/=.
-apply: eq_charge.
-apply: funext => E.
 rewrite charge_addE => /=.
-rewrite /cscale /crestr0.
-case: ifP.
-  move => mE.
-  rewrite /crestr /= /cscale.
-  rewrite /= muleA.
-  rewrite -EFinM.
-  rewrite mulN1r opprK mul1e.
-  rewrite /crestr0 ifT // /crestr.
-  rewrite inE in mE.
-  rewrite -charge_semi_additive2; last 4 first.
-          by apply: measurableI.
-        by apply: measurableI.
-      by apply: measurableU; apply: measurableI.
-    move: nuPN => [_ _ _ PN0].
-    by rewrite setIACA PN0 !setI0.
-  move: nuPN => [_ _ PNT _].
-  rewrite setUIl setUIr.
-  rewrite setUid setUC setKU.
-  rewrite setUIr.
-  rewrite PNT setIT.
-  by rewrite setKU.
-  
-Admitted.
-(*
-mem_set//. -[in LHS](setIT A).
-case: nuPN => _ _ <- PN0; rewrite setIUr chargeU//.
-- by rewrite EFinN mulN1e oppeK.
-- exact: measurableI.
-- exact: measurableI.
-- by rewrite setIACA PN0 setI0.
+rewrite -{1}(setIT E).
+have [_ _ PNT _] := nuPN.
+rewrite -PNT.
+rewrite setIUr.
+rewrite charge_semi_additive2.
+        rewrite /cscale/= /crestr0/= mem_set//.
+        rewrite /crestr /= /cscale.
+        rewrite /= muleA.
+        rewrite -EFinM.
+        rewrite mulN1r opprK mul1e.
+        rewrite /crestr0 ifT // /crestr.
+        by rewrite mem_set.
+      by apply: measurableI.
+    by apply: measurableI.
+  by apply: measurableU; apply: measurableI.
+move: nuPN => [_ _ _ PN0].
+by rewrite setIACA PN0 !setI0.
 Qed.
-*)
-
-xxx
 
 Lemma jordan_pos_dominates (mu : {measure set T -> \bar R}) :
   nu `<< mu -> jordan_pos `<< mu.
 Proof.
 move=> nu_mu A mA muA0; have := nu_mu A mA muA0.
-rewrite jordan_decomp// /jordan_pos /jordan_neg /measure_of_charge/=.
-Admitted.
-(* rewrite /cscale/= /crestr0/= mem_set// EFinN mulN1e oppeK.
+rewrite jordan_decompE// /jordan_pos /jordan_neg /measure_of_charge/=.
+rewrite /cscale/=/crestr0/= mem_set//EFinN mulN1e oppeK.
 have mAP : measurable (A `&` P) by exact: measurableI.
 suff : mu (A `&` P) = 0 by move/(nu_mu _ mAP); rewrite /crestr => ->.
 by apply/eqP; rewrite eq_le measure_ge0// andbT -muA0 le_measure// inE.
 Qed.
-*)
 
 Lemma jordan_neg_dominates (mu : {measure set T -> \bar R}) :
   nu `<< mu -> jordan_neg `<< mu.
