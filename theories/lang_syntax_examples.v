@@ -264,11 +264,11 @@ Lemma exec_sample_and0 (A : set bool) :
                                              (1 - 1 / 6)%:E * \d_false A)%E.
 Proof.
 rewrite !execP_letin !execP_sample !execD_bernoulli execP_return /=.
-rewrite (@execD_bin _ _ binop_and) !exp_var'E (execD_var_erefl "x") (execD_var_erefl "y") /=.
+rewrite !(@execD_bin _ _ binop_and) !exp_var'E (execD_var_erefl "x") (execD_var_erefl "y") /=.
 rewrite letin'E integral_measure_add//= !ge0_integral_mscale//= /onem.
 rewrite !integral_dirac//= !indicE !in_setT/= !mul1e.
 rewrite !letin'E !integral_measure_add//= !ge0_integral_mscale//= /onem.
-rewrite !integral_dirac//= !indicE !in_setT/= !mul1e !diracE.
+rewrite !integral_dirac//= !indicE !in_setT/= !mul1e.
 rewrite muleDr// -addeA; congr (_ + _)%E.
   by rewrite !muleA; congr (_%:E); congr (_ * _); field.
 rewrite -muleDl// !muleA -muleDl//.
@@ -298,12 +298,6 @@ rewrite !muleDr// -!addeA.
 by congr (_ + _)%E; rewrite ?addeA !muleA -?muleDl//;
 congr (_ * _)%E; congr (_%:E); field.
 Qed.
-
-Definition sample_add_syntax0 : @exp R _ [::] _ :=
-  [let "x" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
-   let "y" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
-   let "z" := Sample {exp_bernoulli (1 / 2)%:nng (p1S 1)} in
-   return #{"x"} && #{"y"} && #{"z"}].
 
 End sample_pair.
 
@@ -450,6 +444,55 @@ Qed.
 
 End bernoulli_examples.
 
+Section binomial_examples.
+Context {R : realType}.
+Open Scope lang_scope.
+Open Scope ring_scope.
+
+Definition sample_binomial3 : @exp R _ [::] _ :=
+  [let "x" := Sample {exp_binomial 3 (1 / 2)%:nng (p1S 1)} in
+   return #{"x"}].
+
+Open Scope real_scope.
+
+Lemma exec_sample_binomial3 t U :
+  execP sample_binomial3 t U = ((1 / 8)%:E * @dirac _ R 0%:R R U +
+                                (3 / 8)%:E * @dirac _ R 1%:R R U +
+                                (3 / 8)%:E * @dirac _ R 2%:R R U +
+                                (1 / 8)%:E * @dirac _ R 3%:R R U)%E.
+Proof.
+rewrite /sample_binomial3 execP_letin execP_sample execP_return.
+rewrite exp_var'E (execD_var_erefl "x") !execD_binomial/=.
+rewrite letin'E ge0_integral_measure_sum//=.
+rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=.
+rewrite !integral_dirac// /bump.
+rewrite indicT !binS/= !bin0 bin1 bin2 bin_small// addn0.
+rewrite expr0 mulr1 mul1r subn0.
+rewrite -2!addeA.
+congr _%E.
+congr (_ + _)%:E.
+congr (_ * _).
+by field.
+by rewrite mul1r.
+congr (_ + _).
+congr (_ * _).
+rewrite expr1 /onem.
+by field.
+by rewrite mul1r.
+congr (_ + _).
+congr (_ * _).
+rewrite /onem/=.
+by field.
+by rewrite mul1r.
+rewrite addr0.
+congr (_ * _).
+rewrite /onem/=.
+by field.
+by rewrite mul1r.
+Admitted.
+
+End binomial_examples.
+
 Section hard_constraint'.
 Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
 
@@ -462,6 +505,71 @@ Proof. by rewrite /fail' letin'E ge0_integral_mscale//= normr0 mul0e. Qed.
 
 End hard_constraint'.
 Arguments fail' {d d' X Y R}.
+
+Section casino_example.
+Open Scope lang_scope.
+Open Scope ring_scope.
+Context (R : realType).
+
+Lemma a01 : 0 < 1 - 0 :> R. Proof. by []. Qed.
+
+Definition binomial_le : @exp R _ [::] Bool :=
+  [let "a2" := Sample {exp_binomial 3 (1 / 2)%:nng (p1S 1)} in
+   return {1}:R <= #{"a2"}].
+
+Lemma exec_binomial_le t U :
+  execP binomial_le t U = ((7 / 8)%:E * @dirac _ _ true R U +
+                          (1 / 8)%:E * @dirac _ _ false R U)%E.
+Proof.
+rewrite /binomial_le execP_letin execP_sample execP_return execD_rel execD_real.
+rewrite exp_var'E (execD_var_erefl "a2") execD_binomial.
+rewrite letin'E//= /binomial_probability ge0_integral_measure_sum//=.
+rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=.
+rewrite !integral_dirac// /bump.
+rewrite indicT !binS/= !bin0 bin1 bin2 bin_small// addn0 !mul1e.
+rewrite addeC adde0.
+congr (_ + _)%:E.
+have -> : (1 <= 1)%R. admit.
+have -> : (1 <= 2)%R. admit.
+have -> : (1 <= 3)%R. admit.
+rewrite -!mulrDl.
+congr (_ * _).
+rewrite /onem addn0 add0n.
+by field.
+congr (_ * _).
+by field.
+by rewrite ler10.
+Admitted.
+
+Definition binomial_guard : @exp R _ [::] Real :=
+  [let "a1" := Sample {exp_binomial 3 (1 / 2)%:nng (p1S 1)} in
+   let "_" := if #{"a1"} == {1}:R then return TT else Score {0}:R in
+   return #{"a1"}].
+
+Lemma exec_binomial_guard t U :
+  execP binomial_guard t U = ((7 / 8)%:E * @dirac _ R 1%R R U +
+                          (1 / 8)%:E * @dirac _ R 0%R R U)%E.
+Proof.
+rewrite /binomial_guard !execP_letin execP_sample execP_return execP_if.
+rewrite !exp_var'E execD_rel !(execD_var_erefl "a1") execP_return execD_unit execD_binomial execD_real execP_score execD_real.
+rewrite !letin'E//= /binomial_probability ge0_integral_measure_sum//=.
+rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=.
+rewrite !integral_dirac// /bump.
+rewrite indicT !binS/= !bin0 bin1 bin2 bin_small// addn0 !mul1e.
+rewrite !letin'E//= !iteE/= !diracE/=.
+have -> : (0 == 1)%R = false; first by admit.
+have -> : (1 == 1)%R; first by admit.
+have -> : (2 == 1)%R = false; first by admit.
+have -> : (3 == 1)%R = false; first by admit.
+rewrite addeC adde0.
+Admitted.
+
+(* Definition casino : exp _ [::] _ := 
+  [let "p" := Sample {exp_uniform 0 1 a01} in
+   let "a1" := Sample {exp_binomial 8 [#{"p"}]} in
+   return #{"p"}]. *)
+
+End casino_example.
 
 (* hard constraints to express score below 1 *)
 Lemma score_fail' d (X : measurableType d) {R : realType}
@@ -803,6 +911,9 @@ Section letinC.
 Local Open Scope lang_scope.
 Variable (R : realType).
 
+Let weak_head g {t1 t2} x (e : @exp R P g t2) (xg : x \notin dom g) := 
+  exp_weak P [::] _ (x, t1) e xg.
+
 Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   (x y : string)
   (xy : infer (x != y)) (yx : infer (y != x))
@@ -810,11 +921,11 @@ Lemma letinC g t1 t2 (e1 : @exp R P g t1) (e2 : exp P g t2)
   forall U, measurable U ->
   execP [
     let x := e1 in
-    let y := {exp_weak _ [::] _ (x, t1) e2 xg} in
+    let y := {weak_head e2 xg} in
     return (#x, #y)] ^~ U =
   execP [
     let y := e2 in
-    let x := {exp_weak _ [::] _ (y, t2) e1 yg} in
+    let x := {weak_head e1 yg} in
     return (#x, #y)] ^~ U.
 Proof.
 move=> U mU; apply/funext => z.
