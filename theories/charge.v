@@ -479,10 +479,13 @@ HB.instance Definition _ := isCharge.Build _ _ _
 End pushforward_charge.
 
 HB.builders Context d (T : measurableType d) (R : realType)
-  mu of Measure_isFinite d T R mu.
+  (mu : set T -> \bar R) of Measure_isFinite d T R mu.
+
+Let mu0 : mu set0 = 0.
+Proof. by apply: measure0. Qed.
 
 HB.instance Definition _ := isCharge.Build _ _ _
-  mu (measure0 mu) fin_num_measure measure_semi_sigma_additive.
+  mu mu0 fin_num_measure measure_semi_sigma_additive.
 
 HB.end.
 
@@ -970,7 +973,8 @@ HB.instance Definition _ := @Measure_isFinite.Build _ _ _
   jordan_neg finite_jordan_neg.
 
 Lemma jordan_decomp (A : set T) (mA : measurable A) :
-  nu A = (cadd jordan_pos (cscale (-1) jordan_neg)) A.
+  nu A = (cadd [the charge _ _ of jordan_pos]
+           ([the charge _ _ of cscale (-1) [the charge _ _ of jordan_neg]])) A.
 Proof.
 rewrite caddE cjordan_posE /= cscaleE EFinN mulN1e cjordan_negE oppeK.
 rewrite /crestr0 mem_set// -[in LHS](setIT A).
@@ -1915,7 +1919,7 @@ Hypothesis numu : nu `<< mu.
 
 Lemma ae_eq_Radon_Nikodym_SigmaFinite E : measurable E ->
   ae_eq mu E (Radon_Nikodym_SigmaFinite.f nu mu)
-             ('d (charge_of_finite_measure nu) '/d mu).
+             ('d [the charge _ _ of charge_of_finite_measure nu] '/d mu).
 Proof.
 move=> mE; apply: integral_ae_eq => //.
 - apply: (integrableS measurableT) => //.
@@ -1936,7 +1940,7 @@ Implicit Types f : T -> \bar R.
 
 Lemma Radon_Nikodym_change_of_variables f E : measurable E ->
     nu.-integrable E f ->
-  \int[mu]_(x in E) (f x * ('d (charge_of_finite_measure nu) '/d mu) x) =
+  \int[mu]_(x in E) (f x * ('d [the charge _ _ of charge_of_finite_measure nu] '/d mu) x) =
   \int[nu]_(x in E) f x.
 Proof.
 move=> mE mf; rewrite [in RHS](funeposneg f) integralB //; last 2 first.
@@ -2013,7 +2017,7 @@ Variables (nu : {charge set T -> \bar R})
 
 Lemma Radon_Nikodym_chain_rule : nu `<< mu -> mu `<< la ->
   ae_eq la setT ('d nu '/d la)
-                ('d nu '/d mu \* 'd (charge_of_finite_measure mu) '/d la).
+                ('d nu '/d mu \* 'd [the charge _ _ of charge_of_finite_measure mu] '/d la).
 Proof.
 have [Pnu [Nnu nuPN]] := Hahn_decomposition nu.
 move=> numu mula; have nula := measure_dominates_trans numu mula.
