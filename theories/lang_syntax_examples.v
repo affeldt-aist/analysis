@@ -494,11 +494,12 @@ rewrite letin'E ge0_integral_measure_sum//=; last first.
   exact: measurable_fun_dirac.
 rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=; [|exact: measurable_fun_dirac..].
 rewrite !integral_dirac// /bump; [|exact: measurable_fun_dirac..].
-rewrite indicT !binS/= !bin0 bin1 bin2 bin_small// addn0.
+rewrite !binS/= !bin0 bin1 bin2 bin_small// addn0.
 rewrite expr0 mulr1 mul1r subn0.
-rewrite -2!addeA !mul1r !mul1e.
-congr _%E.
-congr (_ + _)%:E.
+rewrite -2!addeA !mul1r.
+congr _%:E.
+rewrite indicT !mul1r.
+congr (_ + _).
   congr (_ * _).
   by field.
 congr (_ + _).
@@ -588,6 +589,105 @@ case: b => //=.
 Qed.
 
 End hard_constraint.
+
+Section casino_example.
+Open Scope lang_scope.
+Open Scope ring_scope.
+Context (R : realType).
+
+Lemma a01 : 0 < 1 - 0 :> R. Proof. by []. Qed.
+
+Definition casino : @exp R _ [::] Bool :=
+  [let "p" := Sample {exp_uniform 0 1 a01} in
+   let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
+   let "_" := if #{"a1"} == {5}:R then return TT else Score {0}:R in
+   let "a2" := Sample {exp_binomial_trunc 3 [#{"p"}]} in
+   return {1}:R <= #{"a2"}].
+
+Lemma exec_casino t U r1 r2:
+  execP casino t U = (r1%:E * @dirac _ _ true R U +
+                      r2%:E * @dirac _ _ false R U)%E .
+Proof.
+rewrite /casino !execP_letin !execP_sample execP_if !execP_return execP_score.
+rewrite !execD_rel !execD_real execD_unit/= !execD_uniform !execD_binomial_trunc !exp_var'E.
+rewrite (execD_var_erefl "a1") !(execD_var_erefl "p") (execD_var_erefl "a2") /=.
+Admitted.
+
+Definition uniform_syntax : @exp R _ [::] _ :=
+  [let "p" := Sample {exp_uniform 0 1 a01} in
+   return #{"p"}].
+
+Lemma exec_uniform_syntax t U :
+  execP uniform_syntax t U = uniform_probability a01 U.
+Proof.
+rewrite /uniform_syntax execP_letin execP_sample execP_return !execD_uniform.
+rewrite exp_var'E (execD_var_erefl "p")/=.
+rewrite letin'E /=.
+rewrite {1}/uniform_probability.
+set x := (X in mscale _ X).
+set k := (X in mscale X _).
+transitivity ((k%:num)%:E * \int[x]_y \d_y U)%E.
+rewrite -(@ge0_integral_mscale _ _ _ x setT measurableT k (fun y => \d_y U)) //.
+have ? := (@ge0_integral_mscale _ _ R x setT measurableT k (fun y => \d_y U)).
+Admitted.
+
+Definition binomial_le : @exp R _ [::] Bool :=
+  [let "a2" := Sample {exp_binomial 3 (1 / 2)%:nng (p1S 1)} in
+   return {1}:R <= #{"a2"}].
+
+Lemma exec_binomial_le t U :
+  execP binomial_le t U = ((7 / 8)%:E * @dirac _ _ true R U +
+                          (1 / 8)%:E * @dirac _ _ false R U)%E.
+Proof.
+rewrite /binomial_le execP_letin execP_sample execP_return execD_rel execD_real.
+rewrite exp_var'E (execD_var_erefl "a2") execD_binomial.
+rewrite letin'E//= /binomial_probability ge0_integral_measure_sum//=.
+rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=.
+rewrite !integral_dirac// /bump.
+rewrite !binS/= !bin0 bin1 bin2 bin_small// addn0.
+rewrite addeC adde0.
+congr (_ + _)%:E.
+have -> : (1 <= 1)%R. admit.
+have -> : (1 <= 2)%R. admit.
+have -> : (1 <= 3)%R. admit.
+rewrite -!mulrDl indicT !mul1r.
+congr (_ * _).
+rewrite /onem addn0 add0n.
+by field.
+congr (_ * _).
+by field.
+(* by rewrite ler10. *)
+Admitted.
+
+Definition binomial_guard : @exp R _ [::] Real :=
+  [let "a1" := Sample {exp_binomial 3 (1 / 2)%:nng (p1S 1)} in
+   let "_" := if #{"a1"} == {1}:R then return TT else Score {0}:R in
+   return #{"a1"}].
+
+Lemma exec_binomial_guard t U :
+  execP binomial_guard t U = ((7 / 8)%:E * @dirac _ R 1%R R U +
+                          (1 / 8)%:E * @dirac _ R 0%R R U)%E.
+Proof.
+rewrite /binomial_guard !execP_letin execP_sample execP_return execP_if.
+rewrite !exp_var'E execD_rel !(execD_var_erefl "a1") execP_return execD_unit execD_binomial execD_real execP_score execD_real.
+rewrite !letin'E//= /binomial_probability ge0_integral_measure_sum//=.
+rewrite !big_ord_recl big_ord0 !ge0_integral_mscale//=.
+rewrite !integral_dirac// /bump.
+rewrite (* indicT *) !binS/= !bin0 bin1 bin2 bin_small// addn0 (* !mul1e *).
+rewrite !letin'E//= !iteE/= !diracE/=.
+have -> : (0 == 1)%R = false; first by admit.
+have -> : (1 == 1)%R; first by admit.
+have -> : (2 == 1)%R = false; first by admit.
+have -> : (3 == 1)%R = false; first by admit.
+rewrite addeC adde0.
+Admitted.
+
+(* Definition casino : exp _ [::] _ := 
+  [let "p" := Sample {exp_uniform 0 1 a01} in
+   let "a1" := Sample {exp_binomial 8 [#{"p"}]} in
+   return #{"p"}]. *)
+
+End casino_example.
 
 Section letinA.
 Local Open Scope lang_scope.
