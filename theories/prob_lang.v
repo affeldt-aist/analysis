@@ -2,10 +2,10 @@
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum ssrint interval finmap.
 From mathcomp Require Import rat.
-From mathcomp.classical Require Import mathcomp_extra boolp classical_sets.
-From mathcomp.classical Require Import functions cardinality fsbigop.
+From mathcomp Require Import mathcomp_extra boolp classical_sets.
+From mathcomp Require Import functions cardinality fsbigop.
 Require Import reals ereal signed topology normedtype sequences esum measure.
-Require Import lebesgue_measure  numfun lebesgue_integral exp kernel.
+Require Import lebesgue_measure numfun lebesgue_integral exp kernel.
 
 (******************************************************************************)
 (*  Semantics of a probabilistic programming language using s-finite kernels  *)
@@ -116,7 +116,7 @@ Lemma integral_bernoulli {R : realType}
 Proof.
 move=> f0.
 rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
-by rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
+by rewrite !ge0_integral_mscale//= !integral_dirac//= !diracT !mul1e.
 Qed.
 
 Section uniform_probability.
@@ -131,7 +131,7 @@ HB.instance Definition _ := Measure.on uniform_probability.
 Let uniform_probability_setT : uniform_probability [set: _] = 1.
 Proof.
 rewrite /uniform_probability /mscale/= /mrestr/=.
-rewrite setTI lebesgue_measure_itv hlength_itv/= lte_fin.
+rewrite setTI lebesgue_measure_itv/= lte_fin.
 by rewrite -subr_gt0 ab0 -EFinD -EFinM mulVf// gt_eqF// subr_gt0.
 Qed.
 
@@ -528,7 +528,7 @@ Proof.
 apply/eq_measure/funext => U.
 rewrite /ite; unlock => /=.
 rewrite /kcomp/= integral_dirac//=.
-rewrite indicT mul1e.
+rewrite diracT mul1e.
 rewrite -/(measure_add (ITE.kiteT k1 (x, f x)) (ITE.kiteF k2 (x, f x))).
 rewrite measure_addE.
 rewrite /ITE.kiteT /ITE.kiteF/=.
@@ -588,7 +588,7 @@ Lemma letin_retk
   x U : measurable U ->
   letin (ret mf) k x U = k (x, f x) U.
 Proof.
-move=> mU; rewrite letinE retE integral_dirac ?indicT ?mul1e//.
+move=> mU; rewrite letinE retE integral_dirac ?diracT ?mul1e//.
 exact: (measurableT_comp (measurable_kernel k _ mU)).
 Qed.
 
@@ -893,7 +893,7 @@ Let kcomp_scoreE d1 d2 (T1 : measurableType d1) (T2 : measurableType d2)
   (score mf \; g) r U = `|f r|%:E * g (r, tt) U.
 Proof.
 rewrite /= /kcomp /kscore /= ge0_integral_mscale//=.
-by rewrite integral_dirac// indicT mul1e.
+by rewrite integral_dirac// diracT mul1e.
 Qed.
 
 Lemma scoreE d' (T' : measurableType d') (x : T * T') (U : set T') (f : R -> R)
@@ -926,7 +926,7 @@ Proof.
 apply/eq_sfkernel => x U.
 rewrite letinE/= /sample; unlock.
 rewrite integral_measure_add//= ge0_integral_mscale//= ge0_integral_mscale//=.
-rewrite integral_dirac//= integral_dirac//= !indicT/= !mul1e.
+rewrite integral_dirac//= integral_dirac//= !diracT/= !mul1e.
 by rewrite /mscale/= iteE//= iteE//= failE mule0 adde0 ger0_norm.
 Qed.
 
@@ -1004,7 +1004,7 @@ Let T0 z : (T z) set0 = 0. Proof. by []. Qed.
 Let T_ge0 z x : 0 <= (T z) x. Proof. by []. Qed.
 Let T_semi_sigma_additive z : semi_sigma_additive (T z).
 Proof. exact: measure_semi_sigma_additive. Qed.
-HB.instance Definition _ z := @isMeasure.Build _ R X (T z) (T0 z) (T_ge0 z)
+HB.instance Definition _ z := @isMeasure.Build _ X R (T z) (T0 z) (T_ge0 z)
   (@T_semi_sigma_additive z).
 
 Let sfinT z : sfinite_measure (T z). Proof. exact: sfinite_kernel_measure. Qed.
@@ -1016,7 +1016,7 @@ Let U0 z : (U z) set0 = 0. Proof. by []. Qed.
 Let U_ge0 z x : 0 <= (U z) x. Proof. by []. Qed.
 Let U_semi_sigma_additive z : semi_sigma_additive (U z).
 Proof. exact: measure_semi_sigma_additive. Qed.
-HB.instance Definition _ z := @isMeasure.Build _ R Y (U z) (U0 z) (U_ge0 z)
+HB.instance Definition _ z := @isMeasure.Build _ Y R (U z) (U0 z) (U_ge0 z)
   (@U_semi_sigma_additive z).
 
 Let sfinU z : sfinite_measure (U z). Proof. exact: sfinite_kernel_measure. Qed.
@@ -1145,7 +1145,7 @@ Lemma letin_sample_bernoulli d d' (T : measurableType d)
 Proof.
 rewrite letinE/=.
 rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
-by rewrite !ge0_integral_mscale//= !integral_dirac//= indicT 2!mul1e.
+by rewrite !ge0_integral_mscale//= !integral_dirac//= !diracT 2!mul1e.
 Qed.
 
 Section sample_and_return.
