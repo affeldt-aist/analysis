@@ -42,8 +42,10 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
 
-Definition mR (R : realType) : Type := R.
+(* Definition mR (R : realType) : Type := R.
 HB.instance Definition _ (R : realType) := Measurable.on (mR R).
+(* [the measurableType (R.-ocitv.-measurable).-sigma of 
+                 salgebraType (R.-ocitv.-measurable)]. *) *)
 
 Module Notations.
 (*Notation var1of2 := (@measurable_fst _ _ _ _).
@@ -54,7 +56,8 @@ Notation var2of3 := (measurableT_comp (@measurable_snd _ _ _ _)
                                          (@measurable_fst _ _ _ _)).
 Notation var3of3 := (@measurable_snd _ _ _ _).*)
 
-(*Notation mR := Real_sort__canonical__measure_Measurable.*)
+(* Definition mR R := [the measurableType (R.-ocitv.-measurable).-sigma of 
+                 salgebraType (R.-ocitv.-measurable)]. *)
 Notation munit := Datatypes_unit__canonical__measure_Measurable.
 Notation mbool := Datatypes_bool__canonical__measure_Measurable.
 End Notations.
@@ -190,10 +193,10 @@ by rewrite expr1.
 Qed.
 
 (* \sum_(k < n.+1) (bino_coef p n k) * \d_k. *)
-Definition binomial_probability :=
-  @msum _ (_ R) R 
+Definition binomial_probability : set (measurableTypeR R) -> \bar R :=
+  @msum _ _ R
     (fun k => [the measure _ _ of mscale (bino_term k)
-    [the measure _ _ of @dirac _ R k%:R R]]) n.+1.
+    [the measure _ _ of @dirac _ (measurableTypeR R) k%:R R]]) n.+1.
 
 HB.instance Definition _ := Measure.on binomial_probability.
 
@@ -234,15 +237,16 @@ End binomial_example.
 Section uniform_probability.
 Context (R : realType) (a b : R) (ab0 : (0 < b - a)%R).
 
-Definition uniform_probability : set R -> \bar R
-  := mscale (invr_nonneg (NngNum (ltW ab0)))
+Definition uniform_probability 
+(* : set _ -> \bar R *)
+  := @mscale _ _ R (invr_nonneg (NngNum (ltW ab0)))
     (mrestr lebesgue_measure (measurable_itv `[a, b])).
 
 (** TODO: set R -> \bar R を書くとMeasure.onが通らない **)
 (**  **)
-(* HB.instance Definition _ := Measure.on uniform_probability. *)
+HB.instance Definition _ := Measure.on uniform_probability.
 
-Let uniform0 : uniform_probability set0 = 0.
+(* Let uniform0 : uniform_probability set0 = 0.
 Proof. exact: measure0. Qed.
 
 Let uniform_ge0 U : 0 <= uniform_probability U.
@@ -252,7 +256,7 @@ Let uniform_sigma_additive : semi_sigma_additive uniform_probability.
 Proof. move=> /= F mF tF mUF; exact: measure_semi_sigma_additive. Qed.
 
 HB.instance Definition _ := isMeasure.Build _ _ _ uniform_probability
-  uniform0 uniform_ge0 uniform_sigma_additive.
+  uniform0 uniform_ge0 uniform_sigma_additive. *)
 
 Let uniform_probability_setT : uniform_probability [set: _] = 1%:E.
 Proof.
@@ -1255,10 +1259,10 @@ Context d (T : measurableType d) (R : realType).
    let r = case x of {(1, _) => return (k3()), (2, _) => return (k10())} in
    return r *)
 
-Definition sample_and_branch : R.-sfker T ~> mR R :=
+Definition sample_and_branch : R.-sfker T ~> _ :=
   letin
     (sample_cst [the probability _ _ of bernoulli p27]) (* T -> B *)
-    (ite macc1of2 (ret k3) (ret k10)).
+    (ite macc1of2 (ret (@k3 _ _ R)) (ret k10)).
 
 Lemma sample_and_branchE t U : sample_and_branch t U =
   (2 / 7%:R)%:E * \d_(3%:R : R) U +
@@ -1340,7 +1344,7 @@ Context d (T : measurableType d) (R : realType).
 Let poisson4 := @poisson R 4%N.
 Let mpoisson4 := @measurable_poisson R 4%N.
 
-Definition kstaton_bus_poisson : R.-sfker (mR R) ~> mbool :=
+Definition kstaton_bus_poisson : R.-sfker R ~> mbool :=
   kstaton_bus _ mpoisson4.
 
 Let kstaton_bus_poissonE t U : kstaton_bus_poisson t U =
@@ -1371,7 +1375,7 @@ Lemma staton_busE P (t : R) U :
   ((2 / 7%:R)%:E * (poisson4 3%:R)%:E * \d_true U +
    (5%:R / 7%:R)%:E * (poisson4 10%:R)%:E * \d_false U) * N^-1%:E.
 Proof.
-rewrite /staton_bus normalizeE /= !kstaton_bus_poissonE !diracT !mule1 ifF //.
+rewrite /staton_bus normalizeE !kstaton_bus_poissonE !diracT !mule1 ifF //.
 apply/negbTE; rewrite gt_eqF// lte_fin.
 by rewrite addr_gt0// mulr_gt0//= ?divr_gt0// ?ltr0n// poisson_gt0// ltr0n.
 Qed.
@@ -1390,7 +1394,7 @@ Let mexp1560 := @mexp_density R (ratr (15%:Q / 60%:Q)).
 
 (* 15/60 = 0.25 *)
 
-Definition kstaton_bus_exponential : R.-sfker (mR R) ~> mbool :=
+Definition kstaton_bus_exponential : R.-sfker R ~> mbool :=
   kstaton_bus _ mexp1560.
 
 Let kstaton_bus_exponentialE t U : kstaton_bus_exponential t U =
