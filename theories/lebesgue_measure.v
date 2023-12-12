@@ -1563,6 +1563,14 @@ rewrite -(addrA (f x * g x *+ 2)) -opprB opprK (addrC (g x ^+ 2)) addrK.
 by rewrite -(mulr_natr (f x * g x)) -(mulrC 2) mulrA mulVr ?mul1r// unitfE.
 Qed.
 
+Lemma measurable_fun_pow D f n : measurable_fun D f ->
+  measurable_fun D (fun x => f x ^+ n).
+move=> mf.
+apply measurable_funTS => /=.
+(* apply continuous_measurable_fun.
+move=> x ?. *)
+Admitted.
+
 Lemma measurable_fun_ltr D f g : measurable_fun D f -> measurable_fun D g ->
   measurable_fun D (fun x => f x < g x).
 Proof.
@@ -1669,6 +1677,52 @@ apply: (@eq_measurable_fun _ _ _ _ D (fun x => limn_sup (h ^~ x))).
 apply: (@measurable_fun_limn_sup _ h) => // t Dt.
 - by apply/bounded_fun_has_ubound/cvg_seq_bounded/cvg_ex; eexists; exact: f_f.
 - by apply/bounded_fun_has_lbound/cvg_seq_bounded/cvg_ex; eexists; exact: f_f.
+Qed.
+
+Lemma measurable_fun_dirac (U : set [the measurableType _ of measurableTypeR R]) : measurable U ->
+  measurable_fun [set: measurableTypeR R] (fun x : R => \d_x U : \bar R).
+Proof.
+move=> mU _ /= Y mY; rewrite setTI.
+have [Y0|Y0] := boolP (0%E \in Y).
+  have [Y1|Y1] := boolP (1%E \in Y).
+  + rewrite [X in measurable X](_ : _ = setT)//.
+    apply/seteqP; split => //= r _ /=.
+    rewrite diracE; case: (_ \in _) => //=.
+    by rewrite inE in Y1.
+    by rewrite inE in Y0.
+  + rewrite [X in measurable X](_ : _ = ~` U)//.
+      exact: measurableC.
+    apply/seteqP; split => [//= r /= YrU|r].
+    move/mem_set; move: YrU; rewrite diracE.
+    case: (_ \in _) => //=.
+    move/mem_set. 
+    by rewrite (negbTE Y1).
+    move/mem_set.
+    rewrite inE/=.
+    rewrite -notin_set.
+    rewrite diracE.
+    case: (_ \in _) => //= _.
+    by rewrite inE in Y0.
+  have [Y1|Y1] := boolP (1%E \in Y).
+  + rewrite [X in measurable X](_ : _ = U)//.
+    apply/seteqP; split => [//= r /= YrU|r].
+    rewrite -inE.
+    move: YrU; rewrite diracE.
+    case: (_ \in _) => //=.
+    move/mem_set.
+    by rewrite (negbTE Y0).
+    rewrite [X in _ -> X](_ : _ = Y (\d_r U)) //.
+    rewrite diracE.
+    move/mem_set.
+    case (_ \in _) => //= _.
+    by rewrite inE in Y1.
+  + rewrite [X in measurable X](_ : _ = set0).
+      exact: measurable0.
+    apply/seteqP; split => //= r /= YrU.
+    move: YrU; rewrite diracE.
+    case: (_ \in _); move/mem_set.
+    by rewrite (negbTE Y1).
+    by rewrite (negbTE Y0).
 Qed.
 
 End measurable_fun_realType.
