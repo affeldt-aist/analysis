@@ -157,15 +157,77 @@ HB.instance Definition _ :=
 
 End bernoulli.
 
-Lemma integral_bernoulli {R : realType}
-    (p : {nonneg R}) (p1 : (p%:num <= 1)%R) (f : bool -> set bool -> _) U :
-  (forall x y, 0 <= f x y) ->
-  \int[bernoulli p1]_y (f y ) U =
-  p%:num%:E * f true U + (`1-(p%:num))%:E * f false U.
+Lemma integral_bernoulli d d' {T : measurableType d} {T' : measurableType d'} {R : realType} 
+  (p : {nonneg R}) (p1 : (p%:num <= 1)%R) (f : bool -> R.-sfker [the measurableType _ of T%type] ~> T') x U :
+  (forall b x, 0 <= f b x U) ->
+  \int[bernoulli p1]_y (f y x) U =
+  p%:num%:E * f true x U + (`1-(p%:num))%:E * f false x U.
 Proof.
 move=> f0.
 rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
 by rewrite !ge0_integral_mscale//= !integral_dirac//= !diracT !mul1e.
+Qed.
+
+Section bernoulli_trunc.
+Variables (R : realType).
+Local Open Scope ring_scope.
+
+Lemma sumbool_ler (x y : R) : {(x <= y)%R} + {(x > y)%R}.
+Proof.
+have [_|_] := leP x y.
+by apply left.
+by apply right.
+Qed.
+
+Definition bernoulli0 := @bernoulli R 0%R%:nng ler01.
+
+HB.instance Definition _ := Probability.on bernoulli0.
+
+Definition bernoulli_trunc (p : R) := match (sumbool_ler 0%R p) with
+| left l0p => match (sumbool_ler (NngNum l0p)%:num 1%R) with
+  | left lp1 => [the probability _ _ of @bernoulli R (NngNum l0p) lp1]
+  | right _ => [the probability _ _ of bernoulli0]
+  end
+| right _ => [the probability _ _ of bernoulli0]
+end.
+
+HB.instance Definition _ (p : R) := Probability.on (bernoulli_trunc p).
+
+Lemma measurable_bernoulli_trunc : measurable_fun setT (bernoulli_trunc : _ -> pprobability _ _).
+Proof.
+(* move=> _ Y mY. *)
+(* rewrite setTI. *)
+apply: (@measurability _ _ _ _ _ _
+  (@pset _ _ _ : set (set (pprobability _ R)))) => //.
+move=> _ -[_ [r r01] [Ys mYs <-]] <-.
+apply: emeasurable_fun_infty_o => //.
+rewrite /bernoulli_trunc.
+(* apply: measurable_fun_case_suml.
+case: sumbool_ler. *)
+(* case: (sumbool_ler 0 p) => [p0'/=|].
+  case: (sumbool_ler p 1) => [p1'/=|]. *)
+(* exact: (measurable_kernel (knormalize f point) Ys). *)
+Admitted.
+
+End bernoulli_trunc.
+
+Arguments bernoulli_trunc {R}.
+Arguments measurable_bernoulli_trunc {R}.
+
+Lemma integral_bernoulli_trunc d d' {T : measurableType d} {T' : measurableType d'} {R : realType}
+    (p : R) (f : bool -> R.-sfker [the measurableType _ of T] ~> T') x U :
+  (0 <= p <= 1)%R ->
+  (forall b x, 0 <= f b x U) ->
+  \int[bernoulli_trunc p]_y (f y x) U =
+  p%:E * f true x U + (`1-p)%:E * f false x U.
+Proof.
+move=> /andP[p0 p1] f0.
+rewrite /bernoulli_trunc.
+case: (sumbool_ler 0 p) => [p0'/=|].
+  case: (sumbool_ler p 1) => [p1'/=|].
+    by rewrite integral_bernoulli.
+  by rewrite ltNge p1.
+by rewrite ltNge p0.
 Qed.
 
 Section binomial_probability.
@@ -213,6 +275,70 @@ HB.instance Definition _ :=
   @Measure_isProbability.Build _ _ R binomial_probability binomial_setT.
 
 End binomial_probability.
+
+Section integral_binomial.
+Variables (R : realType) (d : measure_display) (T : measurableType d).
+
+Lemma integral_binomial (n : nat) (p : {nonneg R}) 
+  (p1 : (p%:num <= 1)%R) (f : R -> set T -> _) U : 
+  (forall x y, 0 <= f x y) -> \int[binomial_probability n p1]_y (f y) U =
+  \sum_(k < n.+1) (bino_term n  p1 k)%:num%:E * f k%:R U.
+Proof.
+move=> f0.
+rewrite ge0_integral_measure_sum//=; last first.
+  admit.
+apply: eq_bigr => i _.
+rewrite ge0_integral_mscale//=; last first.
+  admit.
+rewrite integral_dirac//=; last first.
+  admit.
+by rewrite diracT mul1e.
+Admitted.
+
+End integral_binomial.
+
+Section binomial_trunc.
+Variables (R : realType).
+Local Open Scope ring_scope.
+
+Definition binomial_probability0 := @binomial_probability R 0 0%:nng%R  ler01.
+
+Definition binomial_probability_trunc n (p : R) := 
+  (* (p1 : (p%:num <= 1)%R) := *)
+  match (sumbool_ler 0%R p) with
+  | left l0p => match (sumbool_ler (NngNum l0p)%:num 1%R) with
+    | left lp1 => [the probability _ _ of @binomial_probability R n (NngNum l0p) lp1]
+    | right _ => [the probability _ _ of binomial_probability0]
+    end
+  | right _ => [the probability _ _ of binomial_probability0]
+  end.
+
+Lemma measurable_binomial_probability_trunc (n : nat) 
+  : measurable_fun setT (binomial_probability_trunc n : R -> pprobability _ _).
+Admitted.
+
+End binomial_trunc.
+
+Arguments binomial_probability_trunc {R}.
+Arguments measurable_binomial_probability_trunc {R}.
+
+Section integral_binomial_trunc.
+Variables (R : realType) (d : measure_display) (T : measurableType d).
+
+Lemma integral_binomial_probabilty_trunc (n : nat) (p : R) 
+  (p0 : (0 <= p)%R) (p1 : ((NngNum p0)%:num <= 1)%R) (f : R -> set T -> _) U :
+  (forall x y, 0 <= f x y) -> \int[binomial_probability_trunc n p]_y (f y) U = \sum_(k < n.+1) (bino_term n p1 k)%:num%:E * f k%:R U.
+Proof.
+move=> f0.
+rewrite /binomial_probability_trunc/=.
+case: (sumbool_ler 0 p) => [p0'/=|].
+  case: (sumbool_ler p 1) => [p1'/=|].
+  by rewrite integral_binomial.
+  by rewrite ltNge p1.
+by rewrite ltNge p0.
+Qed.
+
+End integral_binomial_trunc.
 
 Section binomial_example.
 Context {R : realType}.

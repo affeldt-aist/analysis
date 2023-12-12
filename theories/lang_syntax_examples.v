@@ -338,7 +338,7 @@ rewrite !integral_indic//= !iteE/= /mscale/=.
 rewrite setTI !diracT !mule1.
 rewrite ger0_norm//.
 rewrite -EFinD/= eqe ifF; last first.
-  by apply/negbTE/negP => /orP[/eqP|//]; rewrite /onem; lra.
+  apply/negbTE/negP => /orP[/eqP|//]; rewrite /onem. lra.
 rewrite !letin'E/= !iteE/=.
 rewrite !ge0_integral_mscale//=.
 rewrite ger0_norm//.
