@@ -2075,8 +2075,8 @@ Lemma maxr_cvg_0_cvg_0 (x : R^nat) (np : R) :
   (fun n => maxr (x n) np) --> 0 -> x --> 0.
 Proof.
 move=> np0 x0.
-move/(@cvgNP _ [normedModType R of R^o]) => h.
-apply/(@cvgNP _ [normedModType R of R^o]).
+move/(@cvgNP _ [normedModType R of R^o] _ _ _ _ 0) => h.
+apply/(@cvgNP _ [normedModType R of R^o] _ _ _ _ 0).
 move: h; under [X in X @ _ --> _ -> _]eq_fun do rewrite oppr_max.
 rewrite oppr0 => /minr_cvg_0_cvg_0; apply.
 - by rewrite ltr_oppr oppr0.
@@ -2155,7 +2155,7 @@ Lemma maxe_cvg_maxr_cvg (x : (\bar R)^nat) (np : R) :
   (fun n => maxr ((fine \o x) n) np) --> (0:R)%R.
 Proof.
 move=> np0 x0 /cvgeNP => h.
-apply/(@cvgNP _ [normedModType R of R^o]).
+apply/(@cvgNP _ [normedModType R of R^o] _ _ _ _ 0%R).
 under eq_cvg do rewrite /GRing.opp /= oppr_max -fineN.
 move: h; under [X in X @ _ --> _ -> _]eq_fun do rewrite oppe_max.
 rewrite oppe0 oppr0 => /mine_cvg_minr_cvg; apply.
