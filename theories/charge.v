@@ -774,21 +774,6 @@ have /ereal_sup_gt/cid2[_ [B/= [mB BDA <- mnuB]]] : m < d_ A.
 by exists B; split => //; rewrite (le_trans _ (ltW mnuB)).
 Qed.
 
-Let mine2_cvg_0_cvg_0 (x : (\bar R)^nat) :
-  (forall k, 0 <= x k) ->
-  (fun n => mine (x n * 2^-1%:E) 1) --> 0 -> x --> 0.
-Proof.
-move=> x_ge0 h.
-have x2x2 : x =1 (fun n => 2%:E * (x n * 2^-1%:E)).
-  move=> n.
-  by rewrite muleCA -EFinM divff ?mule1.
-under eq_cvg do rewrite x2x2.
-rewrite -(mule0 2%:E).
-apply: cvgeMl => //.
-apply: (mine_cvg_0_cvg_0 lte01) => //.
-by move=> n; rewrite mule_ge0.
-Qed.
-
 Lemma hahn_decomposition_lemma : measurable D ->
   {A | [/\ A `<=` D, nu.-negative_set A & nu A <= nu D]}.
 Proof.
@@ -831,7 +816,12 @@ have mine_cvg_0 : (fun n => mine (g_ (v n) * 2^-1%:E) 1) --> 0.
   apply: (@squeeze_cvge _ _ _ _ _ _ (fun n => nu (A_ (v n))));
     [|exact: cvg_cst|by []].
   by apply: nearW => n /=; rewrite nuA_g_ andbT le_minr lee01 andbT mule_ge0.
-have d_cvg_0 : g_ \o v --> 0 by apply: mine2_cvg_0_cvg_0 => //=.
+have d_cvg_0 : g_ \o v --> 0.
+  under eq_cvg do rewrite -(mule1 ((g_ \o v) _)) -(@divff _ 2%R)// EFinM muleCA.
+  rewrite -(mule0 2%:E).
+  apply: cvgeMl => //.
+  apply: (mine_cvg_0_cvg_0 lte01) => //=.
+  by move=> n; rewrite mule_ge0.
 have nuDAoo : nu D >= nu (D `\` Aoo).
   rewrite -[in leRHS](@setDUK _ Aoo D); last first.
     by apply: bigcup_sub => i _; exact: A_D.

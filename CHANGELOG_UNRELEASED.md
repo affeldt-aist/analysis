@@ -60,6 +60,38 @@
   + lemma `maxe_cvg_maxr_cvg`
   + lemma `maxe_cvg_0_cvg_0`
 
+- in `charge.v`
+  + `charge_add` instance of `charge` 
+  + `cpushforward` instance of `charge`
+  + `charge_of_finite_measure` instance of `charge`
+  + lemma `cscaleE`
+  + lemma `dominates_cscale`
+  + lemma `caddE`
+  + lemma `dominates_caddl`
+  + lemma `dominates_pushforward`
+  + lemma `cjordan_posE`
+  + lemma `jordan_posE`
+  + lemma `cjordan_negE`
+  + lemma `jordan_negE`
+  + lemma `Radon_Nikodym_sigma_finite_fin_num`
+  + lemma `Radon_NikodymE`
+  + lemma `Radon_Nikodym_fin_num`
+  + lemma `ae_eq_Radon_Nikodym_SigmaFinite`
+  + lemma `Radon_Nikodym_change_of_variables`
+  + lemma `Radon_Nikodym_cscale`
+  + lemma `Radon_Nikodym_cadd`
+  + lemma `Radon_Nikodym_chain_rule`
+
+- in `sequences.v`
+  + lemma `minr_cvg_0_cvg_0`
+  + lemma `mine_cvg_0_cvg_fin_num`
+  + lemma `mine_cvg_minr_cvg`
+  + lemma `mine_cvg_0_cvg_0`
+  + lemma `maxr_cvg_0_cvg_0`
+  + lemma `maxe_cvg_0_cvg_fin_num`
+  + lemma `maxe_cvg_maxr_cvg`
+  + lemma `maxe_cvg_0_cvg_0`
+
 ### Changed
 
 - in `charge.v`
