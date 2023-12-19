@@ -527,12 +527,20 @@ Proof. by move=> A B AB; apply ub_ereal_sup => x Ax; apply/ereal_sup_ub/AB. Qed.
 Lemma le_ereal_inf : {homo @ereal_inf R : A B / A `<=` B >-> B <= A}.
 Proof. by move=> A B AB; apply lb_ereal_inf => x Bx; exact/ereal_inf_lb/AB. Qed.
 
-Lemma hasNub_ereal_sup (A : set (\bar R)) : ~ has_ubound A ->
-  A !=set0 -> ereal_sup A = +oo%E.
+Lemma hasNub_ereal_sup (A : set R) : ~ has_ubound A ->
+  A !=set0 -> ereal_sup (EFin @` A) = +oo%E.
 Proof.
 move=> hasNubA A0.
 apply/eqP; rewrite eq_le leey /= leNgt; apply: contra_notN hasNubA => Aoo.
-by exists (ereal_sup A); exact: ereal_sup_ub.
+exists (fine (ereal_sup [set x%:E | x in A])) => y Ay.
+rewrite -lee_fin -(@fineK _ y%:E)// lee_fin fine_le//.
+  rewrite fin_numE// -ltey Aoo andbT.
+  apply/negP => /eqP/ereal_sup_ninfty.
+  move=> /(_ y%:E).
+  have : [set x%:E | x in A] y%:E.
+    by exists y.
+  by move=> /[swap] /[apply].
+by apply: ereal_sup_ub => /=; exists y.
 Qed.
 
 Lemma ereal_sup_EFin  (A : set R) :
