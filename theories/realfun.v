@@ -716,7 +716,7 @@ Proof.
 by elim: s a => [a/= /division_nil//|y t ih a /= /division_tail/ih].
 Qed.
 
-Lemma division_nth a b l m : (m < (size l).+1)%N -> division a b l ->
+Lemma division_nth_le a b l m : (m < (size l).+1)%N -> division a b l ->
   nth b (a :: l) m <= b.
 Proof.
 elim: m l a => [l a _|n ih]; first exact: division_le.
@@ -735,7 +735,7 @@ have [ms|ms] := ltnP m (size s).+1; last first.
   have [|ns] := ltnP n (size s).+1; last by rewrite nth_default.
   by move=> /(leq_ltn_trans mn); rewrite ltnS leqNgt ms.
 have [ns|ns] := ltnP n (size s).+1; last first.
-  by rewrite [in leRHS]nth_default//=; exact/ndf/division_nth.
+  by rewrite [in leRHS]nth_default//=; exact/ndf/division_nth_le.
 move: abs; rewrite /division => -[] sa sab.
 move: mn; rewrite leq_eqVlt => /predU1P[->//|mn].
 by apply/ndf/ltW/sorted_ltn_nth => //; exact: lt_trans.
@@ -750,7 +750,7 @@ exact: (nondecreasing_fun_division ndNf abs).
 Qed.
 
 Definition variation a b (f : R -> R) (s : seq R) : R :=
-  let F : nat -> R := f \o nth b (a :: s) in
+  let F := f \o nth b (a :: s) in
   \sum_(0 <= n < size s) `|F n.+1 - F n|%R.
 
 Lemma variation_ge0 a b f s : 0 <= variation a b f s.
@@ -758,8 +758,7 @@ Proof. exact/sumr_ge0. Qed.
 
 Lemma variationN a b f s : variation a b (\- f) s = variation a b f s.
 Proof.
-rewrite /variation; apply: eq_bigr => k _ /=.
-by rewrite -opprD normrN.
+by rewrite /variation; apply: eq_bigr => k _ /=; rewrite -opprD normrN.
 Qed.
 
 Lemma variation_le a b (f g : R -> R) s :
@@ -796,6 +795,27 @@ rewrite !nondecreasing_variation//; last exact: (division_cat abs).
 by rewrite addrC addrA subrK.
 Qed.
 
+Lemma variationD a b c f s t : a < c -> c < b ->
+  division a c s -> division c b t ->
+  variation a c f s + variation c b f t = variation a b f (s ++ t).
+Proof.
+move=> ac cb acs cbt; rewrite /variation /= [in RHS]/index_iota subn0 size_cat.
+rewrite iotaD add0n big_cat/= -[in X in _ = X + _](subn0 (size s)); congr +%R.
+  rewrite -/(index_iota 0 (size s)) 2!big_nat; apply: eq_bigr => k /[!leq0n] /= ks.
+  rewrite nth_cat ks -cat_cons nth_cat /= ltnS (ltnW ks).
+  by rewrite !(set_nth_default b c)//= ltnS ltnW.
+rewrite -[in RHS](addnK (size s) (size t)).
+rewrite -/(index_iota (size s) (size t + size s)).
+rewrite -{1}[in RHS](add0n (size s)) big_addn addnK 2!big_nat; apply: eq_bigr.
+move=> k /[!leq0n]/= kt.
+rewrite nth_cat {1}(addnC k) -ltn_subRL subnn ltn0 addnK.
+case: k kt => [t0 /=|k kt].
+  rewrite add0n -cat_cons nth_cat/= ltnS leqnn -last_nth.
+  by case: acs => _ /eqP ->.
+rewrite addSnnS (addnC k) -cat_cons nth_cat/= -ltn_subRL subnn ltn0.
+by rewrite -(addnC k) addnK.
+Qed.
+
 Definition variations a b f := [set variation a b f l | l in division a b].
 
 Lemma variations_variation a b f s : division a b s ->
@@ -808,26 +828,39 @@ move=> ab; exists (variation a b f [:: b]); exists [:: b] => //.
 exact: division1.
 Qed.
 
-Lemma variationD a b c f s t : a < c -> c < b ->
-  division a c s -> division c b t ->
-  variation a c f s + variation c b f t <= variation a b f (s ++ t).
+Definition bounded_variation a b f := has_ubound (variations a b f).
+
+Notation BV := bounded_variation.
+
+Lemma bounded_variationD a b f g : a < b ->
+  BV a b f -> BV a b g -> BV a b (f \+ g).
 Proof.
-move=> ac cb acs cbt.
-rewrite /variation /= [in leRHS]/index_iota subn0 size_cat.
-rewrite iotaD add0n big_cat/= -[in X in _ <= X + _](subn0 (size s)) ler_add//.
-  rewrite -/(index_iota 0 (size s)) 2!big_nat ler_sum// => k /[!leq0n] /= ks.
-  rewrite nth_cat ks -cat_cons nth_cat /= ltnS (ltnW ks).
-  by rewrite !(set_nth_default b c)//= ltnS ltnW.
-rewrite -[in leRHS](addnK (size s) (size t)).
-rewrite -/(index_iota (size s) (size t + size s)).
-rewrite -{1}[in leRHS](add0n (size s)) big_addn addnK 2!big_nat ler_sum//.
-move=> k /[!leq0n]/= kt.
-rewrite nth_cat {1}(addnC k) -ltn_subRL subnn ltn0 addnK.
-case: k kt => [t0 /=|k kt].
-  rewrite add0n -cat_cons nth_cat/= ltnS leqnn -last_nth.
-  by case: acs => _ /eqP ->.
-rewrite addSnnS (addnC k) -cat_cons nth_cat/= -ltn_subRL subnn ltn0.
-by rewrite -(addnC k) addnK.
+move=> ab [r abfr] [s abgs]; exists (r + s) => _ [l abl] <-.
+apply: le_trans; first exact: variation_le.
+rewrite ler_add//.
+- by apply: abfr; exact: variations_variation.
+- by apply: abgs; exact: variations_variation.
+Qed.
+
+Lemma bounded_variationl a c b f : a < c < b-> BV a b f -> BV a c f.
+Proof.
+move=> /andP[ac cb] [x Hx]; exists x => _ [s acs] <-.
+rewrite (@le_trans _ _ (variation a b f (rcons s b)))//; last first.
+  apply/Hx/variations_variation; case: acs => sa /eqP asc.
+  by rewrite /division rcons_path last_rcons sa/= asc.
+rewrite {2}/variation size_rcons -[leLHS]addr0 big_nat_recr//= ler_add//.
+rewrite /variation !big_nat ler_sum// => k; rewrite leq0n /= => ks.
+rewrite nth_rcons// ks -cats1 -cat_cons nth_cat /= ltnS (ltnW ks).
+by rewrite ![in leRHS](set_nth_default c)//= ltnS ltnW.
+Qed.
+
+Lemma bounded_variationr a c b f : a < c < b-> BV a b f -> BV c b f.
+Proof.
+move=> /andP[ac cb] [x Hx]; exists x => _ [s cbs] <-.
+rewrite (@le_trans _ _ (variation a b f (c :: s)))//; last first.
+  apply/Hx/variations_variation; case: cbs => cs csb.
+  by rewrite /division/= ac/= cs.
+by rewrite {2}/variation/= -[leLHS]add0r big_nat_recl//= ler_add.
 Qed.
 
 Definition total_variation a b f :=
@@ -859,12 +892,7 @@ eexists.
 by [].
 Qed.
 
-Definition bounded_variation a b f := has_ubound (variations a b f).
-
-Notation BV := bounded_variation.
-
-Lemma bounded_variationP a b f : a < b ->
-  BV a b f <-> TV a b f \is a fin_num.
+Lemma bounded_variationP a b f : a < b -> BV a b f <-> TV a b f \is a fin_num.
 Proof.
 move=> ab; rewrite ge0_fin_numE; last exact: total_variation_ge0.
 split => [abf|].
@@ -875,18 +903,7 @@ split => [abf|].
   by rewrite image_id.
 rewrite /total_variation /bounded_variation.
 rewrite ltey => /eqP; apply: contra_notP.
-move/hasNub_ereal_sup; apply.
-exact: variations_neq0.
-Qed.
-
-Lemma bounded_variationD a b f g : a < b ->
-  BV a b f -> BV a b g -> BV a b (f \+ g).
-Proof.
-move=> ab [r abfr] [s abgs]; exists (r + s) => _ [l abl] <-.
-apply: le_trans; first exact: variation_le.
-rewrite ler_add//.
-- by apply: abfr; exact: variations_variation.
-- by apply: abgs; exact: variations_variation.
+by move/hasNub_ereal_sup; apply; exact: variations_neq0.
 Qed.
 
 Lemma total_variation_le a b f g : a < b ->
@@ -911,28 +928,7 @@ by rewrite EFinD; apply: lee_add; apply: ereal_sup_le;
   exact: variations_variation.
 Qed.
 
-Lemma bounded_variationl a c b f : a < c < b-> BV a b f -> BV a c f.
-Proof.
-move=> /andP[ac cb] [x Hx]; exists x => _ [s acs] <-.
-rewrite (@le_trans _ _ (variation a b f (rcons s b)))//; last first.
-  apply/Hx/variations_variation; case: acs => sa /eqP asc.
-  by rewrite /division rcons_path last_rcons sa/= asc.
-rewrite {2}/variation size_rcons -[leLHS]addr0 big_nat_recr//= ler_add//.
-rewrite /variation !big_nat ler_sum// => k; rewrite leq0n /= => ks.
-rewrite nth_rcons// ks -cats1 -cat_cons nth_cat /= ltnS (ltnW ks).
-by rewrite ![in leRHS](set_nth_default c)//= ltnS ltnW.
-Qed.
-
-Lemma bounded_variationr a c b f : a < c < b-> BV a b f -> BV c b f.
-Proof.
-move=> /andP[ac cb] [x Hx]; exists x => _ [s cbs] <-.
-rewrite (@le_trans _ _ (variation a b f (c :: s)))//; last first.
-  apply/Hx/variations_variation; case: cbs => cs csb.
-  by rewrite /division/= ac/= cs.
-by rewrite {2}/variation/= -[leLHS]add0r big_nat_recl//= ler_add.
-Qed.
-
-Let total_variationD1 a b c f : a < c < b -> (TV a b f >= TV a c f + TV c b f)%E.
+Lemma total_variationD1 a b c f : a < c < b -> (TV a b f >= TV a c f + TV c b f)%E.
 Proof.
 move=> /andP[ac cb]; have [abf|abf] := pselect (BV a b f); last first.
   rewrite {3}/total_variation hasNub_ereal_sup ?leey//.
@@ -943,46 +939,131 @@ have H s t : division a c s -> division c b t ->
   exists (variation a b f (s ++ t))%:E.
     eexists; last reflexivity.
     by exists (s ++ t) => //; exact: division_cat acs cbt.
-  exact: variationD.
+  by rewrite variationD.
 rewrite [leRHS]ereal_sup_EFin//; last first.
   by apply: variations_neq0; rewrite (lt_trans ac).
-rewrite {1 2}/total_variation.
 have acf : BV a c f by apply: bounded_variationl abf; rewrite ac.
 have cbf : BV c b f by apply: bounded_variationr abf; rewrite ac.
-rewrite ereal_sup_EFin//; last exact: variations_neq0.
+rewrite {1 2}/total_variation ereal_sup_EFin//; last exact: variations_neq0.
 rewrite ereal_sup_EFin//; last exact: variations_neq0.
 rewrite -EFinD -sup_sumE; last 2 first.
   by split => //; exact: variations_neq0.
   by split => //; exact: variations_neq0.
 apply: le_sup.
 - move=> r/= [s [l' acl' <-{s}]] [t [l cbl] <-{t} <-{r}].
-  exists (variation a b f (l' ++ l)); split.
-    exact/variations_variation/(division_cat acl' cbl).
-  exact: variationD.
+  exists (variation a b f (l' ++ l)); split; last by rewrite variationD.
+  exact/variations_variation/(division_cat acl' cbl).
 - have [r acfr] := variations_neq0 f ac.
   have [s cbfs] := variations_neq0 f cb.
   by exists (r + s); exists r => //; exists s.
 - by split => //; apply: variations_neq0; rewrite (lt_trans ac).
 Qed.
 
-Definition insert (s : seq R) (c : R) :=
-  if c \in s then s else
-  seq.filter (fun x => x < c) s ++ c :: seq.filter (fun x => x > c) s.
+Definition ldivision (s : seq R) (c : R) := rcons (seq.filter (fun x => x < c) s) c.
 
-Let lemma2 a b s : division a b s -> forall c, a < c < b ->
-  division a b (insert s c).
-Proof.
-move=> abs c /andP[ac cb]; split.
-  rewrite /insert.
-  case: ifPn => cs//; first by case: abs.
-  case: abs => + _.
-  apply: subseq_lt_path.
-Admitted.
+Definition rdivision (s : seq R) (c : R) := seq.filter (fun x => c < x) s.
 
-Let lemma1 a b s f : division a b s -> forall c, a < c < b ->
-  variation a b f s <= variation a b f (insert s c).
+Lemma last_filter_lt (h c : R) t : h < c -> last h ([seq x <- t | x < c]) < c.
 Proof.
-move=> abs c /andP[ac cb].
+elim: t h => //= t1 t2 ih h hc.
+by case: ifPn => //= t1c; exact: ih.
+Qed.
+
+Lemma last_filter (a b c : R) (l : seq R) :
+  a < c -> c < b -> path <%R a l  -> last a l = b ->
+  last c [seq x <- l | c < x] = b.
+Proof.
+elim/last_ind : l a b c => /= [|h t ih a b c ac cb].
+  move=> a b c ac cb _ ?; subst b.
+  have := lt_trans ac cb.
+  by rewrite ltxx.
+rewrite rcons_path => /andP[ah ht].
+rewrite last_rcons => htb.
+by rewrite filter_rcons htb cb last_rcons.
+Qed.
+
+Lemma path_inv (a h : R) (t : seq R) : a < h -> path <%R h t -> path <%R a t.
+Proof.
+by elim: t h => // t1 t2 ih h /= ah /andP[ht1 ->]; rewrite andbT (lt_trans ah).
+Qed.
+
+Lemma divisionl a b c l : a < c -> c < b -> division a b l -> division a c (ldivision l c).
+Proof.
+move=> ac bc [] al /eqP htb; split.
+  rewrite /ldivision rcons_path/=; apply/andP; split.
+    by apply: path_filter => //; exact: lt_trans.
+  exact: last_filter_lt.
+by rewrite /ldivision last_rcons.
+Qed.
+
+Lemma divisionr a b c l : a < c -> c < b -> division a b l -> division c b (rdivision l c).
+Proof.
+move=> ac cb [] al /eqP alb.
+rewrite /division; split.
+  rewrite lt_path_sortedE in al.
+  case/andP: al => alla sl.
+  rewrite lt_path_sortedE; apply/andP; split.
+    exact: filter_all.
+  by apply: sorted_filter => //; exact: lt_trans.
+exact/eqP/(last_filter ac).
+Qed.
+
+Lemma path_pred0 h (t : seq R) : path <%R h t -> [seq x <- t | x < h] = [::].
+Proof.
+move=> /lt_path_min/allP ht; rewrite -(filter_pred0 t).
+apply: eq_in_filter => x xt.
+apply/negbTE.
+have := ht _ xt.
+rewrite ltNge.
+by apply: contra => /ltW.
+Qed.
+
+Lemma path_predT h (t : seq R) : path <%R h t -> [seq x <- t | h < x] = t.
+Proof.
+move=> /lt_path_min/allP ht.
+rewrite -[RHS](filter_predT t).
+apply: eq_in_filter => x xt.
+by apply: ht.
+Qed.
+
+Lemma in_division c l : sorted <%R l -> c \in l -> l = ldivision l c ++ rdivision l c.
+Proof.
+elim: l c => // h t ih c /= ht.
+rewrite inE => /predU1P[->{c}/=|ct].
+  by rewrite ltxx /ldivision /= ltxx /rdivision/= path_pred0//= path_predT.
+rewrite /ldivision/=; case: ifPn => [hc|].
+  by rewrite ltNge (ltW hc)/= /= [in LHS](ih _ _ ct)//; exact: path_sorted ht.
+rewrite -leNgt le_eqVlt => /predU1P[ch|ch].
+  by rewrite ch ltxx path_pred0//= /rdivision path_predT.
+move: ht; rewrite lt_path_sortedE => /andP[/allP/(_ _ ct)].
+by move=> /lt_trans-/(_ _ ch); rewrite ltxx.
+Qed.
+
+Lemma notin_division c l : sorted <%R l -> c \notin l ->
+  l = [seq x <- l | x < c] ++ rdivision l c.
+Proof.
+elim: l c => // h t ih c /= ht.
+rewrite inE negb_or => /andP[]; rewrite neq_lt => /orP[ch|ch] ct.
+  rewrite ch ltNge (ltW ch)/=.
+  rewrite path_pred0/= /rdivision; last first.
+    exact: path_inv ht.
+  by rewrite path_predT//; exact: path_inv ht.
+rewrite ch/= ltNge (ltW ch)/= -ih//.
+exact: path_sorted ht.
+Qed.
+
+Lemma division_division a b c f l : a < c -> c < b -> division a b l ->
+  variation a b f l <= variation a b f (ldivision l c ++ rdivision l c).
+Proof.
+move=> ac bc abl.
+have [cl|cl] := boolP (c \in l).
+  rewrite -in_division//.
+  by case: abl => /path_sorted.
+rewrite /ldivision.
+rewrite [in leLHS](notin_division _ cl)//; last first.
+  apply: path_sorted.
+  rewrite /division in abl.
+  by case: abl => + _; exact.
 rewrite /variation.
 Admitted.
 
@@ -1004,15 +1085,29 @@ rewrite /total_variation [x in (x + _)%E]ereal_sup_EFin => //; try exact: variat
 rewrite [x in (_ + x)%E]ereal_sup_EFin => //; try exact: variations_neq0.
 rewrite -EFinD -sup_sumE /has_sup; try (by split => //; exact: variations_neq0).
 apply: ub_ereal_sup => ? [? [l pacl <- <-]]; rewrite lee_fin.
+apply: le_trans.
+  exact: (division_division _ ac).
 apply: sup_ub => /=.
-Admitted.
+  case: bdAB => M ubdM; case: bdAC => N ubdN; exists (N + M).
+  move=> q [?] [i pabi <-] [? [j pbcj <-]] <-.
+  by apply: ler_add; [apply: ubdN;exists i|apply:ubdM;exists j].
+exists (variation a c f (ldivision l c)).
+  apply: variations_variation.
+  by apply: divisionl pacl.
+exists (variation c b f (rdivision l c)).
+  apply: variations_variation.
+  by apply: divisionr pacl.
+rewrite variationD//.
+  by apply: divisionl pacl.
+by apply: divisionr pacl.
+Qed.
 
 Lemma total_variationD a b c f : a < c < b -> (TV a b f = TV a c f + TV c b f)%E.
 Proof.
 move=> /andP[ac cb]; apply/eqP; rewrite eq_le; apply/andP; split; last first.
   by apply: total_variationD1; rewrite ac.
 by apply: total_variationD2; rewrite ac.
-Abort.
+Qed.
 
 End division. End Division.
 
