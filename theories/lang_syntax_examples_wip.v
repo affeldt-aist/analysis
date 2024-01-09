@@ -76,14 +76,25 @@ rewrite (@execD_bin _ _ binop_minus) execD_pow !execD_real/=.
 rewrite 2!letin'E/=.
 set p := projT1 (execD e) t.
 move => /andP[p0 p1].
-rewrite (@integral_bernoulli_trunc _ _ (fun x => \d_x))//; last first.
+rewrite (@integral_bernoulli_trunc _ _ (fun x => \d_x U))//; last first.
   apply/andP; split.
     exact: (onemX_ge0 _ p0 p1).
   apply/onem_le1/exprn_ge0/p0.
-rewrite (@integral_binomial_probabilty_trunc _ _ _ n p _ _ (fun y => \d_(1 <= y)%R)); last first.
-  move=> x0 y0.
-  case: (1 <= x0); have := @subsetT _ y0; rewrite setT_bool => YT;
-  have [->|->|->|->] := subset_set2 YT; by rewrite diracE.
+rewrite (@integral_binomial_probabilty_trunc _ n p _ _ (fun y => \d_(1 <= y)%R U))//; last first.
+  (* move=>/= _ y0 my0.
+  rewrite setTI. *)
+  apply: measurable_fun_dirac.
+  have := @subsetT _ U; rewrite setT_bool => UT.
+  have [->|->|->|->] /= := subset_set2 UT.
+    exact: measurable0.
+    rewrite [X in measurable X](_ : _ = `[1, +oo[%classic) //.
+      apply/seteqP.
+      admit.
+    rewrite [X in measurable X](_ : _ = `]-oo, 1[%classic) //.
+      apply/seteqP.
+      admit.
+    admit.
+  (* rewrite diracE. *)
 rewrite !big_ord_recl/=.
 have -> : (1 <= 0 :> R) = false by lra.
 rewrite /bump.
@@ -121,7 +132,7 @@ move=> i _.
 apply/mulrn_wge0/mulr_ge0; apply/exprn_ge0.
 exact: p0.
 apply/onem_ge0/p1.
-Qed.
+Admitted.
 
 Lemma __ : uniform_probability a01 `[0, (1 / 2)] = (1 / 2)%:E.
 Proof.
@@ -175,8 +186,14 @@ move=> e k k01 ek.
 rewrite /s0/s1.
 rewrite 2!execP_letin.
 rewrite 2![in RHS]execP_letin.
-rewrite letin'E execP_sample execD_binomial_trunc/=.
-(* rewrite integral_binomial_probability_trunc. *)
+congr (letin' _ _ _ _).
+congr (letin' _ _ _).
+(* apply: eq_sfkernel => x U. *)
+rewrite !execP_letin !execP_sample execD_bernoulli_trunc execD_binomial_trunc/=.
+rewrite (@execD_bin _ _ binop_minus) !execP_return execD_rel execD_pow/=.
+rewrite !execD_real !exp_var'E !(execD_var_erefl "a2") (execD_var_erefl "p")/=.
+
+have H := (@binomial_le1 "a2" "a2" 3 _ [#{"p"}]).
 (* f_equal. *)
 (* congr ((letin' _ _ _) _).
 apply: eq_sfkernel => ?.

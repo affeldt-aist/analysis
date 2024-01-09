@@ -157,11 +157,10 @@ HB.instance Definition _ :=
 
 End bernoulli.
 
-Lemma integral_bernoulli d d' {T : measurableType d} {T' : measurableType d'} {R : realType} 
-  (p : {nonneg R}) (p1 : (p%:num <= 1)%R) (f : bool -> R.-sfker [the measurableType _ of T%type] ~> T') x U :
-  (forall b x, 0 <= f b x U) ->
-  \int[bernoulli p1]_y (f y x) U =
-  p%:num%:E * f true x U + (`1-(p%:num))%:E * f false x U.
+Lemma integral_bernoulli {R : realType} (p : {nonneg R}) (p1 : (p%:num <= 1)%R)
+  (f : bool -> \bar R) : (forall x, 0 <= f x) ->
+  \int[bernoulli p1]_y (f y) =
+  p%:num%:E * f true + (`1-(p%:num))%:E * f false.
 Proof.
 move=> f0.
 rewrite ge0_integral_measure_sum// 2!big_ord_recl/= big_ord0 adde0/=.
@@ -214,12 +213,11 @@ End bernoulli_trunc.
 Arguments bernoulli_trunc {R}.
 Arguments measurable_bernoulli_trunc {R}.
 
-Lemma integral_bernoulli_trunc d d' {T : measurableType d} {T' : measurableType d'} {R : realType}
-    (p : R) (f : bool -> R.-sfker [the measurableType _ of T] ~> T') x U :
+Lemma integral_bernoulli_trunc {R : realType} (p : R) (f : bool -> \bar R) :
   (0 <= p <= 1)%R ->
-  (forall b x, 0 <= f b x U) ->
-  \int[bernoulli_trunc p]_y (f y x) U =
-  p%:E * f true x U + (`1-p)%:E * f false x U.
+  (forall x, 0 <= f x) ->
+  \int[bernoulli_trunc p]_y (f y) =
+  p%:E * f true + (`1-p)%:E * f false.
 Proof.
 move=> /andP[p0 p1] f0.
 rewrite /bernoulli_trunc.
@@ -280,20 +278,18 @@ Section integral_binomial.
 Variables (R : realType) (d : measure_display) (T : measurableType d).
 
 Lemma integral_binomial (n : nat) (p : {nonneg R}) 
-  (p1 : (p%:num <= 1)%R) (f : R -> set T -> _) U : 
-  (forall x y, 0 <= f x y) -> \int[binomial_probability n p1]_y (f y) U =
-  \sum_(k < n.+1) (bino_term n  p1 k)%:num%:E * f k%:R U.
+  (p1 : (p%:num <= 1)%R) (f : R -> \bar R)
+  (mf : measurable_fun setT f) :
+  (forall x, 0 <= f x) -> \int[binomial_probability n p1]_y (f y) =
+  \sum_(k < n.+1) (bino_term n p1 k)%:num%:E * f k%:R.
 Proof.
 move=> f0.
 rewrite ge0_integral_measure_sum//=; last first.
-  admit.
 apply: eq_bigr => i _.
 rewrite ge0_integral_mscale//=; last first.
-  admit.
 rewrite integral_dirac//=; last first.
-  admit.
 by rewrite diracT mul1e.
-Admitted.
+Qed.
 
 End integral_binomial.
 
@@ -326,8 +322,8 @@ Section integral_binomial_trunc.
 Variables (R : realType) (d : measure_display) (T : measurableType d).
 
 Lemma integral_binomial_probabilty_trunc (n : nat) (p : R) 
-  (p0 : (0 <= p)%R) (p1 : ((NngNum p0)%:num <= 1)%R) (f : R -> set T -> _) U :
-  (forall x y, 0 <= f x y) -> \int[binomial_probability_trunc n p]_y (f y) U = \sum_(k < n.+1) (bino_term n p1 k)%:num%:E * f k%:R U.
+  (p0 : (0 <= p)%R) (p1 : ((NngNum p0)%:num <= 1)%R) (f : R -> \bar R) (mf : measurable_fun setT f) :
+  (forall x, 0 <= f x) -> \int[binomial_probability_trunc n p]_y (f y) = \sum_(k < n.+1) (bino_term n p1 k)%:num%:E * f k%:R.
 Proof.
 move=> f0.
 rewrite /binomial_probability_trunc/=.
