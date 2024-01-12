@@ -1560,11 +1560,10 @@ Qed.
 
 Lemma measurable_fun_pow D f n : measurable_fun D f ->
   measurable_fun D (fun x => f x ^+ n).
+Proof.
 move=> mf.
-apply measurable_funTS => /=.
-(* apply continuous_measurable_fun.
-move=> x ?. *)
-Admitted.
+apply: (@measurable_comp _ _ _ _ _ _ setT (fun x : R => x ^+ n) _ f) => //.
+Qed.
 
 Lemma measurable_fun_ltr D f g : measurable_fun D f -> measurable_fun D g ->
   measurable_fun D (fun x => f x < g x).
@@ -1769,6 +1768,99 @@ Notation measurable_fun_power_pos := measurable_powR (only parsing).
 Notation measurable_power_pos := measurable_powR (only parsing).
 #[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_maxr` instead")]
 Notation measurable_fun_max := measurable_maxr (only parsing).
+
+Section measurable_fun_natType.
+Context d (T : measurableType d).
+Implicit Types (D : set T) (f g : T -> nat).
+
+Lemma measurable_funDN D f g :
+  measurable_fun D f -> measurable_fun D g -> measurable_fun D (fun x => (f x + g x)%N).
+Proof.
+move=> mf mg mD /=.
+ (* apply: (measurability (RGenOInfty.measurableE nat)) => //.
+move=> /= _ [_ [a ->] <-]; rewrite preimage_itv_o_infty.
+rewrite [X in measurable X](_ : _ = \bigcup_(q : rat)
+  ((D `&` [set x | ratr q < f x]) `&` (D `&` [set x | a - ratr q < g x]))).
+  apply: bigcupT_measurable_rat => q; apply: measurableI.
+  - by rewrite -preimage_itv_o_infty; apply: mf => //; apply: measurable_itv.
+  - by rewrite -preimage_itv_o_infty; apply: mg => //; apply: measurable_itv.
+rewrite predeqE => x; split => [|[r _] []/= [Dx rfx]] /= => [[Dx]|[_]].
+  rewrite -ltr_subl_addr => /rat_in_itvoo[r]; rewrite inE /= => /itvP h.
+  exists r => //; rewrite setIACA setIid; split => //; split => /=.
+    by rewrite h.
+  by rewrite ltr_subl_addr addrC -ltr_subl_addr h.
+by rewrite ltr_subl_addr=> afg; rewrite (lt_le_trans afg)// addrC ler_add2r ltW. *)
+Admitted.
+
+Lemma measurable_funBN D f g : measurable_fun D f ->
+  measurable_fun D g -> measurable_fun D (fun x => (f x - g x)%N).
+Proof.
+(* move=> ? ?; apply: measurable_funDN =>//; exact: measurableT_comp. *)
+Admitted.
+
+Lemma measurable_fun_ltn D f g : measurable_fun D f -> measurable_fun D g ->
+  measurable_fun D (fun x => (f x < g x)%N).
+Proof.
+move=> mf mg mD Y mY; have [| | |] := set_bool Y => /eqP ->.
+  have -> : (fun x : T => (f x < g x)%O) = (fun x : T => (0%N < (g x - f x)%N)%O).
+    apply/funext => n.
+    rewrite [in LHS]ltEnat.
+    transitivity (f n < g n)%N => //.
+    have := subn_gt0 (f n) (g n).
+    by move=> <-.
+    rewrite preimage_true -preimage_itv_o_infty.
+    by apply: (measurable_funBN mg mf) => //; exact: measurable_itv.
+  have -> : (fun x : T => (f x < g x)%O) = (fun x : T => ~~ (0%N <= (f x - g x)%N)%O).
+    apply/funext => n.
+    rewrite [in LHS]ltEnat -ltNge.
+    transitivity (f n < g n)%N => //.
+    have := subn_gt0 (f n) (g n).
+    move=> <-.
+    have -> : (((f n - g n)%N < 0%N)%O) = ((0%N < (g n - f n)%N)%O).
+      admit.
+      by rewrite ltEnat.
+    rewrite preimage_false.
+    (* rewrite -set_predC.
+    rewrite setCK. *)
+    (* rewrite -preimage_itv_c_infty. *)
+    (* by apply: (measurable_funBN mg mf) => //; exact: measurable_itv. *)
+  admit.
+(* - under eq_fun do rewrite ltNge -subr_ge0.
+  rewrite preimage_false set_predC setCK -preimage_itv_c_infty.
+  by apply: (measurable_funB mf mg) => //; exact: measurable_itv. *)
+- by rewrite preimage_set0 setI0.
+- by rewrite preimage_setT setIT.
+Admitted.
+
+Lemma measurable_fun_len D f g : measurable_fun D f -> measurable_fun D g ->
+  measurable_fun D (fun x => (f x <= g x)%N).
+Proof.
+move=> mf mg mD Y mY; have [| | |] := set_bool Y => /eqP ->.
+(* - under eq_fun do rewrite -subr_ge0.
+  rewrite preimage_true -preimage_itv_c_infty.
+  by apply: (measurable_funB mg mf) => //; exact: measurable_itv.
+- under eq_fun do rewrite leNgt -subr_gt0.
+  rewrite preimage_false set_predC setCK -preimage_itv_o_infty.
+  by apply: (measurable_funB mf mg) => //; exact: measurable_itv. *)
+admit. admit.
+- by rewrite preimage_set0 setI0.
+- by rewrite preimage_setT setIT.
+Admitted.
+
+(* setT should be D? (derived from measurable_and) *)
+Lemma measurable_fun_eqn D f g : measurable_fun D f -> measurable_fun D g ->
+  measurable_fun D (fun x => f x == g x).
+Proof.
+move=> mf mg.
+rewrite (_ : (fun x : T => f x == g x) = (fun x : T => (f x <= g x)%N && (g x <= f x)%N)).
+apply: (@measurable_and _ _ _ (fun x => (f x <= g x)%N) (fun x => (g x <= f x)%N)); exact: measurable_fun_len.
+apply: funext => x.
+apply/eqP/idP => [->|/andP[Hfg Hgf]].
+by apply/andP.
+by apply/le_anti/andP.
+Qed.
+
+End measurable_fun_natType.
 
 Section standard_emeasurable_fun.
 Variable R : realType.

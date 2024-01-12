@@ -28,9 +28,9 @@ Lemma a01 : 0 < 1 - 0 :> R. Proof. by []. Qed.
 Definition casino0 : exp _ [::] Bool :=
   [let "p" := Sample {exp_uniform 0 1 a01} in
    let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
-   let "_" := if #{"a1"} == {5}:R then return TT else Score {0}:R in
+   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
    let "a2" := Sample {exp_binomial_trunc 3 [#{"p"}]} in
-   return {1}:R <= #{"a2"}].
+   return {1}:N <= #{"a2"}].
 
 Example e1 : @exp R _ [::] _ := [{1}:R + {2}:R * {2}:R ^+ {3%nat}].
 
@@ -46,19 +46,68 @@ Qed.
 Definition casino1 : @exp R _ [::] _ :=
   [let "p" := Sample {exp_uniform 0 1 a01} in
    let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
-   let "_" := if #{"a1"} == {5}:R then return TT else Score {0}:R in
+   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
    let "a2" := Sample
      {exp_bernoulli_trunc [{1}:R - #{"p"} ^+ {3%nat}]} in
    return #{"a2"}].
+
+Lemma binomial_le1 n p U :
+  0 <= p <= 1 ->
+  (\int[binomial_probability_trunc n p]_y0 \d_(0 < y0)%N U =
+  \int[bernoulli_trunc (1 - p ^+ n)]_y0 \d_y0 U :> \bar R)%E.
+Proof.
+move=> /andP[p0 p1].
+rewrite (@integral_bernoulli_trunc _ _ (fun x => \d_x U))//; last first.
+  apply/andP; split.
+    exact: (onemX_ge0 _ p0 p1).
+  apply/onem_le1/exprn_ge0/p0.
+rewrite (@integral_binomial_probabilty_trunc _ n p _ _ (fun y => \d_(1 <= y)%N U))//; last first.
+rewrite !big_ord_recl/=.
+rewrite /bump.
+under eq_bigr => i _.
+  rewrite /=.
+  have -> : (0 < 1 + i)%N.
+  (* by rewrite lerDl.
+  over.
+rewrite addeC -ge0_sume_distrl.
+  congr (_ + _)%E; congr (_ * _)%E.
+  have -> : (\sum_(i < n) (p ^+ (n - (1 + i)) * `1-p ^+ (1 + i) *+ 'C(n, 1 + i))%:E)%E =
+  (\sum_(i < n.+1) (p ^+ (n - i) * `1-p ^+ i *+ 'C(n, i))%:E - (p ^+ n)%:E)%E.
+  rewrite big_ord_recl/= subn0 addeC addeA.
+  rewrite bin0 mulr1 mulr1n.
+  have <- : 0%E = ((- p ^+ n)%:E + (p ^+ n)%:E)%E.
+    rewrite EFinN.
+    congr _%:E.
+    lra.
+  by rewrite add0e.
+  congr _%E.
+  rewrite sumEFin.
+  rewrite !EFinB EFin_expe.
+  congr (_ - _)%E.
+  rewrite -(@exprDn_comm _ p `1-p n); last first.
+    by rewrite /GRing.comm/onem; lra.
+  rewrite /onem addrC.
+  have -> : 1 - p + p = 1 by lra.
+  by rewrite expr1n.
+  rewrite subn0 expr0 bin0 mulr1 mulr1n.
+  rewrite /onem.
+  congr _%:E.
+  set pn := p ^+ n.
+  lra.
+move=> i _.
+apply/mulrn_wge0/mulr_ge0; apply/exprn_ge0.
+exact: p0.
+apply/onem_ge0/p1. *)
+Admitted.
 
 (* exec [let x := sample (binomial n e) in  *)
 (*       return (x >= 1)] =                 *)
 (* exec [let y := sample (bernoulli (1 - e^n)) in   *)
 (*       return y]                          *)
-Lemma binomial_le1 x y n g e t U :
+Lemma binomial_le1' x y n g e t U :
   (0 <= (projT1 (execD e) t : mtyp Real) <= 1) ->
   execP ([let x := Sample {exp_binomial_trunc n e} in
-          return {1}:R <= #x] : @exp R _ g _) t U = 
+          return {1}:N <= #x] : @exp R _ g _) t U = 
   execP [let y := Sample {exp_bernoulli_trunc [{1}:R - e ^+ n]} in
          return #y] t U.
 Proof.
@@ -70,9 +119,9 @@ move=> H0 H1.
 rewrite !execP_return !execD_rel.
   have /= := @execD_var R ((y, Bool) :: g) y.
   rewrite eqxx => /(_ H0) ->.
-  have /= := @execD_var R ((x, Real) :: g) x.
+  have /= := @execD_var R ((x, Nat) :: g) x.
   rewrite eqxx => /(_ H1) -> /=.
-rewrite (@execD_bin _ _ binop_minus) execD_pow !execD_real/=.
+rewrite (@execD_bin _ _ binop_minus) execD_pow !execD_real execD_nat/=.
 rewrite 2!letin'E/=.
 set p := projT1 (execD e) t.
 move => /andP[p0 p1].
@@ -80,10 +129,10 @@ rewrite (@integral_bernoulli_trunc _ _ (fun x => \d_x U))//; last first.
   apply/andP; split.
     exact: (onemX_ge0 _ p0 p1).
   apply/onem_le1/exprn_ge0/p0.
-rewrite (@integral_binomial_probabilty_trunc _ n p _ _ (fun y => \d_(1 <= y)%R U))//; last first.
+rewrite (@integral_binomial_probabilty_trunc _ n p _ _ (fun y => \d_(1 <= y)%N U))//; last first.
   (* move=>/= _ y0 my0.
   rewrite setTI. *)
-  apply: measurable_fun_dirac.
+  (* apply: measurable_fun_dirac.
   have := @subsetT _ U; rewrite setT_bool => UT.
   have [->|->|->|->] /= := subset_set2 UT.
     exact: measurable0.
@@ -131,7 +180,7 @@ rewrite addeC -ge0_sume_distrl.
 move=> i _.
 apply/mulrn_wge0/mulr_ge0; apply/exprn_ge0.
 exact: p0.
-apply/onem_ge0/p1.
+apply/onem_ge0/p1. *)
 Admitted.
 
 Lemma __ : uniform_probability a01 `[0, (1 / 2)] = (1 / 2)%:E.
@@ -154,8 +203,13 @@ transitivity (
 by [].
 Admitted.
 
-Lemma execP_letin_uniform g u a b p (Hap : infer (a != p)) 
-(Hbp : infer (b != p)) (s0 s1 : @exp R D ((a, Unit) :: (b, Real) :: (p, Real) :: g) Real -> exp P ((p, Real) :: g) u) :
+Let weak_head fl g {t1 t2} x (e : @exp R fl g t2) (xg : x \notin dom g) :=
+  exp_weak fl [::] _ (x, t1) e xg.
+
+Lemma execP_letin_uniform g u a b p 
+  (Hap : infer (a != p)) (Hbp : infer (b != p))
+  (* (bg : b \notin dom ((p, Real) :: g)) (ag : b \notin dom ((b, Nat) :: (p, Real) :: g)) *)
+  (s0 s1 : @exp R D ((p, Real) :: g) Real -> exp P ((p, Real) :: g) u) :
   (forall (t : R) x U, t \in `[0, 1] -> execP (s0 [#p]) (t, x) U = execP (s1 [#p]) (t, x) U) ->
   execP [let p := Sample {@exp_uniform _ g 0 1 a01} in {s0 [#p]}] = 
   execP [let p := Sample {@exp_uniform _ g 0 1 a01} in {s1 [#p]}].
@@ -173,25 +227,53 @@ Qed.
 Lemma casino01 : execP casino0 = execP casino1.
 Proof.
 rewrite /casino0 /casino1.
-pose s0 := fun x => [let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]}
-      in let "_" := if #{"a1"} == {5}:R then return TT else Score {0}:R
-         in let "a2" := Sample {exp_binomial_trunc 3 [x]} in {exp_return [{1}:R <= #{"a2"}]}] : @exp R _ _ _.
-pose s1 := fun x => [let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]}
-      in let "_" := if #{"a1"} == {5}:R then return TT else Score {0}:R
+rewrite !execP_letin !execP_sample execD_uniform !execD_binomial_trunc /=.
+rewrite execP_if execP_score !execP_return !execD_bernoulli_trunc/=.
+rewrite !execD_rel (@execD_bin _ _ binop_minus) !execD_real execD_pow/=.
+rewrite !execD_nat execD_unit/=.
+rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a1")/=.
+rewrite !(execD_var_erefl "a2")/=.
+do 3 congr letin'.
+apply: eq_sfkernel => x U.
+rewrite !letin'E/=.
+apply: binomial_le1.
+
+rewrite /=.
+Abort.
+
+Lemma casino01 : execP casino0 = execP casino1.
+Proof.
+rewrite /casino0 /casino1.
+pose s0 := fun x : exp D _ Real => [let "a1" := Sample {exp_binomial_trunc 8 x}
+      in let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R
+         in let "a2" := Sample {exp_binomial_trunc 3 (weak_head (weak_head x _) _)} in {exp_return [{1}:N <= #{"a2"}]}] : @exp R _ _ _.
+pose s1 := fun x => [let "a1" := Sample {exp_binomial_trunc 8 x}
+      in let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R
          in let "a2"
-            := Sample {exp_bernoulli_trunc [{1}:R - x ^+ {3%N}]}
+            := Sample {exp_bernoulli_trunc [{1}:R - {weak_head (weak_head x _) _} ^+ {3%N}]}
             in {exp_return [#{"a2"}]}] : @exp R _ _ _.
-apply: (@execP_letin_uniform [::] _ _ _ _ _ _ (s0 _) (s1 _)).
+have := (@execP_letin_uniform [::] _ "_" "a1" "p" _ _ (s0 _ _ _) (s1 _ _ _)).
+rewrite /s0/s1/=.
+rewrite /weak_head/=.
+rewrite !execP_letin.
+apply.
 move=> e k k01 ek.
 rewrite /s0/s1.
 rewrite 2!execP_letin.
 rewrite 2![in RHS]execP_letin.
-congr (letin' _ _ _ _).
-congr (letin' _ _ _).
+(* congr (letin' _ _ _ _).
+congr (letin' _ _ _). *)
 (* apply: eq_sfkernel => x U. *)
+rewrite !execP_letin !execP_sample !execD_binomial_trunc /=.
+rewrite execP_if execP_score !execP_return !execD_bernoulli_trunc/=.
+rewrite !execD_rel (@execD_bin _ _ binop_minus) !execD_real execD_pow/=. rewrite !execD_nat execD_unit/=.
+rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a1")/=.
+rewrite !(execD_var_erefl "a2")/=.
+
 rewrite !execP_letin !execP_sample execD_bernoulli_trunc execD_binomial_trunc/=.
-rewrite (@execD_bin _ _ binop_minus) !execP_return execD_rel execD_pow/=.
+rewrite (@execD_bin _ _ binop_minus) !execP_return !execD_rel execD_pow/= execD_nat.
 rewrite !execD_real !exp_var'E !(execD_var_erefl "a2") (execD_var_erefl "p")/=.
+rewrite execP_if.
 
 have H := (@binomial_le1 "a2" "a2" 3 _ [#{"p"}]).
 (* f_equal. *)
