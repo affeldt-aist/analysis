@@ -292,10 +292,10 @@ Local Open Scope ring_scope.
 
 (* C(n, k) * p^(n-k) * (1-p)^k *)
 Definition bino_term (k : nat) : {nonneg R} :=
-  (p%:num^+(n-k)%N * (NngNum (onem_ge0 p1))%:num^+k *+ 'C(n, k))%:nng.
+  (p%:num^+k * (NngNum (onem_ge0 p1))%:num^+(n-k)%N *+ 'C(n, k))%:nng.
 
 Lemma bino_term0 : 
-  bino_term 0 = (p%:num^+n)%:nng.
+  bino_term 0 = ((NngNum (onem_ge0 p1))%:num^+n)%:nng.
 Proof.
 rewrite /bino_term bin0 subn0/=.
 apply/val_inj => /=.
@@ -303,7 +303,7 @@ by field.
 Qed.
 
 Lemma bino_term1 : 
-  bino_term 1 = (p%:num^+(n-1)%N * (NngNum (onem_ge0 p1))%:num *+ n)%:nng.
+  bino_term 1 = (p%:num * (NngNum (onem_ge0 p1))%:num^+(n-1)%N *+ n)%:nng.
 Proof.
 rewrite /bino_term bin1/=.
 apply/val_inj => /=.
@@ -311,8 +311,11 @@ by rewrite expr1.
 Qed.
 
 Import Notations.
+
+(* Check \sum_(k < n.+1) (fun k => [the measure _ _ of mscale (bino_term k)
+    [the measure _ _ of \d_k]]). *)
 (* \sum_(k < n.+1) (bino_coef p n k) * \d_k. *)
-Definition binomial_probability : set mnat -> \bar R :=
+Definition binomial_probability : set nat -> \bar R :=
   @msum _ _ R
     (fun k => [the measure _ _ of mscale (bino_term k)
     [the measure _ _ of \d_k]]) n.+1.
@@ -324,8 +327,11 @@ Proof.
 rewrite /binomial_probability/msum/mscale/bino_term/=/mscale/=.
 under eq_bigr do rewrite diracT mule1.
 rewrite sumEFin.
+under eq_bigr=> i _.
+  rewrite mulrC.
+  over.
 rewrite -exprDn_comm; last by rewrite /GRing.comm mulrC.
-by rewrite add_onemK; congr _%:E; rewrite expr1n.
+by rewrite addrC add_onemK; congr _%:E; rewrite expr1n.
 Qed.
 
 HB.instance Definition _ :=
