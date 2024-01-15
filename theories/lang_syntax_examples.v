@@ -468,22 +468,8 @@ rewrite !binS/= !bin0 bin1 bin2 bin_small// addn0.
 rewrite expr0 mulr1 mul1r subn0.
 rewrite -2!addeA !mul1r.
 congr _%:E.
-rewrite indicT !mul1r.
-congr (_ + _).
-  congr (_ * _).
-  by field.
-congr (_ + _).
-  congr (_ * _).
-  rewrite expr1 /onem.
-  by field.
-congr (_ + _).
-  congr (_ * _).
-  rewrite /onem/=.
-  by field.
-rewrite addr0.
-congr (_ * _).
-rewrite /onem/=.
-by field.
+rewrite indicT !mul1r /onem !addrA addr0 expr1/=.
+by congr (_ + _ + _ + _); congr (_ * _); field.
 Qed.
 
 End binomial_examples.
