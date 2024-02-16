@@ -28,17 +28,6 @@ Open Scope ring_scope.
 Open Scope lang_scope.
 Context (R : realType).
 
-Lemma a01 : 0 < 1 - 0 :> R. Proof. by []. Qed.
-
-Definition ex_bern : exp _ [::] _ := 
-  [let "p" := Sample {exp_uniform 0 1 a01} in
-   Sample {exp_bernoulli_trunc [#{"p"}]}].
-
-Example __ U : execP ex_bern tt U = 1%:E.
-Proof.
-rewrite execP_letin !execP_sample execD_uniform/= execD_bernoulli_trunc/=.
-rewrite exp_var'E (execD_var_erefl "p")/=.
-
 Lemma bernoulli_truncE (p : R) U :
   (0 <= p <= 1)%R ->
   (bernoulli_trunc p U =
@@ -424,5 +413,19 @@ rewrite /onem.
 congr (_%:E * _)%E.
 lra.
 Qed.
+
+Definition casino2 : @exp R _ [::] _ :=
+  [let "p" := Sample {exp_uniform 0 1 a01} in 
+   let "_" := Score {[{56}:R * #{"p"} ^+ {5%nat} * {[{1}:R - #{"p"}]} ^+ {3%nat}]} in
+   Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Definition casino3 : @exp R _ [::] _ :=
+  [let "_" := Score {1 / 9}:R in
+   let "p" := Sample {exp_beta 6 4} in
+   Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Definition casino4 : @exp R _ [::] _ :=
+  [let "_" := Score {1 / 9}:R in
+   Sample {exp_bernoulli_trunc [{10 / 11}:R]}].
 
 End casino_example.

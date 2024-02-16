@@ -369,8 +369,8 @@ rewrite /mscale.
 apply: funext=> x. *)
 
 Definition beta_bern : R.-sfker munit ~> mbool := 
-  @letin' _ _ _ munit (measurableTypeR R) mbool R
-  (sample_cst (beta 1 1))
+  @letin' _ _ _ munit _ mbool R
+  (sample_cst (beta 6 4))
   (* (sample_cst (uniform_probability a01)) *)
   (sample (bernoulli_trunc \o (@fst (measurableTypeR R) _)) (measurableT_comp measurable_bernoulli_trunc (measurable_acc_typ [:: Real] 0))).
 
@@ -388,15 +388,17 @@ Definition uni_bern : R.-sfker munit ~> mbool :=
   (* (sample_cst (uniform_probability a01)) *)
   (sample (bernoulli_trunc \o (@fst (measurableTypeR R) _)) (measurableT_comp measurable_bernoulli_trunc (measurable_acc_typ [:: Real] 0))).
 
-Lemma ex_beta_bern U : beta_bern tt U = uni_bern tt U.
+Lemma ex_beta_bern : beta_bern tt [set true] = (6 / 10)%:E.
 Proof.
 rewrite /beta_bern /uni_bern.
 rewrite [LHS]letin'E.
-rewrite letin'_sample_uniform//=.
 rewrite /beta.
-rewrite /mscale/=/B invr1 !mul1r invr1.
-rewrite /prebeta.
-rewrite ge0_integral_mscale//=.
+rewrite ge0_integral_mscale//.
+rewrite /mscale/=/B.
+rewrite /prebeta/=.
+Search integral lebesgue_measure.
+
+(* rewrite ge0_integral_mscale//=.
 rewrite EFinM.
 congr (_ * _)%E.
 rewrite /prebeta/=.
@@ -409,7 +411,10 @@ rewrite integral_bernoulli_trunc.
 (* rewrite /B invr1 !mulr1 fact0 invr1 mul1e. *)
 rewrite /prebeta/=.
 under eq_integral.
-Search integral lebesgue_measure.
+Search integral lebesgue_measure. *)
+Abort.
+
+End beta.
 
 Section context.
 Variables (R : realType).
@@ -516,7 +521,7 @@ Inductive exp : flag -> ctx -> typ -> Type :=
 | exp_binomial_trunc g (n : nat) :
     exp D g Real -> exp D g (Prob Nat)
 | exp_uniform g (a b : R) (ab0 : (0 < b - a)%R) : exp D g (Prob Real)
-(* | exp_beta g (a b : nat) : exp D g (Prob Real) *)
+| exp_beta g (a b : nat) (* NB: shound be R *) : exp D g (Prob Real)
 | exp_poisson g : nat -> exp D g Real -> exp D g Real
 | exp_normalize g t : exp P g t -> exp D g (Prob t)
 | exp_letin g t1 t2 str : exp P g t1 -> exp P ((str, t1) :: g) t2 ->
@@ -552,7 +557,7 @@ Arguments exp_bernoulli {R g}.
 Arguments exp_bernoulli_trunc {R g} &.
 Arguments exp_binomial {R g}.
 Arguments exp_uniform {R g} &.
-(* Arguments exp_beta {R g} &. *)
+Arguments exp_beta {R g} &.
 Arguments exp_binomial_trunc {R g} &.
 Arguments exp_poisson {R g}.
 Arguments exp_normalize {R g _}.
@@ -642,7 +647,7 @@ Fixpoint free_vars k g t (e : @exp R k g t) : seq string :=
   | exp_bernoulli_trunc _ e     => free_vars e
   | exp_binomial _ _ _ _     => [::]
   | exp_uniform _ _ _ _     => [::]
-  (* | exp_beta _ _ _ => [::] *)
+  | exp_beta _ _ _ => [::]
   | exp_binomial_trunc _ _ e     => free_vars e
   | exp_poisson _ _ e       => free_vars e
   | exp_normalize _ _ e     => free_vars e
@@ -823,8 +828,8 @@ Inductive evalD : forall g t, exp D g t ->
   (exp_uniform a b ab0 : exp D g _) -D> cst (uniform_probability ab0) ;
                                         measurable_cst _
 
-(* | eval_beta g (a b : nat) (p : {nonneg R}) (p1 : (p%:num <= 1)%R) :
-  (exp_beta a b : exp D g _) -D> cst (beta a b p1) ; measurable_cst _ *)
+| eval_beta g (a b : nat) :
+  (exp_beta a b : exp D g _) -D> cst (beta a b) ; measurable_cst _
 
 | eval_poisson g n (e : exp D g _) f mf :
   e -D> f ; mf ->
@@ -973,11 +978,9 @@ all: (rewrite {g t e u v mu mv hu}).
   inversion 1; subst g0 a0 b0.
   inj_ex H2; subst v.
   by have -> : ab0 = ab2.
-(* - move=> g a b p p1 {}v {}mv.
+- move=> g a b {}v {}mv.
   inversion 1. subst g0 a0 b0.
-  inj_ex H2; subst v.
-  inj_ex H4.
-  have -> : p1 = p2 by []. *)
+  by inj_ex H2; subst v. (* TODO: beta *)
 - move=> g t e k mk ev IH {}v {}mv.
   inversion 1; subst g0 t.
   inj_ex H2; subst e0.
@@ -1133,6 +1136,9 @@ all: rewrite {g t e u v eu}.
   inversion 1; subst g0 a0 b0.
   inj_ex H2; subst v.
   by have -> : ab0 = ab2.
+- move=> g a b {}v {}mv.
+  inversion 1; subst g0 a0 b0.
+  by inj_ex H2; subst v.
 - move=> g n e f mf ev IH {}v {}mv.
   inversion 1; subst g0 n0.
   inj_ex H2; subst e0.
@@ -1234,6 +1240,7 @@ all: rewrite {z g t}.
   exists (binomial_probability_trunc n \o p).
   eexists; exact: (eval_binomial_trunc n).
 - by eexists; eexists; exact: eval_uniform.
+- by eexists; eexists; exact: eval_beta.
 - move=> g h e [f [mf H]].
   by exists (poisson h \o f); eexists; exact: eval_poisson.
 - move=> g t e [k ek].
@@ -1428,6 +1435,11 @@ Lemma execD_uniform g a b ab0 :
   @execD g _ (exp_uniform a b ab0) =
     existT _ (cst [the probability _ _ of uniform_probability ab0]) (measurable_cst _).
 Proof. exact/execD_evalD/eval_uniform. Qed.
+
+Lemma execD_beta g a b :
+  @execD g _ (exp_beta a b) =
+    existT _ (cst [the probability _ _ of beta a b]) (measurable_cst _).
+Proof. exact/execD_evalD/eval_beta. Qed.
 
 Lemma execD_normalize_pt g t (e : exp P g t) :
   @execD g _ [Normalize e] =
