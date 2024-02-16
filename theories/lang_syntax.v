@@ -347,6 +347,70 @@ End accessor_functions.
 Arguments acc_typ {R} s n.
 Arguments measurable_acc_typ {R} s n.
 
+
+Section beta.
+Context {R : realType}.
+(* Check sample_cst (beta 6 4) : R.-sfker _ ~> R. *)
+(* Check sample_cst (beta 6 4) : R.-ker _ ~> measurableTypeR R. *)
+Check sample_cst (uniform_probability _) : R.-ker _ ~> measurableTypeR R.
+
+Open Scope ring_scope.
+Lemma a01 : 0 < 1 - 0 :> R. Proof. by []. Qed.
+Import Notations.
+
+(* Lemma beta11_uniform :
+  beta 1 1 `[0, 1] = uniform_probability a01 `[0, 1].
+Proof.
+rewrite /beta /uniform_probability.
+congr mscale.
+congr invr_nonneg.
+admit.
+rewrite /mscale.
+apply: funext=> x. *)
+
+Definition beta_bern : R.-sfker munit ~> mbool := 
+  @letin' _ _ _ munit (measurableTypeR R) mbool R
+  (sample_cst (beta 1 1))
+  (* (sample_cst (uniform_probability a01)) *)
+  (sample (bernoulli_trunc \o (@fst (measurableTypeR R) _)) (measurableT_comp measurable_bernoulli_trunc (measurable_acc_typ [:: Real] 0))).
+
+Lemma letin'_sample_uniform d d' (T : measurableType d)
+    (T' : measurableType d') (a b : R) (ab0 : (0 < b - a)%R)
+    (u : R.-sfker [the measurableType _ of (_ * T)%type] ~> T') x y :
+  measurable y ->
+  letin' (sample_cst (uniform_probability ab0)) u x y =
+  ((b - a)^-1%:E * \int[lebesgue_measure]_(x0 in `[a, b]) u (x0, x) y)%E.
+Admitted.
+
+Definition uni_bern : R.-sfker munit ~> mbool := 
+  @letin' _ _ _ munit (measurableTypeR R) mbool R
+  (sample_cst (uniform_probability a01))
+  (* (sample_cst (uniform_probability a01)) *)
+  (sample (bernoulli_trunc \o (@fst (measurableTypeR R) _)) (measurableT_comp measurable_bernoulli_trunc (measurable_acc_typ [:: Real] 0))).
+
+Lemma ex_beta_bern U : beta_bern tt U = uni_bern tt U.
+Proof.
+rewrite /beta_bern /uni_bern.
+rewrite [LHS]letin'E.
+rewrite letin'_sample_uniform//=.
+rewrite /beta.
+rewrite /mscale/=/B invr1 !mul1r invr1.
+rewrite /prebeta.
+rewrite ge0_integral_mscale//=.
+rewrite EFinM.
+congr (_ * _)%E.
+rewrite /prebeta/=.
+Search "pow".
+rewrite subn1/=.
+transitivity (\int[(integral (uniform_probability p01))^~ (@cst R _ 1%:E)]_x bernoulli_trunc x U)%E.
+  admit.
+rewrite /bernoulli_trunc/=.
+rewrite integral_bernoulli_trunc.
+(* rewrite /B invr1 !mulr1 fact0 invr1 mul1e. *)
+rewrite /prebeta/=.
+under eq_integral.
+Search integral lebesgue_measure.
+
 Section context.
 Variables (R : realType).
 Definition ctx := seq (string * typ).
@@ -452,7 +516,7 @@ Inductive exp : flag -> ctx -> typ -> Type :=
 | exp_binomial_trunc g (n : nat) :
     exp D g Real -> exp D g (Prob Nat)
 | exp_uniform g (a b : R) (ab0 : (0 < b - a)%R) : exp D g (Prob Real)
-| exp_beta g (a b : nat) : exp D g (Prob Real)
+(* | exp_beta g (a b : nat) : exp D g (Prob Real) *)
 | exp_poisson g : nat -> exp D g Real -> exp D g Real
 | exp_normalize g t : exp P g t -> exp D g (Prob t)
 | exp_letin g t1 t2 str : exp P g t1 -> exp P ((str, t1) :: g) t2 ->
@@ -488,7 +552,7 @@ Arguments exp_bernoulli {R g}.
 Arguments exp_bernoulli_trunc {R g} &.
 Arguments exp_binomial {R g}.
 Arguments exp_uniform {R g} &.
-Arguments exp_beta {R g} &.
+(* Arguments exp_beta {R g} &. *)
 Arguments exp_binomial_trunc {R g} &.
 Arguments exp_poisson {R g}.
 Arguments exp_normalize {R g _}.
@@ -578,7 +642,7 @@ Fixpoint free_vars k g t (e : @exp R k g t) : seq string :=
   | exp_bernoulli_trunc _ e     => free_vars e
   | exp_binomial _ _ _ _     => [::]
   | exp_uniform _ _ _ _     => [::]
-  | exp_beta _ _ _ => [::]
+  (* | exp_beta _ _ _ => [::] *)
   | exp_binomial_trunc _ _ e     => free_vars e
   | exp_poisson _ _ e       => free_vars e
   | exp_normalize _ _ e     => free_vars e
@@ -759,8 +823,8 @@ Inductive evalD : forall g t, exp D g t ->
   (exp_uniform a b ab0 : exp D g _) -D> cst (uniform_probability ab0) ;
                                         measurable_cst _
 
-| eval_beta g (a b : nat) (p : {nonneg R}) (p1 : (p%:num <= 1)%R) :
-  (exp_beta a b : exp D g _) -D> cst (beta a b p1) ; measurable_cst _
+(* | eval_beta g (a b : nat) (p : {nonneg R}) (p1 : (p%:num <= 1)%R) :
+  (exp_beta a b : exp D g _) -D> cst (beta a b p1) ; measurable_cst _ *)
 
 | eval_poisson g n (e : exp D g _) f mf :
   e -D> f ; mf ->
@@ -897,7 +961,7 @@ all: (rewrite {g t e u v mu mv hu}).
   by rewrite (IH _ _ H2).
 - move=> g n p p1 {}v {}mv.
   inversion 1; subst g0 n0 p0.
-  inj_ex H4; subst v.
+  inj_ex H2; subst v.
   by have -> : p1 = p3 by [].
 - move=> g n e f mf ev IH {}v {}mv.
   inversion 1; subst g0 n0.
@@ -907,17 +971,23 @@ all: (rewrite {g t e u v mu mv hu}).
   by rewrite (IH _ _ H3).
 - move=> g a b ab0 {}v {}mv.
   inversion 1; subst g0 a0 b0.
-  inj_ex H4; subst v.
+  inj_ex H2; subst v.
   by have -> : ab0 = ab2.
-- move=> g a b p p1 {}v {}mv.
+(* - move=> g a b p p1 {}v {}mv.
   inversion 1. subst g0 a0 b0.
   inj_ex H2; subst v.
   inj_ex H4.
-  have -> : p1 = p2 by [].
-- move=> g t e0 k ev IH {}v {}mv.
-  inversion 1; subst g0 t0.
+  have -> : p1 = p2 by []. *)
+- move=> g t e k mk ev IH {}v {}mv.
+  inversion 1; subst g0 t.
   inj_ex H2; subst e0.
   inj_ex H4; subst v.
+  by rewrite (IH _ _ H3).
+- move=> g t e k ev IH f mf.
+  inversion 1; subst g0 t0.
+  inj_ex H2; subst e0.
+  inj_ex H4; subst f.
+  inj_ex H5; subst mf.
   by rewrite (IH _ H3).
 - move=> g t e f mf e1 f1 mf1 e2 f2 mf2 ev ih ev1 ih1 ev2 ih2 v m.
   inversion 1; subst g0 t0.
@@ -1051,7 +1121,7 @@ all: rewrite {g t e u v eu}.
   by rewrite (IH _ _ H2).
 - move=> g n p p1 {}v {}mv.
   inversion 1; subst g0 n0 p0.
-  inj_ex H4; subst v.
+  inj_ex H2; subst v.
   by have -> : p1 = p3 by [].
 - move=> g n e f mf ev IH {}v {}mv.
   inversion 1; subst g0 n0.
@@ -1061,7 +1131,7 @@ all: rewrite {g t e u v eu}.
   by rewrite (IH _ _ H3).
 - move=> g a b ab0 {}v {}mv.
   inversion 1; subst g0 a0 b0.
-  inj_ex H4; subst v.
+  inj_ex H2; subst v.
   by have -> : ab0 = ab2.
 - move=> g n e f mf ev IH {}v {}mv.
   inversion 1; subst g0 n0.
