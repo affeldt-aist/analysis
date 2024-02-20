@@ -505,7 +505,7 @@ End binomial_example.
 Section uniform_probability.
 Context (R : realType) (a b : R) (ab0 : (0 < b - a)%R).
 
-Definition uniform_probability (* : set _ -> \bar R *) :=
+Definition uniform_probability : set _ -> \bar R :=
   @mscale _ _ R (invr_nonneg (NngNum (ltW ab0)))
     (mrestr lebesgue_measure (measurable_itv `[a, b])).
 
@@ -703,7 +703,19 @@ Definition beta_nat (*: set [the measurableType (R.-ocitv.-measurable).-sigma of
   salgebraType R.-ocitv.-measurable] -> \bar R*) :=
   @mscale _ _ _ (invr_nonneg (NngNum beta_nat_norm_ge0)) ubeta_nat.
 
-HB.instance Definition _ := Measure.on beta_nat.
+Let beta_nat0 : beta_nat set0 = 0.
+Proof. exact: measure0. Qed.
+
+Let beta_nat_ge0 U : (0 <= beta_nat U)%E.
+Proof. exact: measure_ge0. Qed.
+
+Let beta_nat_sigma_additive : semi_sigma_additive beta_nat.
+Proof. move=> /= F mF tF mUF; exact: measure_semi_sigma_additive. Qed.
+
+HB.instance Definition _ := isMeasure.Build _ _ _ beta_nat
+  beta_nat0 beta_nat_ge0 beta_nat_sigma_additive.
+
+(* HB.instance Definition _ := Measure.on beta_nat. *)
 
 (*Let beta_nat0 : beta_nat set0 = 0.
 Proof. exact: measure0. Qed.

@@ -371,7 +371,7 @@ Qed.
 
 Local Notation B := beta_nat_norm.
 
-Definition Baa'bb'Bab : R := (B (a + a') (b + b')) / B a b.
+Definition Baa'bb'Bab : R := (beta_nat_norm (a + a') (b + b')) / beta_nat_norm a b.
 
 Lemma Baa'bb'Bab_ge0 : 0 <= Baa'bb'Bab.
 Proof. by rewrite /Baa'bb'Bab divr_ge0// beta_nat_norm_ge0. Qed.
@@ -887,7 +887,7 @@ Inductive evalD : forall g t, exp D g t ->
                                         measurable_cst _
 
 | eval_beta g (a b : nat) :
-  (exp_beta a b : exp D g _) -D> (cst (beta_nat a b)) ; measurable_cst _
+  (exp_beta a b : exp D g _) -D> cst (beta_nat a b) ; measurable_cst _
 
 | eval_poisson g n (e : exp D g _) f mf :
   e -D> f ; mf ->

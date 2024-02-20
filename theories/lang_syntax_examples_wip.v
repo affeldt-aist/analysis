@@ -55,8 +55,28 @@ case: (sumbool_ler 0 p%:num) => [{}p0/=|].
     admit.
 Abort.
 
-
 End trunc_lemmas.
+
+Section beta_example.
+(* Open Scope ring_scope. *)
+Open Scope lang_scope.
+Context (R : realType).
+
+Lemma beta_bernoulli :
+  @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in Sample {exp_bernoulli_trunc [#{"p"}]}] =
+  execP [Sample {exp_bernoulli_trunc [{6 / 10}:R]}].
+Proof.
+rewrite execP_letin !execP_sample !execD_beta_nat !execD_bernoulli_trunc/=.
+rewrite !execD_real exp_var'E !(execD_var_erefl "p")/=.
+apply: eq_sfkernel=> x U.
+rewrite letin'E/=.
+rewrite /beta_nat/mscale/=.
+transitivity (bernoulli_trunc ((@beta_nat_norm R 7 4) / (@beta_nat_norm R 6 4)) U); last first.
+  congr (bernoulli_trunc _ _).
+  rewrite /beta_nat_norm/= factE/=; lra.
+Abort.
+
+End beta_example.
 
 Section casino_example.
 Open Scope ring_scope.
@@ -90,16 +110,6 @@ Definition casino0 : exp _ [::] Bool :=
    let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
    let "a2" := Sample {exp_binomial_trunc 3 [#{"p"}]} in
    return {1}:N <= #{"a2"}].
-
-Example e1 : @exp R _ [::] _ := [{1}:R + {2}:R * {2}:R ^+ {3%nat}].
-
-Lemma exe1 : projT1 (execD e1) = (fun x => 17).
-Proof.
-rewrite /e1 (@execD_bin _ _ binop_add) (@execD_bin _ _ binop_mult)/=.
-rewrite execD_pow/= !execD_real /=.
-apply: funext => x /=.
-lra.
-Qed.
 
 (* Arguments exp_bin {R g b} &. *)
 Definition casino1 : @exp R _ [::] _ :=
@@ -235,9 +245,6 @@ rewrite {}/A {}/B !setTI /ysection/= (*TODO: lemma?*) /preimage/=.
 by apply/seteqP; split => [z|z] /=; rewrite inE/=.
 Qed.
 
-Let weak_head fl g {t1 t2} x (e : @exp R fl g t2) (xg : x \notin dom g) :=
-  exp_weak fl [::] _ (x, t1) e xg.
-
 Lemma execP_letin_uniform g t str (s0 s1 : exp P ((str, Real) :: g) t) :
   (forall (p : R) x U, 0 <= p <= 1 ->
     execP s0 (p, x) U = execP s1 (p, x) U) ->
@@ -252,6 +259,16 @@ congr (_ * _)%E.
 apply: eq_integral => p p01.
 apply: s01.
 by rewrite inE in p01.
+Qed.
+
+Lemma congr_exp g t1 t2 str (e : @exp _ _ _ t1) (e1 e2 : @exp _ _ (_ :: g) t2) x U :
+  (forall y V, execP e1 (y, x) V = execP e2 (y, x) V) ->
+  @execP R g t2 [let str := e in e1] x U = @execP R g t2 [let str := e in e2] x U.
+Proof.
+move=> He.
+rewrite !execP_letin !letin'E.
+apply: eq_integral => ? _.
+apply: He.
 Qed.
 
 (* Lemma casino01 : execP casino0 = execP casino1.
@@ -307,43 +324,25 @@ rewrite !letin'E/=.
 by apply/binomial_le1/andP.
 Qed. *)
 
-Lemma casino01' y V : measurable V -> execP casino0 y V = execP casino1' y V.
+Lemma casino01' y V :
+  measurable V ->
+  execP casino0 y V = execP casino1' y V.
 Proof.
 move=> mV //.
 rewrite /casino0 /casino1.
 apply: execP_letin_uniform => //.
 move=> p x U r01.
+apply: congr_exp => y0 V0.
+apply: congr_exp => y1 V1.
 rewrite !execP_letin !execP_sample !execD_binomial_trunc /=.
-rewrite execP_if execP_score !execP_return !execD_bernoulli_trunc/=.
+rewrite !execP_return !execD_bernoulli_trunc/=.
 rewrite !execD_rel (@execD_bin _ _ binop_minus) execD_pow.
-rewrite (@execD_bin _ _ binop_minus) !execD_real/=.
-rewrite !execD_nat execD_unit/=.
-rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a1")/=.
-rewrite !(execD_var_erefl "a2")/=.
+rewrite (@execD_bin _ _ binop_minus) !execD_real/= !execD_nat.
+rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a2")/=.
 rewrite !letin'E/=.
 move: r01 => /andP[r0 r1].
-rewrite !integral_binomial_probabilty_trunc//=.
-apply: eq_bigr => i _.
-congr (_ * _)%E.
-rewrite !letin'E iteE/=.
-congr (\int[_]_y _)%E.
-apply: funext => x0.
-rewrite !letin'E/=.
 by apply/binomial_le1'/andP.
 Qed.
-
-Lemma exec_casino t U :
-  execP casino0 t U = ((10 / 99)%:E * \d_true U + (1 / 99)%:E * \d_false U)%E .
-Proof.
-rewrite /casino0 !execP_letin !execP_sample execD_uniform/=.
-rewrite !execD_binomial_trunc execP_if !execP_return !execP_score/=.
-rewrite !execD_rel !execD_real execD_unit/=.
-rewrite !exp_var'E (execD_var_erefl "p") (execD_var_erefl "a1").
-rewrite (execD_var_erefl "p") (execD_var_erefl "a2")/=.
-rewrite letin'E/= /uniform_probability ge0_integral_mscale//=.
-rewrite subr0 invr1 mul1e.
-under eq_integral.
-Admitted.
 
 Definition uniform_syntax : @exp R _ [::] _ :=
   [let "p" := Sample {exp_uniform 0 1 a01} in
