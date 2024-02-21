@@ -58,23 +58,27 @@ Abort.
 End trunc_lemmas.
 
 Section beta_example.
-(* Open Scope ring_scope. *)
+Open Scope ring_scope.
 Open Scope lang_scope.
 Context (R : realType).
 
+Let p610 : ((6 / 10%:R)%:nng : {nonneg R})%:num <= 1.
+Proof. admit. Admitted.
+
 Lemma beta_bernoulli :
   @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in Sample {exp_bernoulli_trunc [#{"p"}]}] =
-  execP [Sample {exp_bernoulli_trunc [{6 / 10}:R]}].
+  execP [Sample {@exp_bernoulli _ _ (6 / 10%:R)%:nng p610}].
 Proof.
-rewrite execP_letin !execP_sample !execD_beta_nat !execD_bernoulli_trunc/=.
-rewrite !execD_real exp_var'E !(execD_var_erefl "p")/=.
+rewrite execP_letin !execP_sample !execD_beta_nat !execD_bernoulli/=.
+rewrite execD_bernoulli_trunc exp_var'E !(execD_var_erefl "p")/=.
 apply: eq_sfkernel=> x U.
 rewrite letin'E/=.
 rewrite /beta_nat/mscale/=.
 transitivity (bernoulli_trunc ((@beta_nat_norm R 7 4) / (@beta_nat_norm R 6 4)) U); last first.
-  congr (bernoulli_trunc _ _).
-  rewrite /beta_nat_norm/= factE/=; lra.
-Abort.
+  (* congr (bernoulli_trunc _ _). *)
+  (* rewrite /beta_nat_norm/= factE/=; lra. *)
+(* apply: beta_nat_bern_bern. *)
+Admitted.
 
 End beta_example.
 
@@ -453,10 +457,58 @@ apply/exprn_ge0.
 by rewrite subr_ge0.
 Qed.
 
+Lemma exec_beta_a1 U :
+  @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
+         Sample {exp_bernoulli_trunc [#{"p"}]}] tt U =
+  @execP R [::] _ [Sample {exp_bernoulli_trunc [{3 / 5}:R]}] tt U.
+Proof.
+rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli_trunc/=.
+rewrite !execD_real/= exp_var'E (execD_var_erefl "p")/=.
+transitivity (beta_nat_bern 6 4 1 0 tt U : \bar R).
+  rewrite /beta_nat_bern !letin'E/= /ubeta_nat_pdf/= /onem.
+  apply: eq_integral => x _.
+  do 2 f_equal.
+  by rewrite (mul1r, mulr1).
+rewrite beta_nat_bern_bern/= /bernoulli/= bernoulli_truncE; last by lra.
+rewrite measure_addE/= /mscale/=.
+congr (_ * _ + _ * _)%:E; rewrite /onem; rewrite /Baa'bb'Bab /beta_nat_norm/=;
+by rewrite !factS/= fact0; field.
+Qed.
+
 Definition casino3 : @exp R _ [::] _ :=
   [let "_" := Score {1 / 9}:R in
    let "p" := Sample {exp_beta 6 4} in
    Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Lemma beta_nat_bern6403 U :
+  (@beta_nat_bern R 6 4 0 3 tt U = (1 / 11)%:E * \d_true U + `1-(1 / 11)%:E * \d_false U)%E.
+Proof.
+rewrite beta_nat_bern_bern/= /bernoulli/=.
+rewrite measure_addE/= /mscale/=.
+congr (_ * _ + _ * _)%:E; rewrite /onem; rewrite /Baa'bb'Bab /beta_nat_norm/=;
+by rewrite !factS/= fact0; field.
+Qed.
+
+Lemma casino34' U :
+  @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
+         Sample {exp_bernoulli_trunc [{[{1}:R - #{"p"}]} ^+ {3%nat}]}] tt U
+  =
+  @execP R [::] _ [Sample {exp_bernoulli_trunc [{1 / 11}:R]}] tt U.
+Proof.
+rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli_trunc/=.
+rewrite execD_pow/= (@execD_bin _ _ binop_minus) !execD_real/=.
+rewrite exp_var'E (execD_var_erefl "p")/=.
+transitivity (beta_nat_bern 6 4 0 3 tt U : \bar R).
+  rewrite /beta_nat_bern !letin'E/= /ubeta_nat_pdf/= /onem.
+  apply: eq_integral => x _.
+  do 2 f_equal.
+  by rewrite mul1r.
+rewrite bernoulli_truncE; last by lra.
+rewrite beta_nat_bern_bern/= /bernoulli/=.
+rewrite measure_addE/= /mscale/=.
+by congr (_ * _ + _ * _)%:E; rewrite /onem;
+rewrite /Baa'bb'Bab /beta_nat_norm/=; rewrite !factS/= fact0; field.
+Qed.
 
 Definition casino4 : @exp R _ [::] _ :=
   [let "_" := Score {1 / 9}:R in

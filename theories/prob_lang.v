@@ -619,7 +619,7 @@ Context {R : realType}.
 Variables a b : nat.
 
 (* unnormalized pdf for beta specialized to nat *)
-Definition ubeta_nat_pdf (t : R) := t ^+ a.-1 * (`1- t) ^+ b.-1.
+Definition ubeta_nat_pdf (t : R) := t ^+ a * (`1- t) ^+ b.
 
 Lemma ubeta_nat_pdf_ge0 t : 0 <= t <= 1 -> 0 <= ubeta_nat_pdf t.
 Proof. by move=> /andP[t0 t1]; rewrite mulr_ge0// exprn_ge0// onem_ge0. Qed.
@@ -754,16 +754,16 @@ Section beta_probability11.
 Local Open Scope ring_scope.
 Context {R : realType}.
 
-Lemma ubeta_nat_pdf11 : ubeta_nat_pdf 1 1 = @cst R _ 1.
+Lemma ubeta_nat_pdf11 : ubeta_nat_pdf 0 0 = @cst R _ 1.
 Proof. by apply/funext => r; rewrite /ubeta_nat_pdf/= !expr0 mulr1. Qed.
 
-Lemma beta_nat_norm11 : beta_nat_norm 1 1 = 1 :> R.
+Lemma beta_nat_norm11 : beta_nat_norm 0 0 = 1 :> R.
 Proof. by rewrite /beta_nat_norm/= fact0 mulr1/= divff. Qed.
 
 Let a01 : 0 < 1 - 0 :> R. Proof. by []. Qed.
 
 Lemma beta11_uniform U : measurable U ->
-  beta_nat 1 1 U = uniform_probability a01 U.
+  beta_nat 0 0 U = uniform_probability a01 U.
 Proof.
 move=> mU; rewrite /beta_nat /uniform_probability.
 rewrite /mscale/= beta_nat_norm11 subr0 invr1 !mul1e.
