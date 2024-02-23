@@ -480,19 +480,9 @@ Definition casino3 : @exp R _ [::] _ :=
    let "p" := Sample {exp_beta 6 4} in
    Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
 
-Lemma beta_nat_bern6403 U :
-  (@beta_nat_bern R 6 4 0 3 tt U = (1 / 11)%:E * \d_true U + `1-(1 / 11)%:E * \d_false U)%E.
-Proof.
-rewrite beta_nat_bern_bern/= /bernoulli/=.
-rewrite measure_addE/= /mscale/=.
-congr (_ * _ + _ * _)%:E; rewrite /onem; rewrite /Baa'bb'Bab /beta_nat_norm/=;
-by rewrite !factS/= fact0; field.
-Qed.
-
 Lemma casino34' U :
   @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
-         Sample {exp_bernoulli_trunc [{[{1}:R - #{"p"}]} ^+ {3%nat}]}] tt U
-  =
+         Sample {exp_bernoulli_trunc [{[{1}:R - #{"p"}]} ^+ {3%nat}]}] tt U =
   @execP R [::] _ [Sample {exp_bernoulli_trunc [{1 / 11}:R]}] tt U.
 Proof.
 rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli_trunc/=.
@@ -504,6 +494,46 @@ transitivity (beta_nat_bern 6 4 0 3 tt U : \bar R).
   do 2 f_equal.
   by rewrite mul1r.
 rewrite bernoulli_truncE; last by lra.
+rewrite beta_nat_bern_bern/= /bernoulli/=.
+rewrite measure_addE/= /mscale/=.
+by congr (_ * _ + _ * _)%:E; rewrite /onem;
+rewrite /Baa'bb'Bab /beta_nat_norm/=; rewrite !factS/= fact0; field.
+Qed.
+
+Check beta_nat.
+
+Local Notation mu := lebesgue_measure.
+Lemma bern_onem (f : _ -> R) U p : 
+  (\int[beta_nat 6 4]_y bernoulli_trunc (f y) U = p%:E * \d_true U + `1-p%:E * \d_false U)%E ->
+  (\int[beta_nat 6 4]_y bernoulli_trunc (1 - f y) U = `1-p%:E * \d_true U + p%:E * \d_false U)%E.
+Proof.
+under eq_integral => x _.
+  rewrite bernoulli_truncE.
+  over.
+admit.
+rewrite /=.
+rewrite /= /beta_nat/mscale/= /beta_nat_norm/= /ubeta_nat/ubeta_nat_pdf.
+Admitted.
+
+Lemma casino34 U :
+  @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
+         Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}] tt U =
+  @execP R [::] _ [Sample {exp_bernoulli_trunc [{10 / 11}:R]}] tt U.
+Proof.
+rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli_trunc/=.
+rewrite (@execD_bin _ _ binop_minus) execD_pow/= (@execD_bin _ _ binop_minus).
+rewrite !execD_real/= exp_var'E (execD_var_erefl "p")/=.
+transitivity (\int[beta_nat 6 4]_y bernoulli_trunc (1 - (1 - y) ^+ 3) U : \bar R)%E.
+  rewrite /beta_nat_bern !letin'E/= /ubeta_nat_pdf/= /onem.
+  by apply: eq_integral => x _.
+rewrite bernoulli_truncE; last by lra.
+have -> := (@bern_onem (fun x => (1 - x) ^+ 3) U (1 / 11) _).
+  congr (_ * _ + _ * _)%E; congr _%:E; rewrite /onem; lra.
+transitivity (beta_nat_bern 6 4 0 3 tt U : \bar R).
+  rewrite /beta_nat_bern !letin'E/= /ubeta_nat_pdf/= /onem.
+  apply: eq_integral => x _.
+  do 2 f_equal.
+  by rewrite mul1r.
 rewrite beta_nat_bern_bern/= /bernoulli/=.
 rewrite measure_addE/= /mscale/=.
 by congr (_ * _ + _ * _)%:E; rewrite /onem;
