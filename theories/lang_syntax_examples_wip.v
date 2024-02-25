@@ -105,32 +105,7 @@ rewrite !letin'E !iteE/= integral_dirac// ge0_integral_mscale//=.
 by rewrite normr0 mul0e !mule0 !adde0 !diracT !mul1e.
 Qed.
 
-(* Definition ex : exp _ [::] _ := @exp_bernoulli R [::] (1 / 2)%:nng (p1S 1).
-Example ex1 : projT1 (execD ex) tt = 1%:E. *)
-
-Definition casino0 : exp _ [::] Bool :=
-  [let "p" := Sample {exp_uniform 0 1 a01} in
-   let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
-   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
-   let "a2" := Sample {exp_binomial_trunc 3 [#{"p"}]} in
-   return {1}:N <= #{"a2"}].
-
-(* Arguments exp_bin {R g b} &. *)
-Definition casino1 : @exp R _ [::] _ :=
-  [let "p" := Sample {exp_uniform 0 1 a01} in
-   let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
-   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
-   let "a2" :=
-     Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]} in
-   return #{"a2"}].
-
-Definition casino1' : @exp R _ [::] _ :=
-  [let "p" := Sample {exp_uniform 0 1 a01} in
-   let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
-   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
-   Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
-
-Lemma binomial_le1' n p U :
+Lemma binomial_over1 n p U :
   0 <= p <= 1 ->
   (\int[binomial_probability_trunc n p]_y0 \d_(0 < y0)%N U =
   bernoulli_trunc (1 - `1-p ^+ n) U :> \bar R)%E.
@@ -275,7 +250,7 @@ apply: eq_integral => ? _.
 apply: He.
 Qed.
 
-Lemma congr_normalize g t (e1 e2 : @exp R _ g (Prob t)) :
+Lemma congr_normalize g t (e1 e2 : @exp R _ g t) :
   (forall x U, execP e1 x U = execP e2 x U) ->
   execD [Normalize e1] = execD [Normalize e2].
 Proof.
@@ -285,26 +260,6 @@ rewrite !execD_normalize_pt /=.
 f_equal.
 apply: eq_kernel => y V.
 apply: He.
-Qed.
-
-Lemma casino01 y V :
-  measurable V ->
-  execP casino0 y V = execP casino1' y V.
-Proof.
-move=> mV //.
-rewrite /casino0 /casino1.
-apply: execP_letin_uniform => //.
-move=> p x U r01.
-apply: congr_letin => y0 V0.
-apply: congr_letin => y1 V1.
-rewrite !execP_letin !execP_sample !execD_binomial_trunc /=.
-rewrite !execP_return !execD_bernoulli_trunc/=.
-rewrite !execD_rel (@execD_bin _ _ binop_minus) execD_pow.
-rewrite (@execD_bin _ _ binop_minus) !execD_real/= !execD_nat.
-rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a2")/=.
-rewrite !letin'E/=.
-move: r01 => /andP[r0 r1].
-by apply/binomial_le1'/andP.
 Qed.
 
 Definition uniform_syntax : @exp R _ [::] _ :=
@@ -376,46 +331,6 @@ congr (_%:E * _)%E.
 lra.
 Qed.
 
-Definition casino2 : @exp R _ [::] _ :=
-  [let "p" := Sample {exp_uniform 0 1 a01} in 
-   let "_" := Score {[{56}:R * #{"p"} ^+ {5%nat} * {[{1}:R - #{"p"}]} ^+ {3%nat}]} in
-   Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
-
-Lemma casino12 y V :
-  measurable V ->
-  execP casino1' y V = execP casino2 y V.
-Proof.
-move=> mV.
-rewrite /casino1' /casino2.
-apply: execP_letin_uniform => //.
-move=> p x U /andP[p0 p1].
-rewrite !execP_letin !execP_sample execP_if execD_rel/=.
-rewrite !execP_score !(@execD_bin _ _ binop_mult).
-rewrite !execD_bernoulli_trunc/= !(@execD_bin _ _ binop_minus) !execD_pow.
-rewrite !(@execD_bin _ _ binop_minus)/=.
-rewrite !execD_real !execD_nat/= execP_return execD_unit.
-rewrite !execD_binomial_trunc/=.
-rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a1")/=.
-rewrite !letin'E/=.
-rewrite integral_binomial_probabilty_trunc//=.
-(* set s := letin' _ _. *)
-rewrite (bigD1 (inord 5))//=.
-  rewrite big1; last first.
-  move=> [[|[|[|[|[|[|[|[|[|//]]]]]]]]]]//= Hi Hi5; rewrite letin'E iteE;
-  rewrite ?ge0_integral_mscale//= ?normr0 ?mul0e ?mule0 ?add0e//.
-  suff: false by [].
-  move/negbTE: Hi5 => <-.
-  by apply/eqP/val_inj => /=; rewrite inordK.
-rewrite letin'E iteE ge0_integral_mscale//= inordK//= adde0 /onem.
-congr (_ * _)%E.
-rewrite ger0_norm.
-  by rewrite -mulrA mulr_natl.
-apply/mulr_ge0.
-  exact/mulr_ge0/exprn_ge0.
-apply/exprn_ge0.
-by rewrite subr_ge0.
-Qed.
-
 Lemma exec_beta_a1 U :
   @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
          Sample {exp_bernoulli_trunc [#{"p"}]}] tt U =
@@ -434,8 +349,85 @@ congr (_ * _ + _ * _)%:E; rewrite /onem; rewrite /Baa'bb'Bab /beta_nat_norm/=;
 by rewrite !factS/= fact0; field.
 Qed.
 
+Definition casino0 : @exp R _ [::] _ :=
+  [Normalize 
+   let "p" := Sample {exp_uniform 0 1 a01} in
+   let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
+   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
+   let "a2" := Sample {exp_binomial_trunc 3 [#{"p"}]} in
+   return {1}:N <= #{"a2"}].
+
+Definition casino1 : @exp R _ [::] _ :=
+  [Normalize
+   let "p" := Sample {exp_uniform 0 1 a01} in
+   let "a1" := Sample {exp_binomial_trunc 8 [#{"p"}]} in
+   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
+   Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Lemma casino01 :
+  execD casino0 = execD casino1.
+Proof.
+rewrite /casino0 /casino1.
+apply: eq_execD.
+f_equal.
+apply: congr_normalize => y V.
+apply: execP_letin_uniform => //.
+move=> p x U r01.
+apply: congr_letin => y0 V0.
+apply: congr_letin => y1 V1.
+rewrite !execP_letin !execP_sample !execD_binomial_trunc /=.
+rewrite !execP_return !execD_bernoulli_trunc/=.
+rewrite !execD_rel (@execD_bin _ _ binop_minus) execD_pow.
+rewrite (@execD_bin _ _ binop_minus) !execD_real/= !execD_nat.
+rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a2")/=.
+rewrite !letin'E/=.
+move: r01 => /andP[r0 r1].
+by apply/binomial_over1/andP.
+Qed.
+
+Definition casino2 : @exp R _ [::] _ :=
+  [Normalize
+   let "p" := Sample {exp_uniform 0 1 a01} in 
+   let "_" := Score {[{56}:R * #{"p"} ^+ {5%nat} * {[{1}:R - #{"p"}]} ^+ {3%nat}]} in
+   Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Lemma casino12 :
+  execD casino1 = execD casino2.
+Proof.
+apply: eq_execD.
+f_equal.
+apply: congr_normalize => y V.
+apply: execP_letin_uniform => //.
+move=> p x U /andP[p0 p1].
+rewrite !execP_letin !execP_sample execP_if execD_rel/=.
+rewrite !execP_score !(@execD_bin _ _ binop_mult).
+rewrite !execD_bernoulli_trunc/= !(@execD_bin _ _ binop_minus) !execD_pow.
+rewrite !(@execD_bin _ _ binop_minus)/=.
+rewrite !execD_real !execD_nat/= execP_return execD_unit.
+rewrite !execD_binomial_trunc/=.
+rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a1")/=.
+rewrite !letin'E/=.
+rewrite integral_binomial_probabilty_trunc//=.
+rewrite (bigD1 (inord 5))//=.
+  rewrite big1; last first.
+  move=> [[|[|[|[|[|[|[|[|[|//]]]]]]]]]]//= Hi Hi5; rewrite letin'E iteE;
+  rewrite ?ge0_integral_mscale//= ?normr0 ?mul0e ?mule0 ?add0e//.
+  suff: false by [].
+  move/negbTE: Hi5 => <-.
+  by apply/eqP/val_inj => /=; rewrite inordK.
+rewrite letin'E iteE ge0_integral_mscale//= inordK//= adde0 /onem.
+congr (_ * _)%E.
+rewrite ger0_norm.
+  by rewrite -mulrA mulr_natl.
+apply/mulr_ge0.
+  exact/mulr_ge0/exprn_ge0.
+apply/exprn_ge0.
+by rewrite subr_ge0.
+Qed.
+
 Definition casino3 : @exp R _ [::] _ :=
-  [let "_" := Score {1 / 9}:R in
+  [Normalize
+   let "_" := Score {1 / 9}:R in
    let "p" := Sample {exp_beta 6 4} in
    Sample {exp_bernoulli_trunc [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
 
@@ -459,9 +451,6 @@ by congr (_ * _ + _ * _)%:E; rewrite /onem;
 rewrite /Baa'bb'Bab /beta_nat_norm/=; rewrite !factS/= fact0; field.
 Qed.
 
-Check beta_nat.
-
-Local Notation mu := lebesgue_measure.
 Lemma bern_onem (f : _ -> R) U p : 
   (\int[beta_nat 6 4]_y bernoulli_trunc (f y) U = p%:E * \d_true U + `1-p%:E * \d_false U)%E ->
   (\int[beta_nat 6 4]_y bernoulli_trunc (1 - f y) U = `1-p%:E * \d_true U + p%:E * \d_false U)%E.
@@ -474,21 +463,22 @@ rewrite /= /beta_nat/mscale/= /beta_nat_norm/= /ubeta_nat/ubeta_nat_pdf.
 Admitted.
 
 Definition casino4 : @exp R _ [::] _ :=
-  [let "_" := Score {1 / 9}:R in
+  [Normalize
+   let "_" := Score {1 / 9}:R in
    Sample {exp_bernoulli_trunc [{10 / 11}:R]}].
 
-Lemma casino34 y V :
-  measurable V ->
-  execP casino3 y V = execP casino4 y V.
+Lemma casino34 :
+  execD casino3 = execD casino4.
 Proof.
-move=> mV.
+apply: eq_execD.
+f_equal.
+apply: congr_normalize => y V.
 apply: congr_letin => x U.
 rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli_trunc/=.
 rewrite (@execD_bin _ _ binop_minus) execD_pow/= (@execD_bin _ _ binop_minus).
 rewrite !execD_real/= exp_var'E (execD_var_erefl "p")/=.
 transitivity (\int[beta_nat 6 4]_y bernoulli_trunc (1 - (1 - y) ^+ 3) U : \bar R)%E.
   by rewrite /beta_nat_bern !letin'E/= /onem.
-  (* by apply: eq_integral => x _. *)
 rewrite bernoulli_truncE; last by lra.
 have -> := (@bern_onem (fun x => (1 - x) ^+ 3) U (1 / 11) _).
   congr (_ * _ + _ * _)%E; congr _%:E; rewrite /onem; lra.
@@ -502,9 +492,6 @@ rewrite measure_addE/= /mscale/=.
 by congr (_ * _ + _ * _)%:E; rewrite /onem;
 rewrite /Baa'bb'Bab /beta_nat_norm/=; rewrite !factS/= fact0; field.
 Qed.
-
-Definition norm_casino4 : @exp R _ [::] _ :=
-  [Normalize {casino4}].
 
 Lemma norm_score_bern g p1 p2 (p10 : p1 != 0) (p1_ge0 : 0 <= p1)
 (p201 : 0 <= p2 <= 1) :
@@ -545,7 +532,7 @@ Definition casino5 : @exp R _ [::] _ :=
   [Normalize Sample {exp_bernoulli_trunc [{10 / 11}:R]}].
 
 Lemma casino45 :
-  execD norm_casino4 = execD casino5.
+  execD casino4 = execD casino5.
 Proof. by rewrite norm_score_bern//; lra. Qed.
 
 End casino_example.
