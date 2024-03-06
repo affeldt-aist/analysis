@@ -169,12 +169,14 @@ Local Open Scope ereal_scope.
 Context d {T : measurableType d} {R : realType} d' {T' : measurableType d'}.
 Let G := pprobability T R.
 
+(* TODO: try "pker_R (T, T)" *)
 Definition ret : R.-pker T ~> T := kdirac (@measurable_id _ _ setT).
 
 Variables (mu : probability T R) (f : R.-pker T ~> T').
 
 Definition bind :=
-  kcomp (kprobability (measurable_cst (mu : pprobability T R)))(*mu'*) (pker_snd f) tt.
+  kcomp (kprobability (measurable_cst (mu : pprobability T R)))(*mu'*)
+        (pker_snd f) tt.
 
 Lemma bindE A : bind A = \int[mu]_x f x A. Proof. by []. Qed.
 
@@ -190,7 +192,7 @@ Qed.
 HB.instance Definition _ :=
   @Measure_isProbability.Build _ _ _ bind bindT.
 
-Check bind : probability T' R.
+Check bind : pprobability T' R.
 
 End giry_def.
 
@@ -249,6 +251,67 @@ exact/measurable_kernel.
 Qed.
 
 End giry_prop.
+
+Section tmp.
+
+Context d (T : measurableType d) d' (T' : measurableType d') (R : realType).
+
+(* kleisli cat *)
+Definition kfuns :=
+  [set f : T -> pprobability T' R |
+  (measurable_fun setT f) ].
+
+Definition fequiv1 (k : R.-pker T ~> T') : T -> pprobability T' R.
+case: k => k []/= H1 H2 H3 H4 H5.
+move=> t.
+have m := k t.
+red.
+Admitted.
+
+Lemma equiv1 (k : R.-pker T ~> T') : kfuns (fequiv1 k).
+Admitted.
+
+Definition fequiv2 (k : T -> pprobability T' R) :
+  R.-pker T ~> T'.
+Admitted.
+
+Definition equiv2 (k : T -> pprobability T' R) (H : kfuns k) :
+  R.-pker T ~> T'.
+Admitted.
+
+Lemma equiv1K (k : R.-pker T ~> T') :
+  @equiv2 _ (equiv1 k) = k.
+Admitted.
+
+(* equiv2K *)
+
+End tmp.
+
+Lemma pkcomp' :
+forall [d1 d2 d3 : measure_display] [X : measurableType d1]
+  [Y : measurableType d2] [Z : measurableType d3] [R : realType],
+(R.-pker Y ~> Z) ->
+(R.-pker X ~> Y) ->
+(R.-pker X ~> Z).
+Admitted.
+
+Section tmp.
+Context d1 (T1 : measurableType d1) d2 (T2 : measurableType d2)
+  d3 (T3 : measurableType d3) (R : realType).
+
+Lemma naturality (h : R.-pker T1 ~> T3) (f : T2 -> T1) (mf : measurable_fun setT f) :
+  (fequiv1 h) \o f = fequiv1 (pkcomp' h (kdirac mf)).
+Admitted.
+
+(*counit : R.-pker (pprobability T R) ~> T.*)
+
+(* counit mu U = mu U <- should be a kernel *)
+
+(* counit is to build bind *)
+
+(* important: commutativity of Giry monad <- fubini *)
+
+End tmp.
 
 HB.lock Definition expectation {d} {T : measurableType d} {R : realType}
   (P : probability T R) (X : T -> R) := (\int[P]_w (X w)%:E)%E.
