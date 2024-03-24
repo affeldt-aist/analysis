@@ -506,7 +506,7 @@ Variable k : X * Y -> \bar R.
 
 Lemma measurable_fun_xsection_integral
     (l : X -> {measure set Y -> \bar R})
-    (k_ : ({nnsfun [the measurableType _ of X * Y] >-> R})^nat)
+    (k_ : {nnsfun (X * Y) >-> R}^nat)
     (ndk_ : nondecreasing_seq (k_ : (X * Y -> R)^nat))
     (k_k : forall z, (k_ n z)%:E @[n --> \oo] --> k z) :
   (forall n r,
@@ -614,7 +614,7 @@ Qed.
 HB.instance Definition _ := isKernel.Build _ _ _ _ _ (kdirac mf)
   measurable_fun_kdirac.
 
-Let kdirac_prob x : kdirac mf x setT = 1.
+Let kdirac_prob x : kdirac mf x [set: Y] = 1.
 Proof. by rewrite /kdirac/= diracT. Qed.
 
 HB.instance Definition _ := Kernel_isProbability.Build _ _ _ _ _
@@ -722,7 +722,7 @@ Context d d' (X : measurableType d) (Y : measurableType d') (R : realType).
 Variable f : R.-ker X ~> Y.
 
 Definition knormalize (P : probability Y R) : X -> {measure set Y -> \bar R} :=
-  fun x => [the measure _ _ of mnormalize (f x) P].
+  fun x => mnormalize (f x) P.
 
 Let measurable_knormalize (P : probability Y R) U :
   measurable U -> measurable_fun [set: X] (knormalize P ^~ U).

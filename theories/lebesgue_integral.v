@@ -5261,7 +5261,7 @@ rewrite ge0_integralZl//; last by rewrite lee_fin.
 - by move=> y _; rewrite lee_fin.
 Qed.
 
-Lemma sfun_measurable_fun_fubini_tonelli_F : measurable_fun setT F.
+Lemma sfun_measurable_fun_fubini_tonelli_F : measurable_fun [set: T1] F.
 Proof.
 rewrite sfun_fubini_tonelli_FE//; apply: emeasurable_fun_fsum => // r.
 exact/measurable_funeM/measurable_fun_xsection.

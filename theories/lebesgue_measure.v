@@ -1694,7 +1694,7 @@ have [Y0|Y0] := boolP (0%E \in Y).
     apply/seteqP; split => [//= r /= YrU|r].
     move/mem_set; move: YrU; rewrite diracE.
     case: (_ \in _) => //=.
-    move/mem_set. 
+    move/mem_set.
     by rewrite (negbTE Y1).
     move/mem_set.
     rewrite inE/=.
