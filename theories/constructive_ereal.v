@@ -3119,6 +3119,15 @@ apply/(iffP idP) => [xy e|xy].
 by apply/lee_addgt0Pr => e e0; rewrite -leeBlDr// xy.
 Qed.
 
+Lemma lee_addltyPr x : reflect (forall r, r%:E <= x) (x == +oo).
+Proof.
+apply/(iffP idP) => [/eqP -> r|]; first by rewrite leey.
+move: x => [x lex|//|]; last by move/(_ 0%R); rewrite leeNy_eq.
+rewrite eq_le leey/= leNgt; apply/negP => xoo.
+have := lex (x + 1)%R; rewrite leNgt => /negP; apply.
+by rewrite lte_fin ltrDl.
+Qed.
+
 Lemma lee_mul01Pr x y : 0 <= x ->
   reflect (forall r, (0 < r < 1)%R -> r%:E * x <= y) (x <= y).
 Proof.

@@ -23,6 +23,15 @@
 - in `lebesgue_integral.v`:
   + lemmas `integrableMl`, `integrableMr`
 
+- in file `constructive_ereal.v`:
+  + lemma `lee_addltyPr`
+
+- in file `lebesgue_stieltjes_measure.v`:
+  + lemma `le_wlength_mu_ext`
+
+- in file `lebesgue_measure.v`:
+  + lemma `outer_measureT`
+
 ### Changed
 
 ### Renamed

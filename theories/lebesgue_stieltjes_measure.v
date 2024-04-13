@@ -471,6 +471,13 @@ rewrite big_seq [in X in (_ <= X)%E]big_seq; apply: lee_sum => k kX.
 by rewrite AE leeD2l// lee_fin lerBlDl natrX De.
 Qed.
 
+Lemma le_wlength_mu_ext (f : cumulative R) A : R.-ocitv.-measurable A ->
+  (wlength f A <= ((wlength f)^*)%mu A)%E.
+Proof.
+move=> mA; apply: lb_ereal_inf => /= _ [F [mF AF] <-].
+exact: wlength_sigma_subadditive.
+Qed.
+
 HB.instance Definition _ (f : cumulative R) :=
   Content_SigmaSubAdditive_isMeasure.Build _ _ _
     (wlength f) (wlength_sigma_subadditive f).

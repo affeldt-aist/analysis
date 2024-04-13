@@ -355,6 +355,19 @@ HB.instance Definition _ (R : realType) := Measure.on (@lebesgue_measure R).
 HB.instance Definition _ (R : realType) :=
   SigmaFiniteMeasure.on (@lebesgue_measure R).
 
+Lemma outer_measureT {R : realType} (f : cumulative R) :
+  lebesgue_measure setT = +oo%E :> \bar R.
+Proof.
+apply/eqP/lee_addltyPr => r /=.
+have [->|r0] := eqVneq r 0%R; first exact: outer_measure_ge0.
+pose Nrr : set R := `] - `|r|, `|r| ]%classic.
+have mNrr : R.-ocitv.-measurable Nrr by exists (- `|r|, `|r|).
+apply: (@le_trans _ _ (lebesgue_measure Nrr)); last exact: le_outer_measure.
+apply: (@le_trans _ _ (wlength idfun Nrr)); last exact/le_wlength_mu_ext.
+rewrite wlength_itv/= lte_fin gtrN ?normr_gt0// opprK.
+by rewrite -EFinD lee_fin -[leLHS]addr0 lerD// ler_norm.
+Qed.
+
 Section ps_infty.
 Context {T : Type}.
 Local Open Scope ereal_scope.
