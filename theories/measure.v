@@ -1682,6 +1682,21 @@ rewrite [X in measurable X](_ : _ = D `&` f @^-1` [set true] `&`
 by apply: measurableI; [exact: mf|exact: mg].
 Qed.
 
+Lemma measurable_or D (f : T1 -> bool) (g : T1 -> bool) :
+  measurable_fun D f -> measurable_fun D g ->
+  measurable_fun D (fun x => f x || g x).
+Proof.
+move=> mf mg mD; apply: (measurable_fun_bool true) => //.
+rewrite [X in measurable X](_ : _ = D `&` f @^-1` [set true] `|`
+                                    (D `&` g @^-1` [set true])); last first.
+  apply/seteqP; split=> [x [Dx/= /orP[]->]|x [|]/=].
+  by left.
+  by right.
+  by move=> [Dx ->]; split.
+  by move=> [Dx ->]; split => //; apply/orP; right.
+by apply: measurableU; [exact: mf|exact: mg].
+Qed.
+
 End measurable_fun_measurableType.
 #[global] Hint Extern 0 (measurable_fun _ (fun=> _)) =>
   solve [apply: measurable_cst] : core.
