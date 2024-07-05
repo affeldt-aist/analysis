@@ -1668,6 +1668,23 @@ move=> mb mD; have mDb : measurable (D `&` f @^-1` [set ~~ b]).
 by case: b => /= in mb mDb *; exact: measurable_fun_TF.
 Qed.
 
+Lemma measurable_fun_bool2 D (f : T1 -> bool) b :
+  measurable (f @^-1` [set b]) -> measurable_fun D f.
+Proof.
+have FNT : [set false] = [set~ true] by apply/seteqP; split => -[]//=.
+wlog {b}-> : b / b = true.
+  case: b => [|h]; first exact.
+  by rewrite FNT -preimage_setC => /measurableC; rewrite setCK; exact: h.
+move=> mfT mD /= Y; have := @subsetT _ Y; rewrite setT_bool => YT.
+have [-> _|-> _|-> _ |-> _] := subset_set2 YT.
+- by rewrite preimage0 ?setI0.
+- by apply: measurableI => //; exact: mfT.
+- rewrite -[X in measurable X]setCK; apply: measurableC; rewrite setCI.
+  apply: measurableU; first exact: measurableC.
+  by rewrite FNT preimage_setC setCK; exact: mfT.
+- by rewrite -setT_bool preimage_setT setIT.
+Qed.
+
 End measurable_fun_bool.
 Arguments measurable_fun_bool {D f} _.
 

@@ -1822,8 +1822,8 @@ Hypotheses (mf : measurable_fun setT f) (mg : measurable_fun setT g).
 (* see also emeasurable_fun_neq *)
 Lemma measurable_fun_flift_neq : measurable_fun setT flift_neq.
 Proof.
-apply: (measurable_fun_bool true).
-rewrite setTI /flift_neq /= (_ : _ @^-1` _ = ([set x | f x] `&` [set x | ~~ g x]) `|`
+apply: (@measurable_fun_bool2 _ _ _ _ true).
+rewrite /flift_neq /= (_ : _ @^-1` _ = ([set x | f x] `&` [set x | ~~ g x]) `|`
                                        ([set x | ~~ f x] `&` [set x | g x])).
   apply: measurableU; apply: measurableI.
   - by rewrite -[X in measurable X]setTI; exact: mf.
