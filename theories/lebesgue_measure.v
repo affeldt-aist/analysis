@@ -1854,16 +1854,15 @@ have [Y0|Y0] := boolP (0%E \in Y).
   have [Y1|Y1] := boolP (1%E \in Y).
   + rewrite [X in measurable X](_ : _ = U)//.
     apply/seteqP; split => [//= r /= YrU|r].
-    rewrite -inE.
-    move: YrU; rewrite diracE.
-    case: (_ \in _) => //=.
-    move/mem_set.
-    by rewrite (negbTE Y0).
+      rewrite -inE.
+      move: YrU; rewrite diracE.
+      case: (_ \in _) => //=.
+      move/mem_set.
+      by rewrite (negbTE Y0).
     rewrite [X in _ -> X](_ : _ = Y (\d_r U)) //.
     rewrite diracE.
-    move/mem_set.
-    case: (_ \in _) => //= _.
-    by rewrite inE in Y1.
+    move/mem_set => ->.
+    exact/set_mem.
   + rewrite [X in measurable X](_ : _ = set0).
       exact: measurable0.
     apply/seteqP; split => //= r /= YrU.

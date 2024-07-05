@@ -206,6 +206,49 @@ Qed.
 Definition beta_nat_norm {R : realType} (a b : nat) : R :=
   fine (\int[@lebesgue_measure R]_x (ubeta_nat_pdf a b x)%:E).
 
+Section Gamma.
+Context {R : realType}.
+
+Let mu := @lebesgue_measure R.
+
+(* NB: also defined in prob_lang_wip*)
+Definition Gamma (a : R) : \bar R :=
+  (\int[mu]_(x in `[0%R, +oo[) (powR x (a - 1) * expR (- x))%:E)%E.
+
+Let I n := \int[mu]_(x in `[0%R, +oo[) (x ^+ n * expR (- x))%:E.
+
+Let I0 : I O = 1.
+Admitted.
+
+Let I_rec n : I n.+1 = n.+1%:R%:E * I n.
+(* using integration by parts *)
+Admitted.
+
+Let In n : I n = n`!%:R%:E.
+Proof.
+elim: n => [|n ih].
+  by rewrite I0 fact0.
+by rewrite I_rec ih -EFinM -natrM factS.
+Qed.
+
+Lemma Gamma_nat (n : nat) :
+  Gamma n%:R = n.-1`!%:R%:E :> \bar R.
+Proof.
+rewrite -In /I /Gamma.
+Admitted.
+
+End Gamma.
+
+Section beta_nat_Gamma.
+Context {R : realType}.
+
+Let mu := @lebesgue_measure R.
+
+Let B (a b : nat) : \bar R :=
+  \int[mu]_(x in `[0%R, 1%R]%classic) (ubeta_nat_pdf a b x)%:E.
+
+End beta_nat_Gamma.
+
 Axiom beta_nat_normE : forall {R : realType} (a b : nat),
   beta_nat_norm a b = a.-1`!%:R * b.-1`!%:R / (a + b).-1`!%:R :> R.
 
