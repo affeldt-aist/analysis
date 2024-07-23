@@ -168,10 +168,10 @@ rewrite /ubeta_nat_pdf /=; apply: measurable_fun_if => //=; last first.
   by rewrite setTI; apply: measurable_funTS; exact: measurable_fun_expn_onem.
 apply: measurable_and => /=.
   apply: (measurable_fun_bool true).
-  rewrite [X in measurable X](_ : _ = `[0, +oo[%classic)//.
+  rewrite setTI [X in measurable X](_ : _ = `[0, +oo[%classic)//.
   by rewrite set_interval.set_itv_c_infty.
 apply: (measurable_fun_bool true).
-by rewrite [X in measurable X](_ : _ = `]-oo, 1]%classic)//.
+by rewrite setTI [X in measurable X](_ : _ = `]-oo, 1]%classic)//.
 Qed.
 
 Local Notation mu := lebesgue_measure.

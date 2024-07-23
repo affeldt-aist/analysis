@@ -1,7 +1,7 @@
 (* mathcomp analysis (c) 2022 Inria and AIST. License: CeCILL-C.              *)
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum ssrint interval finmap.
-From mathcomp Require Import rat.
+From mathcomp Require Import rat archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets.
 From mathcomp Require Import functions cardinality fsbigop.
 Require Import reals ereal signed topology normedtype sequences esum measure.
@@ -921,14 +921,14 @@ pose floor_f := widen_ord (leq_addl n `|floor `|f t| |.+1)
                           (Ordinal (ltnSn `|floor `|f t| |)).
 rewrite big_mkord (bigD1 floor_f)//= ifT; last first.
   rewrite lee_fin lte_fin; apply/andP; split.
-    by rewrite natr_absz (@ger0_norm _ (floor `|f t|)) ?floor_ge0 ?floor_le.
-  rewrite -addn1 natrD natr_absz.
-  by rewrite (@ger0_norm _ (floor `|f t|)) ?floor_ge0 ?lt_succ_floor.
+   by rewrite natr_absz (@ger0_norm _ (floor `|f t|)) ?floor_ge0// ?ge_floor.
+  rewrite -natr1 natr_absz.
+  by rewrite (@ger0_norm _ (floor `|f t|)) ?floor_ge0// intrD1 lt_succ_floor.
 rewrite big1 ?adde0//= => j jk.
 rewrite ifF// lte_fin lee_fin.
 move: jk; rewrite neq_ltn/= => /orP[|] jr.
 - suff : (j.+1%:R <= `|f t|)%R by rewrite leNgt => /negbTE ->; rewrite andbF.
-  rewrite (_ : j.+1%:R = j.+1%:~R)// floor_ge_int.
+  rewrite (_ : j.+1%:R = j.+1%:~R)// floor_ge_int//.
   move: jr; rewrite -lez_nat => /le_trans; apply.
   by rewrite -[leRHS](@ger0_norm _ (floor `|f t|)) ?floor_ge0.
 - suff : (`|f t| < j%:R)%R by rewrite ltNge => /negbTE ->.
@@ -1823,7 +1823,7 @@ Hypotheses (mf : measurable_fun setT f) (mg : measurable_fun setT g).
 Lemma measurable_fun_flift_neq : measurable_fun setT flift_neq.
 Proof.
 apply: (measurable_fun_bool true).
-rewrite /flift_neq /= (_ : _ @^-1` _ = ([set x | f x] `&` [set x | ~~ g x]) `|`
+rewrite setTI /flift_neq /= (_ : _ @^-1` _ = ([set x | f x] `&` [set x | ~~ g x]) `|`
                                        ([set x | ~~ f x] `&` [set x | g x])).
   apply: measurableU; apply: measurableI.
   - by rewrite -[X in measurable X]setTI; exact: mf.
@@ -2074,7 +2074,7 @@ Lemma sample_and_branchE t U : sample_and_branch t U =
   (2 / 7)%:E * \d_(3 : R) U + (5 / 7)%:E * \d_(10 : R) U.
 Proof.
 rewrite /sample_and_branch letin_sample_bernoulli/=; last lra.
-by rewrite !iteE !retE onem27.
+by rewrite !iteE/= onem27.
 Qed.
 
 End sample_and_branch.

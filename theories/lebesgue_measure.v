@@ -1728,7 +1728,7 @@ Lemma measurable_fun_pow D f n : measurable_fun D f ->
   measurable_fun D (fun x => f x ^+ n).
 Proof.
 move=> mf.
-apply: (@measurable_comp _ _ _ _ _ _ setT (fun x : R => x ^+ n) _ f) => //.
+exact: (@measurable_comp _ _ _ _ _ _ setT (fun x : R => x ^+ n) _ f).
 Qed.
 
 Lemma measurable_fun_ltr D f g : measurable_fun D f -> measurable_fun D g ->
@@ -1745,20 +1745,6 @@ Proof.
 move=> mf mg mD; apply: (measurable_fun_bool true) => //.
 under eq_fun do rewrite -subr_ge0.
 by rewrite preimage_true -preimage_itv_c_infty; exact: measurable_funB.
-Qed.
-
-Lemma measurable_fun_ler D f g : measurable_fun D f -> measurable_fun D g ->
-  measurable_fun D (fun x => f x <= g x).
-Proof.
-move=> mf mg mD Y mY; have [| | |] := set_bool Y => /eqP ->.
-- under eq_fun do rewrite -subr_ge0.
-  rewrite preimage_true -preimage_itv_c_infty.
-  by apply: (measurable_funB mg mf) => //; exact: measurable_itv.
-- under eq_fun do rewrite leNgt -subr_gt0.
-  rewrite preimage_false set_predC setCK -preimage_itv_o_infty.
-  by apply: (measurable_funB mf mg) => //; exact: measurable_itv.
-- by rewrite preimage_set0 setI0.
-- by rewrite preimage_setT setIT.
 Qed.
 
 (* setT should be D? (derived from measurable_and) *)
@@ -1876,7 +1862,7 @@ have [Y0|Y0] := boolP (0%E \in Y).
     rewrite [X in _ -> X](_ : _ = Y (\d_r U)) //.
     rewrite diracE.
     move/mem_set.
-    case (_ \in _) => //= _.
+    case: (_ \in _) => //= _.
     by rewrite inE in Y1.
   + rewrite [X in measurable X](_ : _ = set0).
       exact: measurable0.
@@ -1920,13 +1906,6 @@ Lemma measurable_natmul {R : realType} D n :
 Proof.
 under eq_fun do rewrite -mulr_natr.
 by do 2 apply: measurable_funM => //.
-Qed.
-
-Lemma measurable_fun_pow {R : realType} D (f : R -> R) n : measurable_fun D f ->
-  measurable_fun D (fun x => f x ^+ n).
-Proof.
-move=> mf.
-exact: (@measurable_comp _ _ _ _ _ _ setT (fun x : R => x ^+ n) _ f).
 Qed.
 
 Lemma measurable_powR (R : realType) p :
