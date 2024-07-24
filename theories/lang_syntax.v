@@ -272,12 +272,25 @@ Let B (a b : nat) : \bar R :=
 
 End beta_nat_Gamma.
 
-Lemma beta_nat_normE {R : realType} (a b : nat) :
-  beta_nat_norm a b = a.-1`!%:R * b.-1`!%:R / (a + b).-1`!%:R :> R.
+
+Section FTC2.
+Context {R : realType}.
+Notation mu := lebesgue_measure.
+Local Open Scope ereal_scope.
+Implicit Types (f : R -> R) (a b : R). 
+(* PR #1246 *)
+Corollary continuous_FTC2 f F a b : (a < b)%R -> {in `[a, b], continuous f} ->
+  derivable_oo_continuous_bnd F a b ->
+  {in `]a, b[, F^`() =1 f} ->
+  (\int[mu]_(x in `[a, b]) (f x)%:E = (F b)%:E - (F a)%:E)%E.
+Proof. Admitted.
+
+End FTC2.
+
+Lemma integral_beta_nat_normTE {R : realType} (a b : nat) :
+  beta_nat_norm a b = fine (\int[lebesgue_measure]_(t in `[0%R, 1%R]) (t ^+ a.-1 * (`1-t) ^+ b.-1)%:E) :> R.
 Proof.
 rewrite /beta_nat_norm.
-rewrite /ubeta_nat_pdf. 
-
 under eq_integral.
   rewrite /=.
   rewrite /g_sigma_algebraType.
@@ -290,37 +303,83 @@ under eq_integral.
     admit.
   over.
 rewrite/=.
-rewrite -integral_mkcond/=.
-set F := (fun x : R => x ^+ a.-1)%R.
-set f := (fun x : R => a.-1%:R * x ^+ a.-2)%R.
-have : {in `[0%R, 1%R], forall x, @is_derive R R R x (1%R : R) F}.
-set G := (fun x : R => - b%:R^-1 * `1-x ^+ b)%R.
-set g := (fun x : R => `1-x ^+ b.-1)%R.
-rewrite (@continuous_integration_by_parts R F G f g)//; last 8 first.
-- move=> x x01.
-  apply: (@continuousM _ _ (cst a.-1%:R)%R (fun x : R=> x ^+ a.-2)%R).
-    exact: cvg_cst.
-  exact: exprn_continuous.
-- move=> x x01.
-  exact: exprn_continuous.
-- split.
-      move=> x x01.
-      rewrite /F/=.
-      rewrite /derivable/=.
-       have := (@derivableX R R (@id R) a x 1%R).
-       rewrite /=.
+by rewrite -integral_mkcond/=.
+Admitted.
 
-                rewrite /f.
-                rewrite EFin_continuous.
-                admit.
-              admit.
-            admit.
-          admit.
-        admit.
-      admit.
+Lemma exprn_derivable {R : realType} (n : nat) (x : R):
+  derivable ((GRing.exp (R:=R))^~ n) x 1.
+Proof.
+case: n.
+  rewrite (_:((fun x : R => x ^+ 0%N) = cst 1)%R).
+    exact: derivable_cst.
+  apply: funext => z/=.
+  by rewrite expr0.
+move=> n.
+rewrite [X in _ X _ _](_:(_= (fun x : R => x) ^+ n.+1)%R); last by rewrite exprfctE.
+apply: derivableX.
+exact: derivable_id.
+Qed.
+
+Section beta_nat_normE.
+
+Require Import ftc.
+
+(* first step of induction *)
+Lemma integral_exprn {R : realType} (n : nat) :
+ fine (\int[lebesgue_measure]_(x in `[0%R, 1%R]) (x ^+ n)%:E) = n.+1%:R^-1 :> R.
+Proof.
+pose F (x : R) := (n.+1%:R^-1 * x ^+ n.+1)%R.
+have cX : {in `[0%R, 1%R], continuous (fun (x : R) => x ^+ n.+1)%R}.
+  move=> x x01.
+  exact: exprn_continuous.
+have cF0 : {for 0%R, continuous F}.
+  admit.
+have cF1 : {for 1%R, continuous F}.
+  admit.
+have dcF : derivable_oo_continuous_bnd F 0 1.
+  split.
+      move=> x x01.
+      apply: derivableM => //.
+      exact: exprn_derivable.
+    apply: continuous_cvg.
+      exact: mulrl_continuous.
+    rewrite expr0n/=.
+      (* lemma? *)
     admit.
   admit.
-admit.
+have dFE : {in `]0%R, 1%R[, F^`() =1 (fun x : R => x ^+ n.+1)%R}.
+  admit.
+rewrite (@continuous_FTC2 _ (fun (x : R) => (x ^+ n)%R) F)//.
+rewrite /F/=.
+by rewrite expr1n expr0n/= mulr1 mulr0 subr0.
+Admitted.
+
+(* main part of bata_nat_normE *)
+Lemma beta_nat_norm_shift1 {R :realType} (a b : nat) :
+  beta_nat_norm a b.+1 = (b%:R * a.+1%:R^-1 * beta_nat_norm a.+1 b)%R :> R.
+Proof.
+Admitted.
+
+Lemma beta_nat_norm_shift {R : realType} (a b : nat) :
+  beta_nat_norm a b = (a.-1`!%:R * b.-1`!%:R * (a + b - 2)%N`!%:R^-1 * beta_nat_norm (a + b - 1)%N 1%N)%R :> R.
+Proof.
+pose s := (a + b)%N.
+have sE : s = (a + b)%N by [].
+(* induction by b with fixed s *)
+Admitted.
+
+Lemma beta_nat_normE {R : realType} (a b : nat) :
+  beta_nat_norm a b = a.-1`!%:R * b.-1`!%:R / (a + b - 1)`!%:R :> R.
+Proof.
+rewrite beta_nat_norm_shift.
+rewrite integral_beta_nat_normTE/=.
+under eq_integral do rewrite expr0 mulr1.
+rewrite /=.
+rewrite integral_exprn.
+(* case: a and b *)
+Admitted.
+
+End beta_nat_normE.
 
 Lemma beta_nat_norm_gt0 {R : realType} (a b : nat) :
   (0 < beta_nat_norm a b :> R)%R.
