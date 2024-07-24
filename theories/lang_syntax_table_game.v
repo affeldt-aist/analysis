@@ -209,7 +209,7 @@ apply: ge0_le_integral => //=.
 - by move=> x _; rewrite lee_fin beta_nat_pdf_le_beta_nat_norm.
 Qed.
 
-Section casino_example.
+Section casino_programs.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
 Local Open Scope lang_scope.
@@ -224,32 +224,41 @@ Definition casino0 : @exp R _ [::] _ :=
   let "a2" := Sample {exp_binomial 3 [#{"p"}]} in
   return {1}:N <= #{"a2"}].
 
+Definition tail1 : @exp R _ [:: ("_", Unit); ("a1", Nat) ; ("p", Real)] _ :=
+  [Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Definition tail2 : @exp R _ [:: ("_", Unit); ("p", Real)] _ :=
+  [Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
+Definition tail3 : @exp R _ [:: ("p", Real); ("_", Unit)] _ :=
+  [Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+
 Definition casino1 : @exp R _ [::] _ :=
  [Normalize
   let "p" := Sample {exp_uniform 0 1 (@ltr01 R)} in
   let "a1" := Sample {exp_binomial 8 [#{"p"}]} in
   let "_" := if #{"a1"} == {5}:N then return TT else Score {0}:R in
-  Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+  {tail1}].
 
 Definition casino2 : @exp R _ [::] _ :=
  [Normalize
   let "p" := Sample {exp_uniform 0 1 (@ltr01 R)} in
   let "_" :=
     Score {[{56}:R * #{"p"} ^+ {5%nat} * {[{1}:R - #{"p"}]} ^+ {3%nat}]} in
-  Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+  {tail2}].
 
 Definition casino2' : @exp R _ [::] _ :=
  [Normalize
   let "p" := Sample {exp_beta 1 1} in
   let "_" := Score
     {[{56}:R * #{"p"} ^+ {5%nat} * {[{1}:R - #{"p"}]} ^+ {3%N}]} in
-  Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%N}]}].
+  {tail2}].
 
 Definition casino3 : @exp R _ [::] _ :=
  [Normalize
   let "_" := Score {1 / 9}:R in
   let "p" := Sample {exp_beta 6 4} in
-  Sample {exp_bernoulli [{1}:R - {[{1}:R - #{"p"}]} ^+ {3%nat}]}].
+  {tail3}].
 
 Definition casino4 : @exp R _ [::] _ :=
  [Normalize
@@ -259,74 +268,210 @@ Definition casino4 : @exp R _ [::] _ :=
 Definition casino5 : @exp R _ [::] _ :=
   [Normalize Sample {exp_bernoulli [{10 / 11}:R]}].
 
-Lemma casino01 : execD casino0 = execD casino1.
+End casino_programs.
+Arguments tail1 {R}.
+Arguments tail2 {R}.
+
+Section casino01.
+Local Open Scope ring_scope.
+Local Open Scope ereal_scope.
+Local Open Scope lang_scope.
+Context (R : realType).
+Local Notation mu := lebesgue_measure.
+
+Let casino01_subproof
+  (x : mctx (untag (ctx_of (recurse Unit (recurse Nat (found "p" Real [::])))))) U :
+  (0 <= x.2.2.1 <= 1)%R ->
+  execP [let "a2" := Sample {exp_binomial 3 [#{"p"}]} in
+         return {1}:N <= #{"a2"}] x U =
+  execP (@tail1 R) x U.
 Proof.
-rewrite /casino0 /casino1.
-apply: eq_execD.
-f_equal.
-apply: congr_normalize => y V.
-apply: execP_letin_uniform => //.
-move=> p x U r01.
-apply: congr_letinr => y0 V0.
-apply: congr_letinr => y1 V1.
-rewrite !execP_letin !execP_sample !execD_binomial /=.
-rewrite !execP_return !execD_bernoulli/=.
-rewrite !execD_rel (@execD_bin _ _ binop_minus) execD_pow.
-rewrite (@execD_bin _ _ binop_minus) !execD_real/= !execD_nat.
-rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a2")/=.
-rewrite !letin'E/=.
-move: r01 => /andP[r0 r1].
-by apply/integral_binomial_prob/andP.
+move=> x01.
+rewrite /tail1.
+(* reduce lhs *)
+rewrite execP_letin execP_sample execD_binomial/= execP_return/= execD_rel/=.
+rewrite exp_var'E (execD_var_erefl "p")/=.
+rewrite exp_var'E (execD_var_erefl "a2")/=.
+rewrite execD_nat/=.
+rewrite [LHS]letin'E/=.
+(* reduce rhs *)
+rewrite execP_sample/= execD_bernoulli/= (@execD_bin _ _ binop_minus)/=.
+rewrite execD_real/= execD_pow/= (@execD_bin _ _ binop_minus)/= execD_real/=.
+rewrite (execD_var_erefl "p")/=.
+exact/integral_binomial_prob.
 Qed.
 
-Lemma casino12 : execD casino1 = execD casino2.
+Lemma casino01 : execD (@casino0 R) = execD (@casino1 R).
 Proof.
-apply: eq_execD.
-f_equal.
-apply: congr_normalize => y V.
-apply: execP_letin_uniform => //.
-move=> p x U /andP[p0 p1].
-rewrite !execP_letin !execP_sample execP_if execD_rel/=.
-rewrite !execP_score !(@execD_bin _ _ binop_mult).
-rewrite !execD_bernoulli/= !(@execD_bin _ _ binop_minus) !execD_pow.
-rewrite !(@execD_bin _ _ binop_minus)/=.
-rewrite !execD_real !execD_nat/= execP_return execD_unit.
-rewrite !execD_binomial/=.
-rewrite !exp_var'E !(execD_var_erefl "p") !(execD_var_erefl "a1")/=.
-rewrite !letin'E/=.
+rewrite /casino0 /casino1.
+apply: congr_normalize => y A.
+apply: execP_letin_uniform => // p [] B p01.
+apply: congr_letinr => a1 V0.
+apply: congr_letinr => -[] V1.
+exact: casino01_subproof.
+Qed.
+
+End casino01.
+
+Section casino12.
+Local Open Scope ring_scope.
+Local Open Scope ereal_scope.
+Local Open Scope lang_scope.
+Context (R : realType).
+Local Notation mu := lebesgue_measure.
+
+Let casino12_subproof (y : @mctx R [::]) (V : set (@mtyp R Bool))
+  (p : R)
+  (x : projT2 (existT measurableType default_measure_display unit))
+  (U : set (mtyp Bool))
+  (p0 : (0 <= p)%R)
+  (p1 : (p <= 1)%R) :
+  \int[binomial_prob 8 p]_y0
+     execP [let "_" := if #{"a1"} == {5} :N then return TT else Score {0}:R in {tail1}]
+       (y0, (p, x)) U =
+  \int[mscale (NngNum (normr_ge0 (56 * p ^+ 5 * (1 - p) ^+ 3))) \d_tt]_y0
+     execP tail2 (y0, (p, x)) U.
+Proof.
 rewrite integral_binomial//=.
 rewrite (bigD1 (inord 5))//=.
-  rewrite big1; last first.
-  move=> [[|[|[|[|[|[|[|[|[|//]]]]]]]]]]//= Hi Hi5; rewrite letin'E iteE;
-  rewrite ?ge0_integral_mscale//= ?normr0 ?mul0e ?mule0 ?add0e//.
+rewrite big1 ?adde0; last first.
+  move=> i Hi5.
+  rewrite execP_letin/= execP_if/= execD_rel/=.
+  rewrite exp_var'E/= (execD_var_erefl "a1")/=.
+  rewrite execD_nat/= execP_score/= execD_real/= execP_return/=.
+  rewrite letin'E iteE/=.
+  move: i Hi5.
+  move=> [[|[|[|[|[|[|[|[|[|//]]]]]]]]]]//= Hi Hi5;
+  rewrite ?ge0_integral_mscale//= ?execD_real/= ?normr0 ?(mul0e,mule0)//.
   suff: false by [].
   move/negbTE: Hi5 => <-.
   by apply/eqP/val_inj => /=; rewrite inordK.
-rewrite letin'E iteE ge0_integral_mscale//= inordK//= adde0 /onem.
+(* reduce lhs *)
+rewrite execP_letin/= execP_if/= execD_rel/=.
+rewrite exp_var'E/= (execD_var_erefl "a1")/=.
+rewrite execD_nat/= execP_score/= execD_real/= execP_return/=.
+rewrite letin'E iteE/=.
+rewrite inordK// eqxx.
+rewrite integral_dirac//= execD_unit/= diracE mem_set// mul1e.
+(* reduce rhs *)
+rewrite ge0_integral_mscale//=.
+rewrite integral_dirac//= diracE mem_set// mul1e.
+rewrite ger0_norm ?mulr_ge0 ?subr_ge0//.
+rewrite -mulrA mulr_natl.
+(* same score *)
 congr *%E.
-rewrite ger0_norm.
-  by rewrite -mulrA mulr_natl.
-apply/mulr_ge0.
-  exact/mulr_ge0/exprn_ge0.
-apply/exprn_ge0.
-by rewrite subr_ge0.
+(* the tails are the same module the shape of the environment *)
+rewrite /tail1 /tail2 !execP_sample/=.
+rewrite !execD_bernoulli/=.
+rewrite !(@execD_bin _ _ binop_minus)/=.
+rewrite !execD_pow/=.
+rewrite !execD_real/=.
+rewrite !(@execD_bin _ _ binop_minus)/=.
+by rewrite !execD_real/= !exp_var'E/= !(execD_var_erefl "p")/=.
 Qed.
 
-Lemma casino22' : execD casino2 = execD casino2'.
+Lemma casino12 : execD (@casino1 R) = execD (@casino2 R).
 Proof.
-apply: eq_execD.
-congr projT1.
+apply: congr_normalize => y V.
+apply: execP_letin_uniform => //.
+move=> p x U /andP[p0 p1].
+(* reduce the lhs *)
+rewrite execP_letin execP_sample execD_binomial/=.
+rewrite letin'E/=.
+rewrite [in LHS]exp_var'E/= (execD_var_erefl "p")/=.
+(* reduce the rhs *)
+rewrite [in RHS]execP_letin execP_score/=.
+rewrite letin'E/=.
+do 2 rewrite (@execD_bin _ _ binop_mult)/=/=.
+rewrite [in RHS]exp_var'E/=.
+rewrite execD_pow/=.
+rewrite (execD_var_erefl "p")/=.
+rewrite execD_pow/=.
+rewrite (@execD_bin _ _ binop_minus)/=/=.
+rewrite 2!execD_real/=.
+rewrite (execD_var_erefl "p")/=.
+exact: casino12_subproof.
+Qed.
+
+End casino12.
+
+Section casino23.
+Local Open Scope ring_scope.
+Local Open Scope ereal_scope.
+Local Open Scope lang_scope.
+Context (R : realType).
+Local Notation mu := lebesgue_measure.
+
+Lemma casino22' : execD (@casino2 R) = execD (@casino2' R).
+Proof.
 apply: congr_normalize => // x U.
 apply: congr_letinl => // y V.
-rewrite !execP_sample execD_uniform execD_beta_nat.
-rewrite /=.
-by rewrite beta11_uniform//.
+rewrite !execP_sample execD_uniform/= execD_beta_nat/=.
+by rewrite beta11_uniform.
 Qed.
 
-Lemma casino23 : execD casino2' = execD casino3.
+Let H1 U : measurable_fun [set: g_sigma_algebraType (R.-ocitv.-measurable)]
+  (fun x => bernoulli (1 - (1 - x) ^+ 3) U).
 Proof.
-apply: eq_execD.
-f_equal.
+apply: (measurableT_comp (measurable_bernoulli2 _)) => //=.
+apply: measurable_funB => //.
+apply: measurable_fun_pow.
+exact: measurable_funB.
+Qed.
+
+Let H2 U a b : (\int[beta_nat a b]_x `|bernoulli (1 - (1 - x) ^+ 3) U| < +oo :> \bar R)%E.
+Proof.
+apply: (@le_lt_trans _ _ (\int[beta_nat a b]_x 1)%E).
+  apply: ge0_le_integral => //=.
+    exact/measurableT_comp.
+  move=> x _.
+  by rewrite gee0_abs// probability_le1.
+by rewrite integral_cst//= mul1e -ge0_fin_numE// beta_nat_fin_num.
+Qed.
+
+Let H3 U :
+  (beta_nat 1 1).-integrable [set: g_sigma_algebraType (R.-ocitv.-measurable)]
+  (fun x => bernoulli (1 - (1 - x) ^+ 3) U * (normr (56 * x ^+ 5 * (1 - x) ^+ 3))%:E).
+Proof.
+apply/integrableP; split.
+  apply: emeasurable_funM => //.
+  apply/EFin_measurable_fun => //.
+  apply: measurableT_comp => //.
+  apply: measurable_funM => //.
+    exact: measurable_funM.
+  apply: measurable_fun_pow => //.
+  exact: measurable_funB.
+rewrite beta11_uniform.
+rewrite integral_uniform//=.
+  rewrite subr0 invr1 mul1e.
+  suff : (mu.-integrable `[0%R, 1%R]
+    (fun y : R => bernoulli (1 - (1 - y) ^+ 3) U *
+                  (normr (56 * y ^+ 5 * (1 - y) ^+ 3))%:E))%E.
+    by move=> /integrableP[].
+  apply: integrableMl => //=.
+  - apply/integrableP; split.
+      exact: measurable_funTS.
+    have := H2 U 1%N 1%N.
+    rewrite beta11_uniform.
+    rewrite integral_uniform//=; last first.
+      exact: measurableT_comp.
+    by rewrite subr0 invr1 mul1e.
+  apply: @measurableT_comp => //.
+  apply: measurable_funM => //.
+    exact: measurable_funM.
+  apply: measurable_fun_pow => //.
+    exact: measurable_funB.
+  exact: bounded_casino23.
+apply: @measurableT_comp => //.
+apply: emeasurable_funM => //.
+do 2 apply: @measurableT_comp => //.
+apply: measurable_funM => //.
+  exact: measurable_funM.
+by apply: measurable_fun_pow => //; exact: measurable_funB.
+Qed.
+
+Lemma casino23 : execD (@casino2' R) = execD (@casino3 R).
+Proof.
 apply: congr_normalize => x U.
 rewrite !execP_letin !execP_sample !execP_score !execD_beta_nat.
 rewrite !execD_bernoulli/= !(@execD_bin _ _ binop_mult).
@@ -338,19 +483,6 @@ under eq_integral => y _.
   rewrite integral_cst//= /mscale/= diracT mule1.
   over.
 rewrite /=.
-have H1 : measurable_fun [set: salgebraType (R.-ocitv.-measurable)]
-  (fun x0 : salgebraType (R.-ocitv.-measurable) => bernoulli (1 - (1 - x0) ^+ 3) U).
-  apply: (measurableT_comp (measurable_bernoulli2 _)) => //=.
-  apply: measurable_funB => //.
-  apply: measurable_fun_pow.
-  exact: measurable_funB.
-have H2 a b : (\int[beta_nat a b]_x0 `|bernoulli (1 - (1 - x0) ^+ 3) U| < +oo :> \bar R)%E.
-  apply: (@le_lt_trans _ _ (\int[beta_nat a b]_x0 1)%E).
-    apply: ge0_le_integral => //=.
-      exact/measurableT_comp.
-    move=> x0 _.
-    by rewrite gee0_abs// probability_le1.
-  by rewrite integral_cst//= mul1e -ge0_fin_numE// beta_nat_fin_num.
 rewrite integral_beta_nat//=; last 2 first.
   - apply: emeasurable_funM => //.
     apply/EFin_measurable_fun.
@@ -359,46 +491,8 @@ rewrite integral_beta_nat//=; last 2 first.
       exact: measurable_funM.
     apply: measurable_fun_pow => //.
     exact: measurable_funB.
-  - suff: (beta_nat 1 1).-integrable setT
-      (fun x0 => bernoulli (1 - (1 - x0) ^+ 3) U *
-                 (normr (56 * x0 ^+ 5 * (1 - x0) ^+ 3))%:E : \bar R)%E.
-      by move=> /integrableP[].
-    rewrite /=.
-    apply/integrableP; split.
-      apply: emeasurable_funM => //.
-      apply/EFin_measurable_fun => //.
-      apply: measurableT_comp => //.
-      apply: measurable_funM => //.
-        exact: measurable_funM.
-      apply: measurable_fun_pow => //.
-      exact: measurable_funB.
-    rewrite beta11_uniform.
-    rewrite integral_uniform//=.
-      rewrite subr0 invr1 mul1e.
-      suff : ((@lebesgue_measure R).-integrable `[0%R, 1%R]
-        (fun y => bernoulli (1 - (1 - y) ^+ 3) U * (normr (56 * y ^+ 5 * (1 - y) ^+ 3))%:E))%E.
-        by move=> /integrableP[].
-      apply: integrableMl => //=.
-      + apply/integrableP; split.
-          apply: measurable_funTS => /=.
-          exact: H1.
-        have := H2 1%N 1%N.
-        rewrite beta11_uniform.
-        rewrite integral_uniform//=; last first.
-          exact: measurableT_comp.
-        by rewrite subr0 invr1 mul1e.
-      apply: @measurableT_comp => //.
-      apply: measurable_funM => //.
-        exact: measurable_funM.
-      apply: measurable_fun_pow => //.
-      exact: measurable_funB.
-      + exact: bounded_casino23.
-    apply: @measurableT_comp => //.
-    apply: emeasurable_funM => //.
-    do 2 apply: @measurableT_comp => //.
-    apply: measurable_funM => //.
-      exact: measurable_funM.
-    by apply: measurable_fun_pow => //; exact: measurable_funB.
+  - have := H3 U.
+    by move=> /integrableP[].
 rewrite ger0_norm// integral_dirac// diracT mul1e letin'E/=.
 rewrite integral_beta_nat/=; [|by []|by []|exact: H2].
 rewrite -integralZl//=; last exact: integrable_bernoulli_beta_nat_pdf.
@@ -411,48 +505,19 @@ rewrite [RHS]muleCA -!muleA.
 congr *%E.
 rewrite /= !expr0 mulr1 !div1r.
 rewrite ger0_norm//; last first.
-  rewrite mulr_ge0//.
-    by rewrite mulr_ge0// exprn_ge0.
-  by rewrite exprn_ge0// subr_ge0.
+  by rewrite mulr_ge0 ?exprn_ge0 ?subr_ge0// mulr_ge0// exprn_ge0.
 rewrite -!EFinM; congr EFin.
-by rewrite !beta_nat_normE/= /=factE/= /onem; lra.
+by rewrite !beta_nat_normE/= factE/= /onem; lra.
 Qed.
 
-Lemma casino34' U :
-  @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
-         Sample {exp_bernoulli [{[{1}:R - #{"p"}]} ^+ {3%N}]}] tt U =
-  @execP R [::] _ [Sample {exp_bernoulli [{1 / 11}:R]}] tt U.
-Proof.
-rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli/=.
-rewrite execD_pow/= (@execD_bin _ _ binop_minus) !execD_real/=.
-rewrite exp_var'E (execD_var_erefl "p")/=.
-(* TODO: generalize *)
-rewrite letin'E/=.
-transitivity (\int[beta_nat 6 4]_(y in `[0%R, 1%R]%classic : set R)
-    bernoulli ((1 - y) ^+ 3) U)%E.
-  rewrite integral_beta_nat//; last 2 first.
-    by apply: measurable_funTS; apply: measurable_bernoulli_expn.
-    apply: (le_lt_trans _ (integral_beta_bernoulli_expn_lty 3 6 4 U)).
-    apply: ge0_subset_integral => //=; apply: measurableT_comp => //=.
-    apply: (measurableT_comp (measurable_bernoulli2 _)) => //=.
-    by apply: measurable_fun_pow => //=; exact: measurable_funB.
-  rewrite integral_beta_nat//; last 2 first.
-    exact: measurable_bernoulli_expn.
-    exact: integral_beta_bernoulli_expn_lty.
-  rewrite [RHS]integral_mkcond/=; apply: eq_integral => x _ /=.
-  rewrite patchE; case: ifPn => //.
-  rewrite /beta_nat_pdf /ubeta_nat_pdf notin_setE/= in_itv/= => /negP/negbTE ->.
-  by rewrite mul0r mule0.
-have := (@beta_nat_bernoulliE R 6 4 0 3 U) isT isT.
-rewrite /beta_nat_bernoulli /ubeta_nat_pdf /=.
-under eq_integral.
-  move=> x.
-  rewrite inE /=in_itv/= => ->.
-  rewrite expr0 mul1r.
-  over.
-rewrite /= => ->; congr bernoulli.
-by rewrite /div_beta_nat_norm addn0 !beta_nat_normE/= !factE/=; field.
-Qed.
+End casino23.
+
+Section casino34.
+Local Open Scope ring_scope.
+Local Open Scope ereal_scope.
+Local Open Scope lang_scope.
+Context (R : realType).
+Local Notation mu := lebesgue_measure.
 
 Lemma integral_bernoulli_beta_nat_pdf' (f : _ -> R) U : measurable_fun setT f ->
   (forall x, x \in (`[0%R, 1%R]%classic : set R) -> 0 <= f x <= 1)%R ->
@@ -643,7 +708,43 @@ rewrite oppeD// ?fin_num_adde_defr ?beta_nat_fin_num//.
 by rewrite addeA subee ?beta_nat_fin_num// EFinN oppeK add0e.
 Qed.
 
-Lemma casino34 : execD casino3 = execD casino4.
+Lemma casino34' U :
+  @execP R [::] _ [let "p" := Sample {exp_beta 6 4} in
+         Sample {exp_bernoulli [{[{1}:R - #{"p"}]} ^+ {3%N}]}] tt U =
+  @execP R [::] _ [Sample {exp_bernoulli [{1 / 11}:R]}] tt U.
+Proof.
+rewrite execP_letin !execP_sample execD_beta_nat !execD_bernoulli/=.
+rewrite execD_pow/= (@execD_bin _ _ binop_minus) !execD_real/=.
+rewrite exp_var'E (execD_var_erefl "p")/=.
+(* TODO: generalize *)
+rewrite letin'E/=.
+transitivity (\int[beta_nat 6 4]_(y in `[0%R, 1%R]%classic : set R)
+    bernoulli ((1 - y) ^+ 3) U)%E.
+  rewrite integral_beta_nat//; last 2 first.
+    by apply: measurable_funTS; apply: measurable_bernoulli_expn.
+    apply: (le_lt_trans _ (integral_beta_bernoulli_expn_lty 3 6 4 U)).
+    apply: ge0_subset_integral => //=; apply: measurableT_comp => //=.
+    apply: (measurableT_comp (measurable_bernoulli2 _)) => //=.
+    by apply: measurable_fun_pow => //=; exact: measurable_funB.
+  rewrite integral_beta_nat//; last 2 first.
+    exact: measurable_bernoulli_expn.
+    exact: integral_beta_bernoulli_expn_lty.
+  rewrite [RHS]integral_mkcond/=; apply: eq_integral => x _ /=.
+  rewrite patchE; case: ifPn => //.
+  rewrite /beta_nat_pdf /ubeta_nat_pdf notin_setE/= in_itv/= => /negP/negbTE ->.
+  by rewrite mul0r mule0.
+have := (@beta_nat_bernoulliE R 6 4 0 3 U) isT isT.
+rewrite /beta_nat_bernoulli /ubeta_nat_pdf /=.
+under eq_integral.
+  move=> x.
+  rewrite inE /=in_itv/= => ->.
+  rewrite expr0 mul1r.
+  over.
+rewrite /= => ->; congr bernoulli.
+by rewrite /div_beta_nat_norm addn0 !beta_nat_normE/= !factE/=; field.
+Qed.
+
+Lemma casino34 : execD (@casino3 R) = execD (@casino4 R).
 Proof.
 apply: congr_normalize => y V.
 apply: congr_letinr => x U.
@@ -707,6 +808,15 @@ congr (_ * _ + _ * _)%E.
 by congr _%:E; rewrite /onem; lra.
 Qed.
 
+End casino34.
+
+Section casino45.
+Local Open Scope ring_scope.
+Local Open Scope ereal_scope.
+Local Open Scope lang_scope.
+Context (R : realType).
+Local Notation mu := lebesgue_measure.
+
 Lemma normalize_score_bernoulli g p q (p0 : (0 < p)%R) (q01 : (0 <= q <= 1)%R) :
   @execD R g _ [Normalize let "_" := Score {p}:R in
                 Sample {exp_bernoulli [{q}:R]}] =
@@ -735,12 +845,12 @@ rewrite !bernoulliE//=; [|lra..].
 by rewrite muleAC -EFinM divff// ?gt_eqF// mul1r EFinD.
 Qed.
 
-Lemma casino45 : execD casino4 = execD casino5.
+Lemma casino45 : execD (@casino4 R) = execD (@casino5 R).
 Proof. by rewrite normalize_score_bernoulli//; lra. Qed.
 
-Lemma casino : projT1 (execD casino0) tt = projT1 (execD casino5) tt.
+End casino45.
+
+Lemma casino {R : realType} : projT1 (execD (@casino0 R)) tt = projT1 (execD (@casino5 R)) tt.
 Proof.
 by rewrite casino01 casino12 casino22' casino23 casino34 casino45.
 Qed.
-
-End casino_example.
