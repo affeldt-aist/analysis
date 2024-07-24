@@ -73,6 +73,28 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
 
+Require Import realfun derive.
+Section integration_by_parts.
+Context {R : realType}.
+Notation mu := lebesgue_measure.
+Local Open Scope ereal_scope.
+Implicit Types (F G f g : R -> R) (a b : R).
+
+Lemma continuous_integration_by_parts F G f g a b :
+    (a < b)%R ->
+    {in `[a, b], continuous f} -> {in `[a, b], continuous F} ->
+    derivable_oo_continuous_bnd F a b ->
+    {in `]a, b[, F^`() =1 f} ->
+    {in `[a, b], continuous g} -> {in `[a, b], continuous G} ->
+    derivable_oo_continuous_bnd G a b ->
+    {in `]a, b[, G^`() =1 g} ->
+  (\int[mu]_(x in `[a, b]) (F x * g x)%:E = (F b * G b - F a * G a)%:E -
+   \int[mu]_(x in `[a, b]) (f x * G x)%:E).
+Proof.
+Admitted.
+
+End integration_by_parts.
+
 Section factD.
 
 Let factD' n m : (n`! * m`! <= (n + m).+1`!)%N.
@@ -222,6 +244,7 @@ Admitted.
 
 Let I_rec n : I n.+1 = n.+1%:R%:E * I n.
 (* using integration by parts *)
+Proof.
 Admitted.
 
 Let In n : I n = n`!%:R%:E.
@@ -249,8 +272,55 @@ Let B (a b : nat) : \bar R :=
 
 End beta_nat_Gamma.
 
-Axiom beta_nat_normE : forall {R : realType} (a b : nat),
+Lemma beta_nat_normE {R : realType} (a b : nat) :
   beta_nat_norm a b = a.-1`!%:R * b.-1`!%:R / (a + b).-1`!%:R :> R.
+Proof.
+rewrite /beta_nat_norm.
+rewrite /ubeta_nat_pdf. 
+
+under eq_integral.
+  rewrite /=.
+  rewrite /g_sigma_algebraType.
+  rewrite /ocitv_type.
+  move=> x _.
+  rewrite [X in X%:E](_:_ = (if x \in `[0%R, 1%R]%classic then (x ^+ a.-1 * `1-x ^+ b.-1)%R else 0%R)); last first.
+    admit.
+  have <- := @patchE R _ (fun x => x ^+ a.-1 * `1-x ^+ b.-1)%R `[0%R, 1%R].
+  rewrite (_:_%:E = ((fun x0 : R => (x0 ^+ a.-1 * `1-x0 ^+ b.-1)%:E) \_ `[0%R, 1%R]) x); last first.
+    admit.
+  over.
+rewrite/=.
+rewrite -integral_mkcond/=.
+set F := (fun x : R => x ^+ a.-1)%R.
+set f := (fun x : R => a.-1%:R * x ^+ a.-2)%R.
+have : {in `[0%R, 1%R], forall x, @is_derive R R R x (1%R : R) F}.
+set G := (fun x : R => - b%:R^-1 * `1-x ^+ b)%R.
+set g := (fun x : R => `1-x ^+ b.-1)%R.
+rewrite (@continuous_integration_by_parts R F G f g)//; last 8 first.
+- move=> x x01.
+  apply: (@continuousM _ _ (cst a.-1%:R)%R (fun x : R=> x ^+ a.-2)%R).
+    exact: cvg_cst.
+  exact: exprn_continuous.
+- move=> x x01.
+  exact: exprn_continuous.
+- split.
+      move=> x x01.
+      rewrite /F/=.
+      rewrite /derivable/=.
+       have := (@derivableX R R (@id R) a x 1%R).
+       rewrite /=.
+
+                rewrite /f.
+                rewrite EFin_continuous.
+                admit.
+              admit.
+            admit.
+          admit.
+        admit.
+      admit.
+    admit.
+  admit.
+admit.
 
 Lemma beta_nat_norm_gt0 {R : realType} (a b : nat) :
   (0 < beta_nat_norm a b :> R)%R.
@@ -260,7 +330,7 @@ Lemma beta_nat_norm_ge0 {R : realType} (a b : nat) :
   (0 <= beta_nat_norm a b :> R)%R.
 Proof. exact/ltW/beta_nat_norm_gt0. Qed.
 
-Lemma integral_ubeta_nat_pdf_lty {R : realType} (a b : nat) :
+Lemma integral_beta_nat_pdf_lty {R : realType} (a b : nat) :
   (\int[@lebesgue_measure R]_x (ubeta_nat_pdf a b x)%:E) < +oo.
 Proof.
 have := @beta_nat_norm_gt0 R a b.
