@@ -288,76 +288,77 @@ Proof. Admitted.
 End FTC2.
 
 Lemma integral_beta_nat_normTE {R : realType} (a b : nat) :
-  beta_nat_norm a b = fine (\int[lebesgue_measure]_(t in `[0%R, 1%R]) (t ^+ a.-1 * (`1-t) ^+ b.-1)%:E) :> R.
+  beta_nat_norm a b =
+  fine (\int[lebesgue_measure]_(t in `[0%R, 1%R]) (t^+a.-1 * (`1-t)^+b.-1)%:E) :> R.
 Proof.
-rewrite /beta_nat_norm.
-under eq_integral.
-  rewrite /=.
-  rewrite /g_sigma_algebraType.
-  rewrite /ocitv_type.
-  move=> x _.
-  rewrite [X in X%:E](_:_ = (if x \in `[0%R, 1%R]%classic then (x ^+ a.-1 * `1-x ^+ b.-1)%R else 0%R)); last first.
-    admit.
-  have <- := @patchE R _ (fun x => x ^+ a.-1 * `1-x ^+ b.-1)%R `[0%R, 1%R].
-  rewrite (_:_%:E = ((fun x0 : R => (x0 ^+ a.-1 * `1-x0 ^+ b.-1)%:E) \_ `[0%R, 1%R]) x); last first.
-    admit.
-  over.
-rewrite/=.
-by rewrite -integral_mkcond/=.
-Admitted.
-
-Lemma exprn_derivable {R : realType} (n : nat) (x : R):
-  derivable ((GRing.exp (R:=R))^~ n) x 1.
-Proof.
-case: n.
-  rewrite (_:((fun x : R => x ^+ 0%N) = cst 1)%R).
-    exact: derivable_cst.
-  apply: funext => z/=.
-  by rewrite expr0.
-move=> n.
-rewrite [X in _ X _ _](_:(_= (fun x : R => x) ^+ n.+1)%R); last by rewrite exprfctE.
-apply: derivableX.
-exact: derivable_id.
+rewrite /beta_nat_norm /ubeta_nat_pdf [in RHS]integral_mkcond/=; congr fine.
+apply: eq_integral => /= x _; rewrite patchE; apply/esym; case: ifPn=> [|].
+  by rewrite inE/= in_itv/= => ->.
+by rewrite notin_setE/= in_itv/= => /negP/negbTE ->.
 Qed.
 
-Section beta_nat_normE.
+Lemma exprn_derivable {R : realType} (n : nat) (x : R):
+  derivable ((@GRing.exp R) ^~ n) x 1.
+Proof.
+move: n => [|n]; first by rewrite [X in derivable X _ _](_ : _ = cst 1%R).
+by rewrite -exprfctE; apply: derivableX; exact: derivable_id.
+Qed.
 
 Require Import ftc.
 
+Section add_to_derive. (*in section derive_lemmasVR*)
+Variables (R : realType).
+
+Lemma derive_idfun (x : R) : 'D_1%R idfun x = 1%R.
+Proof.
+have := @derivable_id R R x 1%R.
+move/derivableP.
+by rewrite derive_val.
+Qed.
+
+End add_to_derive.
+
+Section beta_nat_normE.
+
 (* first step of induction *)
 Lemma integral_exprn {R : realType} (n : nat) :
- fine (\int[lebesgue_measure]_(x in `[0%R, 1%R]) (x ^+ n)%:E) = n.+1%:R^-1 :> R.
+  fine (\int[lebesgue_measure]_(x in `[0%R, 1%R]) (x ^+ n)%:E) = n.+1%:R^-1 :> R.
 Proof.
 pose F (x : R) := (n.+1%:R^-1 * x ^+ n.+1)%R.
-have cX : {in `[0%R, 1%R], continuous (fun (x : R) => x ^+ n.+1)%R}.
-  move=> x x01.
-  exact: exprn_continuous.
+have cX m : {in `[0%R, 1%R], continuous (fun (x : R) => x ^+ m)%R}.
+  by move=> x x01; exact: exprn_continuous.
 have cF0 : {for 0%R, continuous F}.
-  admit.
+  apply: continuousM; first exact: cvg_cst.
+  by apply: cX; rewrite /= in_itv/= lexx ler01.
 have cF1 : {for 1%R, continuous F}.
-  admit.
+  apply: continuousM; first exact: cvg_cst.
+  by apply: cX; rewrite /= in_itv/= lexx ler01.
 have dcF : derivable_oo_continuous_bnd F 0 1.
   split.
-      move=> x x01.
-      apply: derivableM => //.
-      exact: exprn_derivable.
-    apply: continuous_cvg.
-      exact: mulrl_continuous.
-    rewrite expr0n/=.
-      (* lemma? *)
-    admit.
-  admit.
-have dFE : {in `]0%R, 1%R[, F^`() =1 (fun x : R => x ^+ n.+1)%R}.
-  admit.
+  - by move=> x x01; apply: derivableM => //; exact: exprn_derivable.
+  - apply: continuous_cvg; first exact: mulrl_continuous.
+    by apply/cvg_at_right_filter/cX; rewrite in_itv/= lexx ler01.
+  - apply: continuous_cvg; first exact: mulrl_continuous.
+    by apply/cvg_at_left_filter/cX; rewrite in_itv/= lexx ler01.
+have dFE : {in `]0%R, 1%R[, F^`() =1 (fun x : R => x ^+ n)%R}.
+  move=> x x01.
+  rewrite derive1E deriveM//; last exact: exprn_derivable.
+  rewrite -[in X in _ + X]derive1E derive1_cst scaler0 addr0.
+  have /= := @deriveX R R idfun n x 1%R.
+  set X := (X in 'D_1 X x).
+  set X' := (X in _ -> _ *: 'D_1 X x = _).
+  rewrite (_ : X = X'); last by rewrite /X /X'; apply/funext => /= z; rewrite fctE.
+  move=> ->//.
+  rewrite scalerA mulrA mulVf// mul1r [LHS](_ : _ = x ^+ n * 'D_1 idfun x)%R//.
+  by rewrite derive_idfun mulr1. (* we should have a scaler1 lemma... *)
 rewrite (@continuous_FTC2 _ (fun (x : R) => (x ^+ n)%R) F)//.
-rewrite /F/=.
-by rewrite expr1n expr0n/= mulr1 mulr0 subr0.
-Admitted.
+by rewrite /F/= expr1n expr0n/= mulr1 mulr0 subr0.
+Qed.
 
 (* base cases of a and b *)
-Lemma beta_nat_norm00 {R : realType} :
-  beta_nat_norm 0 0 = 1%R :> R.
+Lemma beta_nat_norm00 {R : realType} n : beta_nat_norm n n = 1%R :> R.
 Proof.
+Admitted.
 
 (* main part of bata_nat_normE *)
 Lemma beta_nat_norm_nS {R :realType} (a b : nat) :
