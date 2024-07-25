@@ -369,7 +369,7 @@ have sE : s = (a + b)%N by [].
 Admitted.
 
 Lemma beta_nat_normE {R : realType} (a b : nat) :
-  beta_nat_norm a b = a.-1`!%:R * b.-1`!%:R / (a + b - 1)`!%:R :> R.
+  beta_nat_norm a b = a.-1`!%:R * b.-1`!%:R / (a + b).-1`!%:R :> R.
 Proof.
 rewrite beta_nat_norm_shift.
 rewrite integral_beta_nat_normTE/=.
@@ -389,7 +389,7 @@ Lemma beta_nat_norm_ge0 {R : realType} (a b : nat) :
   (0 <= beta_nat_norm a b :> R)%R.
 Proof. exact/ltW/beta_nat_norm_gt0. Qed.
 
-Lemma integral_beta_nat_pdf_lty {R : realType} (a b : nat) :
+Lemma integral_ubeta_nat_pdf_lty {R : realType} (a b : nat) :
   (\int[@lebesgue_measure R]_x (ubeta_nat_pdf a b x)%:E) < +oo.
 Proof.
 have := @beta_nat_norm_gt0 R a b.
