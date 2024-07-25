@@ -95,6 +95,20 @@ Admitted.
 
 End integration_by_parts.
 
+Section FTC2.
+Context {R : realType}.
+Notation mu := lebesgue_measure.
+Local Open Scope ereal_scope.
+Implicit Types (f : R -> R) (a b : R). 
+(* PR #1246 *)
+Corollary continuous_FTC2 f F a b : (a < b)%R -> {in `[a, b], continuous f} ->
+  derivable_oo_continuous_bnd F a b ->
+  {in `]a, b[, F^`() =1 f} ->
+  (\int[mu]_(x in `[a, b]) (f x)%:E = (F b)%:E - (F a)%:E)%E.
+Proof. Admitted.
+
+End FTC2.
+
 Section factD.
 
 Let factD' n m : (n`! * m`! <= (n + m).+1`!)%N.
@@ -272,21 +286,6 @@ Let B (a b : nat) : \bar R :=
 
 End beta_nat_Gamma.
 
-
-Section FTC2.
-Context {R : realType}.
-Notation mu := lebesgue_measure.
-Local Open Scope ereal_scope.
-Implicit Types (f : R -> R) (a b : R). 
-(* PR #1246 *)
-Corollary continuous_FTC2 f F a b : (a < b)%R -> {in `[a, b], continuous f} ->
-  derivable_oo_continuous_bnd F a b ->
-  {in `]a, b[, F^`() =1 f} ->
-  (\int[mu]_(x in `[a, b]) (f x)%:E = (F b)%:E - (F a)%:E)%E.
-Proof. Admitted.
-
-End FTC2.
-
 Lemma integral_beta_nat_normTE {R : realType} (a b : nat) :
   beta_nat_norm a b =
   fine (\int[lebesgue_measure]_(t in `[0%R, 1%R]) (t^+a.-1 * (`1-t)^+b.-1)%:E) :> R.
@@ -305,6 +304,100 @@ by rewrite -exprfctE; apply: derivableX; exact: derivable_id.
 Qed.
 
 Require Import ftc.
+
+Section continuous_change_of_variables.
+Context {R : realType}.
+Notation mu := lebesgue_measure.
+Local Open Scope ereal_scope.
+Implicit Types (F G f : R -> R) (a b : R). 
+
+Lemma ge0_continuous_change_of_variables F G f a b :
+    (a < b)%R -> (F a < F b)%R ->
+    {in `[a, b], forall x, (0 <= f x)%R} ->
+    {in `[a, b], continuous f} -> {in `[a, b], continuous F} ->
+    derivable_oo_continuous_bnd F a b ->
+    {in `]a, b[, F^`() =1 f} ->
+    {in `[F a, F b], continuous G} ->
+\int[mu]_(x in `[F a, F b]) (G x)%:E = \int[mu]_(x in `[a, b]) (((G \o F) * f) x)%:E.
+Proof.
+move=> ab FaFb f_ge0 cf cF dF dFE cG.
+pose PG x := (\int[mu]_(t in `[0%R, x]%classic) (G t))%R.
+set H := PG \o F.
+set h : R -> R:= ((G \o F) * f)%R.
+have dPG : derivable_oo_continuous_bnd PG (F a) (F b).
+  admit.
+have dPGE : {in `](F a), (F b)[, PG^`() =1 G}.
+  (* FTC1 *)
+  admit.
+have ch : {in `[a, b], continuous h}.
+  admit.
+have dH : derivable_oo_continuous_bnd H a b.
+  admit.
+have dHE : {in `]a, b[, H^`() =1 h}.
+  admit.
+by rewrite (continuous_FTC2 FaFb cG dPG dPGE) (continuous_FTC2 ab ch dH dHE).
+Admitted.
+
+Lemma le0_continuous_change_of_variables F G f a b :
+    (a < b)%R -> (F b < F a)%R ->
+    {in `[a, b], forall x, (f x <= 0)%R} ->
+    {in `[a, b], continuous f} -> {in `[a, b], continuous F} ->
+    derivable_oo_continuous_bnd F b a ->
+    {in `]a, b[, F^`() =1 f} ->
+    {in `[F b, F a], continuous G} ->
+\int[mu]_(x in `[F b, F a]) (G x)%:E = \int[mu]_(x in `[a, b]) (((G \o F) * - f) x)%:E.
+Proof.
+set nF : R -> R := (- F)%R.
+set nf : R -> R := (- f)%R.
+Admitted.
+
+End continuous_change_of_variables.
+
+Section beta_nat_normE.
+
+Lemma beta_nat_norm_sym {R : realType} (a b : nat) :
+  beta_nat_norm a b = beta_nat_norm b a :> R.
+Proof.
+rewrite !integral_beta_nat_normTE.
+under eq_integral.
+  move=> /= t t01.
+  rewrite (_:((t ^+ a.-1 * `1-t ^+ b.-1) =
+      (((fun t : R => t ^+ b.-1 * `1-t ^+ a.-1) \o
+          (fun t : R => `1-t)) * (- (fun => -1))) t)%R); last first.
+    by rewrite fctE/= opprK mulr1 onemK mulrC.
+  over.
+rewrite -le0_continuous_change_of_variables.
+- by rewrite /onem subr0 subrr.
+- exact: ltr01.
+- by rewrite /onem subr0 subrr.
+- move=> ? _.
+  by rewrite lerNl//.
+- move=> x _.
+  exact: cvg_cst.
+- move=> x _.
+  rewrite /onem.
+  apply: cvgB; first exact: cvg_cst.
+  exact: cvg_id.
+- split.
+  + move=> ? _; exact: derivableB.
+  + apply: cvgB; first exact: cvg_cst.
+    exact: cvg_at_right_filter.
+  + apply: cvgB; first exact: cvg_cst.
+    exact: cvg_at_left_filter.
+- move=> x x01.
+  rewrite derive1E.
+  rewrite deriveB//.
+  rewrite -derive1E.
+  rewrite derive1_cst sub0r.
+  admit.
+- rewrite /onem subr0 subrr.
+  move=> x x01.
+  rewrite [X in _ _ X](_:_ =
+     (fun t : R => (t ^+ b.-1)%R) * (fun t : R => (1 - t) ^+ a.-1)%R)%R; last by [].
+  apply: continuousM.
+  + exact: exprn_continuous.
+  + admit.
+Admitted.
 
 Section add_to_derive. (*in section derive_lemmasVR*)
 Variables (R : realType).
@@ -358,12 +451,23 @@ Qed.
 (* base cases of a and b *)
 Lemma beta_nat_norm00 {R : realType} n : beta_nat_norm n n = 1%R :> R.
 Proof.
-Admitted.
+rewrite integral_beta_nat_normTE/=.
+under eq_integral do rewrite !expr0 mulr1.
+rewrite integral_cst/=; last by exact: measurable_itv.
+by rewrite lebesgue_measure_itv/= lte_fin ltr01 -EFinB subr0 mule1.
+Qed.
 
 (* main part of bata_nat_normE *)
 Lemma beta_nat_norm_nS {R :realType} (a b : nat) :
+  (0 < b)%N ->
   beta_nat_norm a b.+1 = (b%:R * a.+1%:R^-1 * beta_nat_norm a.+1 b)%R :> R.
 Proof.
+case: b=> //b _.
+rewrite beta_nat_normC.
+rewrite !integral_beta_nat_normTE/=.
+case: a => /= [|a].
+  under eq_integral do rewrite expr0 mul1r.
+xxx
 Admitted.
 
 Lemma beta_nat_norm_shift {R : realType} (a b : nat) :
