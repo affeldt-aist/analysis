@@ -354,18 +354,27 @@ rewrite /F/=.
 by rewrite expr1n expr0n/= mulr1 mulr0 subr0.
 Admitted.
 
+(* base cases of a and b *)
+Lemma beta_nat_norm00 {R : realType} :
+  beta_nat_norm 0 0 = 1%R :> R.
+Proof.
+
 (* main part of bata_nat_normE *)
-Lemma beta_nat_norm_shift1 {R :realType} (a b : nat) :
+Lemma beta_nat_norm_nS {R :realType} (a b : nat) :
   beta_nat_norm a b.+1 = (b%:R * a.+1%:R^-1 * beta_nat_norm a.+1 b)%R :> R.
 Proof.
 Admitted.
 
 Lemma beta_nat_norm_shift {R : realType} (a b : nat) :
-  beta_nat_norm a b = (a.-1`!%:R * b.-1`!%:R * (a + b - 2)%N`!%:R^-1 * beta_nat_norm (a + b - 1)%N 1%N)%R :> R.
+  beta_nat_norm a b = (a.-1`!%:R * b.-1`!%:R * (a + b).-2%N`!%:R^-1 * beta_nat_norm (a + b).-1 1%N)%R :> R.
 Proof.
 pose s := (a + b)%N.
 have sE : s = (a + b)%N by [].
 (* induction by b with fixed s *)
+elim: b s sE =>[s|b IH s].
+  move=> _.
+  rewrite addn0 /=.
+  case: a => /=.
 Admitted.
 
 Lemma beta_nat_normE {R : realType} (a b : nat) :
@@ -377,7 +386,19 @@ under eq_integral do rewrite expr0 mulr1.
 rewrite /=.
 rewrite integral_exprn.
 (* case: a and b *)
-Admitted.
+case: a=> //=.
+  case: b => /=[|b]; first by rewrite addn0/= divr1.
+  rewrite mulrK; last by rewrite unitf_gt0// ltr0n fact_gt0.
+  case: b => /=[|b]; first by rewrite fact0 !divr1 mulr1.
+  by rewrite fact0 mul1r factS natrM mulrK ?divff// unitf_gt0// ltr0n fact_gt0.
+case => /=[|a].
+  rewrite fact0 mul1r divff; last first.
+    by rewrite lt0r_neq0// ltr0n fact_gt0.
+  case: b => //= b.
+  rewrite factS natrM invrM ?unitf_gt0//; last by rewrite ltr0n fact_gt0.
+  by rewrite mulrA divff// lt0r_neq0// ltr0n fact_gt0.
+by rewrite -addnE (factS (_ + _)) natrM invrM ?mulrA// unitf_gt0// ltr0n fact_gt0.
+Qed.
 
 End beta_nat_normE.
 
