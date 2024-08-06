@@ -585,7 +585,7 @@ by rewrite -ge0_fin_numE// beta_nat_fin_num.
 Qed.
 
 Lemma integrable_bernoulli_ubeta_nat_pdf a b U
-  (mu : {measure set (salgebraType (R.-ocitv.-measurable)) -> \bar R}) :
+  (mu : {measure set (g_sigma_algebraType R.-ocitv.-measurable) -> \bar R}) :
   measurable U -> (mu `[0%R, 1%R]%classic < +oo)%E ->
   mu.-integrable `[0, 1] (fun x => bernoulli (ubeta_nat_pdf a b x) U).
 Proof.
@@ -646,12 +646,9 @@ transitivity (beta_nat_bernoulli 6 4 1 0 U : \bar R).
   rewrite [RHS]integral_mkcond.
   apply: eq_integral => x _ /=.
   rewrite patchE.
-  rewrite /beta_nat_pdf /ubeta_nat_pdf.
-  case: ifPn => [/andP[x0 x1]|].
-    rewrite ifT; last by rewrite inE/= in_itv/= x0.
-    by rewrite expr0 expr1 mulr1.
-  rewrite !mul0r !mule0.
-  by case: ifPn.
+  case: ifPn => x01.
+    by rewrite /beta_nat_pdf /ubeta_nat_pdf !patchE x01/= XnMsub1Xn0' expr1.
+  by rewrite /beta_nat_pdf /ubeta_nat_pdf patchE (negbTE x01) mul0r mule0.
 rewrite beta_nat_bernoulliE// !bernoulliE//=; last 2 first.
   lra.
   by rewrite div_beta_nat_norm_ge0 div_beta_nat_norm_le1.
