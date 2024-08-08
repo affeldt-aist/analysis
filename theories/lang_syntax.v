@@ -844,7 +844,7 @@ Definition mtyp t : measurableType (mtyp_disp t) :=
   projT2 (measurable_of_typ t).
 
 Definition measurable_of_seq (l : seq typ) : {d & measurableType d} :=
-  iter_mprod (map measurable_of_typ l).
+  iter_mprod (List.map measurable_of_typ l).
 
 End syntax_of_types.
 Arguments measurable_of_typ {R}.
