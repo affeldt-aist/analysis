@@ -266,7 +266,7 @@ apply: cvg_at_right_left_dnbhs.
 Unshelve. all: by end_near. Qed.
 
 (* NB: right-closed interval *)
-Lemma FTC1_lebesgue_pt f a x :  (forall y, mu.-integrable [set` Interval a (BRight y)] (EFin \o f)) ->
+Lemma FTC1_lebesgue_pt f a x : (forall y, mu.-integrable [set` Interval a (BRight y)] (EFin \o f)) ->
     locally_integrable [set: R] f(*mu.-integrable setT (EFin \o f)*) ->
   let F y := (\int[mu]_(t in [set` Interval a (BRight y)]) (f t))%R in
   a < BRight x -> lebesgue_pt f x ->
