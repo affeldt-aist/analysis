@@ -320,17 +320,14 @@ Proof.
 rewrite integral_binomial//=.
 rewrite (bigD1 (inord 5))//=.
 rewrite big1 ?adde0; last first.
-  move=> i Hi5.
+  move=> i i5.
   rewrite execP_letin/= execP_if/= execD_rel/=.
   rewrite exp_var'E/= (execD_var_erefl "a1")/=.
   rewrite execD_nat/= execP_score/= execD_real/= execP_return/=.
   rewrite letin'E iteE/=.
-  move: i Hi5.
-  move=> [[|[|[|[|[|[|[|[|[|//]]]]]]]]]]//= Hi Hi5;
+  move: i => [[|[|[|[|[|[|[|[|[|//]]]]]]]]]]//= Hi in i5 *;
   rewrite ?ge0_integral_mscale//= ?execD_real/= ?normr0 ?(mul0e,mule0)//.
-  suff: false by [].
-  move/negbTE: Hi5 => <-.
-  by apply/eqP/val_inj => /=; rewrite inordK.
+  by rewrite -val_eqE/= inordK in i5.
 (* reduce lhs *)
 rewrite -[(p ^+ _ * _ ^+ _)%R]/(XnMonemXn _ _ p).
 rewrite execP_letin/= execP_if/= execD_rel/=.
@@ -359,8 +356,7 @@ Qed.
 Lemma casino12 : execD (@casino1 R) = execD (@casino2 R).
 Proof.
 apply: congr_normalize => y V.
-apply: execP_letin_uniform => //.
-move=> p x U /andP[p0 p1].
+apply: execP_letin_uniform => // p x U /andP[p0 p1].
 (* reduce the lhs *)
 rewrite execP_letin execP_sample execD_binomial/=.
 rewrite letin'E/=.
@@ -441,18 +437,24 @@ rewrite !execP_letin !execP_sample !execP_score !execD_beta.
 rewrite !execD_bernoulli/= !(@execD_bin _ _ binop_mult).
 do 2 (rewrite !execD_pow !(@execD_bin _ _ binop_minus) !execD_real/=).
 rewrite !exp_var'E !(execD_var_erefl "p")/=.
-rewrite !letin'E/= ![in RHS]ge0_integral_mscale//=.
+rewrite [LHS]letin'E/=.
 under eq_integral => y _.
   rewrite letin'E/=.
   rewrite integral_cst//= /mscale/= diracT mule1 -mulrA -/(XnMonemXn _ _ _).
   over.
+rewrite [RHS]letin'E/=.
+under [in RHS]eq_integral => y _.
+  rewrite letin'E/=.
+  over.
 rewrite /=.
+rewrite [RHS]ge0_integral_mscale//=; last first.
+  by move=> _ _; rewrite integral_ge0.
 rewrite integral_Beta//=; last 2 first.
   - apply: emeasurable_funM => //=; apply/EFin_measurable_fun.
     apply: measurableT_comp => //; apply: measurable_funM => //.
     exact: measurable_fun_XnMonemXn.
   - by have /integrableP[] := integrable_bernoulli_XnMonemXn U.
-rewrite ger0_norm// integral_dirac// diracT mul1e letin'E/=.
+rewrite ger0_norm// integral_dirac// diracT mul1e.
 rewrite integral_Beta/=; [|by []|by []|exact: integral_Beta_bernoulli_onem_lty].
 rewrite -integralZl//=; last exact: integrable_bernoulli_beta_pdf.
 apply: eq_integral => y _.
@@ -480,7 +482,7 @@ Local Notation mu := lebesgue_measure.
 Lemma integral_bernoulli_beta_pdf' (f : _ -> R) U : measurable_fun setT f ->
     (forall x, x \in (`[0%R, 1%R]%classic : set R) -> 0 <= f x <= 1)%R ->
   \int[mu]_(y in `[0%R, 1%R]) (bernoulli (1 - f y) U * (beta_pdf 6 4 y)%:E) =
-    (\d_true U + \d_false U) * Beta 6 4 setT -
+    (\d_true U + \d_false U) -
     \int[mu]_(y in `[0%R, 1%R]) (bernoulli (f y) U * (beta_pdf 6 4 y)%:E).
 Proof.
 move=> mf f01.
@@ -565,15 +567,12 @@ under [X in _ = (_ + _ + X * _)%E]eq_integral.
   rewrite /onem mulrBl mul1r opprB EFinB.
   over.
 rewrite /=.
-rewrite [in RHS]muleDl//; last by rewrite Beta_fin_num.
 rewrite -addeA.
 rewrite addeACA.
-rewrite [in RHS](muleC _ (\d_false U)).
-rewrite -muleDr//; last first.
-  by rewrite fin_num_adde_defr// Beta_fin_num.
-rewrite [in RHS](muleC _ (\d_true U)).
-rewrite -muleDr//; last first.
-  by rewrite fin_num_adde_defr// Beta_fin_num.
+rewrite -[in X in _ = _ + (X + _)](mul1e (\d_false U)).
+rewrite -muleDl//.
+rewrite -[in X in _ = X + _ + _](mul1e (\d_true U)).
+rewrite -muleDl//.
 have ? : (Beta 6 4).-integrable [set: salgebraType (R.-ocitv.-measurable)] (EFin \o (fun=> 1%R)).
   apply/integrableP; split.
     exact/EFin_measurable_fun.
@@ -588,22 +587,20 @@ have ? : (Beta 6 4).-integrable [set: salgebraType (R.-ocitv.-measurable)] (EFin
     by rewrite /=.
   rewrite integral_cst//= !normr1 mul1e.
   by rewrite -ge0_fin_numE// Beta_fin_num.
-have ? : mu.-integrable [set: salgebraType (R.-ocitv.-measurable)]
-    (EFin \o (fun x => (f x * beta_pdf 6 4 x)%R)).
+have ? : mu.-integrable [set: g_sigma_algebraType R.-ocitv.-measurable]
+    (EFin \o (fun x => f x * beta_pdf 6 4 x)%R).
     apply/integrableP; split.
       apply/EFin_measurable_fun; apply/measurable_funM => //.
       exact: measurable_beta_pdf.
     rewrite /=.
     rewrite [ltLHS](_ : _ = \int[mu]_(x in `[0%R, 1%R]) (normr (f x * beta_pdf 6 4 x))%:E); last first.
-      rewrite [RHS]integral_mkcond /=.
-      apply: eq_integral => x _.
-      rewrite /beta_pdf /ubeta_pdf !patchE; case: ifPn => // x01.
+      rewrite [RHS]integral_mkcond /=; apply: eq_integral => /= x _.
+      rewrite /beta_pdf /ubeta_pdf !patchE; case: ifPn => // _.
       by rewrite mul0r mulr0 normr0.
     apply: (@le_lt_trans _ _ (\int[mu]_(x in `[0%R, 1%R]) (int_ubeta_pdf 6 4)^-1%:E)).
       apply: ge0_le_integral => //=.
-        apply: measurable_funTS; apply: measurableT_comp => //=.
-        apply: measurableT_comp => //=; apply: measurable_funM => //=.
-        exact: measurable_beta_pdf.
+        do 2 apply: measurableT_comp => //=.
+        by apply: measurable_funM => //=; apply/measurable_funTS => //; exact: measurable_beta_pdf.
       by move=> _ _; rewrite lee_fin invr_ge0// int_ubeta_pdf_ge0.
     move=> x x01.
     rewrite ger0_norm//; last first.
@@ -613,8 +610,6 @@ have ? : mu.-integrable [set: salgebraType (R.-ocitv.-measurable)]
     rewrite ler_pM// ?beta_pdf_ge0// ?f0 ?f1 ?inE//.
     exact: beta_pdf_le_int_ubeta_pdf.
     by rewrite integral_cst//= lebesgue_measure_itv//= lte01 EFinN sube0 mule1 ltry.
-rewrite [in LHS](muleC _ (\d_false U)).
-rewrite [in LHS](muleC _ (\d_true U)).
 congr (_ * _ + _ * _).
   under eq_integral do rewrite EFinB muleBl// mul1e.
   rewrite integralB_EFin//=; last first.
@@ -627,11 +622,10 @@ congr (_ * _ + _ * _).
     by rewrite mule_ge0// lee_fin// ?f0 ?inE// beta_pdf_ge0.
   rewrite /=.
   congr (_ - _).
-  by rewrite -integral_beta_pdf// int_beta_pdf01.
+  by rewrite int_beta_pdf01 integral_beta_pdf// probability_setT.
 rewrite integralB_EFin//=.
 - rewrite addeCA.
-  rewrite -integral_beta_pdf// int_beta_pdf01 subee ?adde0//.
-  by rewrite integral_beta_pdf// Beta_fin_num.
+  by rewrite int_beta_pdf01 integral_beta_pdf// probability_setT subee ?adde0//.
 - exact: (@integrableS _ _ _ _ setT).
 - by apply: (@integrableS _ _ _ _ setT) => //; exact: integrable_beta_pdf.
 Qed.
@@ -640,23 +634,19 @@ Lemma integral_bernoulli_beta_pdf (f : _ -> R) U p :
   measurable_fun setT f ->
   (forall x, x \in (`[0%R, 1%R]%classic : set R) -> 0 <= f x <= 1)%R ->
   (\int[mu]_(y in `[0%R, 1%R]) (bernoulli (f y) U * (beta_pdf 6 4 y)%:E) =
-    p%:E * \d_true U +
-    (Beta 6 4 [set: _] - p%:E) * \d_false U)%E
-  ->
+    p%:E * \d_true U + (1 - p%:E) * \d_false U)%E ->
   (\int[mu]_(y in `[0%R, 1%R]) (bernoulli (1 - f y) U * (beta_pdf 6 4 y)%:E) =
-    (Beta 6 4 [set: _](* TODO: this is 1, no? *) - p%:E) * \d_true U +
-    p%:E * \d_false U)%E.
+   (1 - p%:E) * \d_true U + p%:E * \d_false U)%E.
 Proof.
-move=> mf f01 H.
-rewrite integral_bernoulli_beta_pdf'//= H.
-rewrite oppeD// muleDl ?Beta_fin_num//=.
-rewrite addeACA EFinN EFinM muleC -muleBl//; last first.
-  by rewrite fin_num_adde_defr// Beta_fin_num.
-rewrite (muleC (\d_false U)) -muleBl//; last first.
-  by rewrite fin_num_adde_defr// Beta_fin_num.
-congr +%E.
-rewrite oppeD// ?fin_num_adde_defr ?Beta_fin_num//.
-by rewrite addeA subee ?Beta_fin_num// EFinN oppeK add0e.
+move=> mf f01 H /=.
+rewrite integral_bernoulli_beta_pdf'//= {}H.
+rewrite oppeD//.
+rewrite addeACA.
+rewrite -{1}(mul1e (\d_true U)).
+rewrite -{1}(mul1e (\d_false U)).
+rewrite -muleBl//.
+rewrite -muleBl//.
+by rewrite EFinN oppeB// addrA subee// add0e.
 Qed.
 
 Lemma casino34' U :
@@ -738,11 +728,10 @@ rewrite (@integral_bernoulli_beta_pdf (fun x => `1-x ^+ 3)%R U (1 / 11))//=; las
     by rewrite patchE z01 XnMonemXn0.
   rewrite Beta_bernoulliE//= bernoulliE//=; last first.
     by rewrite div_beta_norm_ge0// div_beta_norm_le1.
-  rewrite probability_setT.
   by congr (_ * _ + _ * _)%:E; rewrite /onem;
     rewrite /div_beta_norm !int_ubeta_pdfE/= !factE/=; field.
 congr (_ * _ + _ * _)%E.
-  by rewrite probability_setT -EFinD; congr EFin; lra.
+  by rewrite -EFinD; congr EFin; lra.
 by congr _%:E; rewrite /onem; lra.
 Qed.
 
