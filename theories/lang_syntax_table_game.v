@@ -479,13 +479,28 @@ Local Open Scope lang_scope.
 Context (R : realType).
 Local Notation mu := lebesgue_measure.
 
-Lemma integral_bernoulli_beta_pdf' (f : _ -> R) U : measurable_fun setT f ->
-    (forall x, x \in (`[0%R, 1%R]%classic : set R) -> 0 <= f x <= 1)%R ->
-  \int[mu]_(y in `[0%R, 1%R]) (bernoulli (1 - f y) U * (beta_pdf 6 4 y)%:E) =
+Lemma integral_bernoulli_beta_pdf'_new (f : _ -> R) U (g : R -> R) :
+  (forall x, 0 <= g x)%R ->
+  (mu.-integrable `[0%R, 1%R] (EFin \o (f \* g)%R)) ->
+  measurable_fun setT g ->
+  \int[mu]_(x in `[0%R, 1%R]) (g x)%:E = 1 ->
+  measurable_fun setT f ->
+  (forall x, x \in (`[0%R, 1%R]%classic : set R) -> 0 <= f x <= 1)%R ->
+  \int[mu]_(y in `[0%R, 1%R]) (bernoulli (1 - f y) U * (g y)%:E) =
     (\d_true U + \d_false U) -
-    \int[mu]_(y in `[0%R, 1%R]) (bernoulli (f y) U * (beta_pdf 6 4 y)%:E).
+    \int[mu]_(y in `[0%R, 1%R]) (bernoulli (f y) U * (g y)%:E).
 Proof.
-move=> mf f01.
+move=> g0 g_bounded mg ig1 mf f01.
+have ? : mu.-integrable `[0%R, 1%R] (EFin \o g).
+  apply/integrableP; split => //.
+    apply/measurable_funTS.
+    exact/EFin_measurable_fun.
+  under eq_integral.
+    move=> x _.
+    rewrite /= ger0_norm//.
+    over.
+  rewrite /=.
+  by rewrite ig1 ltry.
 have f0 x : x \in (`[0%R, 1%R]%classic : set R) -> (0 <= f x)%R.
   by move => /f01/andP[].
 have f1 x : x \in (`[0%R, 1%R]%classic : set R) -> (f x <= 1)%R.
@@ -506,23 +521,23 @@ rewrite ge0_integralD//=; last 4 first.
   by rewrite mulr_ge0// subr_ge0// f1// inE.
   apply: measurable_funTS; apply: emeasurable_funM => //.
     by apply: emeasurable_funM => //; exact/EFin_measurable_fun/measurable_funB.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
   by move=> x x01; rewrite mule_ge0// ?lee_fin ?beta_pdf_ge0// mulr_ge0// f0// inE.
   apply: measurable_funTS; apply: emeasurable_funM => //.
     by apply: emeasurable_funM; exact/EFin_measurable_fun.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
 under eq_integral do rewrite muleAC/=.
 rewrite ge0_integralZr//=; last 2 first.
   apply: measurable_funTS; apply: emeasurable_funM => //.
     by apply/EFin_measurable_fun/measurable_funB.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
   move=> x x01.
   by rewrite mule_ge0// lee_fin// ?subr_ge0// ?f1// ?inE// beta_pdf_ge0.
 under [X in _ + X = _]eq_integral do rewrite muleAC/=.
 rewrite [X in _ + X = _]ge0_integralZr//=; last 2 first.
   apply: measurable_funTS; apply: emeasurable_funM => //.
     exact/EFin_measurable_fun.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
   by move=> x x01; rewrite mule_ge0// lee_fin// ?f0// ?inE// beta_pdf_ge0.
 under [in RHS]eq_integral => x x01.
   rewrite bernoulliE//=; last by rewrite f0//= f1.
@@ -533,23 +548,23 @@ rewrite /= ge0_integralD//=; last 4 first.
   by rewrite inE.
   apply: measurable_funTS; apply: emeasurable_funM => //.
     by apply: emeasurable_funM => //; apply/EFin_measurable_fun.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
   move=> x x01; rewrite mule_ge0// ?lee_fin ?beta_pdf_ge0// mulr_ge0//.
   by rewrite subr_ge0 f1// inE.
   apply: measurable_funTS;apply: emeasurable_funM => //.
     by apply: emeasurable_funM => //; apply/EFin_measurable_fun/measurable_funB.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
 under [X in _ = _ - (X + _)]eq_integral do rewrite muleAC/=.
 rewrite [X in _ = _ - (X + _)]ge0_integralZr//=; last 2 first.
   apply: measurable_funTS => //; apply: emeasurable_funM => //.
     by apply/EFin_measurable_fun.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
   by move=> x x01; rewrite mule_ge0// lee_fin// ?f0// ?inE// beta_pdf_ge0.
 under [X in _ = _ - (_ + X)]eq_integral do rewrite muleAC/=.
 rewrite [X in _ = _ - (_ + X)]ge0_integralZr//=; last 2 first.
   apply: measurable_funTS => //; apply: emeasurable_funM => //.
     by apply/EFin_measurable_fun/measurable_funB.
-  by apply/EFin_measurable_fun; exact: measurable_beta_pdf.
+  by apply/EFin_measurable_fun; exact: mg.
   move=> x x01; rewrite mule_ge0// lee_fin// ?beta_pdf_ge0//.
   by rewrite subr_ge0 f1// inE.
 rewrite oppeD//; last first.
@@ -573,73 +588,62 @@ rewrite -[in X in _ = _ + (X + _)](mul1e (\d_false U)).
 rewrite -muleDl//.
 rewrite -[in X in _ = X + _ + _](mul1e (\d_true U)).
 rewrite -muleDl//.
-have ? : (Beta 6 4).-integrable [set: salgebraType (R.-ocitv.-measurable)] (EFin \o (fun=> 1%R)).
-  apply/integrableP; split.
-    exact/EFin_measurable_fun.
-  rewrite integral_Beta//=.
-    under eq_integral do rewrite normr1 mul1e.
-    rewrite /=.
-    have /integrableP[_] := @integrable_beta_pdf R 6 4.
-    under eq_integral.
-      move=> /= x.
-      rewrite ger0_norm ?beta_pdf_ge0//.
-      over.
-    by rewrite /=.
-  rewrite integral_cst//= !normr1 mul1e.
-  by rewrite -ge0_fin_numE// Beta_fin_num.
-have ? : mu.-integrable [set: g_sigma_algebraType R.-ocitv.-measurable]
-    (EFin \o (fun x => f x * beta_pdf 6 4 x)%R).
-    apply/integrableP; split.
-      apply/EFin_measurable_fun; apply/measurable_funM => //.
-      exact: measurable_beta_pdf.
-    rewrite /=.
-    rewrite [ltLHS](_ : _ = \int[mu]_(x in `[0%R, 1%R]) (normr (f x * beta_pdf 6 4 x))%:E); last first.
-      rewrite [RHS]integral_mkcond /=; apply: eq_integral => /= x _.
-      rewrite /beta_pdf /ubeta_pdf !patchE; case: ifPn => // _.
-      by rewrite mul0r mulr0 normr0.
-    apply: (@le_lt_trans _ _ (\int[mu]_(x in `[0%R, 1%R]) (int_ubeta_pdf 6 4)^-1%:E)).
-      apply: ge0_le_integral => //=.
-        do 2 apply: measurableT_comp => //=.
-        by apply: measurable_funM => //=; apply/measurable_funTS => //; exact: measurable_beta_pdf.
-      by move=> _ _; rewrite lee_fin invr_ge0// int_ubeta_pdf_ge0.
-    move=> x x01.
-    rewrite ger0_norm//; last first.
-      by rewrite mulr_ge0// ?f0 ?inE// beta_pdf_ge0.
-    rewrite lee_fin.
-    rewrite -[leRHS]mul1r.
-    rewrite ler_pM// ?beta_pdf_ge0// ?f0 ?f1 ?inE//.
-    exact: beta_pdf_le_int_ubeta_pdf.
-    by rewrite integral_cst//= lebesgue_measure_itv//= lte01 EFinN sube0 mule1 ltry.
 congr (_ * _ + _ * _).
   under eq_integral do rewrite EFinB muleBl// mul1e.
-  rewrite integralB_EFin//=; last first.
-    exact: (@integrableS _ _ _ _ setT).
-    apply: (@integrableS _ _ _ _ setT) => //.
-    exact: integrable_beta_pdf.
+  rewrite integralB_EFin//=.
   under [in RHS]eq_integral do rewrite EFinN EFinM.
   rewrite [X in _ = _ + X]integral_ge0N //; last first.
     move=> x x01.
     by rewrite mule_ge0// lee_fin// ?f0 ?inE// beta_pdf_ge0.
   rewrite /=.
   congr (_ - _).
-  by rewrite int_beta_pdf01 integral_beta_pdf// probability_setT.
+  by rewrite ig1.
 rewrite integralB_EFin//=.
-- rewrite addeCA.
-  by rewrite int_beta_pdf01 integral_beta_pdf// probability_setT subee ?adde0//.
-- exact: (@integrableS _ _ _ _ setT).
-- by apply: (@integrableS _ _ _ _ setT) => //; exact: integrable_beta_pdf.
+rewrite addeCA.
+by rewrite ig1 subee ?adde0//.
 Qed.
 
-Lemma integral_bernoulli_beta_pdf (f : _ -> R) U p :
+Lemma integral_bernoulli_beta_pdf_new (f : _ -> R) U p m n :
   measurable_fun setT f ->
   (forall x, x \in (`[0%R, 1%R]%classic : set R) -> 0 <= f x <= 1)%R ->
-  (\int[mu]_(y in `[0%R, 1%R]) (bernoulli (f y) U * (beta_pdf 6 4 y)%:E) =
+  (\int[mu]_(y in `[0%R, 1%R]) (bernoulli (f y) U * (beta_pdf m n y)%:E) =
     p%:E * \d_true U + (1 - p%:E) * \d_false U)%E ->
-  (\int[mu]_(y in `[0%R, 1%R]) (bernoulli (1 - f y) U * (beta_pdf 6 4 y)%:E) =
+  (\int[mu]_(y in `[0%R, 1%R]) (bernoulli (1 - f y) U * (beta_pdf m n y)%:E) =
    (1 - p%:E) * \d_true U + p%:E * \d_false U)%E.
 Proof.
 move=> mf f01 H /=.
-rewrite integral_bernoulli_beta_pdf'//= {}H.
+rewrite integral_bernoulli_beta_pdf'_new//=; last 4 first.
+  move=> x.
+  by rewrite beta_pdf_ge0.
+  apply/integrableP; split.
+    apply/EFin_measurable_fun; apply/measurable_funM => //.
+      exact: measurable_funTS.
+    apply: measurable_funTS.
+    exact: measurable_beta_pdf.
+    rewrite /=.
+    apply: (@le_lt_trans _ _ (\int[mu]_(x in `[0%R, 1%R]) (int_ubeta_pdf m n)^-1%:E)).
+      apply: ge0_le_integral => //=.
+        do 2 apply: measurableT_comp => //=.
+        by apply: measurable_funM => //=; apply/measurable_funTS => //; exact: measurable_beta_pdf.
+      by move=> _ _; rewrite lee_fin invr_ge0// int_ubeta_pdf_ge0.
+    move=> x x01.
+    rewrite ger0_norm//; last first.
+      rewrite mulr_ge0// ?beta_pdf_ge0//.
+      rewrite -inE in x01.
+      by have /andP[] := f01 _ x01.
+    rewrite /beta_pdf.
+    rewrite lee_fin.
+    rewrite -[leRHS]mul1r.
+    rewrite ler_pM// ?beta_pdf_ge0//.
+      rewrite -inE in x01.
+      by have /andP[] := f01 _ x01.
+      rewrite -inE in x01.
+      by have /andP[] := f01 _ x01.
+    exact: beta_pdf_le_int_ubeta_pdf.
+    by rewrite integral_cst//= lebesgue_measure_itv//= lte01 EFinN sube0 mule1 ltry.
+  exact: measurable_beta_pdf.
+  by rewrite integral_beta_pdf// Beta01.
+rewrite H.
 rewrite oppeD//.
 rewrite addeACA.
 rewrite -{1}(mul1e (\d_true U)).
@@ -702,7 +706,7 @@ transitivity (\int[mu]_(x in `[0%R, 1%R]) (bernoulli (1 - `1-x ^+ 3) U *
   rewrite [RHS]integral_mkcond; apply: eq_integral => z _.
   rewrite /= !patchE; case: ifPn => // z01.
   by rewrite /beta_pdf /ubeta_pdf patchE (negbTE z01) mul0r mule0.
-rewrite (@integral_bernoulli_beta_pdf (fun x => `1-x ^+ 3)%R U (1 / 11))//=; last 3 first.
+rewrite (@integral_bernoulli_beta_pdf_new (fun x => `1-x ^+ 3)%R U (1 / 11))//=; last 3 first.
   by apply: measurable_fun_pow => //; exact: measurable_funB.
   move=> z.
   rewrite inE/= in_itv/= => /andP[z0 z1].
