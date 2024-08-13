@@ -17,8 +17,8 @@ From mathcomp Require Import lra.
 (*   APLAS 2023                                                               *)
 (*                                                                            *)
 (* beta distribution specialized to nat                                       *)
-(*            beta_pdf == probability density function                        *)
-(*                Beta == probability measure                                 *)
+(*            beta_pdf == probability density function for beta               *)
+(*                Beta == beta probability measure                            *)
 (*                                                                            *)
 (*                 typ == syntax for types of data structures                 *)
 (* measurable_of_typ t == the measurable type corresponding to type t         *)
@@ -476,7 +476,7 @@ rewrite (@continuous_FTC2 _ _ (fun x : R => ((1 - x) ^+ n.+1 / - n.+1%:R))%R)//=
   by rewrite derive_onemXn mulrA mulVf// mul1r.
 Qed.
 
-Lemma integral_onemXn_rmme {R : realType} (n : nat) :
+(*Lemma integral_onemXn_rmme {R : realType} (n : nat) :
   fine (\int[lebesgue_measure]_(x in `[0%R, 1%R]) (`1-x ^+ n)%:E) = n.+1%:R^-1 :> R.
 Proof.
 rewrite (@continuous_FTC2 _ _ (fun x : R => ((1 - x) ^+ n.+1 / - n.+1%:R))%R)//=.
@@ -487,7 +487,7 @@ rewrite (@continuous_FTC2 _ _ (fun x : R => ((1 - x) ^+ n.+1 / - n.+1%:R))%R)//=
 - move=> x x01.
   rewrite derive1Mr//; last  exact: onemXn_derivable.
   by rewrite derive_onemXn mulrA mulVf// mul1r.
-Qed.
+Qed.*)
 
 (* we define a function to help formalizing the beta distribution *)
 Section XnMonemXn.
@@ -642,12 +642,12 @@ Notation mu := (@lebesgue_measure R).
 
 Definition int_ubeta_pdf (a b : nat) : R := (\int[mu]_x (ubeta_pdf a b x))%R.
 
-Lemma int_ubeta_pdfTE_rmme (a b : nat) :
+(*Lemma int_ubeta_pdfTE_rmme (a b : nat) :
   int_ubeta_pdf a b =
   fine (\int[mu]_(t in `[0%R, 1%R]) (XnMonemXn a.-1 b.-1 t)%:E) :> R.
 Proof.
 by rewrite -[LHS]Rintegral_mkcond.
-Qed.
+Qed.*)
 
 Lemma int_ubeta_pdf0 (b : nat) : (0 < b)%N ->
   int_ubeta_pdf 0 b = b%:R ^-1:> R.
