@@ -903,7 +903,7 @@ Notation emeasurable_itv_bnd_pinfty := emeasurable_itv (only parsing).
 #[deprecated(since="mathcomp-analysis 0.6.2", note="use `emeasurable_itv` instead")]
 Notation emeasurable_itv_ninfty_bnd := emeasurable_itv (only parsing).
 
-Lemma measurable_fine (R : realType) (D : set (\bar R)) : measurable D ->
+Lemma fine_measurable (R : realType) (D : set (\bar R)) : measurable D ->
   measurable_fun D fine.
 Proof.
 move=> mD _ /= B mB; rewrite [X in measurable X](_ : _ `&` _ = if 0%R \in B then
@@ -919,9 +919,9 @@ case: ifPn => B0; apply/measurableI => //; last exact: measurable_image_EFin.
 by apply: measurableU; [exact: measurable_image_EFin|exact: measurableU].
 Qed.
 #[global] Hint Extern 0 (measurable_fun _ fine) =>
-  solve [exact: measurable_fine] : core.
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_fine` instead")]
-Notation measurable_fun_fine := measurable_fine (only parsing).
+  solve [exact: fine_measurable] : core.
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `fine_measurable` instead")]
+Notation measurable_fine := fine_measurable (only parsing).
 
 Section lebesgue_measure_itv.
 Variable R : realType.
@@ -1616,13 +1616,13 @@ Section standard_measurable_fun.
 Variable R : realType.
 Implicit Types D : set R.
 
-Lemma measurable_oppr D : measurable_fun D (-%R).
+Lemma oppr_measurable D : measurable_fun D -%R.
 Proof.
 apply: measurable_funTS => /=; apply: continuous_measurable_fun.
-exact: (@opp_continuous R [the normedModType R of R^o]).
+exact: opp_continuous.
 Qed.
 
-Lemma measurable_normr D : measurable_fun D (@normr _ R).
+Lemma normr_measurable D : measurable_fun D (@normr _ R).
 Proof.
 move=> mD; apply: (measurability (RGenOInfty.measurableE R)) => //.
 move=> /= _ [_ [x ->] <-]; apply: measurableI => //.
@@ -1641,45 +1641,43 @@ rewrite [X in measurable X](_ : _ = setT)// predeqE => r.
 by split => // _; rewrite /= in_itv /= andbT (lt_le_trans x0).
 Qed.
 
-Lemma measurable_mulrl D (k : R) : measurable_fun D ( *%R k).
+Lemma mulrl_measurable D (k : R) : measurable_fun D ( *%R k).
 Proof.
 apply: measurable_funTS => /=.
 by apply: continuous_measurable_fun; exact: mulrl_continuous.
 Qed.
 
-Lemma measurable_mulrr D (k : R) : measurable_fun D (fun x => x * k).
+Lemma mulrr_measurable D (k : R) : measurable_fun D (fun x => x * k).
 Proof.
 apply: measurable_funTS => /=.
 by apply: continuous_measurable_fun; exact: mulrr_continuous.
 Qed.
 
-Lemma measurable_exprn D n : measurable_fun D (fun x => x ^+ n).
+Lemma exprn_measurable D n : measurable_fun D (fun x => x ^+ n).
 Proof.
 apply measurable_funTS => /=.
 by apply continuous_measurable_fun; exact: exprn_continuous.
 Qed.
 
 End standard_measurable_fun.
-#[global] Hint Extern 0 (measurable_fun _ (-%R)) =>
-  solve [exact: measurable_oppr] : core.
+#[global] Hint Extern 0 (measurable_fun _ -%R) =>
+  solve [exact: oppr_measurable] : core.
 #[global] Hint Extern 0 (measurable_fun _ normr) =>
-  solve [exact: measurable_normr] : core.
+  solve [exact: normr_measurable] : core.
 #[global] Hint Extern 0 (measurable_fun _ ( *%R _)) =>
-  solve [exact: measurable_mulrl] : core.
+  solve [exact: mulrl_measurable] : core.
 #[global] Hint Extern 0 (measurable_fun _ (fun x => x ^+ _)) =>
-  solve [exact: measurable_exprn] : core.
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_exprn` instead")]
-Notation measurable_fun_sqr := measurable_exprn (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_oppr` instead")]
-Notation measurable_fun_opp := measurable_oppr (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_oppr` instead")]
-Notation measurable_funN := measurable_oppr (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_normr` instead")]
-Notation measurable_fun_normr := measurable_normr (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_exprn` instead")]
-Notation measurable_fun_exprn := measurable_exprn (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_mulrl` instead")]
-Notation measurable_funrM := measurable_mulrl (only parsing).
+  solve [exact: exprn_measurable] : core.
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `exprn_measurable` instead")]
+Notation measurable_exprn := exprn_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `mulrl_measurable` instead")]
+Notation measurable_mulrl := mulrl_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `mulrr_measurable` instead")]
+Notation measurable_mulrr := mulrr_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `oppr_measurable` instead")]
+Notation measurable_oppr := oppr_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `normr_measurable` instead")]
+Notation measurable_normr := normr_measurable (only parsing).
 
 Section measurable_fun_realType.
 Context d (T : measurableType d) (R : realType).
@@ -1714,11 +1712,11 @@ move=> mf mg; rewrite (_ : (_ \* _) = (fun x => 2%:R^-1 * (f x + g x) ^+ 2)
   \- (fun x => 2%:R^-1 * (f x ^+ 2)) \- (fun x => 2%:R^-1 * (g x ^+ 2))).
   apply: measurable_funB; first apply: measurable_funB.
   - apply: measurableT_comp => //.
-    by apply: measurableT_comp (measurable_exprn _) _; exact: measurable_funD.
+    by apply: measurableT_comp (exprn_measurable _) _; exact: measurable_funD.
   - apply: measurableT_comp => //.
-    exact: measurableT_comp (measurable_exprn _) _.
+    exact: measurableT_comp (exprn_measurable _) _.
   - apply: measurableT_comp => //.
-    exact: measurableT_comp (measurable_exprn _) _.
+    exact: measurableT_comp (exprn_measurable _) _.
 rewrite funeqE => x /=; rewrite -2!mulrBr sqrrD (addrC (f x ^+ 2)) -addrA.
 rewrite -(addrA (f x * g x *+ 2)) -opprB opprK (addrC (g x ^+ 2)) addrK.
 by rewrite -(mulr_natr (f x * g x)) -(mulrC 2) mulrA mulVr ?mul1r// unitfE.
@@ -1835,15 +1833,15 @@ Proof. by apply: continuous_measurable_fun; exact: continuous_expR. Qed.
 #[global] Hint Extern 0 (measurable_fun _ expR) =>
   solve [apply: measurable_expR] : core.
 
-Lemma measurable_natmul {R : realType} D n :
-  measurable_fun D ((@GRing.natmul R)^~ n).
+Lemma natmul_measurable {R : realType} D n :
+  measurable_fun D (fun x : R => x *+ n).
 Proof.
 under eq_fun do rewrite -mulr_natr.
 by do 2 apply: measurable_funM => //.
 Qed.
 
-Lemma measurable_fun_pow {R : realType} D (f : R -> R) n : measurable_fun D f ->
-  measurable_fun D (fun x => f x ^+ n).
+Lemma measurable_funX d (T : measurableType d) {R : realType} D (f : T -> R) n :
+  measurable_fun D f -> measurable_fun D (fun x => f x ^+ n).
 Proof.
 move=> mf.
 exact: (@measurable_comp _ _ _ _ _ _ setT (fun x : R => x ^+ n) _ f).
@@ -1868,18 +1866,20 @@ Notation measurable_fun_power_pos := measurable_powR (only parsing).
 Notation measurable_power_pos := measurable_powR (only parsing).
 #[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_maxr` instead")]
 Notation measurable_fun_max := measurable_maxr (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `measurable_funX` instead")]
+Notation measurable_fun_pow := measurable_funX (only parsing).
 
 Section standard_emeasurable_fun.
 Variable R : realType.
 
-Lemma measurable_EFin (D : set R) : measurable_fun D EFin.
+Lemma EFin_measurable (D : set R) : measurable_fun D EFin.
 Proof.
 move=> mD; apply: (measurability (ErealGenOInfty.measurableE R)) => //.
 move=> /= _ [_ [x ->]] <-; apply: measurableI => //.
 by rewrite preimage_itv_o_infty EFin_itv; exact: measurable_itv.
 Qed.
 
-Lemma measurable_abse (D : set (\bar R)) : measurable_fun D abse.
+Lemma abse_measurable (D : set (\bar R)) : measurable_fun D abse.
 Proof.
 move=> mD; apply: (measurability (ErealGenOInfty.measurableE R)) => //.
 move=> /= _ [_ [x ->] <-].
@@ -1887,8 +1887,7 @@ rewrite [X in _ @^-1` X](punct_eitv_bndy _ x) preimage_setU setIUr.
 apply: measurableU; last first.
   by rewrite preimage_abse_pinfty; apply: measurableI => //; exact: measurableU.
 apply: measurableI => //; exists (normr @^-1` `]x, +oo[%classic).
-  rewrite -[X in measurable X]setTI.
-  by apply: measurable_normr => //; exact: measurable_itv.
+  by rewrite -[X in measurable X]setTI; exact: normr_measurable.
 exists set0; first by constructor.
 rewrite setU0 predeqE => -[y| |]; split => /= => -[r];
   rewrite ?/= /= ?in_itv /= ?andbT => xr//.
@@ -1896,7 +1895,7 @@ rewrite setU0 predeqE => -[y| |]; split => /= => -[r];
   + by move=> [ry]; exists y => //=; rewrite /= in_itv/= andbT -ry.
 Qed.
 
-Lemma measurable_oppe (D : set (\bar R)) :
+Lemma oppe_measurable (D : set (\bar R)) :
   measurable_fun D (-%E : \bar R -> \bar R).
 Proof.
 move=> mD; apply: (measurability (ErealGenCInfty.measurableE R)) => //.
@@ -1907,19 +1906,22 @@ Qed.
 
 End standard_emeasurable_fun.
 #[global] Hint Extern 0 (measurable_fun _ abse) =>
-  solve [exact: measurable_abse] : core.
+  solve [exact: abse_measurable] : core.
 #[global] Hint Extern 0 (measurable_fun _ EFin) =>
-  solve [exact: measurable_EFin] : core.
-#[global] Hint Extern 0 (measurable_fun _ (-%E)) =>
-  solve [exact: measurable_oppe] : core.
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_oppe` instead")]
-Notation emeasurable_fun_minus := measurable_oppe (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_abse` instead")]
-Notation measurable_fun_abse := measurable_abse (only parsing).
-#[deprecated(since="mathcomp-analysis 0.6.3", note="use `measurable_EFin` instead")]
-Notation measurable_fun_EFin := measurable_EFin (only parsing).
+  solve [exact: EFin_measurable] : core.
+#[global] Hint Extern 0 (measurable_fun _ -%E) =>
+  solve [exact: oppe_measurable] : core.
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `oppe_measurable` instead")]
+Notation measurable_oppe := oppe_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `abse_measurable` instead")]
+Notation measurable_abse := abse_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `EFin_measurable` instead")]
+Notation measurable_EFin := EFin_measurable (only parsing).
+#[deprecated(since="mathcomp-analysis 1.4.0", note="use `natmul_measurable` instead")]
+Notation measurable_natmul := natmul_measurable (only parsing).
 
 (* NB: real-valued function *)
+(* TODO: rename to measurable_EFin after notation measurable_EFin is removed? *)
 Lemma EFin_measurable_fun d (T : measurableType d) (R : realType) (D : set T)
     (g : T -> R) :
   measurable_fun D (EFin \o g) <-> measurable_fun D g.
@@ -2040,6 +2042,148 @@ Notation emeasurable_fun_funepos := measurable_funepos (only parsing).
 Notation emeasurable_fun_funeneg := measurable_funeneg (only parsing).
 #[deprecated(since="mathcomp-analysis 0.6.6", note="renamed `measurable_fun_limn_esup`")]
 Notation measurable_fun_lim_esup := measurable_fun_limn_esup (only parsing).
+
+Section negligible_outer_measure.
+Context {R : realType}.
+Implicit Types (A : set R).
+Local Open Scope ereal_scope.
+
+Definition is_open_itv A := exists ab, A = `]ab.1, ab.2[%classic.
+
+Definition open_itv_cover A := [set F : (set R)^nat |
+  (forall i, is_open_itv (F i)) /\ A `<=` \bigcup_k (F k)].
+
+Let l := (@wlength R idfun).
+
+Lemma outer_measure_open_itv_cover A : (l^* A)%mu =
+  ereal_inf [set \sum_(k <oo) l (F k) | F in open_itv_cover A].
+Proof.
+apply/eqP; rewrite eq_le; apply/andP; split.
+- apply: le_ereal_inf => _ /= [F [Fitv AF <-]].
+  exists (fun i => `](sval (cid (Fitv i))).1, (sval (cid (Fitv i))).2]%classic).
+  + split=> [i|].
+    * have [?|?] := ltP (sval (cid (Fitv i))).1 (sval (cid (Fitv i))).2.
+      - by apply/ocitvP; right; exists (sval (cid (Fitv i))).
+      - by apply/ocitvP; left; rewrite set_itv_ge// -leNgt.
+    * apply: (subset_trans AF) => r /= [n _ Fnr]; exists n => //=.
+      have := Fitv n; move: Fnr; case: cid => -[x y]/= ->/= + _.
+      exact: subset_itv_oo_oc.
+  + apply: eq_eseriesr => k _; rewrite /l wlength_itv/=.
+    case: (Fitv k) => /= -[a b]/= Fkab.
+    by case: cid => /= -[x1 x2] ->; rewrite wlength_itv.
+- have [/lb_ereal_inf_adherent lA|] :=
+      boolP ((l^* A)%mu \is a fin_num); last first.
+    rewrite ge0_fin_numE ?outer_measure_ge0// -leNgt leye_eq => /eqP ->.
+    exact: leey.
+  apply/lee_addgt0Pr => /= e e0.
+  have : (0 < e / 2)%R by rewrite divr_gt0.
+  move=> /lA[_ [/= F [mF AF]] <-]; rewrite -/((l^* A)%mu) => lFe.
+  have Fcover n : exists2 B, F n `<=` B &
+      is_open_itv B /\ l B <= l (F n) + (e / 2 ^+ n.+2)%:E.
+    have [[a b] _ /= abFn] := mF n.
+    exists `]a, b + e / 2^+n.+2[%classic.
+      rewrite -abFn => x/= /[!in_itv] /andP[->/=] /le_lt_trans; apply.
+      by rewrite ltrDl divr_gt0.
+    split; first by exists (a, b + e / 2^+n.+2).
+    have [ab|ba] := ltP a b.
+      rewrite /l -abFn !wlength_itv//= !lte_fin ifT.
+        by rewrite ab -!EFinD lee_fin addrAC.
+      by rewrite ltr_wpDr// divr_ge0// ltW.
+    rewrite -abFn [in leRHS]set_itv_ge ?bnd_simp -?leNgt// /l wlength0 add0r.
+    rewrite wlength_itv//=; case: ifPn => [abe|_]; last first.
+      by rewrite lee_fin divr_ge0// ltW.
+    by rewrite -EFinD addrAC lee_fin -[leRHS]add0r lerD2r subr_le0.
+  pose G := fun n => sval (cid2 (Fcover n)).
+  have FG n : F n `<=` G n by rewrite /G; case: cid2.
+  have Gitv n : is_open_itv (G n) by rewrite /G; case: cid2 => ? ? [].
+  have lGFe n : l (G n) <= l (F n) + (e / 2 ^+ n.+2)%:E.
+    by rewrite /G; case: cid2 => ? ? [].
+  have AG : A `<=` \bigcup_k G k.
+    by apply: (subset_trans AF) => [/= r [n _ /FG Gnr]]; exists n.
+  apply: (@le_trans _ _ (\sum_(0 <= k <oo) (l (F k) + (e / 2 ^+ k.+2)%:E))).
+    apply: (@le_trans _ _ (\sum_(0 <= k <oo) l (G k))).
+      by apply: ereal_inf_lbound => /=; exists G.
+    exact: lee_nneseries.
+  rewrite nneseriesD//; last first.
+    by move=> i _; rewrite lee_fin// divr_ge0// ltW.
+  rewrite [in leRHS](splitr e) EFinD addeA leeD//; first exact/ltW.
+  have := @cvg_geometric_eseries_half R e 1; rewrite expr1.
+  rewrite [X in eseries X](_ : _ = (fun k => (e / (2 ^+ (k.+2))%:R)%:E)); last first.
+    by apply/funext => n; rewrite addn2 natrX.
+  move/cvg_lim => <-//; apply: lee_nneseries => //.
+  - by move=> n _; rewrite lee_fin divr_ge0// ltW.
+  - by move=> n _; rewrite lee_fin -natrX.
+Qed.
+
+Definition mu := (@lebesgue_measure R).
+
+Lemma outer_measure_open_le A (e : R) : (0 < e)%R ->
+  exists U, [/\ open U, A `<=` U & mu U <= (l^* A)%mu + e%:E].
+Proof.
+have [|Aoo e0] := leP +oo (l^* A)%mu.
+  rewrite leye_eq => /eqP Aoo e0.
+  by exists [set: R]; split => //; [exact: openT|rewrite Aoo leey].
+have [F AF Fe] : exists2 I_, open_itv_cover A I_ &
+    \sum_(0 <= k <oo) l (I_ k) <= (l^* A)%mu + e%:E.
+  have : (l^* A)%mu\is a fin_num by rewrite ge0_fin_numE// outer_measure_ge0.
+  rewrite outer_measure_open_itv_cover.
+  move=> /lb_ereal_inf_adherent-/(_ _ e0)[_/= [F]] AF <- Fe.
+  by exists F => //; exact/ltW.
+exists (\bigcup_i F i); split.
+- apply: bigcup_open => // i _.
+  by case: AF => /(_ i)[ab -> _]; exact: interval_open.
+- by case: AF.
+- rewrite (le_trans _ Fe)//.
+  apply: (le_trans (outer_measure_sigma_subadditive mu F)).
+  apply: lee_nneseries => // i _.
+  case: AF => /(_ i)[[a b] -> _]/=.
+  by rewrite /l wlength_itv/= -(@lebesgue_measure_itv R `]a, b[).
+Qed.
+
+Lemma outer_measure_open A : (l^* A)%mu =
+  ereal_inf [set (l^* U)%mu | U in [set U | open U /\ A `<=` U]].
+Proof.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  by apply: lb_ereal_inf => /= _ /= [U [oU AU] <-]; exact: le_outer_measure.
+apply/lee_addgt0Pr => /= e e0; apply: ereal_inf_le.
+have [U [oU AU UAe]] := @outer_measure_open_le A _ e0.
+by exists (mu U) => //=; exists U.
+Qed.
+
+Lemma outer_measure_Gdelta A :
+  exists G : (set R)^nat, [/\ (forall i, open (G i)),
+    A `<=` \bigcap_i G i &
+    mu (\bigcap_i G i) = (l^* A)%mu].
+Proof.
+have inv0 k : (0 < k.+1%:R^-1 :> R)%R by rewrite invr_gt0.
+pose F k := projT1 (cid (outer_measure_open_le A (inv0 k))).
+have oF k : open (F k) by rewrite /F; case: cid => x /= [].
+have AF k : A `<=` F k by rewrite /F; case: cid => x /= [].
+have mF k : mu (F k) <= (l^* A)%mu + k.+1%:R^-1%:E.
+  by rewrite /F; case: cid => x /= [].
+pose G := \bigcap_k (F k).
+exists F; split => //; first exact: sub_bigcap.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  apply/lee_addgt0Pr => /= _/posnumP[e].
+  near \oo => k.
+  apply: (@le_trans _ _ ((l^* A)%mu + k.+1%:R^-1%:E)).
+    by rewrite (le_trans _ (mF k))// le_outer_measure//; exact: bigcap_inf.
+  rewrite leeD2l// lee_fin; apply: ltW.
+  by near: k; exact: near_infty_natSinv_lt.
+rewrite [leRHS](_ : _ = l^* (\bigcap_i F i))%mu// le_outer_measure//.
+exact: sub_bigcap.
+Unshelve. all: by end_near. Qed.
+
+Lemma negligible_outer_measure (N : set R) : mu.-negligible N <-> (l^* N)%mu = 0.
+Proof.
+split=> [[/= A [mA mA0 NA]]|N0].
+- by apply/eqP; rewrite eq_le outer_measure_ge0 andbT -mA0 le_outer_measure.
+- have := @outer_measure_Gdelta N; rewrite N0 => -[F [oF NF mF0]].
+  exists (\bigcap_i F i); split => //=.
+  by apply: bigcapT_measurable => i; exact: open_measurable.
+Qed.
+
+End negligible_outer_measure.
 
 Section lebesgue_regularity.
 Context {R : realType}.
@@ -2247,7 +2391,7 @@ Lemma pointwise_almost_uniform
 Proof.
 move=> mf mg mA finA fptwsg epspos; pose h q (z : T) : R := `|f_ q z - g z|%R.
 have mfunh q : measurable_fun A (h q).
-  by apply: measurableT_comp; [exact: measurable_normr |exact: measurable_funB].
+  by apply: measurableT_comp => //; exact: measurable_funB.
 pose E k n := \bigcup_(i in [set j | n <= j]%N)
   (A `&` [set x | h i x >= k.+1%:R^-1]%R).
 have Einc k : nonincreasing_seq (E k).
