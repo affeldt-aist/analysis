@@ -28,6 +28,7 @@ theories/topology.v
 theories/function_spaces.v
 theories/cantor.v
 theories/prodnormedzmodule.v
+theories/evt.v
 theories/normedtype.v
 theories/realfun.v
 theories/sequences.v
