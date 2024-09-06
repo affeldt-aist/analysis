@@ -798,7 +798,7 @@ HB.structure Definition NormedModule (K : numDomainType) :=
 
 #[short(type="normedModType")]
 HB.structure Definition NormedModule (K : numDomainType) :=
-  {T of PseudoMetricNormedZmod K T & GRing.Lmodule K T
+  {T of PseudoMetricNormedZmod K T & Tvs K T
    & PseudoMetricNormedZmod_Lmodule_isNormedModule K T}.
 
 Section regular_topology.
@@ -807,15 +807,14 @@ Variable R : numFieldType.
 
 HB.instance Definition _ := Num.NormedZmodule.on R^o.
 HB.instance Definition _ := NormedZmod_PseudoMetric_eq.Build R R^o erefl.
-HB.instance Definition _ :=
-  PseudoMetricNormedZmod_Lmodule_isNormedModule.Build R R^o (@normrM _).
 
-(*Let Ro_add_continuous : continuous (uncurry (@GRing.add R^o)).
+(* Uncomment me to circumvent the problem *)
+(*Let Ro_add_continuous : continuous (fun x : R^o * R^o => x.1 + x.2).
 Proof.
 Admitted.
 
 Let Ro_scale_continuous :
-  continuous (uncurry (@GRing.scale R R^o) : R^o * R^o -> R^o).
+  continuous (fun z : R^o * R^o => z.1 *: z.2).
 Admitted.
 
 Let Ro_locally_convex : exists2 B : set (set R^o),
@@ -823,8 +822,12 @@ Let Ro_locally_convex : exists2 B : set (set R^o),
 Admitted.
 
 HB.instance Definition _ :=
-  TopologicalLmod_isTvs.Build R R^o Ro_add_continuous
+  Uniform_isTvs.Build R R^o Ro_add_continuous
     Ro_scale_continuous Ro_locally_convex.*)
+(* /Uncomment me to circumvent the problem *)
+
+HB.instance Definition _ :=
+  PseudoMetricNormedZmod_Lmodule_isNormedModule.Build R R^o (@normrM _).
 
 End regular_topology.
 
