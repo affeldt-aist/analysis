@@ -38,6 +38,8 @@ HB.structure Definition UniformZmodule := {M of Uniform M & GRing.Zmodule M}.
 HB.structure Definition UniformLmodule (K : numDomainType) :=
   {M of Uniform M & GRing.Lmodule K M}.
 
+HB.saturate.
+
 Definition convex (R : ringType) (M : lmodType R) (A : set M) :=
   forall x y lambda, lambda *: x + (1 - lambda) *: y \in A.
 
