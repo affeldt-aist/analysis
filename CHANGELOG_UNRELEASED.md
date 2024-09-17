@@ -144,8 +144,8 @@
   + lemma `ge0_integral_closed_ball`
 
 - in `FTC.v`:
-  + lemma `continuous_FTC2` (continuity hypothesis weakened)
-
+  + lemma `continuous_FTC2` (continuity hypothesis weakened and now include the case that interval is a point set)
+  + lemmas `integration_by_parts`, `Rintegration_by_parts` (include the case that interval is a point set)
 ### Deprecated
 
 ### Removed
