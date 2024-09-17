@@ -497,13 +497,14 @@ Notation mu := lebesgue_measure.
 Local Open Scope ereal_scope.
 Implicit Types (f : R -> R) (a b : R).
 
-Corollary continuous_FTC2 f F a b : (a < b)%R ->
+Corollary continuous_FTC2 f F a b : (a <= b)%R ->
   {within `[a, b], continuous f} ->
   derivable_oo_continuous_bnd F a b ->
   {in `]a, b[, F^`() =1 f} ->
   (\int[mu]_(x in `[a, b]) (f x)%:E = (F b)%:E - (F a)%:E)%E.
 Proof.
-move=> ab cf dF F'f.
+rewrite le_eqVlt => /predU1P[-> _ _ _|ab cf dF F'f].
+  by rewrite set_itv1 integral_set1 subee.
 pose fab := f \_ `[a, b].
 pose G x : R := (\int[mu]_(t in `[a, x]) fab t)%R.
 have iabf : mu.-integrable `[a, b] (EFin \o f).
@@ -633,13 +634,31 @@ Unshelve. all: by end_near. Qed.
 
 End corollary_FTC1.
 
+Section Rintegral_continuous_FTC2.
+Context {R : realType}.
+Notation mu := lebesgue_measure.
+Implicit Types (f : R -> R) (a b : R).
+
+Corollary Rintegral_continuous_FTC2 f (F : R -> R) a b : (a <= b)%R ->
+  {within `[a, b], continuous f} ->
+  derivable_oo_continuous_bnd F a b ->
+  {in `]a, b[, F^`() =1 f} ->
+  (\int[mu]_(x in `[a, b]) (f x) = F b - F a)%R.
+Proof.
+move=> ab cf dF F'f.
+apply: EFin_inj.
+rewrite EFinB fineK; by rewrite (continuous_FTC2 ab cf dF F'f).
+Qed.
+
+End Rintegral_continuous_FTC2.
+
 Section integration_by_parts.
 Context {R : realType}.
 Notation mu := lebesgue_measure.
 Local Open Scope ereal_scope.
 Implicit Types (F G f g : R -> R) (a b : R).
 
-Lemma integration_by_parts F G f g a b : (a < b)%R ->
+Lemma integration_by_parts F G f g a b : (a <= b)%R ->
     {within `[a, b], continuous f} ->
     derivable_oo_continuous_bnd F a b ->
     {in `]a, b[, F^`() =1 f} ->
@@ -692,7 +711,7 @@ Notation mu := lebesgue_measure.
 Implicit Types (F G f g : R -> R) (a b : R).
 
 Lemma Rintegration_by_parts F G f g a b :
-    (a < b)%R ->
+    (a <= b)%R ->
     {within `[a, b], continuous f} ->
     derivable_oo_continuous_bnd F a b ->
     {in `]a, b[, F^`() =1 f} ->
