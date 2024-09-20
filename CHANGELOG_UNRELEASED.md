@@ -3,8 +3,6 @@
 ## [Unreleased]
 
 ### Added
-- in `mathcomp_extra.v`:
-  + lemma `bij_forall`
 
 - in `normedtype.v`:
   + lemmas `not_near_inftyP`, `not_near_ninftyP`
@@ -15,8 +13,6 @@
 - in `normedtype.v`:
   + lemma `ninftyN`
 
-- in `realfun.v`:
-  + lemmas `cvg_pinftyP`, `cvg_ninftyP`
 - in `derive.v`:
   + lemma `derive_id`
   + lemmas `exp_derive`, `exp_derive1`
@@ -38,6 +34,15 @@
   + notation `^-1` in `relation_scope` (use to be a local notation)
   + lemma `set_prod_invK` (was a local lemma in `normedtype.v`)
   + definition `diagonal`, lemma `diagonalP`
+
+- in `mathcomp_extra.v`:
+  + lemma `bij_forall`
+
+- in `normedtype.v`:
+  + lemma `cvgyNP`
+
+- in `realfun.v`:
+  + lemmas `cvg_pinftyP`, `cvg_ninftyP`
 
 ### Changed
 
