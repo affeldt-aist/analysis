@@ -131,9 +131,6 @@ Proof. by move=> mf f0; rewrite ge0_integral_pushforward. Qed.
 
 End transfer_probability.
 
-Require Import kernel.
-
-
 (* a pker that takes a superfluous arg *)
 Section pker_curry.
 Context d {T : measurableType d} {R : realType}
@@ -208,8 +205,6 @@ Qed.
 
 HB.instance Definition _ :=
   @Measure_isProbability.Build _ _ _ bind bindT.
-
-Check bind : probability T' R.
 
 End giry_def.
 
