@@ -897,18 +897,485 @@ Definition mutual_independence (I0 : choiceType) (I : set I0)
 
 End mutual_independence.
 
+Lemma setT_setI_bigsetI (I0 : choiceType) (J : seq I0) T G (F : I0 -> set T) :
+  G [set: T] -> setI_closed G -> (forall i, i \in J -> G (F i)) ->
+  G (\big[setI/setT]_(i <- J) F i).
+Proof.
+move=> GT GI; rewrite big_seq; elim/big_rec : _ => //.
+by move=> i A iJ ih GF; apply: GI => //; [exact: GF|exact: ih].
+Qed.
+
+Section lem142a.
+Context d {T : measurableType d} {R : realType}.
+Variable mu : (*{sigma_finite_measure set T -> \bar R}*) {measure set T -> \bar R}.
+Variable F : set (set T).
+Hypothesis setI_closed_F : setI_closed F. (* pi-system *)
+Hypothesis FT : F `<=` @measurable _ T.
+Hypothesis sFT : <<s F >> = @measurable _ T.
+Variable Omega : (set T)^nat.
+Hypothesis FOmega : forall i, F (Omega i).
+Hypothesis UOT : \bigcup_i Omega i = [set: T].
+Hypothesis Omegay : forall i, (mu (Omega i) < +oo)%E.
+
+Lemma lem142a : forall nu : {measure set T -> \bar R},
+  (forall E, F E -> nu E = mu E) ->
+  forall A, measurable A -> mu A = nu A.
+Proof.
+move=> nu numu A mA.
+apply: (measure_unique F Omega) => //.
+by move=> E /numu.
+Qed.
+
+End lem142a.
+
+Lemma setI_closed_setT T (F : set (set T)) :
+  setI_closed F -> setI_closed (F `|` [set setT]).
+Proof.
+move=> IF.
+move=> C D [FC|/= ->{C}].
+  move=> [FD|/= ->{D}].
+    left.
+    by apply: IF.
+  rewrite setIT.
+  by left.
+- move=> [FD|->{D}].
+    rewrite setTI.
+    by left.
+  rewrite !setTI.
+  by right.
+Qed.
+
+Lemma setI_closed_set0 T (F : set (set T)) :
+  setI_closed F -> setI_closed (F `|` [set set0]).
+Proof.
+move=> IF.
+move=> C D [FC|/= ->{C}].
+  move=> [FD|/= ->{D}].
+    left.
+    by apply: IF.
+  rewrite setI0.
+  by right.
+- move=> [FD|->{D}].
+    rewrite set0I.
+    by right.
+  rewrite !set0I.
+  by right.
+Qed.
+
+Lemma setI_closed_set0' T (F : set (set T)) :
+  F set0 ->
+  setI_closed (F `|` [set set0]) -> setI_closed F.
+Proof.
+move=> F0 IF.
+move=> C D FC FD.
+have [//|/= ->] : (F `|` [set set0]) (C `&` D).
+  by apply: IF; by left.
+by [].
+Qed.
+
+Lemma g_sigma_setU d {T : measurableType d} (F : set (set T)) A :
+  <<s F>> A ->
+  <<s F >> = @measurable _ T ->
+  <<s F >> = <<s F `|` [set A] >>.
+Proof.
+move=> FA sFT.
+apply/seteqP; split=> [B|B].
+  apply: sub_sigma_algebra2.
+  exact: subsetUl.
+apply: smallest_sub => //.
+move=> C [FC|/= ->//].
+exact: sub_gen_smallest.
+Qed.
+
+Section lem142b.
+Context d {T : measurableType d} {R : realType}.
+Variable mu : probability T R.
+Variable F : set (set T).
+Hypothesis setI_closed_F : setI_closed F. (* pi-system *)
+Hypothesis FT : F `<=` @measurable _ T.
+Hypothesis sFT : <<s F >> = @measurable _ T.
+
+Lemma lem142b : forall nu : probability T R,
+  (forall E, F E -> nu E = mu E) ->
+  forall A, measurable A -> mu A = nu A.
+Proof.
+move=> nu numu A mA.
+apply: (measure_unique (F `|` [set setT]) (fun=> setT)) => //.
+- rewrite -sFT; apply: g_sigma_setU => //.
+  by rewrite sFT.
+- exact: setI_closed_setT.
+- by move=> n /=; right.
+- by rewrite bigcup_const.
+- move=> E [/numu //|/= ->].
+  by rewrite !probability_setT.
+- move=> n.
+  rewrite [ltLHS](_ : _ = 1%E) ?ltry//.
+  exact: probability_setT.
+Qed.
+
+End lem142b.
+
+Section mutual_independence_properties.
+Context {R : realType} d {T : measurableType d}.
+Variable P : probability T R.
+Local Open Scope ereal_scope.
+
+Lemma mutual_independence_finite (I0 : choiceType) (I : {fset I0}%fset)
+    (F : I0 -> set (set T)) :
+  (forall i, i \in I -> F i `<=` @measurable _ T /\ (F i) [set: T]) ->
+  mutual_independence P [set` I] F <->
+  forall E : I0 -> set T,
+    (forall i : I0, i \in I -> E i \in F i) ->
+      P (\big[setI/setT]_(j <- I) E j) = \prod_(j <- I) P (E j).
+Proof.
+move=> mF; split=> [indeF E EF|indeF]; first by apply indeF.
+split=> [i /mF[]//|J JI E EF].
+pose E' i := if i \in J then E i else [set: T].
+have /indeF : forall i, i \in I -> E' i \in F i.
+  move=> i iI; rewrite /E'; case: ifPn => [|iJ]; first exact: EF.
+  by rewrite inE; apply mF.
+move/fsubsetP : (JI) => /(big_fset_incl _) <- /=; last first.
+  by move=> j jI jJ; rewrite /E' (negbTE jJ).
+move/fsubsetP : (JI) => /(big_fset_incl _) <- /=; last first.
+  by move=> j jI jJ; rewrite /E' (negbTE jJ); rewrite probability_setT.
+rewrite big_seq [in X in X = _ -> _](eq_bigr E); last first.
+  by move=> i iJ; rewrite /E' iJ.
+rewrite -big_seq => ->.
+by rewrite !big_seq; apply: eq_bigr => i iJ; rewrite /E' iJ.
+Qed.
+
+Lemma mutual_independence_finiteS (I0 : choiceType) (I : set I0)
+    (F : I0 -> set (set T)) :
+  mutual_independence P I F <->
+  (forall J : {fset I0}%fset, [set` J] `<=` I -> mutual_independence P [set` J] F).
+Proof.
+split=> [indeF J JI|indeF].
+  split=> [i /JI Ii|K KJ E EF].
+    by apply indeF.
+  by apply indeF => // i /KJ /JI.
+split=> [i Ii|J JI E EF].
+  have : [set` [fset i]%fset] `<=` I.
+    by move=> j; rewrite /= inE => /eqP ->.
+  by move/indeF => [+ _]; apply; rewrite /= inE.
+by have [_] := indeF _ JI; exact.
+Qed.
+
+Lemma mutual_independence_finite_g_sigma (I0 : choiceType) (I : set I0)
+    (F : I0 -> set (set T)) :
+  (forall i, i \in I -> setI_closed (F i `|` [set set0])) ->
+  mutual_independence P I F <-> mutual_independence P I (fun i => <<s F i>>).
+Proof.
+split=> indeF; last first.
+  split=> [i Ii|J JI E EF].
+    case: indeF => /(_ _ Ii) + _.
+    by apply: subset_trans; exact: sub_gen_smallest.
+  apply indeF => // i iJ; rewrite inE.
+  by apply: sub_gen_smallest; exact/set_mem/EF.
+split=> [i Ii|K KI E EF].
+  case: indeF => + _ => /(_ _ Ii).
+  by apply: smallest_sub; exact: sigma_algebra_measurable.
+suff: forall J J' : {fset I0}%fset,
+  (J `<=` J')%fset -> [set` J'] `<=` I ->
+  forall E : I0 -> set T,
+    (forall i, i \in J -> E i \in <<s F i >>) ->
+    (forall i, i \in [set` J'] `\` [set` J] -> E i \in F i) ->
+    P (\big[setI/setT]_(j <- J') E j) = \prod_(j <- J') P (E j).
+  move=> /(_ K K (@fsubset_refl _ _) KI E); apply.
+  - by move=> i iK; exact: EF.
+  - by move=> i; rewrite setDv inE.
+move=> {E EF K KI}.
+apply: finSet_rect => J ih J' JJ' J'I E EsF EF.
+have [J0|/fset0Pn[j jJ]] := eqVneq J fset0.
+  apply indeF => // i iJ'.
+  by apply: EF; rewrite !inE; split => //=; rewrite J0 inE.
+have jI : j \in I by apply/mem_set/J'I => /=; move/fsubsetP : JJ'; exact.
+have JjJ : (J `\ j `<` J)%fset by rewrite fproperD1.
+have JjJ' : (J `\ j `<=` J')%fset.
+   apply/fsubsetP => i; move/fproper_sub : JjJ => /fsubsetP /[apply].
+   by move/fsubsetP : JJ' => /[apply].
+red in indeF.
+pose mu' : set T -> \bar R :=
+  fun A => P (\big[setI/[set: T]]_(j0 <- (J')%fset) (E j0 `&` A)).
+pose nu' : set T -> \bar R :=
+  fun A => \prod_(j0 <- (J')%fset) (P (E j0 `&` A)).
+have mu : {measure set T -> \bar R}.
+  admit.
+have muE : forall Ej, mu Ej = mu' Ej.
+  admit.
+have nu : {measure set T -> \bar R}.
+  admit.
+have nuE : forall Ej, nu Ej = nu' Ej.
+  admit.
+have H1 : forall A, (F j `|` [set set0; setT]) A -> mu A = nu A.
+  move=> A [FjA|[->|->]].
+  - rewrite muE nuE /mu' /nu'.
+    apply: (@ih (J `\ j)%fset) => //.
+    + move=> i; rewrite !inE => /andP[ij iJ].
+      rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F i)))//.
+      apply: measurableI => //.
+        rewrite -(_ : <<s F i >> = @measurable _ (g_sigma_algebraType (F i)))//.
+        apply/set_mem.
+        by rewrite EsF//.
+      admit.
+    + move=> i.
+      rewrite !inE/= !inE/= => -[iJ'] /negP.
+      rewrite negb_and negbK => /predU1P[?|].
+        subst i.
+        have : E j \in F j.
+          rewrite EF// !inE/=.
+          admit.
+        admit.
+      admit.
+  - by rewrite !measure0.
+  - rewrite muE nuE /mu' /nu'.
+    under eq_bigr do rewrite setIT.
+    under [in RHS]eq_bigr do rewrite setIT.
+    apply: (@ih (J `\ j)%fset) => //.
+      move=> i; rewrite !inE => /andP[ij iJ].
+      apply/set_mem.
+      by rewrite EsF//.
+    move=> i.
+    rewrite !inE/= !inE/= => -[iJ'] /negP.
+    rewrite negb_and negbK => /predU1P[?|].
+      subst i.
+      admit.
+    move=> iJ.
+    apply/set_mem.
+    rewrite EF// !inE/=; split => //.
+    exact/negP.
+have H2 : setI_closed (F j `|` [set set0]).
+  exact: H.
+  (*apply: setI_closed_set0.?*)
+have H3 : forall A, (<<s F j>>) A -> mu' A = nu' A.
+  move=> A sFjA.
+  rewrite -muE -nuE.
+  apply: (lem142a H2) => //.
+  - admit.
+  - move=> i.
+    admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+have := H3 setT.
+rewrite (_ : <<s F j >> = @measurable _ (g_sigma_algebraType (F j)))//.
+move=> /(_ measurableT).
+rewrite /mu' /nu'.
+under eq_bigr do rewrite setIT.
+under [X in _ = X -> _]eq_bigr do rewrite setIT.
+done.
+
+
+
+
+
+
+suff: forall Ej, <<s F j>> Ej -> 
+  move=> suf.
+  have := suf setT.
+  rewrite muE nuE /mu' /nu'.
+  rewrite probability_setT//.
+  under eq_bigr do rewrite setIT.
+  under [in X in (_ -> _ = X) -> _]eq_bigr do rewrite mule1.
+  apply.
+  by rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F j))).
+move=> Ej sFjEj.
+suff: 
+  move=> suf.
+  apply: suf.
+  admit.
+move=> A [FjA|[|]].
+apply: (lem142a H1); last 2 first.
+- move=> E0 [FjE0|/= ->]; last first.
+    by rewrite !measure0.
+  rewrite muE nuE /mu' /nu'.
+  apply/esym.
+  apply ih.
+  have jJ' : j \in J' by move/fsubsetP : JJ'; apply.
+  have <- := fsetD1K jJ'.
+  rewrite big_fsetU1//=; last by rewrite !inE eqxx.
+  rewrite big_fsetU1//=; last by rewrite !inE eqxx.
+  transitivity (P (E j) * P (\big[setI/[set: T]]_(i <- (J' `\ j)%fset) E i)).
+    (* mutual_independence_finiteS ? *)
+    admit. (* ? *)
+  congr *%E.
+  apply: (@ih (J `\ j)%fset) => //.
+  by apply: fsetSD.
+  apply: (subset_trans _ J'I).
+  apply/subsetP => k.
+  by rewrite !inE/= !inE => /andP[].
+  + move=> i.
+    rewrite ![in X in X -> _]inE => /andP[ij iJ].
+    by rewrite EsF//.
+  + move=> i.
+    rewrite ![in X in X -> _]inE/=.
+    rewrite ![in X in X -> _]inE/=.
+    move=> [/andP[->/=]].
+    move=> iJ' iJ.
+    by rewrite EF// inE/=.
+- admit.
+- admit.
+- admit.
+- admit.
+- admit.
+
+xxx
+
+
+
+pose E' i := E i.
+have H1 : forall i : I0, i \in Jtilde -> E' i \in <<s F i >>.
+  move=> i.
+  rewrite 2![in X in X -> _]inE => /andP[ij iJ].
+  rewrite /E' inE.
+  rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F i)))//.
+(*  apply: measurableI => //.
+    rewrite big_seq.
+    apply: bigsetI_measurable => i0 i0Jtilde.
+    rewrite -(_ : <<s (F i) >> = @measurable _ (g_sigma_algebraType (F i)))//.
+    move: i0Jtilde.
+    rewrite 2!inE => /andP[i0j i0J].
+    have := EsF _ i0J.
+    rewrite inE.
+    apply/set_mem.
+    admit.*)
+  rewrite -(_ : <<s (F i) >> = @measurable _ (g_sigma_algebraType (F i)))//.
+  apply/set_mem.
+  by apply: EsF.
+have H2 : forall i : I0, i \in [set` J'] `\` [set` Jtilde] -> E' i \in F i.
+  move=> i.
+  rewrite inE/= => -[iJ']; rewrite 2![in X in X -> _]inE => /negP.
+  rewrite negb_and negbK => /predU1P[ij|iJ].
+    subst i.
+    rewrite /E'.
+    apply: EF.
+    rewrite inE/=.
+    admit.
+  rewrite /E'.
+  have ij : i != j.
+    apply/negP => /eqP ?; subst i.
+    by rewrite jJ in iJ.
+  admit.
+have H3 : forall Ej, ((F j) `|` [set set0; setT]) Ej -> mu Ej = nu Ej.
+  move=> Ej K.
+  rewrite muE nuE.
+  rewrite /mu' /nu'.
+  transitivity (P (\big[setI/[set: T]]_(j0 <- J') E' j0) * P Ej).
+    admit.
+  congr *%E.
+  by apply: (ih _ JtildeJ) => //.
+(*    move=> i iJ.
+    rewrite /E' ifF; last first.
+      apply/negbTE.
+      move: iJ.
+      by rewrite !inE => /andP[].
+    apply: EsF.
+    move/fproper_sub in JtildeJ.
+    move/fsubsetP in JtildeJ.
+    by apply: JtildeJ.
+  move=> i.
+  rewrite inE/= => -[iJ' iJ].
+  have [ij|ij] := eqVneq i j.
+    subst i.
+    rewrite /E' eqxx.
+    apply/mem_set.
+    admit.
+  rewrite /E' (negbTE ij) EF// inE/=; split => //.
+  apply: contra_not iJ.
+  rewrite !inE => ->.
+  by rewrite andbT.*)
+have H4 : forall Ej, <<s F j>> Ej -> mu Ej = nu Ej.
+  move=> Ej sFjEj.
+  apply: (measure_unique (F j `|` [set set0])) => //.
+  (*apply: g_sigma_setU.*)
+  admit.
+  by apply: H.
+  admit.
+  admit.
+  move=> A [FjA|/= ->//].
+    apply: H3 => /=.
+    by left.
+  by rewrite !measure0.
+  admit.
+  move: sFjEj.
+  rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F j)))//.
+  admit.
+suff: P (\big[setI/[set: T]]_(j0 <- J') E' j0) = \prod_(j0 <- J') P (E' j0).
+  move=> suf.
+  etransitivity.
+    etransitivity; last first.
+      exact: suf.
+    congr (P _).
+    rewrite 2!big_seq.
+    apply: eq_bigr => i iJ'.
+    rewrite /E'.
+    case: ifPn => [/eqP ?|].
+      subst i.
+      admit.
+    by [].
+  rewrite 2!big_seq.
+  apply: eq_bigr => i iJ'.
+  rewrite /E'.
+  case: ifPn => [/eqP ?|].
+    subst i.
+    admit.
+  by [].
+have := muE (E j).
+rewrite /mu'.
+have := nuE (E j).
+rewrite /nu' => <-.
+apply: H4.
+apply/set_mem.
+exact: EsF.
+
+Admitted.
+
+End mutual_independence_properties.
+
 Section independent_RVs.
-Context {R : realType} d d' (T : measurableType d) (T' : measurableType d').
+Context {R : realType} d (T : measurableType d).
+Context {I0 : choiceType}.
+Context {d' : I0 -> _} (T' : forall i : I0, measurableType (d' i)).
 Variable P : probability T R.
 
-Definition independent_RVs (I0 : choiceType)
-    (I : set I0) (X : I0 -> {mfun T >-> T'}) : Prop :=
+Definition independent_RVs (I : set I0)
+  (X : forall i : I0, {mfun T >-> T' i}) : Prop :=
   mutual_independence P I (fun i => g_sigma_algebra_mapping (X i)).
 
-Definition independent_RVs2 (X Y : {mfun T >-> T'}) :=
-  independent_RVs [set: bool] [eta (fun=> cst point) with false |-> X, true |-> Y].
-
 End independent_RVs.
+
+Section independent_RVs2.
+Context {R : realType} d (T : measurableType d).
+Variable P : probability T R.
+
+Definition independent_RVs2 d'' (T'' : measurableType d'')
+    (X Y : {mfun T >-> T''}) :=
+  independent_RVs P [set: bool] [eta (fun=> cst point) with false |-> X, true |-> Y].
+
+End independent_RVs2.
+
+Section thm216.
+Context {R : realType} d (T : measurableType d).
+Context {I0 : choiceType}.
+Context {d' : I0 -> _} (T' : forall i : I0, measurableType (d' i)).
+Variable P : probability T R.
+
+Lemma thm216 (I : set I0) (F : forall i : I0, set (set (T' i)))
+    (X : forall i : I0, {RV P >-> T' i}) :
+  (forall i, i \in I -> setI_closed (F i)) ->
+  (forall i, i \in I -> F i `<=` @measurable _ (T' i)) ->
+  (forall i, i \in I -> @measurable _ (T' i) = <<s F i>>) ->
+  mutual_independence P I (fun i => preimage_class setT (X i) (F i)) ->
+  independent_RVs P I X.
+Proof.
+move=> IF FA AsF indeX1.
+have H1 i : setI_closed (preimage_class setT (X i) (F i)).
+  admit.
+have H2 i : preimage_class setT (X i) (F i) = g_sigma_algebra_mapping (X i).
+  admit.
+Admitted.
+
+End thm216.
 
 Section g_sigma_algebra_mapping_lemmas.
 Context d {T : measurableType d} {R : realType}.
@@ -1183,7 +1650,7 @@ apply: integral_fune_lt_pinfty => //.
 by move/integrable_abse : iY => //.
 Qed.
 
-Lemma expectation_prod (X Y : {RV P >-> R}) :
+Lemma expectation_prod_tmp (X Y : {RV P >-> R}) :
   independent_RVs2 P X Y ->
   P.-integrable setT (EFin \o X) -> P.-integrable setT (EFin \o Y) ->
   'E_(P \x P) [(fun x => X x.1 * Y x.2)%R] = 'E_P [X] * 'E_P [Y].
@@ -1696,6 +2163,12 @@ have [/eqP| | |] := subset_set2 JT.
     rewrite inE.
     exists C => //.
     by rewrite setTI.
+have K1 : P (\big[setI/[set: T]]_(i <- (I `\ i0)%fset) X i @^-1` C) =
+       P ((\prod_(j <- (I `\ i0)%fset) X j)%R @^-1` C).
+  admit.
+  rewrite K1.
+
+
 have K : \big[setI/[set: T]]_(i <- (I `\ i0)%fset) X i @^-1` C =
        (\prod_(j <- (I `\ i0)%fset) X j)%R @^-1` C.
   admit.
