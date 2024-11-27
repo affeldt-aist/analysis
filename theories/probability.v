@@ -987,19 +987,46 @@ move=> C [FC|/= ->//].
 exact: sub_gen_smallest.
 Qed.
 
+Lemma g_sigma_algebra_measure_unique142b :
+forall {d : measure_display} {R : realType} {T : measurableType d} (G : set (set T)),
+G `<=` d.-measurable ->
+forall m1 m2 : {finite_measure set T -> \bar R},
+(m1 [set: T] = m2 [set: T]) ->
+setI_closed G ->
+(forall A : set T, G A -> m1 A = m2 A) ->
+forall E : set T, <<s G >> E -> m1 E = m2 E.
+Proof.
+move=> d R T G Gm m1 m2 m1m2T IG m1m2 E sGE.
+apply: (@g_sigma_algebra_measure_unique _ _ _ (G `|` [set setT]) _ (fun=> setT)) => //.
+- by move=> A [/Gm//|/= ->//].
+- by right.
+- by rewrite bigcup_const.
+- exact: setI_closed_setT.
+- by move=> B [/m1m2 //|/= ->].
+- move=> n.
+  apply: fin_num_fun_lty.
+  exact: fin_num_measure.
+- move: E sGE.
+  apply: smallest_sub => //.
+  move=> C GC.
+  apply: sub_gen_smallest.
+  by left.
+Qed.
+
 Section lem142b.
 Context d {T : measurableType d} {R : realType}.
-Variable mu : probability T R.
+Variable mu : {finite_measure set T -> \bar R}.
 Variable F : set (set T).
 Hypothesis setI_closed_F : setI_closed F. (* pi-system *)
 Hypothesis FT : F `<=` @measurable _ T.
 Hypothesis sFT : <<s F >> = @measurable _ T.
 
-Lemma lem142b : forall nu : probability T R,
+Lemma lem142b : forall nu : {finite_measure set T -> \bar R},
+  (mu setT = nu setT) ->
   (forall E, F E -> nu E = mu E) ->
   forall A, measurable A -> mu A = nu A.
 Proof.
-move=> nu numu A mA.
+move=> nu munu numu A mA.
 apply: (measure_unique (F `|` [set setT]) (fun=> setT)) => //.
 - rewrite -sFT; apply: g_sigma_setU => //.
   by rewrite sFT.
@@ -1007,10 +1034,10 @@ apply: (measure_unique (F `|` [set setT]) (fun=> setT)) => //.
 - by move=> n /=; right.
 - by rewrite bigcup_const.
 - move=> E [/numu //|/= ->].
-  by rewrite !probability_setT.
+  by rewrite munu.
 - move=> n.
-  rewrite [ltLHS](_ : _ = 1%E) ?ltry//.
-  exact: probability_setT.
+  apply: fin_num_fun_lty.
+  exact: fin_num_measure.
 Qed.
 
 End lem142b.
@@ -1084,251 +1111,99 @@ suff: forall J J' : {fset I0}%fset,
   - by move=> i iK; exact: EF.
   - by move=> i; rewrite setDv inE.
 move=> {E EF K KI}.
-apply: finSet_rect => J ih J' JJ' J'I E EsF EF.
-have [J0|/fset0Pn[j jJ]] := eqVneq J fset0.
+apply: finSet_rect => K ih J' KJ' J'I E EsF EF.
+have [K0|/fset0Pn[j jK]] := eqVneq K fset0.
   apply indeF => // i iJ'.
-  by apply: EF; rewrite !inE; split => //=; rewrite J0 inE.
-have jI : j \in I by apply/mem_set/J'I => /=; move/fsubsetP : JJ'; exact.
-have JjJ : (J `\ j `<` J)%fset by rewrite fproperD1.
-have JjJ' : (J `\ j `<=` J')%fset.
-   apply/fsubsetP => i; move/fproper_sub : JjJ => /fsubsetP /[apply].
-   by move/fsubsetP : JJ' => /[apply].
-red in indeF.
-pose mu' : set T -> \bar R :=
-  fun A => P (\big[setI/[set: T]]_(j0 <- (J')%fset) (E j0 `&` A)).
-pose nu' : set T -> \bar R :=
-  fun A => \prod_(j0 <- (J')%fset) (P (E j0 `&` A)).
-have mu : {measure set T -> \bar R}.
+  by apply: EF; rewrite !inE; split => //=; rewrite K0 inE.
+pose J := (K `\ j)%fset.
+have jI : j \in I by apply/mem_set/J'I => /=; move/fsubsetP : KJ'; exact.
+have JK : (J `<` K)%fset by rewrite fproperD1.
+have JjJ' : (j |` J `<=` J')%fset.
+  by apply: fsubset_trans KJ'; rewrite fsetD1K.
+have JJ' : (J `<=` J')%fset.
+  by apply: fsubset_trans JjJ'; apply: fsubsetU1.
+pose T' := (*g_sigma_algebraType (F j)*)T.
+have mu : {finite_measure set T' -> \bar R}.
   admit.
-have muE : forall Ej, mu Ej = mu' Ej.
+have muEj : forall A, (F j `|` [set setT]) A ->
+    mu A = P (\big[setI/[set: T]]_(j0 <- (J' `\ j)%fset) (E j0)).
   admit.
-have nu : {measure set T -> \bar R}.
+have nu : {finite_measure set T' -> \bar R}.
   admit.
-have nuE : forall Ej, nu Ej = nu' Ej.
+have nuEj : forall A, (F j `|` [set setT]) A ->
+    nu A = \prod_(j0 <- (J' `\ j)%fset) P (E j0).
   admit.
+have JJ'j : (J `<=` J' `\ j)%fset by exact: fsetSD.
+have J'jI : [set` (J' `\ j)%fset] `<=` I.
+  by apply: subset_trans J'I; apply/fsubsetP; exact: fsubsetDl.
 have H1 : forall A, (F j `|` [set set0; setT]) A -> mu A = nu A.
   move=> A [FjA|[->|->]].
-  - rewrite muE nuE /mu' /nu'.
-    apply: (@ih (J `\ j)%fset) => //.
-    + move=> i; rewrite !inE => /andP[ij iJ].
-      rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F i)))//.
-      apply: measurableI => //.
-        rewrite -(_ : <<s F i >> = @measurable _ (g_sigma_algebraType (F i)))//.
-        apply/set_mem.
-        by rewrite EsF//.
-      admit.
+  - rewrite muEj//; last by left.
+    rewrite nuEj//; last by left.
+    apply: (ih _ JK _ JJ'j J'jI).
+    + move=> i iJ.
+      rewrite EsF//.
+      by move/fproper_sub : JK => /fsubsetP; apply.
     + move=> i.
-      rewrite !inE/= !inE/= => -[iJ'] /negP.
-      rewrite negb_and negbK => /predU1P[?|].
-        subst i.
-        have : E j \in F j.
-          rewrite EF// !inE/=.
-          admit.
-        admit.
-      admit.
+      rewrite ![in X in X -> _]inE /= ![in X in X -> _]inE => -[].
+      move=> /andP[ij iJ'].
+      rewrite ij/= => iK.
+      by rewrite EF// !inE/=.
   - by rewrite !measure0.
-  - rewrite muE nuE /mu' /nu'.
-    under eq_bigr do rewrite setIT.
-    under [in RHS]eq_bigr do rewrite setIT.
-    apply: (@ih (J `\ j)%fset) => //.
-      move=> i; rewrite !inE => /andP[ij iJ].
-      apply/set_mem.
-      by rewrite EsF//.
-    move=> i.
-    rewrite !inE/= !inE/= => -[iJ'] /negP.
-    rewrite negb_and negbK => /predU1P[?|].
-      subst i.
-      admit.
-    move=> iJ.
-    apply/set_mem.
-    rewrite EF// !inE/=; split => //.
-    exact/negP.
-have H2 : setI_closed (F j `|` [set set0]).
-  exact: H.
-  (*apply: setI_closed_set0.?*)
-have H3 : forall A, (<<s F j>>) A -> mu' A = nu' A.
+  - rewrite muEj; last by right.
+    rewrite nuEj; last by right.
+    apply: (ih _ JK _ JJ'j J'jI).
+    + move=> i iJ.
+      rewrite EsF//.
+      by move/fproper_sub : JK => /fsubsetP; apply.
+    + move=> i.
+      rewrite ![in X in X -> _]inE /= ![in X in X -> _]inE => -[].
+      move=> /andP[ij iJ'].
+      rewrite ij/= => iK.
+      by rewrite EF// !inE/=.
+have H2 : forall A, <<s F j >> A -> mu A = nu A.
   move=> A sFjA.
-  rewrite -muE -nuE.
-  apply: (lem142a H2) => //.
-  - admit.
-  - move=> i.
-    admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-have := H3 setT.
-rewrite (_ : <<s F j >> = @measurable _ (g_sigma_algebraType (F j)))//.
-move=> /(_ measurableT).
-rewrite /mu' /nu'.
-under eq_bigr do rewrite setIT.
-under [X in _ = X -> _]eq_bigr do rewrite setIT.
-done.
+  have H3 : setI_closed (F j `|` [set set0]) by exact: H.
+  apply: (@g_sigma_algebra_measure_unique142b _ _ _ (F j `|` [set set0] : set (set T'))) => //.
+(*  apply: (g_sigma_algebra_measure_unique )).*)
+(*  apply: (@lem142b _ _ _ _ (F j `|` [set set0] : set (set T'))) => //.*)
+  move=> B /= [|].
+    move: B.
+    case: indeF => + _.
+    apply.
+    by apply/set_mem.
+  by move=> ->.
+  - rewrite muEj; last by right.
+    rewrite nuEj; last by right.
+    apply: (ih _ JK _ JJ'j J'jI).
+    + move=> i iJ.
+      rewrite EsF//.
+      by move/fproper_sub : JK => /fsubsetP; apply.
+    + move=> i.
+      rewrite ![in X in X -> _]inE /= ![in X in X -> _]inE => -[].
+      move=> /andP[ij iJ'].
+      rewrite ij/= => iK.
+      by rewrite EF// !inE/=.
+  move=> B FjB.
+  apply: H1.
+  case: FjB => [|->//]; first by left.
+  by right; left.
+  move: sFjA.
+  by apply: sub_smallest2r.
+have jJ' : j \in J'.
+  move/fsubsetP : JjJ'; apply.
+  by rewrite !inE eqxx.
+rewrite -(fsetD1K jJ').
+rewrite big_fsetU1 ?inE ?eqxx//=.
+rewrite big_fsetU1 ?inE ?eqxx//=.
+rewrite -(nuEj setT); last by right.
+rewrite -H1; last by right; right.
+rewrite muEj; last by right.
 
 
 
-
-
-
-suff: forall Ej, <<s F j>> Ej -> 
-  move=> suf.
-  have := suf setT.
-  rewrite muE nuE /mu' /nu'.
-  rewrite probability_setT//.
-  under eq_bigr do rewrite setIT.
-  under [in X in (_ -> _ = X) -> _]eq_bigr do rewrite mule1.
-  apply.
-  by rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F j))).
-move=> Ej sFjEj.
-suff: 
-  move=> suf.
-  apply: suf.
-  admit.
-move=> A [FjA|[|]].
-apply: (lem142a H1); last 2 first.
-- move=> E0 [FjE0|/= ->]; last first.
-    by rewrite !measure0.
-  rewrite muE nuE /mu' /nu'.
-  apply/esym.
-  apply ih.
-  have jJ' : j \in J' by move/fsubsetP : JJ'; apply.
-  have <- := fsetD1K jJ'.
-  rewrite big_fsetU1//=; last by rewrite !inE eqxx.
-  rewrite big_fsetU1//=; last by rewrite !inE eqxx.
-  transitivity (P (E j) * P (\big[setI/[set: T]]_(i <- (J' `\ j)%fset) E i)).
-    (* mutual_independence_finiteS ? *)
-    admit. (* ? *)
-  congr *%E.
-  apply: (@ih (J `\ j)%fset) => //.
-  by apply: fsetSD.
-  apply: (subset_trans _ J'I).
-  apply/subsetP => k.
-  by rewrite !inE/= !inE => /andP[].
-  + move=> i.
-    rewrite ![in X in X -> _]inE => /andP[ij iJ].
-    by rewrite EsF//.
-  + move=> i.
-    rewrite ![in X in X -> _]inE/=.
-    rewrite ![in X in X -> _]inE/=.
-    move=> [/andP[->/=]].
-    move=> iJ' iJ.
-    by rewrite EF// inE/=.
-- admit.
-- admit.
-- admit.
-- admit.
-- admit.
 
 xxx
-
-
-
-pose E' i := E i.
-have H1 : forall i : I0, i \in Jtilde -> E' i \in <<s F i >>.
-  move=> i.
-  rewrite 2![in X in X -> _]inE => /andP[ij iJ].
-  rewrite /E' inE.
-  rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F i)))//.
-(*  apply: measurableI => //.
-    rewrite big_seq.
-    apply: bigsetI_measurable => i0 i0Jtilde.
-    rewrite -(_ : <<s (F i) >> = @measurable _ (g_sigma_algebraType (F i)))//.
-    move: i0Jtilde.
-    rewrite 2!inE => /andP[i0j i0J].
-    have := EsF _ i0J.
-    rewrite inE.
-    apply/set_mem.
-    admit.*)
-  rewrite -(_ : <<s (F i) >> = @measurable _ (g_sigma_algebraType (F i)))//.
-  apply/set_mem.
-  by apply: EsF.
-have H2 : forall i : I0, i \in [set` J'] `\` [set` Jtilde] -> E' i \in F i.
-  move=> i.
-  rewrite inE/= => -[iJ']; rewrite 2![in X in X -> _]inE => /negP.
-  rewrite negb_and negbK => /predU1P[ij|iJ].
-    subst i.
-    rewrite /E'.
-    apply: EF.
-    rewrite inE/=.
-    admit.
-  rewrite /E'.
-  have ij : i != j.
-    apply/negP => /eqP ?; subst i.
-    by rewrite jJ in iJ.
-  admit.
-have H3 : forall Ej, ((F j) `|` [set set0; setT]) Ej -> mu Ej = nu Ej.
-  move=> Ej K.
-  rewrite muE nuE.
-  rewrite /mu' /nu'.
-  transitivity (P (\big[setI/[set: T]]_(j0 <- J') E' j0) * P Ej).
-    admit.
-  congr *%E.
-  by apply: (ih _ JtildeJ) => //.
-(*    move=> i iJ.
-    rewrite /E' ifF; last first.
-      apply/negbTE.
-      move: iJ.
-      by rewrite !inE => /andP[].
-    apply: EsF.
-    move/fproper_sub in JtildeJ.
-    move/fsubsetP in JtildeJ.
-    by apply: JtildeJ.
-  move=> i.
-  rewrite inE/= => -[iJ' iJ].
-  have [ij|ij] := eqVneq i j.
-    subst i.
-    rewrite /E' eqxx.
-    apply/mem_set.
-    admit.
-  rewrite /E' (negbTE ij) EF// inE/=; split => //.
-  apply: contra_not iJ.
-  rewrite !inE => ->.
-  by rewrite andbT.*)
-have H4 : forall Ej, <<s F j>> Ej -> mu Ej = nu Ej.
-  move=> Ej sFjEj.
-  apply: (measure_unique (F j `|` [set set0])) => //.
-  (*apply: g_sigma_setU.*)
-  admit.
-  by apply: H.
-  admit.
-  admit.
-  move=> A [FjA|/= ->//].
-    apply: H3 => /=.
-    by left.
-  by rewrite !measure0.
-  admit.
-  move: sFjEj.
-  rewrite (_ : <<s _ >> = @measurable _ (g_sigma_algebraType (F j)))//.
-  admit.
-suff: P (\big[setI/[set: T]]_(j0 <- J') E' j0) = \prod_(j0 <- J') P (E' j0).
-  move=> suf.
-  etransitivity.
-    etransitivity; last first.
-      exact: suf.
-    congr (P _).
-    rewrite 2!big_seq.
-    apply: eq_bigr => i iJ'.
-    rewrite /E'.
-    case: ifPn => [/eqP ?|].
-      subst i.
-      admit.
-    by [].
-  rewrite 2!big_seq.
-  apply: eq_bigr => i iJ'.
-  rewrite /E'.
-  case: ifPn => [/eqP ?|].
-    subst i.
-    admit.
-  by [].
-have := muE (E j).
-rewrite /mu'.
-have := nuE (E j).
-rewrite /nu' => <-.
-apply: H4.
-apply/set_mem.
-exact: EsF.
-
-Admitted.
 
 End mutual_independence_properties.
 
