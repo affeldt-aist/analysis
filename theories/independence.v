@@ -644,11 +644,6 @@ Qed.
 
 End independent_RVs_lemmas.
 
-Definition preimage_classes I (d : I -> measure_display)
-    (Tn : forall k, semiRingOfSetsType (d k)) (T : Type) (fn : forall k, T -> Tn k) :=
-  <<s \bigcup_k preimage_class setT (fn k) measurable >>.
-Arguments preimage_classes {I} d Tn {T} fn.
-
 Lemma measurable_prod d [T : measurableType d] [R : realType] [D : set T] [I : eqType]
     (s : seq I) [h : I -> T -> R] :
   (forall i, i \in s -> measurable_fun D (h i)) ->
