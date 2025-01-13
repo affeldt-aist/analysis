@@ -6,7 +6,7 @@ From mathcomp Require Import mathcomp_extra boolp classical_sets.
 From mathcomp Require Import functions cardinality fsbigop.
 From mathcomp Require Import signed reals ereal topology normedtype sequences.
 From mathcomp Require Import esum measure lebesgue_measure numfun derive realfun.
-From mathcomp Require Import lebesgue_integral probability ftc kernel charge.
+From mathcomp Require Import exp lebesgue_integral probability ftc kernel charge.
 From mathcomp Require Import prob_lang lang_syntax_util.
 From mathcomp Require Import lra.
 
@@ -74,15 +74,6 @@ Reserved Notation "e -P> k" (at level 40).
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 Local Open Scope ereal_scope.
-
-Module gaussian.
-Section gaussian.
-Context {R: realType}.
-(* NB: Import gaussian integral *)
-Axiom (integral_normal :forall m s : R, (0 < s)%R -> (\int[lebesgue_measure]_x (normal_pdf m s x)%:E = 1)%E).
-
-End gaussian.
-End gaussian.
 
 (* In this module, we use our lemma continuous_FTC2 to compute the value of
  * integration of the indicator function over the interval [0, 1].
@@ -1775,8 +1766,7 @@ Inductive exp : flag -> ctx -> typ -> Type :=
 | exp_uniform g (a b : R) (ab : (a < b)%R) : exp D g (Prob Real)
 | exp_beta g (a b : nat) (* NB: should be R *) : exp D g (Prob Real)
 | exp_poisson g : nat -> exp D g Real -> exp D g Real
-| exp_normal g (s : R) (s0 : (0 < s)%R)
-    : exp D g Real -> exp D g (Prob Real) (* NB: 0 < s *)
+| exp_normal g : exp D g Real(*mean*) -> R(*variance*) -> exp D g (Prob Real)
 | exp_normalize g t : exp P g t -> exp D g (Prob t)
 | exp_letin g t1 t2 str : exp P g t1 -> exp P ((str, t1) :: g) t2 ->
     exp P g t2
@@ -1913,7 +1903,7 @@ Fixpoint free_vars k g t (e : @exp R k g t) : seq string :=
   | exp_uniform _ _ _ _     => [::]
   | exp_beta _ _ _ => [::]
   | exp_poisson _ _ e       => free_vars e
-  | exp_normal _ _ _ e          => free_vars e
+  | exp_normal _ e(*mean*) s(*variance*)          => free_vars e
   | exp_normalize _ _ e     => free_vars e
   | exp_letin _ _ _ x e1 e2 => free_vars e1 ++ rem x (free_vars e2)
   | exp_sample _ _ _        => [::]
@@ -2021,24 +2011,6 @@ Local Open Scope lang_scope.
 
 Local Open Scope ring_scope.
 
-(* TODO: remove *)
-Local Import gaussian.
-
-(* TODO: PR *)
-Lemma measurable_powRr b : measurable_fun setT (@powR R b).
-Proof.
-rewrite /powR.
-apply: measurable_fun_if => //.
-  rewrite preimage_true setTI/=.
-   case: (b == 0); rewrite ?set_true ?set_false.
-     apply: measurableT_comp => //.
-     exact: measurable_fun_eqr.
-   exact: measurable_fun_set0.
-rewrite preimage_false setTI.
-apply: measurableT_comp => //.
-exact: mulrr_measurable.
-Qed.
-
 Inductive evalD : forall g t, exp D g t ->
   forall f : dval R g t, measurable_fun setT f -> Prop :=
 | eval_unit g : ([TT] : exp D g _) -D> cst tt ; ktt
@@ -2106,11 +2078,11 @@ Inductive evalD : forall g t, exp D g t ->
                       measurableT_comp (measurable_poisson_pdf n) mf
 
 (* TODO *)
-| eval_normal g s (s0 : (0 < s)%R) (e : exp D g _) r mr :
+| eval_normal g (e : exp D g _) s r mr :
   e -D> r ; mr ->
-  (exp_normal s0 e : exp D g _) -D>
-     (fun x => @normal_prob _ (r x) _ s0 (integral_normal (r x) s0)) ;
- measurableT_comp (measurable_normal_s_prob integral_normal s0) mr
+  (@exp_normal R g e s : exp D g _) -D>
+     (fun x => @normal_prob _ (r x) s) ;
+ measurableT_comp (measurable_normal_s_prob s) mr
 
 | eval_normalize g t (e : exp P g t) k :
   e -P> k ->
@@ -2167,9 +2139,6 @@ with evalP_mut_ind := Induction for evalP Sort Prop.
 Section eval_prop.
 Variables (R : realType).
 Local Open Scope lang_scope.
-
-(* TODO: remove *)
-Import gaussian.
 
 Lemma evalD_uniq g t (e : exp D g t) (u v : dval R g t) mu mv :
   e -D> u ; mu -> e -D> v ; mv -> u = v.
@@ -2267,10 +2236,9 @@ all: (rewrite {g t e u v mu mv hu}).
   inj_ex H2; subst e0.
   inj_ex H4; subst v.
   by rewrite (IH _ _ H3).
-- move=> g s s0 e r mr ev IH {}v {}mv.
-  inversion 1; subst g0 s1.
-  rewrite (Prop_irrelevance s0 s3).
-  inj_ex H2; subst e0.
+- move=> g e s r mr ev IH {}v {}mv.
+  inversion 1; subst g0 s0.
+  inj_ex H0; subst e0.
   inj_ex H3; subst v.
   by rewrite (IH _ _ H5).
 - move=> g t e k ev IH f mf.
@@ -2434,11 +2402,10 @@ all: rewrite {g t e u v eu}.
   inj_ex H4; subst v.
   inj_ex H5; subst mv.
   by rewrite (IH _ _ H3).
-- move=> g s s0 e r mr ev IH {}v {}mv.
-  inversion 1; subst g0 s1.
-  rewrite (Prop_irrelevance s0 s3).
-  inj_ex H2; subst e0.
-  inj_ex H3; subst v.
+- move=> g e s r mr ev IH {}v {}mv.
+  inversion 1; subst g0 s0.
+  inj_ex H0; subst e0.
+  inj_ex H4; subst v.
   by rewrite (IH _ _ H5).
 - move=> g t e k ev IH {}v {}mv.
   inversion 1; subst g0 t0.
@@ -2541,8 +2508,8 @@ all: rewrite {z g t}.
 - by eexists; eexists; exact: eval_beta.
 - move=> g h e [f [mf H]].
   by exists (poisson_pdf h \o f); eexists; exact: eval_poisson.
-- move=> g s s0 e [r [mr H]].
-  exists (fun x => @normal_prob _ (r x) _ s0 (integral_normal (r x) s0) : pprobability _ _).
+- move=> g e [r [mr H]] m.
+  exists (fun x => @normal_prob _ (r x) m : pprobability _ _).
   by eexists; exact: eval_normal.
 - move=> g t e [k ek].
   by exists (normalize_pt k); eexists; exact: eval_normalize.
@@ -2750,13 +2717,11 @@ Lemma execD_beta g a b :
     existT _ (cst [the probability _ _ of beta_prob a b]) (measurable_cst _).
 Proof. exact/execD_evalD/eval_beta. Qed.
 
-Local Import gaussian.
-Lemma execD_normal g s s0 e :
+Lemma execD_normal g e s :
   let f := projT1 (execD e) in let mf := projT2 (execD e) in
-  @execD g _ (@exp_normal _ _ s s0 e) =
-    existT _ (fun x => [the probability _ _ of @normal_prob _ (f x) s s0
-      (integral_normal (f x) s0)])
-       (measurableT_comp (measurable_normal_s_prob integral_normal s0) mf).
+  @execD g _ (@exp_normal _ _ e s) =
+    existT _ (fun x => [the probability _ _ of @normal_prob _ (f x) s])
+       (measurableT_comp (measurable_normal_s_prob s) mf).
 Proof. exact/execD_evalD/eval_normal/evalD_execD. Qed.
 
 Lemma execD_normalize_pt g t (e : exp P g t) :

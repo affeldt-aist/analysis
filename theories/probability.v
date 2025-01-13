@@ -1465,6 +1465,20 @@ Qed.
 
 End normal_density.
 
+Section gauss_integral.
+Context {R : realType}.
+Let mu := @lebesgue_measure R.
+
+Definition gauss (x : R) := expR (- x ^+ 2).
+
+(* NB: This is proved in PR 1435 *)
+Lemma integral0y_gauss_pi2 :
+  \int[mu]_(x in `[0%R, +oo[) gauss x = Num.sqrt pi / 2.
+Proof.
+Admitted.
+
+End gauss_integral.
+
 (* normal distribution *)
 Definition normal_prob {R : realType} (m : R) (s : R) : set _ -> \bar R :=
   fun V => (\int[lebesgue_measure]_(x in V) (normal_pdf m s x)%:E)%E.
@@ -1476,11 +1490,39 @@ Variables (s : R).
 Local Open Scope ring_scope.
 Notation mu := lebesgue_measure.
 
+Let integral_normal' :
+  (\int[mu]_x (expR (- (x - m) ^+ 2 / (s ^+ 2 *+ 2)))%:E =
+  (Num.sqrt (s ^+ 2 * pi *+ 2))%:E)%E.
+Proof.
+
+Admitted.
+
 (* TODO: prove *)
 Lemma integral_normal :
-  (\int[@lebesgue_measure R]_x (normal_pdf m s x)%:E = 1%E)%E.
+  (\int[mu]_x (normal_pdf m s x)%:E = 1%E)%E.
 Proof.
-Admitted.
+rewrite /normal_pdf.
+have [_|s0] := eqVneq s 0.
+  by rewrite integral_indic//= setIT lebesgue_measure_itv/= lte01 oppr0 adde0.
+under eq_integral do rewrite EFinM.
+rewrite integralZl//=; last first.
+  apply/integrableP; split.
+    apply/measurable_EFinP => /=.
+    apply: measurableT_comp => //=.
+    apply: measurable_funM => //=.
+    apply: measurableT_comp => //=.
+    apply: measurable_funX => //=.
+    exact: measurable_funD.
+  under eq_integral.
+    move=> /= x _.
+    rewrite ger0_norm ?expR_ge0//.
+    over.
+  by rewrite /= integral_normal' ltry.
+rewrite integral_normal' -EFinM mulVf// sqrtr_eq0 -ltNge.
+rewrite mulrn_wgt0// mulr_gt0 ?pi_gt0//.
+(*TODO: lemmas s!=0 -> 0 < s ^+ 2? *)
+by rewrite lt_neqAle sqr_ge0 eq_sym sqrf_eq0 s0.
+Qed.
 
 Local Notation normal_pdf := (normal_pdf m s).
 Local Notation normal_prob := (normal_prob m s).
@@ -1702,6 +1744,7 @@ Proof.
 apply: (@measurability _ _ _ _ _ _
   (@pset _ _ _ : set (set (pprobability _ R)))) => //.
 move=> _ -[_ [r r01] [Ys mYs <-]] <-; apply: emeasurable_fun_infty_o => //=.
+
 under [X in _ _ X]eq_fun.
   move=> x.
   rewrite (_: normal_prob2 _ _ = (fine (normal_prob2 x Ys))%:E); last first.
@@ -1715,8 +1758,8 @@ under [X in _ _ X]eq_fun.
 apply: measurableT_comp => //.
 apply/measurable_EFinP.
 apply: measurableT_comp => //.
-have := (@measurableT_comp _ _ _ _ _ _
-           (fun x => \int[mu]_(x0 in Ys) (normal_pdf 0 s x0
+(*have := (@measurableT_comp _ _ _ _ _ _
+           (fun x => \int[mu]_(x0 in Ys) (normal_pdf 0 s x0*)
 
 
 Admitted.
@@ -1761,8 +1804,6 @@ End normal_kernel.
 
 Section normal_probability_s.
 Context {R : realType}.
-Hypothesis integral_normal : forall (m : R) (s : R),
-  (\int[@lebesgue_measure R]_x (normal_pdf m s x)%:E = 1%E)%E.
 
 Lemma measurable_normal_s_prob (s : R) :
   measurable_fun setT
