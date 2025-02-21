@@ -2,11 +2,10 @@ From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum ssrint interval.
 From mathcomp Require Import archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
-From mathcomp Require Import cardinality fsbigop.
-From mathcomp Require Import signed reals ereal.
+From mathcomp Require Import cardinality fsbigop signed reals ereal.
 From mathcomp Require Import topology normedtype sequences esum exp.
 From mathcomp Require Import measure lebesgue_measure numfun lebesgue_integral.
-From mathcomp Require Import itv real_interval realfun derive trigo ftc.
+From mathcomp Require Import interval_inference real_interval realfun derive trigo ftc.
 From mathcomp Require Import gauss_integral.
 
 From mathcomp Require Import ring lra.
@@ -338,586 +337,8 @@ transitivity (\int[mu]_(x in D `&` E) f x).
     rewrite [X in _ + X]null_set_integral; last 3 first.
 Abort.
 
-(* in draft PR https://github.com/math-comp/analysis/pull/1450 *)
-Lemma itv_bnd_infty_bigcup_shiftn (R : realType) b (x : R) (n : nat):
-  [set` Interval (BSide b x) +oo%O] =
-  \bigcup_i [set` Interval (BSide b x) (BLeft (x + (i + n.+1)%:R))].
-Proof.
-apply/seteqP; split=> y; rewrite /= !in_itv/= andbT; last first.
-  by move=> [k _ /=]; move: b => [|] /=; rewrite in_itv/= => /andP[//] /ltW.
-move=> xy; exists (`|Num.ceil (y - x)|)%N => //=.
-rewrite in_itv/= xy/=.
-rewrite natrD.
-rewrite natr_absz.
-rewrite intr_norm.
-rewrite addrA.
-apply: ltr_pwDr; first by rewrite (_: 0%R = 0%:R)// ltr_nat.
-rewrite -lterBDl.
-apply: (le_trans (le_ceil _)) => //=.
-rewrite le_eqVlt; apply/predU1P; left.
-apply/esym/normr_idP.
-rewrite -RceilE.
-apply: Rceil_ge0.
-rewrite subr_ge0.
-move: xy.
-by case: b => //=; exact: ltW.
-Qed.
-
-(* in draft PR https://github.com/math-comp/analysis/pull/1450 *)
-Lemma itv_bnd_infty_bigcup_shiftS (R : realType) b (x : R):
-  [set` Interval (BSide b x) +oo%O] =
-  \bigcup_i [set` Interval (BSide b x) (BLeft (x + i.+1%:R))].
-Proof.
-under eq_bigcupr do rewrite -addn1.
-exact: itv_bnd_infty_bigcup_shiftn.
-Qed.
 
 Import numFieldNormedType.Exports.
-
-Section improper_integration_by_substitution.
-Local Open Scope ereal_scope.
-Context {R : realType}.
-Notation mu := lebesgue_measure.
-Implicit Types (F G f : R -> R) (a b : R).
-
-Import set_interval real_interval.
-
-(* in draft PR https://github.com/math-comp/analysis/pull/1450 *)
-Lemma decreasing_fun_itv_infty_bnd_bigcup F (x : R) :
-  {in `[x, +oo[ &, {homo F : x y /~ (x < y)%R}} ->
-  F x @[x --> +oo%R] --> -oo%R ->
-  `]-oo, F x]%classic = \bigcup_i `](F (x + i.+1%:R)%R), F x]%classic.
-(*  [set` Interval -oo%O (BSide b (F x))] =
-  \bigcup_i [set` Interval (BLeft (F (x + i%:R)%R)) (BSide b (F x))].
-*)
-Proof.
-move=> decrF nyF.
-rewrite itv_infty_bnd_bigcup.
-rewrite eqEsubset; split.
-  move=> y/= [n _]/=.
-  rewrite in_itv/= => /andP[Fxny yFx].
-  have [i iFxn] : exists i, (F (x + i.+1%:R) < F x - n%:R)%R.
-    move/cvgrNy_lt : nyF.
-    move/(_ (F x - n%:R)%R) => [z [zreal zFxn]].
-    exists `| Num.ceil (z - x) |%N.
-    apply: zFxn.
-    rewrite -ltrBlDl.
-    rewrite (le_lt_trans (Num.Theory.le_ceil _))//.
-    rewrite (le_lt_trans (ler_norm _))//.
-    rewrite -natr1.
-    rewrite -intr_norm.
-    by rewrite ltrDl.
-  exists i => //=.
-  rewrite in_itv/=; apply/andP; split => //.
-  exact: lt_le_trans Fxny.
-move=> z/= [n _ /=].
-rewrite in_itv/= => /andP[Fxnz zFx].
-exists `| Num.ceil (F (x + n.+1%:R)%R - F x)%R |%N.+1 => //=.
-rewrite in_itv/= zFx andbT.
-rewrite lerBlDr -lerBlDl.
-rewrite (le_trans _ (abs_ceil_ge _))//.
-rewrite ler_normr; apply/orP; right.
-rewrite opprB.
-apply: lerB => //.
-by rewrite ltW.
-Qed.
-
-(* in draft PR https://github.com/math-comp/analysis/pull/1450 *)
-Lemma decreasing_ge0_integration_by_substitutiony F G a :
-  {in `[a, +oo[ &, {homo F : x y /~ (x < y)%R}} ->
-  {in `]a, +oo[, continuous F^`()} ->
-  cvg (F^`() x @[x --> a^'+]) ->
-  cvg (F^`() x @[x --> +oo%R]) ->
-  (* derivable_oo_continuous_bnd F a +oo *)
-  F x @[x  --> a^'+] --> F a ->
-  {in `]a, +oo[, forall x, derivable F x 1%R} ->
-  {within `]-oo, F a], continuous G} ->
-  (* {in `]-oo, F a[, continuous G} ->
-  (G x @[x --> (F a)^'-] --> G (F a)) -> *)
-  F x @[x --> +oo%R] --> -oo%R ->
-  {in `]-oo, F a], forall x, (0 <= G x)%R} ->
-  \int[mu]_(x in `]-oo, F a]) (G x)%:E =
-  \int[mu]_(x in `[a, +oo[) (((G \o F) * - F^`()) x)%:E.
-Proof.
-move=> decrF cdF /cvg_ex[/= dFa cdFa] /cvg_ex[/= dFoo cdFoo].
-move=> cFa dF /continuous_within_itvNycP[cG cGFa] Fny G0.
-have mG n : measurable_fun `](F (a + n.+1%:R)), (F a)] G.
-  apply: (@measurable_fun_itv_oc _ _ _ false true).
-  apply: open_continuous_measurable_fun; first exact: interval_open.
-  move=> x; rewrite inE/= in_itv/= => /andP[_ xFa].
-  by apply: cG; rewrite in_itv/=.
-have mGFNF' i : measurable_fun `[a, (a + i.+1%:R)[ ((G \o F) * - F^`())%R.
-  apply: (@measurable_fun_itv_co _ _ _ false true).
-  apply: open_continuous_measurable_fun; first exact: interval_open.
-  move=> x; rewrite inE/= in_itv/= => /andP[ax _].
-  apply: continuousM; last first.
-    apply: continuousN.
-    by apply: cdF; rewrite in_itv/= andbT.
-  apply: continuous_comp.
-    have := derivable_within_continuous dF.
-    rewrite continuous_open_subspace; last exact: interval_open.
-    by apply; rewrite inE/= in_itv/= andbT.
-  by apply: cG; rewrite in_itv/=; apply: decrF; rewrite ?in_itv/= ?lexx ?ltW.
-transitivity (limn (fun n => \int[mu]_(x in `[F (a + n%:R)%R, F a]) (G x)%:E)).
-  rewrite (decreasing_fun_itv_infty_bnd_bigcup decrF Fny).
-  rewrite seqDU_bigcup_eq.
-  rewrite ge0_integral_bigcup/=; first last.
-  - exact: trivIset_seqDU.
-  - rewrite -seqDU_bigcup_eq.
-    move=> x [n _ /=]; rewrite in_itv/= => /andP[_ xFa].
-    exact: G0.
-  - rewrite -seqDU_bigcup_eq.
-    apply/measurable_EFinP.
-    exact/measurable_fun_bigcup.
-  - move=> n.
-    apply: measurableD => //.
-    exact: bigsetU_measurable.
-  apply: congr_lim.
-  apply/funext => n.
-  rewrite -ge0_integral_bigsetU//=; last 5 first.
-  - move=> m.
-    apply: measurableD => //.
-    exact: bigsetU_measurable.
-  - exact: iota_uniq.
-  - exact: (@sub_trivIset _ _ _ [set: nat]).
-  - apply/measurable_EFinP.
-    rewrite big_mkord.
-    rewrite -bigsetU_seqDU.
-    apply: (measurable_funS _ (@bigsetU_bigcup _ (fun k =>`]F (a + k.+1%:R)%R, _]%classic) _)).
-      exact: bigcup_measurable.
-    exact/measurable_fun_bigcup.
-  - move=> x xFaSkFa.
-    apply: G0.
-    have : (x \in `]-oo, F a]%classic -> x \in `]-oo, F a]) by rewrite inE.
-    apply.
-    rewrite (decreasing_fun_itv_infty_bnd_bigcup decrF Fny).
-    apply: mem_set.
-    apply: (@bigsetU_bigcup _ _ n).
-    rewrite (bigsetU_seqDU (fun i => `](F (a + i.+1%:R)), (F a)]%classic)).
-    by rewrite -(@big_mkord _ _ _ _ xpredT (seqDU (fun i => `](F (a + i.+1%:R)), (F a)]%classic))).
-  rewrite -integral_itv_obnd_cbnd; last first.
-    case: n => //.
-    by rewrite addr0 set_interval.set_itvoc0; apply: measurable_fun_set0.
-  congr (integral _).
-  rewrite big_mkord -bigsetU_seqDU.
-  rewrite -(bigcup_mkord n (fun k => `](F (a + k.+1%:R)), (F a)]%classic)).
-  rewrite eqEsubset; split.
-    move=> x [k /= kn].
-    rewrite !in_itv/= => /andP[FaSkx ->].
-    rewrite andbT.
-    rewrite (le_lt_trans _ FaSkx)//.
-    move: kn.
-    rewrite leq_eqVlt => /predU1P[-> //|Skn].
-    apply/ltW/decrF; rewrite ?in_itv/= ?andbT ?ltW ?ltrDl ?ler_ltD ?ltr_nat//.
-    by rewrite ltr0n (leq_trans _ Skn).
-  case: n => [|n]; first by rewrite addr0 set_interval.set_itvoc0.
-  by apply: (@bigcup_sup _ _ n) => /=.
-transitivity (limn (fun n => \int[mu]_(x in `]a, (a + n%:R)%R[) (((G \o F) * - F^`()) x)%:E)); last first.
-  rewrite -integral_itv_obnd_cbnd; last first.
-    rewrite itv_bnd_infty_bigcup_shiftS.
-    apply/measurable_fun_bigcup => //.
-    move=> n.
-    apply: measurable_funS (mGFNF' n) => //.
-    exact: subset_itv_oo_co.
-  rewrite itv_bnd_infty_bigcup_shiftS.
-  rewrite seqDU_bigcup_eq.
-  rewrite ge0_integral_bigcup/=; last 4 first.
-  - move=> n.
-    apply: measurableD => //.
-    exact: bigsetU_measurable.
-  - rewrite -seqDU_bigcup_eq.
-    apply/measurable_fun_bigcup => //.
-    move=> n.
-    apply/measurable_EFinP.
-    apply: measurable_funS (mGFNF' n) => //.
-    exact: subset_itv_oo_co.
-  - move=> x ax.
-    have {}ax : (a < x)%R.
-      move: ax.
-      rewrite -seqDU_bigcup_eq => -[? _]/=.
-      by rewrite in_itv/= => /andP[].
-    rewrite fctE.
-    apply: mulr_ge0.
-    + apply: G0.
-      rewrite in_itv/= ltW//.
-      by apply: decrF; rewrite ?in_itv/= ?lexx// ltW.
-    + rewrite oppr_ge0.
-      apply: (@decr_derive1_le0 _ _ `[a, +oo[%classic).
-          rewrite interior_itv.
-          by move=> ?; rewrite inE/=; apply: dF.
-        by move=> ? ?; rewrite !inE/=; apply: decrF.
-      by rewrite interior_itv/= in_itv/= andbT.
-  - exact: trivIset_seqDU.
-  apply: congr_lim.
-  apply/funext => n.
-  rewrite -integral_bigsetU_EFin/=; last 4 first.
-  - move=> k.
-    apply: measurableD => //.
-    exact: bigsetU_measurable.
-  - exact: iota_uniq.
-  - exact: (@sub_trivIset _ _ _ [set: nat]).
-  - apply/measurable_EFinP.
-    apply: (measurable_funS (measurable_itv `]a, (a + n.+1%:R)[)).
-      rewrite big_mkord.
-      rewrite -bigsetU_seqDU.
-      rewrite -(bigcup_mkord _ (fun k => `]a, (a + k.+1%:R)[%classic)).
-      move=> x [k /= kn].
-      rewrite !in_itv/= => /andP[-> xaSk]/=.
-      apply: (lt_trans xaSk).
-      by rewrite ler_ltD// ltr_nat.
-    apply: measurable_funS (mGFNF' n) => //.
-    exact: subset_itv_oo_co.
-  congr (integral _).
-  rewrite big_mkord -bigsetU_seqDU.
-  rewrite -(bigcup_mkord n (fun k => `]a, (a + k.+1%:R)[%classic)).
-  rewrite eqEsubset; split.
-    case: n; first by rewrite addr0 set_itvoo0.
-    move=> n.
-    by apply: (@bigcup_sup _ _ n) => /=.
-  move=> x [k /= kn].
-  rewrite !in_itv/= => /andP[-> xaSk]/=.
-  rewrite (lt_le_trans xaSk)//.
-  move: kn.
-  rewrite leq_eqVlt => /orP[/eqP -> //|Skn].
-  apply/ltW.
-  by rewrite ler_ltD// ltr_nat.
-apply: congr_lim.
-apply/funext => -[|n].
-  by rewrite addr0 set_itv1 integral_set1 set_itv_ge -?leNgt ?bnd_simp// integral_set0.
-rewrite integration_by_substitution_decreasing.
-- rewrite integral_itv_bndo_bndc// ?integral_itv_obnd_cbnd//.
-  + rewrite -setUitv1; last by rewrite bnd_simp ltrDl.
-    rewrite measurable_funU//; split; last exact: measurable_fun_set1.
-    apply: measurable_funS (mGFNF' n) => //; exact: subset_itv_oo_co.
-  + apply: measurable_funS (mGFNF' n) => //; exact: subset_itv_oo_co.
-- by rewrite ltrDl.
-- move=> x y /=; rewrite !in_itv/= => /andP[ax _] /andP[ay _] yx.
-  by apply: decrF; rewrite //in_itv/= ?ax ?ay.
-- move=> x; rewrite in_itv/= => /andP[ax _].
-  by apply: cdF; rewrite in_itv/= ax.
-- exact: (cvgP dFa).
-- apply: (cvgP (F^`() (a + n.+1%:R))).
-  apply: cvg_at_left_filter.
-  apply: cdF.
-  rewrite in_itv/= andbT.
-  by rewrite ltr_pwDr.
-- split.
-  + move=> x; rewrite in_itv/= => /andP[ax _].
-    by apply: dF; rewrite in_itv/= ax.
-  + exact: cFa.
-  + apply: cvg_at_left_filter.
-    apply: differentiable_continuous.
-    apply/derivable1_diffP.
-    apply: dF.
-    rewrite in_itv/= andbT.
-    by rewrite ltr_pwDr.
-- apply/continuous_within_itvP.
-    apply: decrF.
-    + by rewrite in_itv/= andbT lerDl.
-    + by rewrite in_itv/= lexx.
-    + by rewrite ltr_pwDr.
-  split.
-  + move=> y; rewrite in_itv/= => /andP[_ yFa].
-    by apply: cG; rewrite in_itv/= yFa.
-  + apply: cvg_at_right_filter.
-    apply/cG.
-    rewrite in_itv/=.
-    apply: decrF.
-    * by rewrite in_itv/= andbT lerDl.
-    * by rewrite in_itv/= lexx.
-    * by rewrite ltr_pwDr.
-  + exact: cGFa.
-Qed.
-
-(* in draft PR https://github.com/math-comp/analysis/pull/1450 *)
-Lemma ge0_integration_by_substitutionNy G a :
-  {within `]-oo, (- a)%R], continuous G} ->
-  (* {in `]-oo, (- a)%R[, continuous G} ->
-  (G x @[x --> (- a)%R^'-] --> G (- a)%R) -> *)
-  {in `]-oo, (- a)%R], forall x, (0 <= G x)%R} ->
-  \int[mu]_(x in `]-oo, (- a)%R]) (G x)%:E =
-  \int[mu]_(x in `[a, +oo[) ((G \o -%R) x)%:E.
-Proof.
-move=> /continuous_within_itvNycP[cG GNa] G0.
-have Dopp : (@GRing.opp R)^`() = cst (-1).
-  by apply/funext => z; rewrite derive1E derive_val.
-rewrite decreasing_ge0_integration_by_substitutiony//; last 7 first.
-- by move=> x y _ _; rewrite ltrN2.
-- rewrite Dopp => ? _.
-  exact: cst_continuous.
-- rewrite Dopp; apply: is_cvgN; exact: is_cvg_cst.
-- rewrite Dopp; apply: is_cvgN; exact: is_cvg_cst.
-  apply: cvgN; exact: cvg_at_right_filter.
-- by apply/continuous_within_itvNycP; split.
-- exact/cvgNrNy.
-apply: eq_integral => x _; congr EFin.
-rewrite fctE -[RHS]mulr1; congr (_ * _)%R.
-rewrite -[RHS]opprK; congr -%R.
-rewrite derive1E.
-exact: derive_val.
-Qed.
-
-(* in draft PR https://github.com/math-comp/analysis/pull/1450 *)
-Lemma increasing_ge0_integration_by_substitutiony F G a :
-  {in `[a, +oo[ &, {homo F : x y / (x < y)%R}} ->
-  {in `]a, +oo[, continuous F^`()} ->
-  cvg (F^`() x @[x --> a^'+]) ->
-  cvg (F^`() x @[x --> +oo%R]) ->
-  (* derivable_oo_continuous_bnd F a +oo *)
-  F x @[x  --> a^'+] --> F a ->
-  {in `]a, +oo[, forall x, derivable F x 1%R} ->
-  {within `[F a, +oo[, continuous G} ->
-  (* {in `]F a, +oo[, continuous G} ->
-  (G x @[x --> (F a)^'+] --> G (F a)) -> *)
-  F x @[x --> +oo%R] --> +oo%R ->
-  {in `[F a, +oo[, forall x, (0 <= G x)%R} ->
-  \int[mu]_(x in `[F a, +oo[) (G x)%:E =
-  \int[mu]_(x in `[a, +oo[) (((G \o F) * F^`()) x)%:E.
-Proof.
-move=> incrF cF' /cvg_ex[/= r F'ar] /cvg_ex[/= l F'ool] cFa dF.
-move=> /continuous_within_itvcyP[cG cGFa] Fny G0.
-transitivity (\int[mu]_(x in `[F a, +oo[) (((G \o -%R) \o -%R) x)%:E).
-  by apply/eq_integral => x ? /=; rewrite opprK.
-have cGN : {in `]-oo, - F a[%R, continuous (G \o -%R)}.
-  move=> x; rewrite in_itv/= ltrNr => FaNx.
-  apply: continuous_comp; first exact: continuousN.
-  by apply: cG; rewrite in_itv/= FaNx.
-rewrite -ge0_integration_by_substitutionNy//; last 2 first.
-- apply/continuous_within_itvNycP; split => //.
-  apply/cvg_at_rightNP.
-  apply: cvg_toP; first by apply/cvg_ex; exists (G (F a)).
-  by move/cvg_lim: cGFa => -> //; rewrite fctE opprK.
-- by move=> x; rewrite in_itv/= lerNr => FaNx; apply: G0; rewrite in_itv/= FaNx.
-rewrite (@decreasing_ge0_integration_by_substitutiony (- F)%R); first last.
-- move=> y.
-  rewrite in_itv/= lerNr => FaNy.
-  by apply: G0; rewrite in_itv/= FaNy.
-- exact/cvgNrNy.
-- apply/continuous_within_itvNycP; split => //.
-  rewrite fctE opprK.
-  exact/cvg_at_rightNP.
-- move=> x ax.
-  apply: derivableN.
-  exact: dF.
-- exact: cvgN.
-- apply/cvg_ex; exists (- l)%R.
-  have := (cvgN F'ool).
-  move/(_ (@filter_filter R _ proper_pinfty_nbhs)).
-  apply: cvg_trans.
-  apply: near_eq_cvg.
-  near=> z.
-  rewrite derive1E deriveN -?derive1E//.
-  apply: dF; rewrite in_itv/= andbT.
-  near: z.
-  rewrite near_nbhs.
-  apply: nbhs_pinfty_gt.
-  exact: num_real.
-- apply/cvg_ex; exists (- r)%R.
-  have := cvgN F'ar.
-  move/(_ (@filter_filter R _ (at_right_proper_filter a))).
-  apply: cvg_trans.
-  apply: near_eq_cvg.
-  near=> z.
-  rewrite derive1E deriveN -?derive1E//.
-  by apply: dF; rewrite in_itv/= andbT.
-- move=> x ax.
-  rewrite /continuous_at.
-  rewrite derive1E deriveN -?derive1E; last exact: dF.
-  have := cvgN (cF' x ax).
-  move/(_ (nbhs_filter x)).
-  apply: cvg_trans.
-  apply: near_eq_cvg.
-  rewrite near_simpl/=.
-  near=> z.
-  rewrite derive1E deriveN -?derive1E//.
-  apply: dF.
-  near: z.
-  rewrite near_nbhs.
-  apply: (@open_in_nearW _ _ `]a, +oo[).
-      exact: interval_open.
-    by move=> ?; rewrite inE/=.
-  by rewrite inE/=.
-- move=> x y ax ay yx.
-  rewrite ltrN2.
-  exact: incrF.
-have mGF : measurable_fun `]a, +oo[ (G \o F).
-  apply: (@measurable_comp _ _ _ _ _ _ `]F a, +oo[%classic) => //.
-  - move=> /= _ [x] /[!in_itv]/= /andP[ax xb] <-.
-    by rewrite incrF ?incrF// in_itv/= ?lexx/= ?(ltW ab)//= ?(ltW ax) ?(ltW xb).
-  - apply: open_continuous_measurable_fun; first exact: interval_open.
-    by move=> x; rewrite inE/= => Fax; exact: cG.
-  - apply: subspace_continuous_measurable_fun => //.
-    apply: derivable_within_continuous => x.
-    exact: dF.
-have mF' : measurable_fun `]a, +oo[ (- F)%R^`().
-  apply: open_continuous_measurable_fun; first exact: interval_open.
-  move=> x; rewrite inE/= => ax.
-  rewrite /continuous_at.
-  rewrite derive1E deriveN; last exact: dF.
-  rewrite -derive1E.
-  under eq_cvg do rewrite -(opprK ((- F)%R^`() _)); apply: cvgN.
-  move: (cF' x ax).
-  apply: cvg_trans.
-  apply: near_eq_cvg => /=.
-  rewrite near_simpl.
-  near=> z.
-  rewrite !derive1E deriveN ?opprK//.
-  apply: dF.
-  near: z.
-  rewrite near_nbhs.
-exact: near_in_itvoy.
-rewrite -!integral_itv_obnd_cbnd; last 2 first.
-- apply: measurable_funM => //.
-  apply: open_continuous_measurable_fun; first exact: interval_open.
-  by move=> x; rewrite inE/=; exact: cF'.
-- apply: measurable_funM.
-    apply: (measurable_comp (measurable_itv `]-oo, (- F a)%R[)).
-        move=> _/=[x + <-].
-        rewrite !in_itv/= andbT=> ax.
-        rewrite ltrN2.
-        by apply: incrF; rewrite ?in_itv/= ?lexx ?ltW.
-      apply: open_continuous_measurable_fun; first exact: interval_open.
-      by move=> x; rewrite inE/=; exact: cGN.
-    apply: measurableT_comp => //.
-    apply: subspace_continuous_measurable_fun => //.
-    exact: derivable_within_continuous.
-  exact: measurableT_comp => //.
-apply: eq_integral => x/=; rewrite inE/= => ax.
-congr EFin.
-rewrite !fctE/= opprK; congr (_ * _)%R.
-rewrite !derive1E deriveN ?opprK//.
-exact: dF.
-Unshelve. all: end_near. Qed.
-
-Lemma integration_by_substitution_decreasing_opinfty_old F G a :
-  {in `[a, +oo[ &, {homo F : x y /~ (x < y)%R}} ->
-  {in `]a, +oo[, continuous F^`()} ->
-  cvg (F^`() x @[x --> a^'+]) ->
-  cvg (F^`() x @[x --> +oo%R]) ->
-  (* derivable_oo_continuous_bnd F a +oo *)
-  F x @[x  --> a^'+] --> F a ->
-  {in `]a, +oo[, forall x, derivable F x 1%R} ->
-  (* {within `]-oo, F a[, continuous G *)
-  {in `]-oo, F a[, continuous G} ->
-  (G x @[x --> (F a)^'-] --> G (F a)) ->
-  F x @[x --> +oo%R] --> -oo%R ->
-  \int[mu]_(x in `]-oo, F a]) (G x)%:E =
-  \int[mu]_(x in `[a, +oo[) (((G \o F) * - F^`()) x)%:E.
-Proof.
-move=> decrF cdF /cvg_ex[/= dFa cdFa] /cvg_ex[/= dFoo cdFoo].
-move=> cFa dF cG cGFa Fny.
-transitivity (limn (fun n => \int[mu]_(x in `[F (a + n%:R)%R, F a]) (G x)%:E)).
-  rewrite (decreasing_fun_itv_infty_bnd_bigcup decrF Fny).
-  rewrite seqDU_bigcup_eq.
-  rewrite integral_bigcup/=; last 3 first.
-        exact: trivIset_seqDU.
-      move=> n.
-      admit.
-    admit. (* ? *)
-  apply: congr_lim.
-  apply/funext => n.
-  rewrite -integral_bigsetU_EFin//=; last 4 first.
-  - admit.
-  - admit.
-  - admit.
-  - rewrite big_mkord.
-    rewrite -bigsetU_seqDU.
-    apply: (measurable_funS (measurable_itv `]-oo, F a])).
-      admit.
-    admit.
-  rewrite -integral_itv_obnd_cbnd; last first.
-    admit.
-  congr (integral _).
-  rewrite big_mkord -bigsetU_seqDU.
-  rewrite -(bigcup_mkord n (fun k => `](F (a + k.+1%:R)), (F a)]%classic)).
-  rewrite eqEsubset; split.
-    move=> x [k /= kn].
-    rewrite !in_itv/= => /andP[FaSkx ->].
-    rewrite andbT.
-    rewrite (le_lt_trans _ FaSkx)//.
-    move: kn.
-    rewrite leq_eqVlt => /orP[/eqP -> //|Skn].
-    apply/ltW; apply: decrF.
-        admit.
-      admit.
-    by rewrite ler_ltD// ltr_nat.
-  case: n; first by rewrite addr0 set_interval.set_itvoc0.
-  move=> n.
-  by apply: (@bigcup_sup _ _ n) => /=.
-transitivity (limn (fun n => \int[mu]_(x in `[a, (a + n%:R)%R[) (((G \o F) * - F^`()) x)%:E)); last first.
-  rewrite itv_bnd_infty_bigcup_shiftS.
-  rewrite seqDU_bigcup_eq.
-  rewrite integral_bigcup/=; last 3 first.
-  - admit.
-  - admit.
-  - admit. (* ? *)
-  apply: congr_lim.
-  apply/funext => n.
-  rewrite -integral_bigsetU_EFin/=; last 4 first.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  congr (integral _).
-  rewrite big_mkord -bigsetU_seqDU.
-  rewrite -(bigcup_mkord n (fun k => `[a, (a + k.+1%:R)[%classic)).
-  rewrite eqEsubset; split.
-    case: n; first by rewrite addr0 set_interval.set_itvco0.
-    move=> n.
-    by apply: (@bigcup_sup _ _ n) => /=.
-  move=> x [k /= kn].
-  rewrite !in_itv/= => /andP[-> xaSk]/=.
-  rewrite (lt_le_trans xaSk)//.
-  move: kn.
-  rewrite leq_eqVlt => /orP[/eqP -> //|Skn].
-  apply/ltW.
-  by rewrite ler_ltD// ltr_nat.
-apply: congr_lim.
-apply/funext => -[|n].
-  by rewrite addr0 set_itv1 integral_set1 set_itv_ge -?leNgt ?lexx// integral_set0.
-rewrite integration_by_substitution_decreasing.
-- rewrite integral_itv_bndo_bndc//.
-  admit.
-- by rewrite ltrDl.
-- move=> x y /=; rewrite !in_itv/= => /andP[ax _] /andP[ay _] yx.
-  by apply: decrF; rewrite //in_itv/= ?ax ?ay.
-- move=> x; rewrite in_itv/= => /andP[ax _].
-  by apply: cdF; rewrite in_itv/= ax.
-- exact: (cvgP dFa).
-- apply: (cvgP (F^`() (a + n.+1%:R))).
-  apply: cvg_at_left_filter.
-  apply: cdF.
-  rewrite in_itv/= andbT.
-  by rewrite ltr_pwDr.
-- split.
-  + move=> x; rewrite in_itv/= => /andP[ax _].
-    by apply: dF; rewrite in_itv/= ax.
-  + exact: cFa.
-  + apply: cvg_at_left_filter.
-    apply: differentiable_continuous.
-    apply/derivable1_diffP.
-    apply: dF.
-    rewrite in_itv/= andbT.
-    by rewrite ltr_pwDr.
-- apply/continuous_within_itvP.
-    apply: decrF.
-    + by rewrite in_itv/= andbT lerDl.
-    + by rewrite in_itv/= lexx.
-    + by rewrite ltr_pwDr.
-  split.
-  + move=> y; rewrite in_itv/= => /andP[_ yFa].
-    by apply: cG; rewrite in_itv/= yFa.
-  + apply: cvg_at_right_filter.
-    apply: cG.
-    rewrite in_itv/=.
-    apply: decrF.
-    * by rewrite in_itv/= andbT lerDl.
-    * by rewrite in_itv/= lexx.
-    * by rewrite ltr_pwDr.
-  + exact: cGFa.
-Abort.
-
-End improper_integration_by_substitution.
 
 Section Rintegral_lemmas.
 
@@ -966,43 +387,13 @@ have sepD : D = Dp `|` Dn.
   case : ltP x 0.*)
 Abort.
 
-(* not PRed yet, depends on integration by substitution, draft PR 1450 *)
-Lemma ge0_integralT_even (f : R -> R) :
-  (forall x, (0 <= f x)%R) ->
-  continuous f ->
-  f =1 f \o -%R ->
-    (\int[mu]_x (f x)%:E =
-     2%:E * \int[mu]_(x in [set x | (0 <= x)%R]) (f x)%:E).
-Proof.
-move=> f0 cf evenf.
-have mf : measurable_fun [set: R] f by exact: continuous_measurable_fun.
-have mposnums : measurable [set x : R | (0 <= x)%R].
-  by rewrite -set_interval.set_itv_c_infty//.
-rewrite -(setUv [set x : R | (0 <= x)%R]) ge0_integral_setU//= ; last 4 first.
-- by apply: measurableC.
-- apply/measurable_EFinP.
-  by rewrite setUv.
-  move=> x _.
-  by rewrite lee_fin.
-- exact/disj_setPCl.
-rewrite mule_natl mule2n.
-congr +%E.
-rewrite -set_interval.set_itv_c_infty// set_interval.setCitvr.
-rewrite integral_itv_bndo_bndc; last exact: measurable_funTS.
-rewrite -{1}oppr0 ge0_integration_by_substitutionNy//.
-- apply: eq_integral => /= x.
-  rewrite inE/= in_itv/= andbT => x0.
-  congr EFin.
-  by rewrite (evenf x).
-- exact: continuous_subspaceT.
-Qed.
-
 End Rintegral_lemmas.
 
 Reserved Notation "'d1 f" (at level 10, f at next level, format "''d1'  f").
 
 Notation "'d1 f" := (partial1of2 f).
 
+(* TODO: PR *)
 Lemma integral0oo_atan {R : realType} :
   \int[@lebesgue_measure R]_(x in `[0%R, +oo[) ((oneDsqr x)^-1)%:E = (pi / 2)%:E.
 Proof.
@@ -1023,11 +414,8 @@ Local Open Scope ring_scope.
 
 Let mu := @lebesgue_measure R.
 
-(* in PR https://github.com/math-comp/analysis/pull/1435 *)
-Definition integral0y_gauss := \int[mu]_(x in `[0%R, +oo[) gauss_fun x.
-
-(* in PR https://github.com/math-comp/analysis/pull/1435 but as a Let *)
-Lemma integral0y_gauss_ge0 : 0 <= integral0y_gauss.
+(* in gauss_integral but as a Let *)
+Lemma integral0y_gauss_ge0 : 0 <= @gauss_integral_proof.integral0y_gauss R.
 Proof. by apply: Rintegral_ge0 => //= x _; rewrite gauss_fun_ge0. Qed.
 
 Lemma Igoo_fin_num : (\int[mu]_(x in `[0%R, +oo[) (gauss_fun x)%:E)%E \is a fin_num.
@@ -1335,9 +723,11 @@ Qed.
 Definition u (x : R) t := expR (- x ^+ 2 * oneDsqr t) / oneDsqr t.
 *)
 
+(* in gauss_integral but as a Let *)
 Lemma u_ge0 x t : 0 <= @gauss_integral_proof.u R x t.
 Proof. by rewrite divr_ge0// ?expR_ge0//. Qed.
 
+(* in gauss_integral but as a Let *)
 Lemma measurable_u x : measurable_fun setT (@gauss_integral_proof.u R x).
 Proof.
 apply: measurable_funM => //=.
@@ -1347,7 +737,6 @@ apply: measurable_funTS.
 by apply: continuous_measurable_fun; exact: continuous_oneDsqrV.
 Qed.
 
-(* in PR 1435? not sure... *)
 Lemma integral_u0 : (\int[mu]_(y in `[0%R, +oo[) (gauss_integral_proof.u 0%R y)%:E = (@pi R / 2)%:E)%E.
 Proof.
 rewrite /gauss_integral_proof.u expr0n/= oppr0.
@@ -1378,10 +767,9 @@ apply: (@le_lt_trans _ _ (\int[mu]_(y in `[0%R, +oo[) (EFin \o gauss_integral_pr
 by rewrite integral_u0 ltey.
 Qed.
 
-(* in PR 1435 *)
+(* in integral_gauss but as a Let *)
 Lemma partial1_u x t : (('d1 gauss_integral_proof.u t) x = - 2 * x * gauss_fun x * gauss_fun (t * x) :> R)%R.
 Proof.
-(* proved in ftc.v but as a Let *)
 Admitted.
 
 (*
@@ -1926,13 +1314,6 @@ apply: ge0_subset_integral => //=.
 - exact: subset_itvl.
 Qed.
 
-(* NB: not used? *)
-Let datan : {in `]0%R, +oo[, (@atan R)^`() =1 oneDsqr\^-1}.
-Proof.
-move=> x x0oo.
-by rewrite derive1_atan.
-Qed.
-
 (*
 apply/esym/cvg_lim => //.
 under eq_cvg => x.
@@ -2279,12 +1660,13 @@ have dME : [eta  *%R c]^`() = cst c.
   by rewrite derive1E derive_val /GRing.scale/= mulr1.
 rewrite -increasing_ge0_integration_by_substitutiony//=; first last.
 - move=> ? _; exact: gauss_fun_ge0.
+- by apply: continuous_subspaceT; exact: continuous_gauss_fun.
 - apply/cvgryPge => r.
   under eq_near do rewrite -ler_pdivrMl//.
   apply: nbhs_pinfty_ge.
   exact: num_real.
-- by apply: continuous_subspaceT; exact: continuous_gauss_fun.
-- apply: cvgZr; exact: cvg_at_right_filter.
+- split => //.
+  apply: cvgZr; exact: cvg_at_right_filter.
 - by rewrite dME; exact: is_cvg_cst.
 - by rewrite dME; exact: is_cvg_cst.
 - by rewrite dME => ? _; exact: cst_continuous.
@@ -2308,7 +1690,7 @@ apply: differentiable_comp => //.
 exact/derivable1_diffP.
 Qed.
 
-Let dIg0yE : {in `]0%R, +oo[, Ig0y^`() =1 (fun x => (- 2) * integral0y_gauss * gauss_fun x)%R}.
+Let dIg0yE : {in `]0%R, +oo[, Ig0y^`() =1 (fun x => (- 2) * gauss_integral_proof.integral0y_gauss * gauss_fun x)%R}.
 Proof.
 move=> x; rewrite in_itv/= => /andP[x0 _].
 pose d_dx_dJ x0 y0 : R := (gauss_integral_proof.u^~ y0)^`() x0.
@@ -2370,19 +1752,19 @@ have int_substE : \int[mu]_(y in `[0%R, +oo[) (expR (- x ^+ 2 * oneDsqr y))%:E
     by rewrite /GRing.scale/= mulr1.
   rewrite -increasing_ge0_integration_by_substitutiony; first last.
   - by move=> y _; rewrite mulr_ge0 ?expR_ge0// divr_ge0 ?expR_ge0// ltW.
+  - rewrite mulr0.
+    apply: continuous_subspaceT.
+    move=> z.
+    apply: continuousZr.
+    exact: continuous_gauss_fun.
   - apply/cvgryPge.
     move=> r; near=> t.
     rewrite -lter_pdivrMl; last exact: x0.
     near: t.
     apply:nbhs_pinfty_ge.
     by rewrite num_real.
-  - rewrite mulr0.
-    apply: continuous_subspaceT.
-    move=> z.
-    apply: continuousZr.
-    exact: continuous_gauss_fun.
-  - move=> z _; exact: derivableM.
-  - apply: cvgZr.
+  - split => //.
+    apply: cvgZr.
     exact: cvg_at_right_filter.
   - rewrite der_mulrE.
     exact: is_cvg_cst.
@@ -2455,7 +1837,7 @@ transitivity (-2 * x * \int[mu]_(y in `[0, +oo[) (expR ((- x ^+ 2) * oneDsqr y))
     apply: lte_mul_pinfty.
     - by rewrite lee_fin divr_ge0// ?expR_ge0// ltW.
     - by rewrite fin_numElt ltry ltNyr.
-    apply: (@le_lt_trans _ _ integral0y_gauss%:E).
+    apply: (@le_lt_trans _ _ gauss_integral_proof.integral0y_gauss%:E).
       rewrite /= fineK//.
       apply: ge0_subset_integral => //; first last.
           by move=> r/=; rewrite !in_itv/= andbT => /andP[+ _]; exact: ltW.
@@ -2746,8 +2128,8 @@ have /normr_idP -> : (0 <= (fine
 (* ref: https://www.phys.uconn.edu/~rozman/Courses/P2400_17S/downloads/gaussian-integral.pdf *)
 Lemma gauss_integration : (\int[mu]_x (gauss_fun x))%R = Num.sqrt pi.
 Proof.
-have -> : (\int[mu]_x gauss_fun x)%R = (integral0y_gauss * 2)%R.
-  rewrite /Rintegral ge0_integralT_even//=; last 3 first.
+have -> : (\int[mu]_x gauss_fun x)%R = (gauss_integral_proof.integral0y_gauss * 2)%R.
+  rewrite /Rintegral ge0_symfun_integralT//=; last 3 first.
   - by move=> x; rewrite gauss_fun_ge0.
   - exact: continuous_gauss_fun.
   - (* TODO: lemma? *) by move=> x; rewrite /gauss_fun fctE sqrrN.
@@ -2778,7 +2160,7 @@ rewrite -[LHS]add0r [LHS]EFinK.
 rewrite [RHS]EFinK.
 congr (fine _).
 rewrite EFinB.
-have cdJ x : {for x, continuous (fun x1 : R => (- 2 * integral0y_gauss * gauss_fun x1)%R)}.
+have cdJ x : {for x, continuous (fun x1 : R => (- 2 * gauss_integral_proof.integral0y_gauss * gauss_fun x1)%R)}.
   apply: continuousM; first exact: cvg_cst.
   by move=> ?; exact: continuous_gauss_fun.
 rewrite -Leibniz.integral_u0.
