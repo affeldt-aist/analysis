@@ -560,4 +560,43 @@ apply: minkowski => //.
 apply: measurableT_comp => //.
 Qed.
 
+Lemma le_ess_sup (f g : T -> R) : measurable_fun setT f -> measurable_fun setT g -> (forall x, f x <= g x)%R -> ess_sup mu f <= ess_sup mu g.
+Proof.
+rewrite /ess_sup => mf mg h.
+apply: le_ereal_inf => x [r]/= mu0 rx.
+exists r => //.
+move: mu0.
+apply: subset_measure0.
+- by rewrite -[X in _ X]setTI; exact: mf.
+- by rewrite -[X in _ X]setTI; exact: mg.
+move=> t/=.
+rewrite !in_itv !andbT/= => fgtt.
+by rewrite (lt_le_trans fgtt)//.
+Qed.
+
+Lemma ess_sup_ger' f x : {ae mu, forall t, x <= (f t)%:E} -> x <= ess_sup mu f.
+Proof.
+Admitted.
+
+Lemma ess_supD (f g : T -> R) : ess_sup mu (normr \o f \+ (normr \o g)) <= ess_sup mu (normr \o f) + ess_sup mu (normr \o g).
+Proof.
+(* from: https://people.math.sc.edu/schep/Banach.pdf theorem 3 *)
+have h1 := fun x => @ler_normD _ _ (f x) (g x).
+suffices: exists x, {ae mu, forall t, x <= ((normr \o f) t)%:E}.
+  admit.
+Admitted.
+
+Lemma minkowskie (f g : {mfun T >-> R}) (p : \bar R) :
+  measurable_fun setT f -> measurable_fun setT g -> 1 <= p ->
+  'N_p[(f \+ g)%R] <= 'N_p[f] + 'N_p[g].
+Proof.
+case: p => //[r|]; first exact: minkowski.
+move=> mf mg _.
+rewrite unlock /Lnorm.
+case: ifPn => mugt0; last by rewrite adde0 lexx.
+apply: (le_trans _ (ess_supD _ _)).
+apply: le_ess_sup => //[|x]; first exact: measurable_funD.
+exact: ler_normD.
+Qed.
+
 End minkowski.
