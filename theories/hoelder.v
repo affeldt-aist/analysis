@@ -560,7 +560,9 @@ apply: minkowski => //.
 apply: measurableT_comp => //.
 Qed.
 
-Lemma le_ess_sup (f g : T -> R) : measurable_fun setT f -> measurable_fun setT g -> (forall x, f x <= g x)%R -> ess_sup mu f <= ess_sup mu g.
+Lemma le_ess_sup (f g : T -> R) :
+  measurable_fun setT f -> measurable_fun setT g ->
+    (forall x, f x <= g x)%R -> ess_sup mu f <= ess_sup mu g.
 Proof.
 rewrite /ess_sup => mf mg h.
 apply: le_ereal_inf => x [r]/= mu0 rx.
@@ -578,13 +580,56 @@ Lemma ess_sup_ger' f x : {ae mu, forall t, x <= (f t)%:E} -> x <= ess_sup mu f.
 Proof.
 Admitted.
 
-Lemma ess_supD (f g : T -> R) : ess_sup mu (normr \o f \+ (normr \o g)) <= ess_sup mu (normr \o f) + ess_sup mu (normr \o g).
+Lemma ereal_infD (P Q : set R) :
+  ereal_inf [set x%:E | x in [set y | exists xy, P xy.1 /\ Q xy.2 /\ y = xy.1+ xy.2]] <= 
+    ereal_inf [set x%:E | x in P] + ereal_inf [set x%:E | x in Q].
+Proof.
+
+Admitted.
+
+Lemma ess_supD' (f g : T -> R) :
+  ess_sup mu (f \+ g) <= ess_sup mu f + ess_sup mu g.
+Proof.
+rewrite /ess_sup.
+apply: (le_trans _ (ereal_infD _ _)).
+apply: le_ereal_inf => x/= [t] [[r1 r2]/= [mr1 [mr2]]] -> <-.
+exists (r1 + r2) => //.
+have h: (f @^-1` `]r1, +oo[) `&` (g @^-1` `]r2, +oo[) `<=` ((f \+ g) @^-1` `](r1 + r2), +oo[).
+  move=> y.
+  rewrite /preimage/= !in_itv !andbT /=.
+  admit.
+apply/eqP. rewrite eq_le measure_ge0 andbT.
+have h1 : mu (f @^-1` `]r1, +oo[ `&` g @^-1` `]r2, +oo[) <= mu ((f \+ g) @^-1` `](r1 + r2), +oo[).
+  apply: le_measure. admit. admit. exact: h.
+
+(* move: (le_measure mu _ _ h). *)
+
+(* move: mr1 mr2. *)
+(* rewrite /preimage/=. *)
+(* under eq_set do rewrite in_itv andbT/=. *)
+Admitted.
+
+Lemma ess_supD (f g : T -> R) :
+  ess_sup mu (normr \o (f \+ g)) <=
+    ess_sup mu (normr \o f) + ess_sup mu (normr \o g).
 Proof.
 (* from: https://people.math.sc.edu/schep/Banach.pdf theorem 3 *)
 have h1 := fun x => @ler_normD _ _ (f x) (g x).
-suffices: exists x, {ae mu, forall t, x <= ((normr \o f) t)%:E}.
-  admit.
+apply: (@le_trans _ _ (ess_sup mu (normr \o f \+ (normr \o g)))).
+apply: le_ess_sup => //. admit. admit.
+rewrite ess_supD' lexx.
 Admitted.
+(* rewrite /ess_sup. *)
+(* apply: ereal_inf_lbound => /=. *)
+(* apply: (@le_trans _ _ (ess_sup mu (normr \o (f \+ g)))). *)
+(* apply : le_ereal_inf => x/=[r mur <-{x}]. *)
+(* exists r => //. *)
+(* apply/eqP. *)
+(* rewrite eq_le measure_ge0 andbT -mur le_measure// ?inE. admit. admit. *)
+(* move=> t/=. *)
+(* rewrite !in_itv !andbT/=. *)
+(* move/lt_le_trans. *)
+(* apply. *)
 
 Lemma minkowskie (f g : {mfun T >-> R}) (p : \bar R) :
   measurable_fun setT f -> measurable_fun setT g -> 1 <= p ->
@@ -594,6 +639,7 @@ case: p => //[r|]; first exact: minkowski.
 move=> mf mg _.
 rewrite unlock /Lnorm.
 case: ifPn => mugt0; last by rewrite adde0 lexx.
+exact: ess_supD.
 apply: (le_trans _ (ess_supD _ _)).
 apply: le_ess_sup => //[|x]; first exact: measurable_funD.
 exact: ler_normD.
