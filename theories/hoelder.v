@@ -576,62 +576,7 @@ rewrite !in_itv !andbT/= => fgtt.
 by rewrite (lt_le_trans fgtt)//.
 Qed.
 
-Lemma ess_sup_ger' f x : {ae mu, forall t, x <= (f t)%:E} -> x <= ess_sup mu f.
-Proof.
-Admitted.
-
-Lemma ereal_infD (P Q : set R) :
-  ereal_inf [set x%:E | x in [set y | exists xy, P xy.1 /\ Q xy.2 /\ y = xy.1+ xy.2]] <= 
-    ereal_inf [set x%:E | x in P] + ereal_inf [set x%:E | x in Q].
-Proof.
-
-Admitted.
-
-Lemma ess_supD' (f g : T -> R) :
-  ess_sup mu (f \+ g) <= ess_sup mu f + ess_sup mu g.
-Proof.
-rewrite /ess_sup.
-apply: (le_trans _ (ereal_infD _ _)).
-apply: le_ereal_inf => x/= [t] [[r1 r2]/= [mr1 [mr2]]] -> <-.
-exists (r1 + r2) => //.
-have h: (f @^-1` `]r1, +oo[) `&` (g @^-1` `]r2, +oo[) `<=` ((f \+ g) @^-1` `](r1 + r2), +oo[).
-  move=> y.
-  rewrite /preimage/= !in_itv !andbT /=.
-  admit.
-apply/eqP. rewrite eq_le measure_ge0 andbT.
-have h1 : mu (f @^-1` `]r1, +oo[ `&` g @^-1` `]r2, +oo[) <= mu ((f \+ g) @^-1` `](r1 + r2), +oo[).
-  apply: le_measure. admit. admit. exact: h.
-
-(* move: (le_measure mu _ _ h). *)
-
-(* move: mr1 mr2. *)
-(* rewrite /preimage/=. *)
-(* under eq_set do rewrite in_itv andbT/=. *)
-Admitted.
-
-Lemma ess_supD (f g : T -> R) :
-  ess_sup mu (normr \o (f \+ g)) <=
-    ess_sup mu (normr \o f) + ess_sup mu (normr \o g).
-Proof.
-(* from: https://people.math.sc.edu/schep/Banach.pdf theorem 3 *)
-have h1 := fun x => @ler_normD _ _ (f x) (g x).
-apply: (@le_trans _ _ (ess_sup mu (normr \o f \+ (normr \o g)))).
-apply: le_ess_sup => //. admit. admit.
-rewrite ess_supD' lexx.
-Admitted.
-(* rewrite /ess_sup. *)
-(* apply: ereal_inf_lbound => /=. *)
-(* apply: (@le_trans _ _ (ess_sup mu (normr \o (f \+ g)))). *)
-(* apply : le_ereal_inf => x/=[r mur <-{x}]. *)
-(* exists r => //. *)
-(* apply/eqP. *)
-(* rewrite eq_le measure_ge0 andbT -mur le_measure// ?inE. admit. admit. *)
-(* move=> t/=. *)
-(* rewrite !in_itv !andbT/=. *)
-(* move/lt_le_trans. *)
-(* apply. *)
-
-Lemma minkowskie (f g : {mfun T >-> R}) (p : \bar R) :
+Lemma minkowskie (f g : T -> R) (p : \bar R) :
   measurable_fun setT f -> measurable_fun setT g -> 1 <= p ->
   'N_p[(f \+ g)%R] <= 'N_p[f] + 'N_p[g].
 Proof.
@@ -639,10 +584,8 @@ case: p => //[r|]; first exact: minkowski.
 move=> mf mg _.
 rewrite unlock /Lnorm.
 case: ifPn => mugt0; last by rewrite adde0 lexx.
-exact: ess_supD.
-apply: (le_trans _ (ess_supD _ _)).
-apply: le_ess_sup => //[|x]; first exact: measurable_funD.
-exact: ler_normD.
+apply: ess_supD => //.
+all: by rewrite gt_eqF// (lt_le_trans ltNy0)// ess_sup_ger// => x/=; rewrite lee_fin normr_ge0.
 Qed.
 
 End minkowski.
