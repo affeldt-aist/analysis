@@ -1415,39 +1415,33 @@ Section near_ereal_nondecreasing_is_cvgn.
 
 Let G N := ([set n | (N <= n)%N]).
 
-Lemma near_ereal_nondecreasing_is_cvgn (R : realType) (u_ : (\bar R) ^nat) :
-  (\forall N \near \oo, {in G N &, nondecreasing_seq u_ }) -> cvgn u_.
+Lemma ereal_shiftn_nondecreasing_cvgn (R : realType) (u_ : (\bar R)^nat)
+ (N : nat) :
+(* \forall N \near \oo, {in G N &, nondecreasing_seq u_ }
+      -> u_ @ \oo --> ereal_sup (range (fun n => u_ (n + N))).
+*)
+{in G N &, nondecreasing_seq u_ }
+      -> u_ @ \oo --> ereal_sup (range (fun n => u_ (n + N))).
 Proof.
-move=> [N _ H].
-apply/cvg_ex.
-exists (ereal_sup (range (fun n =>  u_ (n + N)))).
+move=> H.
 rewrite -(cvg_shiftn N).
 apply: ereal_nondecreasing_cvgn.
-move=> n m nm.
-apply: (H N); rewrite /G ?inE//=.
+move=> k m km.
+apply: H; rewrite /G ?inE//=.
 - exact: leq_addl.
 - exact: leq_addl.
 - exact: leq_add.
 Qed.
 
-Lemma near_ereal_nondecreasing_cvgn (R : realType) (u_ : (\bar R)^nat) :
-(*
-   (\forall N \near \oo, {in G N &, nondecreasing_seq u_ })
-      -> u_ @ \oo --> limn u_. (* ereal_sup range ? *)
-*)
-\forall N \near \oo, {in G N &, nondecreasing_seq u_ }
-      -> u_ @ \oo --> ereal_sup (range (fun n => u_ (n + N))).
+Lemma near_ereal_nondecreasing_is_cvgn (R : realType) (u_ : (\bar R) ^nat) :
+  (\forall N \near \oo, {in G N &, nondecreasing_seq u_ }) -> cvgn u_.
 Proof.
-near=> N.
-(*
-move=> [N _ H].
+move=> [] N _ H.
 apply/cvg_ex.
-exists (limn (fun n => u_ (n + N))).
-rewrite -(cvg_shiftn N).
-apply: ereal_nondecreasing_cvgn.
-*)
-Abort.
-
+exists (ereal_sup (range (fun n =>  u_ (n + N)))).
+apply: ereal_shiftn_nondecreasing_cvgn.
+by apply: (H N); rewrite /G ?inE/=.
+Qed.
 
 End near_ereal_nondecreasing_is_cvgn.
 
@@ -2034,12 +2028,6 @@ Local Definition normal_prob2 :=
 
 Local Open Scope classical_set_scope.
 Local Open Scope ereal_scope.
-
-Lemma integral_normal_prob (f : R -> \bar R) (m : R) U : measurable U -> measurable_fun U f ->
-  \int[normal_prob2 m]_(x in U) `|f x| < +oo ->
-  \int[normal_prob2 m]_(x in U) f x = \int[mu]_(x in U) (f x * (normal_pdf m s x)%:E) :> \bar R.
-Proof.
-Abort.
 
 Local Close Scope ereal_scope.
 
