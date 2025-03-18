@@ -219,9 +219,8 @@ have intX0 : (X0 : T -> R) \in lfun P 1.
   by apply: intX; rewrite in_cons eqxx.
 have {}intX Xi : Xi \in X -> (Xi : T -> R) \in lfun P 1.
   by move=> XiX; apply: intX; rewrite in_cons XiX orbT.
-rewrite !big_cons expectationD ?IHX//.
-admit.
-Admitted.
+by rewrite !big_cons expectationD ?IHX ?lfun_sum.
+Qed.
 
 End expectation_lemmas.
 #[deprecated(since="mathcomp-analysis 1.8.0", note="renamed to `expectationZl`")]

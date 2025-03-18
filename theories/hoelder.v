@@ -1025,13 +1025,29 @@ Proof.
 by move=> r1 lpf lpg; rewrite (_ : f \- g = f \+ (\- g))// lfunD//= lfunN.
 Qed.
 
-Lemma lfun_cst (mu' : {finite_measure set T -> \bar R}) c r : cst c \in lfun mu' r%:E.
+End Lspace.
+
+Section Lspace.
+Context d (T : measurableType d) (R : realType).
+Variable mu : {finite_measure set T -> \bar R}.
+
+Lemma lfun_cst c r : cst c \in lfun mu r%:E.
 Proof.
 rewrite inE; apply/andP; split; rewrite inE//= /finite_norm unlock/Lnorm poweR_lty//.
 under eq_integral => x _/= do rewrite (_ : `|c| `^ r = cst (`|c| `^ r) x)//.
-have /integrableP[_/=] := finite_measure_integrable_cst mu' (`|c| `^ r).
+have /integrableP[_/=] := finite_measure_integrable_cst mu (`|c| `^ r).
 under eq_integral => x _ do rewrite ger0_norm ?powR_ge0//.
 by [].
+Qed.
+
+Lemma lfun_sum (F : seq {mfun T >-> R}) r :
+    (forall Fi, Fi \in F -> (Fi : T -> R) \in lfun mu r%:E) ->
+    (1 <= r)%R ->
+  (\sum_(Fi <- F) Fi : T -> R) \in lfun mu r%:E.
+Proof.
+elim: F => //=[_|F0 F ih lpF r1]; first by rewrite big_nil lfun_cst.
+rewrite big_cons lfunD//; first by rewrite lpF ?mem_head.
+by rewrite ih// => Fi FiF; rewrite lpF ?in_cons ?FiF ?orbT.
 Qed.
 
 End Lspace.
