@@ -45,11 +45,6 @@ From mathcomp Require Import lebesgue_integral numfun exp convex ess_sup_inf.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-Import Order.TTheory GRing.Theory Num.Def Num.Theory.
-Import numFieldTopology.Exports.
-
-Local Open Scope classical_set_scope.
-Local Open Scope ring_scope.
 
 Reserved Notation "'N[ mu ]_ p [ F ]"
   (at level 5, F at level 36, mu at level 10,
@@ -59,7 +54,15 @@ Reserved Notation "'N_ p [ F ]"
   (at level 5, F at level 36, format "'[' ''N_' p '/  ' [ F ] ']'").
 Reserved Notation "mu .-Lspace p" (at level 4, format "mu .-Lspace  p").
 
+Reserved Notation "f '\in' 'lfun' mu p" (mu, p at level 9).
+
 Declare Scope Lnorm_scope.
+
+Import Order.TTheory GRing.Theory Num.Def Num.Theory.
+Import numFieldTopology.Exports.
+
+Local Open Scope classical_set_scope.
+Local Open Scope ring_scope.
 
 Local Open Scope ereal_scope.
 HB.lock Definition Lnorm {d} {T : measurableType d} {R : realType}
@@ -744,13 +747,15 @@ Proof. by move=> x /andP[]. Qed.
 
 End lfun_pred.
 
+Notation "f '\in' 'lfun' mu p" := (in_mem (f : _ -> _) (mem (lfun mu p))).
+
 Section lfun.
 Context d (T : measurableType d) (R : realType).
 Variables (mu : {measure set T -> \bar R}) (p : \bar R) (p1 : (1 <= p)%E).
 
-Notation lfun := (@lfun _ T R mu p).
+Notation lfunp := (@lfun _ T R mu p).
 Section Sub.
-Context (f : T -> R) (fP : f \in lfun).
+Context (f : T -> R) (fP : f \in lfunp).
 Definition lfun_Sub1_subproof :=
   @isMeasurableFun.Build d _ T R f (set_mem (sub_lfun_mfun fP)).
 #[local] HB.instance Definition _ := lfun_Sub1_subproof.
@@ -764,16 +769,16 @@ Definition lfun_Sub : LfunType mu p1 := f.
 End Sub.
 
 Lemma lfun_rect (K : LfunType mu p1 -> Type) :
-  (forall f (Pf : f \in lfun), K (lfun_Sub Pf)) -> forall u, K u.
+  (forall f (Pf : f \in lfunp), K (lfun_Sub Pf)) -> forall u, K u.
 Proof.
 move=> Ksub [f [[Pf1] [Pf2]]].
-have Pf : f \in lfun by apply/andP; rewrite ?inE.
+have Pf : f \in lfunp by apply/andP; rewrite ?inE.
 have -> : Pf1 = set_mem (sub_lfun_mfun Pf) by [].
 have -> : Pf2 = set_mem (sub_lfun_finlfun Pf) by [].
 exact: Ksub.
 Qed.
 
-Lemma lfun_valP f (Pf : f \in lfun) : lfun_Sub Pf = f :> (_ -> _).
+Lemma lfun_valP f (Pf : f \in lfunp) : lfun_Sub Pf = f :> (_ -> _).
 Proof. by []. Qed.
 
 HB.instance Definition _ :=
@@ -794,7 +799,7 @@ HB.instance Definition _ := @isLfun.Build d T R mu p p1 (cst 0) lfuny0.
 Lemma mfunP (f : {mfun T >-> R}) : (f : T -> R) \in mfun.
 Proof. exact: valP. Qed.
 
-Lemma lfunP (f : LfunType mu p1) : (f : T -> R) \in lfun.
+Lemma lfunP (f : LfunType mu p1) : (f : T -> R) \in lfunp.
 Proof. exact: valP. Qed.
 
 Lemma mfun_scaler_closed : scaler_closed (@mfun _ _ T R).
@@ -827,16 +832,16 @@ case: p p1 f => //[r r1 f|? f].
   by rewrite normrZ EFinM.
 Qed.
 
-Lemma lfun_oppr_closed : oppr_closed lfun.
+Lemma lfun_oppr_closed : oppr_closed lfunp.
 Proof.
 move=> f /andP[mf /[!inE] lf].
 by rewrite rpredN/= mf/= inE/= /finite_norm oppr_Lnorm.
 Qed.
 
-HB.instance Definition _ := GRing.isOppClosed.Build _ lfun
+HB.instance Definition _ := GRing.isOppClosed.Build _ lfunp
   lfun_oppr_closed.
 
-Lemma lfun_submod_closed : submod_closed lfun.
+Lemma lfun_submod_closed : submod_closed lfunp.
 Proof.
 split.
   by rewrite -[0]/(cst 0); exact: lfunP.
@@ -851,7 +856,7 @@ apply: mem_set => /=; apply: (le_lt_trans (eminkowski _ _ _ _)) => //.
   by rewrite LnormZ lte_mul_pinfty// ?lee_fin//; exact: lfuny.
 Qed.
 
-HB.instance Definition _ := GRing.isSubmodClosed.Build _ _ lfun
+HB.instance Definition _ := GRing.isSubmodClosed.Build _ _ lfunp
   lfun_submod_closed.
 
 HB.instance Definition _ := [SubChoice_isSubLmodule of LfunType mu p1 by <:].
@@ -915,8 +920,7 @@ Definition LType1 := LType mu (@lexx _ _ 1%E).
 
 Definition LType2 := LType mu (lee1n 2).
 
-Lemma lfun_integrable (f : {mfun T >-> R}) r :
-  1 <= r -> (f : T -> R) \in lfun mu r%:E ->
+Lemma lfun_integrable (f : {mfun T >-> R}) r : 1 <= r -> f \in lfun mu r%:E ->
   mu.-integrable setT (fun x => (`|f x| `^ r)%:E).
 Proof.
 rewrite inE => r0 /andP[_]; rewrite inE/= => lpf.
@@ -930,8 +934,8 @@ apply: le_lt_trans.
 by under eq_integral => x _ do rewrite gee0_abs ?lee_fin ?powR_ge0//.
 Qed.
 
-Lemma lfun1_integrable (f : {mfun T >-> R}) :
-  (f : T -> R) \in lfun mu 1 -> mu.-integrable setT (EFin \o f).
+Lemma lfun1_integrable (f : {mfun T >-> R}) : f \in lfun mu 1 ->
+  mu.-integrable setT (EFin \o f).
 Proof.
 move=> /lfun_integrable => /(_ (lexx _)).
 under eq_fun => x do rewrite powRr1//.
@@ -941,9 +945,8 @@ rewrite (le_lt_trans _ fley)//=.
 by under [leRHS]eq_integral => x _ do rewrite normr_id.
 Qed.
 
-Lemma lfun2_integrable_sqr (f : {mfun T >-> R}) :
-  (f : T -> R) \in lfun mu 2%:E ->
-    mu.-integrable [set: T] (EFin \o (fun x => f x ^+ 2)).
+Lemma lfun2_integrable_sqr (f : {mfun T >-> R}) : f \in lfun mu 2%:E ->
+  mu.-integrable [set: T] (EFin \o (fun x => f x ^+ 2)).
 Proof.
 rewrite inE => /andP[_]; rewrite inE/= => l2f.
 apply/integrableP; split.
@@ -967,8 +970,8 @@ rewrite gt0_ler_poweR//.
 Qed.
 
 Lemma lfun2M2_1 (f g : {mfun T >-> R}) :
-    (f : T -> R) \in lfun mu 2%:E -> (g : T -> R) \in lfun mu 2%:E ->
-  (f \* g : T -> R) \in lfun mu 1.
+    f \in lfun mu 2%:E -> g \in lfun mu 2%:E ->
+  f \* g \in lfun mu 1.
 Proof.
 move=> l2f l2g.
 rewrite inE; apply/andP; split; rewrite inE//=.
@@ -980,8 +983,8 @@ by move: l2f; rewrite inE => /andP[_]; rewrite inE/=.
 by move: l2g; rewrite inE => /andP[_]; rewrite inE/=.
 Qed.
 
-Lemma lfunp_scale (f : {mfun T >-> R}) a r :
-  1 <= r -> (f : T -> R) \in lfun mu r%:E -> (a \o* f) \in lfun mu r%:E.
+Lemma lfunp_scale (f : {mfun T >-> R}) a r : 1 <= r -> f \in lfun mu r%:E ->
+  (a \o* f) \in lfun mu r%:E.
 Proof.
 move=> r1 lpf.
 rewrite inE; apply/andP; split; rewrite inE//=.
