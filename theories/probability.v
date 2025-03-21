@@ -436,19 +436,19 @@ rewrite [X in 'E_P[X]](_ : _ = cst 0%R) ?expectation_cst//.
 by apply/funext => x; rewrite /GRing.exp/GRing.mul/= subrr mulr0.
 Qed.
 
-Lemma varianceZ a (X : {RV P >-> R}) :
-    (X : T -> R) \in lfun P 2%:E ->
+Lemma varianceZ a (X : {RV P >-> R}) : (X : T -> R) \in lfun P 2%:E ->
   'V_P[(a \o* X)%R] = (a ^+ 2)%:E * 'V_P[X].
 Proof.
 move=> X2.
 have Pfin : P setT \is a fin_num := fin_num_measure P _ measurableT.
 have X1 := lfun_inclusion12 Pfin X2.
-rewrite /variance covarianceZl ?covarianceZr ?lfun2M2_1 ?lfunp_scale ?ler1n//.
-by rewrite muleA EFinM.
+rewrite /variance covarianceZl//=.
+- by rewrite covarianceZr// ?muleA ?EFinM// lfun2M2_1.
+- by rewrite lfunp_scale.
+- by rewrite lfun2M2_1// lfunp_scale// ler1n.
 Qed.
 
-Lemma varianceN (X : {RV P >-> R}) :
-    (X : T -> R) \in lfun P 2%:E ->
+Lemma varianceN (X : {RV P >-> R}) : (X : T -> R) \in lfun P 2%:E ->
   'V_P[(\- X)%R] = 'V_P[X].
 Proof.
 move=> X2.
