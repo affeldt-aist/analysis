@@ -300,10 +300,68 @@ apply: mulr_ge0; last exact: expR_ge0.
 by rewrite invr_ge0 ltW.
 Qed.
 
+Lemma measurable_exponential_pdf : measurable_fun setT exponential_pdf.
+Proof.
+apply/measurable_restrict => //; apply: measurable_funTS.
+apply: measurable_funM => //.
+apply: measurableT_comp => //.
+exact: measurable_funM.
+Qed.
+
+Lemma continuous_exponential_pdf' : continuous exponential_pdf'.
+Proof.
+move=> x.
+rewrite /exponential_pdf'.
+apply (@continuousM _ R^o _ (fun x0 => (expR (- x0 / mean)))).
+  exact: cst_continuous.
+apply: continuous_comp; last exact: continuous_expR.
+apply: continuousM; last exact: cst_continuous.
+exact: (@opp_continuous _ R^o).
+Qed.
+
+Lemma in_continuous_exponential_pdf : {in `]0, +oo[%R, continuous exponential_pdf}.
+Proof.
+move=> x; rewrite in_itv/= andbT => x0.
+rewrite /continuous_at.
+apply/(@cvgrPdist_le _ R^o).
+move=> e e0.
+near=> y.
+rewrite /exponential_pdf !patchE.
+rewrite 2?ifT; last 2 first.
+    rewrite inE/= in_itv/= andbT.
+    apply: ltW.
+    near: y.
+    exact: lt_nbhsr.
+  by rewrite inE/= in_itv/= andbT ltW.
+near: y.
+move: e e0.
+apply/(@cvgrPdist_le _ R^o).
+apply: continuous_comp => //.
+apply: continuousM; first exact: cst_continuous.
+apply: continuous_comp; last exact: continuous_expR.
+apply: continuousM; last exact: cst_continuous.
+exact: (@opp_continuous _ R^o).
+Unshelve. end_near. Qed.
+
+Lemma within_continuous_exponential_pdf : {within [set` `[0, +oo[%R],
+  continuous exponential_pdf}.
+Proof.
+apply/continuous_within_itvcyP; split.
+  exact: in_continuous_exponential_pdf.
+apply/(@cvgrPdist_le _ R^o).
+move=> e e0.
+near=> t.
+rewrite /exponential_pdf 2!patchE 2?ifT; last 2 first.
+    by rewrite inE/= in_itv/= andbT ltW.
+  by rewrite inE/= boundl_in_itv.
+near: t; move: e e0; apply/cvgrPdist_le.
+apply: cvg_at_right_filter.
+apply: continuous_exponential_pdf'.
+Unshelve. end_near. Qed.
+
 End exponential_pdf.
 
-Definition exponential {R : realType} (m : R)
-  of \int[@lebesgue_measure R]_x (exponential_pdf m x)%:E = 1%E : set _ -> \bar R :=
+Definition exponential {R : realType} (m : R) :=
   fun V => (\int[lebesgue_measure]_(x in V) (exponential_pdf m x)%:E)%E.
 
 Section exponential.
@@ -314,13 +372,98 @@ Notation mu := lebesgue_measure.
 Variable (mean : R).
 Hypothesis mean0 : (0 < mean)%R.
 
-Hypothesis integrable_exponential : forall (m : R), (0 < m)%R ->
-  mu.-integrable [set: _] (EFin \o (exponential_pdf m)).
+Lemma derive1_exponential_in_itvcy : {in `]0, +oo[,
+(fun x1 : R => - (expR : R^o -> R^o) (- x1 / mean))^`() =1 exponential_pdf mean}.
+Proof.
+move=> z .
+rewrite in_itv/= andbT => z0.
+rewrite derive1_comp//.
+rewrite derive1N//.
+rewrite derive1_id.
+rewrite derive1_comp//.
+rewrite derive1Mr// derive1N// derive1_id.
+rewrite mulNr mul1r -2!mulrN opprK mulr1.
+rewrite mulrC derive1E.
+have/funeqP -> := @derive_expR R.
+rewrite /exponential_pdf patchE ifT//.
+by rewrite inE/= in_itv/= andbT ltW.
+Qed.
 
-Hypothesis integral_exponential_pdf : forall (m : R), (0 < m)%R ->
-  (\int[mu]_x (exponential_pdf m x)%:E = 1)%E.
+Lemma exponential_itv_0bnd (x : R) : (0 < x)%R ->
+  exponential mean `[0, x] = (1 - (expR (- x / mean))%:E)%E.
+Proof.
+move=> x0.
+rewrite (_: 1 = - (- expR (- 0%R / mean))%:E)%E; last first.
+  by rewrite mulNr mul0r oppr0 expR0 EFinN oppeK.
+rewrite addeC.
+apply: (@continuous_FTC2 _ _ (fun x => - (expR (- x / mean)))) => //.
+    apply: (@continuous_subspaceW R^o _ _ [set` `[0, +oo[%R]).
+      by apply: subset_itvl; rewrite bnd_simp.
+    exact: within_continuous_exponential_pdf.
+  split.
+  - by move=> z _; apply: ex_derive.
+  - apply: cvg_at_right_filter.
+    apply: (@continuousN _ R^o R^o (fun z => expR (- z / mean))).
+    apply: continuous_comp; last exact: continuous_expR.
+    apply: continuousM; last exact: cst_continuous.
+    exact: opp_continuous.
+  - apply: cvg_at_left_filter.
+    apply: (@continuousN _ R^o R^o (fun z => expR (- z / mean))).
+    apply: continuous_comp; last exact: continuous_expR.
+    apply: continuousM; last exact: cst_continuous.
+    exact: opp_continuous.
+move=> z; rewrite in_itv/= => /andP[z0 _].
+apply: derive1_exponential_in_itvcy.
+by rewrite in_itv/= andbT.
+Qed.
 
-Local Notation exponential := (exponential (integral_exponential_pdf mean0)).
+Lemma integral_exponential_pdf :
+  (\int[mu]_x (exponential_pdf mean x)%:E = 1)%E.
+Proof.
+have mEex : measurable_fun setT (EFin \o exponential_pdf mean).
+  apply/measurable_EFinP.
+  exact: measurable_exponential_pdf.
+rewrite -(setUv `[0, +oo[%classic).
+rewrite ge0_integral_setU//; last 4 first.
+        exact: measurableC.
+      by rewrite setUv.
+    by move=> x _; rewrite lee_fin exponential_pdf_ge0.
+  exact/disj_setPCl.
+rewrite [X in _ + X]integral0_eq ?adde0; last first.
+  by move=> x x0; rewrite /exponential_pdf patchE ifF// memNset.
+rewrite (@ge0_continuous_FTC2y _ _
+  (fun x => - (expR (- x / mean))) _ 0)//; last 5 first.
+          by move=> x _; apply: exponential_pdf_ge0.
+        exact: within_continuous_exponential_pdf.
+      rewrite -oppr0; apply: (@cvgN _ R^o).
+      rewrite (_: (fun x => expR (- x / mean)) =
+                    (fun z => expR (- z)) \o (fun z => z / mean)); last first.
+        by apply: eq_fun => x; rewrite mulNr.
+      apply: (@cvg_comp _ R^o _ _ _ _ (pinfty_nbhs R)).
+        apply: gt0_cvgMly => //.
+        by rewrite invr_gt0.
+      exact: cvgr_expR.
+    apply: (@cvgN _ R^o).
+    apply: cvg_at_right_filter.
+    apply: continuous_comp; last exact: continuous_expR.
+    apply: continuousM; first exact: (@opp_continuous _ R^o).
+    exact: cst_continuous.
+  exact: derive1_exponential_in_itvcy.
+by rewrite EFinN oppeK add0e oppr0 mul0r expR0.
+Qed.
+
+Lemma integrable_exponential :
+  mu.-integrable setT (EFin \o (exponential_pdf mean)).
+Proof.
+have mEex : measurable_fun setT (EFin \o exponential_pdf mean).
+  apply/measurable_EFinP.
+  exact: measurable_exponential_pdf.
+apply/integrableP; split => //.
+under eq_integral do rewrite /= ger0_norm ?exponential_pdf_ge0//.
+by rewrite /= integral_exponential_pdf ltry.
+Qed.
+
+Local Notation exponential := (exponential mean).
 
 Let exponential0 : exponential set0 = 0%E.
 Proof. by rewrite /exponential integral_set0. Qed.
@@ -333,7 +476,15 @@ Qed.
 
 Let exponential_sigma_additive : semi_sigma_additive exponential.
 Proof.
-Admitted.
+move=> /= F mF tF mUF; rewrite /exponential; apply: cvg_toP.
+  apply: ereal_nondecreasing_is_cvgn => m n mn.
+  apply: lee_sum_nneg_natr => // k _ _; apply: integral_ge0 => /= x Fkx.
+  by rewrite lee_fin; apply: exponential_pdf_ge0.
+rewrite ge0_integral_bigcup//=.
+- apply/measurable_funTS/measurableT_comp => //.
+  exact: measurable_exponential_pdf.
+- by move=> x _; rewrite lee_fin exponential_pdf_ge0.
+Qed.
 
 HB.instance Definition _ := isMeasure.Build _ _ _
   exponential exponential0 exponential_ge0 exponential_sigma_additive.
