@@ -40,8 +40,29 @@ Definition lambda_prop (lambda : R) :=
     ratr x1 + lambda * ratr y1 = ratr x2 + lambda * ratr y2 ->
     x1 = x2 /\ y1 = y2.
 
+Lemma mulrat_rat (x y : R) : x != 0 -> rational x -> rational (x * y) -> rational y.
+Proof.
+move=> /[swap].
+move=> [n [d ->{x}]] nd0.
+move=> [n' [d' ndy]].
+exists (n' * d), (n * d').
+rewrite !natrM invfM.
+rewrite !mulrA mulrC !mulrA (mulrC d'%:R^-1) -ndy.
+rewrite -mulrA mulrAC.
+rewrite -[X in _ * X * _]invrK.
+by rewrite invf_div mulfV ?mul1r//.
+Qed.
+
 Lemma lem25 : exists lambda : R, lambda_prop lambda.
 Proof.
+pose l := @trigo.pi R.
+exists l => x1 x2 y1 y2.
+move=> /eqP.
+rewrite -subr_eq -addrA addrC eq_sym -subr_eq -mulrBr => xy12.
+apply: contrapT => /not_andP[/eqP x12|/eqP y12].
+  
+
+
 Admitted.
 
 End lem25.
