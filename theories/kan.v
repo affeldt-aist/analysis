@@ -40,17 +40,47 @@ Definition lambda_prop (lambda : R) :=
     ratr x1 + lambda * ratr y1 = ratr x2 + lambda * ratr y2 ->
     x1 = x2 /\ y1 = y2.
 
+Lemma rationalP (x : R) : rational x <-> exists m n : int, x = (m%:~R / n%:~R)%R.
+Proof.
+split.
+  move=> [n [d ->]].
+  by exists n, d.
+move=> [n [d ->]].
+have [d0|d0] := lerP 0 d.
+- exists n, `|d|%N; congr (_ / _)%R.
+  rewrite natr_absz.
+  by rewrite ger0_norm.
+- exists (- n), `|d|%N.
+  rewrite intrN.
+  rewrite mulNr.
+  rewrite -mulrN.
+  rewrite -invrN.
+  congr (_ / _).
+  rewrite natr_absz ltr0_norm//.
+  by rewrite intrN opprK.
+Qed.
+
 Lemma mulrat_rat (x y : R) : x != 0 -> rational x -> rational (x * y) -> rational y.
 Proof.
 move=> /[swap].
-move=> [n [d ->{x}]] nd0.
+move/rationalP => [n [d ->{x}]] nd0.
 move=> [n' [d' ndy]].
+apply/rationalP.
 exists (n' * d), (n * d').
-rewrite !natrM invfM.
+rewrite !intrM invfM.
 rewrite !mulrA mulrC !mulrA (mulrC d'%:R^-1) -ndy.
 rewrite -mulrA mulrAC.
 rewrite -[X in _ * X * _]invrK.
-by rewrite invf_div mulfV ?mul1r//.
+by rewrite invf_div mulfV ?mul1r.
+Qed.
+
+Lemma rational_ratr (x : rat) : rational (ratr x : R).
+Proof.
+have [n d nd] := ratP x.
+apply/rationalP.
+exists n, d.+1.
+rewrite fmorph_div//=.
+by rewrite !ratr_int.
 Qed.
 
 Lemma lem25 : exists lambda : R, lambda_prop lambda.
@@ -58,14 +88,42 @@ Proof.
 pose l := @trigo.pi R.
 exists l => x1 x2 y1 y2.
 move=> /eqP.
-rewrite -subr_eq -addrA addrC eq_sym -subr_eq -mulrBr => xy12.
+rewrite -subr_eq -addrA addrC eq_sym -subr_eq -mulrBr => /eqP xy12.
 apply: contrapT => /not_andP[/eqP x12|/eqP y12].
-  
-
-
-Admitted.
+  apply: (@pi_irrationnal R).
+  apply: (@mulrat_rat (ratr (y1 - y2))).
+    rewrite rmorphB/=.
+    rewrite -(@mulIr_eq0 _ l).
+      rewrite mulrC -xy12.
+      rewrite -rmorphB/=.
+      rewrite eq_le ler0q lerq0 -eq_le.
+      by rewrite subr_eq0 eq_sym.
+    apply/rregP.
+    by rewrite gt_eqF// trigo.pi_gt0.
+    exact: rational_ratr.
+    rewrite mulrC rmorphB/= -xy12 -rmorphB.
+    exact: rational_ratr.
+apply: (@pi_irrationnal R).
+apply: (@mulrat_rat (ratr (y1 - y2))).
+  rewrite eq_le ler0q lerq0 -eq_le.
+  by rewrite subr_eq0.
+  exact: rational_ratr.
+  rewrite mulrC rmorphB/= -xy12.
+  rewrite -rmorphB.
+  exact: rational_ratr.
+Qed.
 
 End lem25.
+
+Section lem26.
+Context {R : realType}.
+
+Definition lambda_propn n :=
+  
+  forall x1 x2 y1 y2 : rat,
+    ratr x1 + lambda * ratr y1 = ratr x2 + lambda * ratr y2 ->
+    x1 = x2 /\ y1 = y2.
+
 
 Section kolmogorov_arnold_tuple.
 Context {R : realType}.
