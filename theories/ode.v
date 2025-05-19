@@ -5,7 +5,7 @@ From mathcomp Require Import mathcomp_extra unstable boolp classical_sets.
 From mathcomp Require Import functions reals interval_inference topology.
 From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
 From mathcomp Require Import sequences derive numfun measure lebesgue_measure.
-(*From mathcomp Require Import lebesgue_integral ereal ftc.*)
+From mathcomp Require Import lebesgue_integral ereal ftc.
 
 (**md**************************************************************************)
 (* # ODE                                                                      *)
