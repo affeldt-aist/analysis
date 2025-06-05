@@ -645,7 +645,7 @@ by rewrite integral_cst//= mul1e.
 Qed.
 
 Let measurable_bernoulli_XMonemX01 U :
-   measurable_fun setT (fun x : R => bernoulli_prob (XMonemX01 2 1 x) U).
+   measurable_fun setT (fun x : R => bernoulli_prob (XMonemX01 1 0 x) U).
 Proof.
 apply: (measurableT_comp (measurable_bernoulli_prob2 _)) => //=.
 exact: measurable_XMonemX01.
@@ -668,7 +668,7 @@ transitivity (beta_prob_bernoulli_prob 6 4 1 0 U : \bar R).
     by apply: measurable_funTS => /=; exact: measurable_bernoulli_XMonemX01.
     rewrite integral_beta_prob//=.
     + suff: mu.-integrable `[0%R, 1%R]
-          (fun x => bernoulli_prob (XMonemX01 2 1 x) U * (beta_pdf 6 4 x)%:E)%E.
+          (fun x => bernoulli_prob (XMonemX01 1 0 x) U * (beta_pdf 6 4 x)%:E)%E.
         move=> /integrableP[_].
         under eq_integral.
           move=> x _.
@@ -687,7 +687,7 @@ transitivity (beta_prob_bernoulli_prob 6 4 1 0 U : \bar R).
     + under eq_integral do rewrite gee0_abs//=.
       have : (beta_prob 6 4 `[0%R, 1%R] < +oo :> \bar R)%E.
         by rewrite -ge0_fin_numE// beta_prob_fin_num.
-      by move=> /(@integrable_bernoulli_XMonemX01 2 1 _ (beta_prob 6 4) mU) /integrableP[].
+      by move=> /(@integrable_bernoulli_XMonemX01 1 0 _ (beta_prob 6 4) mU) /integrableP[].
   rewrite [RHS]integral_mkcond.
   apply: eq_integral => x _ /=.
   rewrite patchE.

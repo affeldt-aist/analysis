@@ -62,8 +62,8 @@ From mathcomp Require Import ftc gauss_integral.
 (*    exponential_pdf r == pdf of the exponential distribution with rate r    *)
 (*   exponential_prob r == exponential probability measure                    *)
 (*          XMonemX a b := x ^+ a * `1-x ^+ b                                 *)
-(*        XMonemX01 a b := (XMonemX a.-1 b.-1) \_ `[0, 1]                     *)
-(*         beta_fun a b := \int[mu]_x (XMonemX01 a b x)                       *)
+(*        XMonemX01 a b := (XMonemX a b) \_ `[0, 1]                           *)
+(*         beta_fun a b := \int[mu]_x (XMonemX01 a.-1 b.-1 x)                 *)
 (*             beta_pdf == probability density function for beta              *)
 (*            beta_prob == beta probability measure                           *)
 (* div_beta_fun a b c d := beta_fun (a + c) (b + d) / beta_fun a b            *)
@@ -2995,7 +2995,7 @@ Local Open Scope ring_scope.
 Context {R : realType}.
 Variables a b : nat.
 
-Definition XMonemX01 := (@XMonemX R a.-1 b.-1) \_ `[0, 1].
+Definition XMonemX01 := (@XMonemX R a b) \_ `[0, 1].
 
 Lemma XMonemX01_ge0 t : 0 <= XMonemX01 t.
 Proof.
@@ -3025,19 +3025,18 @@ Qed.
 
 End XMonemX01.
 
-Lemma XMonemX_XMonemX01 {R : realType} a b a' b' (x : R) : (0 < a)%N -> (0 < b)%N ->
+Lemma XMonemX_XMonemX01 {R : realType} a b a' b' (x : R) :
   x \in `[0%R, 1%R]%classic ->
   (XMonemX a' b' x * XMonemX01 a b x = XMonemX01 (a + a') (b + b') x :> R)%R.
 Proof.
-move=> a0 b0 x01; rewrite /XMonemX01 /= !patchE x01.
+move=> x01; rewrite /XMonemX01 /= !patchE x01.
 rewrite mulrCA -mulrA -exprD mulrA -exprD.
 congr (_ ^+ _ * _ ^+ _)%R.
-  by rewrite addnC -!subn1 subDnCA.
-by rewrite -!subn1 subDnCA.
+by rewrite addnC.
 Qed.
 
-Lemma XMonemX01_11 {R : realType} (x : R) : (0 <= x <= 1)%R ->
-  XMonemX01 1 1 x = 1%R.
+Lemma XMonemX01_00 {R : realType} (x : R) : (0 <= x <= 1)%R ->
+  XMonemX01 0 0 x = 1%R.
 Proof.
 by move=> x01; rewrite /XMonemX01 patchE mem_setE in_itv/= x01/= XMonemX00.
 Qed.
@@ -3103,7 +3102,7 @@ Context {R : realType}.
 Notation mu := (@lebesgue_measure R).
 Local Open Scope ring_scope.
 
-Definition beta_fun a b : R := \int[mu]_x (XMonemX01 a b x).
+Definition beta_fun a b : R := \int[mu]_x (XMonemX01 a.-1 b.-1 x).
 
 Lemma beta_fun0 b : (0 < b)%N -> beta_fun 0 b = b%:R ^-1:> R.
 Proof.
@@ -3255,11 +3254,11 @@ Lemma beta_fun11 : beta_fun 1 1 = 1%R :> R.
 Proof. by rewrite (beta_fun1S O) invr1. Qed.
 
 (* NB: this is not exactly beta_fun because EFin *)
-Definition beta_funEFin a b : \bar R := \int[mu]_x (XMonemX01 a b x)%:E.
+Definition beta_funEFin a b : \bar R := \int[mu]_x (XMonemX01 a.-1 b.-1 x)%:E.
 
 (* TODO: consider reversing the equality *)
 Lemma beta_funEFinT a b :
-  (beta_funEFin a b = \int[mu]_(x in `[0%R, 1%R]) (XMonemX01 a b x)%:E)%E.
+  (beta_funEFin a b = \int[mu]_(x in `[0%R, 1%R]) (XMonemX01 a.-1 b.-1 x)%:E)%E.
 Proof. by rewrite /beta_funEFin integral_XMonemX01/= setTI. Qed.
 
 Lemma beta_funEFin_lty a b : (beta_funEFin a b < +oo)%E.
@@ -3277,7 +3276,7 @@ Qed.
 Lemma beta_funEFinE a b : (beta_funEFin a b = (beta_fun a b)%:E :> \bar R)%E.
 Proof. by rewrite -[LHS]fineK ?beta_funEFin_fin_num. Qed.
 
-Lemma integrable_XMonemX01 a b : mu.-integrable setT (EFin \o XMonemX01 a b).
+Lemma integrable_XMonemX01 a b : mu.-integrable setT (EFin \o XMonemX01 a.-1 b.-1).
 Proof.
 apply/integrableP; split.
   by apply/measurable_EFinP; exact: measurable_XMonemX01.
@@ -3295,7 +3294,7 @@ Local Open Scope ring_scope.
 Context {R : realType}.
 Variables a b : nat.
 
-Definition beta_pdf t : R := XMonemX01 a b t / beta_fun a b.
+Definition beta_pdf t : R := XMonemX01 a.-1 b.-1 t / beta_fun a b.
 
 Lemma measurable_beta_pdf : measurable_fun setT beta_pdf.
 Proof. by apply: measurable_funM => //; exact: measurable_XMonemX01. Qed.
@@ -3387,7 +3386,7 @@ Variables a b : nat.
 Local Notation mu := (@lebesgue_measure R).
 
 Let beta_num (U : set (measurableTypeR R)) : \bar R :=
-  \int[mu]_(x in U) (XMonemX01 a b x)%:E.
+  \int[mu]_(x in U) (XMonemX01 a.-1 b.-1 x)%:E.
 
 Let beta_numT : beta_num setT = beta_funEFin a b.
 Proof. by rewrite /beta_num/= -/(beta_funEFin a b) beta_funEFinE. Qed.
@@ -3502,7 +3501,7 @@ rewrite /mscale/= beta_fun11 invr1 !mul1e.
 rewrite integral_XMonemX01 integral_uniform_pdf.
 apply: eq_integral => /= x.
 rewrite inE => -[Ux/=]; rewrite in_itv/= => x10.
-rewrite XMonemX01_11//=.
+rewrite XMonemX01_00//=.
 by rewrite /uniform_pdf x10 subr0 invr1.
 Qed.
 
@@ -3567,7 +3566,8 @@ Lemma beta_prob_integrable_onem {R : realType} a b a' b' :
 Proof.
 apply: (eq_integrable _ (cst 1 \- (fun x : g_sigma_algebraType (R.-ocitv.-measurable) =>
   (XMonemX a' b' x)%:E))%E) => //.
-apply: (@integrableB _ (g_sigma_algebraType R.-ocitv.-measurable)) => //=.
+apply: (@integrableB _ (g_sigma_algebraType R.-ocitv.-measurable))
+=> //=.
   (* TODO: lemma? *)
   apply/integrableP; split => //.
   rewrite (eq_integral (fun x => (\1_setT x)%:E))/=; last first.
@@ -3715,7 +3715,7 @@ by rewrite leq_fact2// leq_addr.
 Qed.
 
 Definition beta_prob_bernoulli_prob a b c d U : \bar R :=
-  \int[beta_prob a b]_(y in `[0, 1]) bernoulli_prob (XMonemX01 c.+1 d.+1 y) U.
+  \int[beta_prob a b]_(y in `[0, 1]) bernoulli_prob (XMonemX01 c d y) U.
 
 Lemma beta_prob_bernoulli_probE a b c d U : (a > 0)%N -> (b > 0)%N ->
   beta_prob_bernoulli_prob a b c d U = bernoulli_prob (div_beta_fun a b c d) U.
@@ -3745,14 +3745,15 @@ congr (_ + _).
   under eq_integral do rewrite EFinM -muleA muleC -muleA.
   rewrite /=.
   transitivity ((beta_fun a b)^-1%:E *
-      \int[mu]_(x in `[0%R, 1%R]) (XMonemX01 (a + c) (b + d) x)%:E : \bar R)%E.
+      \int[mu]_(x in `[0%R, 1%R]) (XMonemX01 (a + c).-1 (b + d).-1 x)%:E : \bar R)%E.
     rewrite -integralZl//=; last first.
       by apply: (integrableS measurableT) => //=; exact: integrable_XMonemX01.
     apply: eq_integral => x x01.
     (* TODO: lemma? property of XMonemX? *)
     rewrite muleA muleC muleA -(EFinM (x ^+ c)).
     rewrite -/(XMonemX c d x) -EFinM mulrA XMonemX_XMonemX01//.
-    by rewrite -EFinM mulrC.
+    rewrite -EFinM mulrC.
+    by move: a a0 b b0 => [//|a] _ [//|b].
   by rewrite -beta_funEFinT beta_funEFinE -EFinM mulrC.
 under eq_integral do rewrite muleC.
 rewrite /=.
@@ -3778,12 +3779,13 @@ rewrite integralZr//=; last first.
   - exact: integrableS (integrable_XMonemX01 _ _).
 transitivity (
   (\int[mu]_(x in `[0%R, 1%R])
-    ((XMonemX01 a b x)%:E - (XMonemX01 (a + c) (b + d) x)%:E) : \bar R)
+    ((XMonemX01 a.-1 b.-1 x)%:E - (XMonemX01 (a + c).-1 (b + d).-1 x)%:E) : \bar R)
   * (beta_fun a b)^-1%:E)%E.
   congr (_ * _)%E.
   apply: eq_integral => x x01.
   rewrite /onem -EFinM mulrBl mul1r EFinB; congr (_ - _)%E.
-  by rewrite XMonemX_XMonemX01.
+  rewrite XMonemX_XMonemX01//.
+  by move: a a0 b b0 => [//|a] _ [//|b].
 rewrite integralB_EFin//=; last 2 first.
   exact: integrableS (integrable_XMonemX01 _ _).
   exact: integrableS (integrable_XMonemX01 _ _).
