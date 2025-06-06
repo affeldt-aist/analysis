@@ -8,7 +8,7 @@ From mathcomp Require Import exp numfun lebesgue_measure lebesgue_integral.
 From mathcomp Require Import reals interval_inference ereal topology normedtype.
 From mathcomp Require Import sequences derive esum measure exp trigo realfun.
 From mathcomp Require Import numfun lebesgue_measure lebesgue_integral kernel.
-From mathcomp Require Import ftc gauss_integral.
+From mathcomp Require Import charge ftc gauss_integral.
 
 (**md**************************************************************************)
 (* # Probability                                                              *)
@@ -2893,6 +2893,54 @@ rewrite (@continuous_FTC2 _ _ (fun x => `1-x ^+ n.+1 / - n.+1%:R))//=.
 Qed.
 
 End about_onemXn.
+
+(* TODO: move to derive.v *)
+Lemma derive1_onem {R : numFieldType} :
+  (fun x => 1 - x : R^o)^`()%classic = cst (-1).
+Proof.
+by apply/funext => x; rewrite derive1E deriveB// derive_id derive_cst sub0r.
+Qed.
+
+(* TODO: move to ftc.v *)
+Section integration_by_substitution_onem.
+Context {R : realType}.
+Let mu := (@lebesgue_measure R).
+Local Open Scope ereal_scope.
+
+Lemma integration_by_substitution_onem (G : R -> R) (r : R) :
+  (0 < r <= 1)%R ->
+  {within `[0%R, r], continuous G} ->
+  (\int[mu]_(x in `[0%R, r]) (G x)%:E =
+  \int[mu]_(x in `[(1 - r)%R, 1%R]) (G (1 - x))%:E).
+Proof.
+move=> r01 cG.
+have := @integration_by_substitution_decreasing R (fun x => 1 - x)%R G (1 - r) 1.
+rewrite subKr subrr => -> //.
+- by apply: eq_integral => x xr; rewrite !fctE derive1_onem opprK mulr1.
+- by rewrite ltrBlDl ltrDr; case/andP : r01.
+- by move=> x y _ _ xy; rewrite ler_ltB.
+- by rewrite derive1_onem; move=> ? ?; exact: cvg_cst.
+- by rewrite derive1_onem; exact: is_cvg_cst.
+- by rewrite derive1_onem; exact: is_cvg_cst.
+- split => /=.
+  + by move=> x xr1; exact: derivableB.
+  + apply: cvg_at_right_filter; rewrite subKr.
+    apply: (@continuous_comp_cvg _ R^o R^o _ (fun x => 1 - x)%R)=> //=.
+      by move=> x; apply: (@continuousB _ R^o)  => //; exact: cvg_cst.
+    by under eq_fun do rewrite subKr; exact: cvg_id.
+  + by apply: cvg_at_left_filter; apply: (@cvgB _ R^o) => //; exact: cvg_cst.
+Qed.
+
+Lemma Rintegration_by_substitution_onem (G : R -> R) (r : R) :
+  (0 < r <= 1)%R ->
+  {within `[0%R, r], continuous G} ->
+  (\int[mu]_(x in `[0%R, r]) (G x) =
+  \int[mu]_(x in `[(1 - r)%R, 1%R]) (G (1 - x)))%R.
+Proof.
+by move=> r01 cG; rewrite [in LHS]/Rintegral integration_by_substitution_onem.
+Qed.
+
+End integration_by_substitution_onem.
 
 (**md about the function $x \mapsto x^a * (1 - x)^b$ *)
 Section XMonemX.
