@@ -141,122 +141,66 @@ Notation "\int [ mu ]_( x $ a ~ b ) f" :=
   (inteitv a b (fun x => f)).
 *)
 
-(*
-HB.factory Record isNormedModule (K : realType) M
-  of Num.NormedZmodule K M := {
-}.
-*)
-(*
-Definition pseudometric (K : realType) (M : normedZmodType K) : Type := M.
+(* We define the type of functions that are continuous over a closed interval *)
 
-HB.instance Definition _ (K : realType) (M : normedZmodType K) :=
-  Choice.on (pseudometric M).
-HB.instance Definition _ (K : realType) (M : normedZmodType K) :=
-  Num.NormedZmodule.on (pseudometric M).
-HB.instance Definition _ (K : realType) (M : normedZmodType K) :=
-  isPointed.Build M 0.
-*)
-(*HB.builders Context K M of isNormedModule K M.*)
+HB.mixin Record isContFunSeg (R : realType) (a b : R) (f : R -> R) :=
+  { contFunSeg : {within `[a, b], continuous f} }.
 
-(*
-Section isnormedmodule.
-Variables (K : realType) (M' : normedZmodType K).
-
-Notation M := (pseudoMetric_normed M').
-
-Local Definition ball (x : M) (r : K) : set M := ball_ Num.norm x r.
-
-Local Definition ent : set_system (M * M) :=
-  entourage_ ball.
-
-Local Definition nbhs (x : M) : set_system M :=
-  nbhs_ ent x.
-
-Local Lemma nbhsE : nbhs = nbhs_ ent. Proof. by []. Qed.
-
-HB.instance Definition _ := hasNbhs.Build M nbhs.
-
-Local Lemma ball_center x (e : K) : 0 < e -> ball x e x.
-Proof. by rewrite /ball/= subrr normr0. Qed.
-
-Local Lemma ball_sym x y (e : K) : ball x e y -> ball y e x.
-Proof. by rewrite /ball /= distrC. Qed.
-
-Local Lemma ball_triangle x y z e1 e2 : ball x e1 y -> ball y e2 z ->
-  ball x (e1 + e2) z.
-Proof.
-rewrite /ball /= => ? ?.
-(*rewrite -[z](subrK y) -addrA. (le_lt_trans (ler_normD _ _))// addrC ltrD.*)
-Admitted.
-
-Local Lemma entourageE : ent = entourage_ ball.
-Proof. by []. Qed.
-
-HB.instance Definition _ := @Nbhs_isPseudoMetric.Build K M
-  ent nbhsE ball ball_center ball_sym ball_triangle entourageE.
-
-(*HB.end.*)
-
-End isnormedmodule.
-*)
-
-HB.mixin Record isContFun (R : realType) (a b : R)
-    (f : R -> R) := {
- (*{fun `[a, b] >-> [set: R]}) := { *)
-  contFun : {within `[a, b], continuous f}
-}.
-
-(* TODO: rename to contFunSegmentType *)
-#[short(type="contFunType")]
-HB.structure Definition ContFun (R : realType) (a b : R) :=
-  {f of isContFun R a b f & @Fun R R `[a, b] [set: R] f}.
+#[short(type="contFunSegType")]
+HB.structure Definition ContFunSeg (R : realType) (a b : R) :=
+  {f of isContFunSeg R a b f & @Fun R R `[a, b] [set: R] f}.
 
 (* TODO: factory Lmodule is normed *)
 
 HB.instance Definition _ (R : realType) (a b : R) :=
-  gen_eqMixin (contFunType a b).
+  gen_eqMixin (contFunSegType a b).
 HB.instance Definition _ (R : realType) (a b : R) :=
-  gen_choiceMixin (contFunType a b).
+  gen_choiceMixin (contFunSegType a b).
 
-Section contfun_pred.
-Context {R: realType}.
-Variable (a b : R).
-Definition contfun : {pred R -> R}
-  := mem [set f | squashed (@ContFun R a b f)].
-Definition contfun_key : pred_key contfun. Proof. exact. Qed.
-Canonical contfun_keyed := KeyedPred contfun_key.
-End contfun_pred.
+Section contfunseg_pred.
+Context {R : realType}.
+Variables a b : R.
+
+Definition contfunseg : {pred R -> R}
+  := mem [set f | squashed (@ContFunSeg R a b f)].
+Definition contfunseg_key : pred_key contfunseg. Proof. exact. Qed.
+Canonical contfunseg_keyed := KeyedPred contfunseg_key.
+
+End contfunseg_pred.
 
 Section contfun.
 Context {R : realType}.
-Variable (a b : R).
-Notation T := (contFunType a b).
+Variables a b : R.
+Notation T := (contFunSegType a b).
 
 Section Sub.
-Context (f : R -> R) (fP : f \in contfun a b).
-Definition contfun_Sub_subproof := unsquash (set_mem fP).
-#[local] HB.instance Definition _ := contfun_Sub_subproof.
-Definition contfun_Sub : contFunType a b := f.
+Context (f : R -> R) (fP : f \in contfunseg a b).
+
+Definition contfunseg_Sub_subproof := unsquash (set_mem fP).
+#[local] HB.instance Definition _ := contfunseg_Sub_subproof.
+Definition contfunseg_Sub : contFunSegType a b := f.
+
 End Sub.
 
-Lemma contfun_rect (K : T -> Type) :
-  (forall f (Pf : f \in contfun a b), K (contfun_Sub Pf)) -> forall u : T, K u.
+Lemma contfunseg_rect (K : T -> Type) :
+  (forall f (Pf : f \in contfunseg a b), K (contfunseg_Sub Pf)) ->
+  forall u : T, K u.
 Proof.
 move=> Ksub [f [[Pf]]]/=.
 suff -> // : Pf = (set_mem (@mem_set _ [set f | _] f Pf)).
 move=> mix.
-admit.
 Admitted.
 
-Lemma contfun_valP f (Pf : f \in contfun a b) : contfun_Sub Pf = f :> (_ -> _).
+Lemma contfunseg_valP f (Pf : f \in contfunseg a b) :
+  contfunseg_Sub Pf = f :> (_ -> _).
 Proof. by []. Qed.
 
-HB.instance Definition _ := isSub.Build _ _ T contfun_rect contfun_valP.
+HB.instance Definition _ := isSub.Build _ _ T contfunseg_rect contfunseg_valP.
 
-Lemma contfuneqP (f g : contFunType a b) : f = g <-> f =1 g.
-Proof. by split=> [->//|fg]; apply/val_inj/funext. Qed.
+Lemma contfunseg_eqP (f g : contFunSegType a b) : f = g <-> f =1 g.
+Proof. by split=> [->//|fg]; exact/val_inj/funext. Qed.
 
-HB.instance Definition _ := [Choice of contFunType a b by <:].
+HB.instance Definition _ := [Choice of contFunSegType a b by <:].
 
 Lemma cst_is_fun x : @isFun R R `[a, b] [set: R] (cst x).
 Proof. by constructor. Qed.
@@ -269,17 +213,17 @@ apply: continuous_subspaceT.
 exact: cst_continuous.
 Qed.
 
-HB.instance Definition _ x := isContFun.Build R a b (@cst R R x)
+HB.instance Definition _ x := isContFunSeg.Build R a b (@cst R R x)
   (@cst_continuous_subspace x).
 
 End contfun.
 
 Section contfun_realType.
 Context {R : realType}.
-Variable (a b : R).
+Variables a b : R.
 
 (*
-HB.instance Definition _ := @isContFun.Build R a b 
+HB.instance Definition _ := @isContFun.Build R a b
 _ _ _ rT
   (@normr rT rT) (@normr_measurable rT setT).
 *)
@@ -309,44 +253,44 @@ End contfun_measurableType.
 Section ring.
 Context {R : realType} (a b : R).
 
-Lemma contfun_subring_closed : subring_closed (@contfun R a b).
+Lemma contfunseg_subring_closed : subring_closed (@contfunseg R a b).
 Proof.
 split=> [|f g|f g]; rewrite !inE/=.
 - apply: squash.
-  exact: ContFun.class.
+  exact: ContFunSeg.class.
 - move=> /unsquash cf /unsquash cg.
   apply: squash.
-  pose f' : contFunType a b  := HB.pack f cf.
-  pose g' : contFunType a b  := HB.pack g cg.
+  pose f' : contFunSegType a b  := HB.pack f cf.
+  pose g' : contFunSegType a b  := HB.pack g cg.
   rewrite [f]/(f' : _ -> _).
   rewrite [g]/(g' : _ -> _).
   move: {f g cf cg} f' g' => f g.
   have isfun_fg : @isFun R R `[a, b] [set: R] (f \- g) by constructor.
-  have iscontfun_fg : @isContFun R a b (f \- g).
+  have iscontfun_fg : @isContFunSeg R a b (f \- g).
     constructor.
     move=> x.
-    by apply: continuousB; exact: contFun.
+    by apply: continuousB; exact: contFunSeg.
   by split.
 - move=> /unsquash cf /unsquash cg.
   apply: squash.
-  pose f' : contFunType a b  := HB.pack f cf.
-  pose g' : contFunType a b  := HB.pack g cg.
+  pose f' : contFunSegType a b  := HB.pack f cf.
+  pose g' : contFunSegType a b  := HB.pack g cg.
   rewrite [f]/(f' : _ -> _).
   rewrite [g]/(g' : _ -> _).
   move: {f g cf cg} f' g' => f g.
   have isfun_fg : @isFun R R `[a, b] [set: R] (f \- g) by constructor.
-  have iscontfun_fg : @isContFun R a b (f \* g).
+  have iscontfun_fg : @isContFunSeg R a b (f \* g).
     constructor.
     move=> x.
-    by apply: (@continuousM _ (subspace `[a, b])); exact: contFun.
+    by apply: (@continuousM _ (subspace `[a, b])); exact: contFunSeg.
   by split.
 Qed.
 
 HB.instance Definition _ := GRing.isSubringClosed.Build _
-  (@contfun R a b) contfun_subring_closed.
-HB.instance Definition _ := [SubChoice_isSubComRing of @contFunType R a b by <:].
+  (@contfunseg R a b) contfunseg_subring_closed.
+HB.instance Definition _ := [SubChoice_isSubComRing of @contFunSegType R a b by <:].
 
-Lemma contfun_scaler_closed : GRing.scaler_closed (@contfun R a b).
+Lemma contfun_scaler_closed : GRing.scaler_closed (@contfunseg R a b).
 Proof.
 move=> r f; rewrite 2!inE/=.
 move/unsquash => [[cf _]].
@@ -360,11 +304,15 @@ exact: cf.
 Qed.
 
 HB.instance Definition _ := GRing.isScaleClosed.Build _ _
-  (@contfun R a b) contfun_scaler_closed.
-HB.howto contFunType lmodType.
+  (@contfunseg R a b) contfun_scaler_closed.
+HB.howto contFunSegType lmodType.
 
-HB.instance Definition _ := [SubZmodule_isSubLmodule of @contFunType R a b by <:].
-Check @contFunType R a b : lmodType _.
+Fail Check @contFunSegType R a b : lmodType _.
+
+HB.instance Definition _ :=
+  [SubZmodule_isSubLmodule of @contFunSegType R a b by <:].
+
+Check @contFunSegType R a b : lmodType _.
 
 (*
 Implicit Types (f g : {contfun aT >-> rT}).
@@ -533,12 +481,12 @@ Context {R : realType} (a b : R).
 Definition infty_norm (f : {fun `[a, b] >-> [set: R]}) :=
   sup ((Num.norm \o f) @` `[a, b]).
 
-Local Notation V := (contFunType a b).
+Local Notation V := (contFunSegType a b).
 
 Local Notation norm := infty_norm.
 
 (* TODO: wait for quotient *)
-Lemma contfuneqP' (f g : contFunType a b) : f = g <-> {in `[a, b], f =1 g}.
+Lemma contFunSeq_eq (f g : contFunSegType a b) : f = g <-> {in `[a, b], f =1 g}.
 Proof.
 split=> [->//|].
 move: f g => [f [[cf]] [funf]] [g [[cg]] [fung]].
@@ -631,55 +579,68 @@ Check M : normedModType R.
 HB.end.
 *)
 
-(* picard_method is mapping from a continuous function to a function by
- * integration. (limn n picard_method (cst 0)) is solution of ODE.
- * For the proof of Picard-Linderl{\"o}f theorem, we should give a instance
- * picard_method : {fun U >-> U} for some subset U of contFunType.
- * the U satisfies
- * * U `<=` `[- d, d],
- * * g @` U `<=` `[- d, d],
+(* The goal is to prove Picard-Lindel{\"o}of's theorem.
+
+   For the proof of Picard-Linderl{\"o}f theorem, we should give an
+   instance picard_to_cont : {fun U >-> U} for some subset U of
+   contFunSegType where U satisfies
+   U `<=` `[- d, d]
+   g @` U `<=` `[- d, d]
+
+   For that purpose, we define a function (picard_to_cont) that maps a
+   function continuous over a segment to a function continuous over
+   the same segment.
+
+   This function is defined by integration.
+
+   `limn n picard_to_cont (cst 0)' is solution of the ODE.
  *)
-Section picard_method.
+
+
+(* first, we define picard_from_cont
+   that takes a function continuous over a closed ball *)
+Section picard_from_cont'.
 Context {R : realType}.
 Local Notation mu := lebesgue_measure.
 Variables (f : R -> R -> R) (d0 : {posnum R}).
 
 Local Notation d := d0%:num.
-Local Notation contFunType x := (contFunType (- x) x).
+Local Notation contFunBallType x := (contFunSegType (- x) x).
 
-Variables (k : R).
-Hypothesis (lcf_x : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}).
-Hypothesis (cf_y : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}).
+Variable k : R.
+(* properties of the function f defining the differential equation: *)
+(* k-lipschitz w.r.t. x *)
+Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
+(* within-continuous w.r.t. x *)
+Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
 
-Definition picard_method_def (g : R -> R)
-  (imageg : g @` `[- d, d] `<=` `[- d, d])
- := (fun t =>
-   (\int[mu]_(x in `[- d, t]) f x (g x))%R
-       - (\int[mu]_(x in `[- d, 0%R]) f x (g x))%R).
+Definition picard_from_cont' (g : R -> R)
+    (imageg : g @` `[- d, d] `<=` `[- d, d]) : R -> R :=
+  fun t => (\int[mu]_(x in `[- d, t]) f x (g x) -
+            \int[mu]_(x in `[- d, 0%R]) f x (g x))%R.
 
-Local Lemma set_fun_picard (g : R -> R)
-  (imageg : g @` `[- d, d] `<=` `[- d, d]) :
-   {homo picard_method_def imageg : x / `[- d, d] x >-> [set: R] x}.
+Local Lemma set_fun_picard_from_cont' (g : R -> R)
+    (imageg : g @` `[- d, d] `<=` `[- d, d]) :
+  {homo picard_from_cont' imageg : x / `[- d, d] x >-> [set: R] x}.
 Proof. by []. Qed.
 
 HB.instance Definition _ (g : R -> R)
-  (imageg : g @` `[- d, d] `<=` `[- d, d]) :=
-    @isFun.Build _ _ `[- d, d] setT (picard_method_def imageg)
-   (set_fun_picard imageg).
+    (imageg : g @` `[- d, d] `<=` `[- d, d]) :=
+  @isFun.Build _ _ `[- d, d] [set: R] (picard_from_cont' imageg)
+    (set_fun_picard_from_cont' imageg).
 
-Local Lemma picard_method_is_contfun (g : (contFunType d))
- (imageg : g @` `[-d, d] `<=` `[- d, d]) :
-  @isContFun R (- d) d (picard_method_def imageg).
+Local Lemma picard_from_cont'_isContFunSegBuild (g : contFunBallType d)
+    (imageg : g @` `[-d, d] `<=` `[- d, d]) :
+  @isContFunSeg R (- d) d (picard_from_cont' imageg).
 Proof.
 constructor.
-(* *)
-rewrite /picard_method_def.
+rewrite /picard_from_cont'.
 move=> x.
 apply: cvgB; last exact: cvg_cst.
 apply: parameterized_integral_continuous; first exact: gtrN.
 apply: continuous_compact_integrable; first exact: segment_compact.
-move{x}.
-apply/continuous_within_itvP; first exact: gtrN; split.
+move=> {x}.
+apply/continuous_within_itvP; [exact: gtrN | split].
 - move=> x; rewrite in_itv/= => /andP[ndx dx].
   apply: continuous2_cvg => //.
   + apply/cvgrPdistC_lep.
@@ -691,23 +652,20 @@ apply/continuous_within_itvP; first exact: gtrN; split.
       by rewrite addrA subrK.
     rewrite (splitr e) lerD//.
       have : {within `[(- d), d], continuous f t.1}.
-        apply: cf_y.
+        apply: cont2.
         admit.
       move/(_ t.2).
       move/cvgrPdist_le.
       move/(_ (e / 2)).
-      rewrite divr_gt0//; move/(_ isT).
+      rewrite divr_gt0// => /(_ isT).
       rewrite /prop_near1/= !nbhsE/=.
-      rewrite /nbhs/=.
-      case.
-      move=> A oA.
+      rewrite /nbhs/= => -[A oA].
       apply.
       admit.
     admit.
   + suff : {in `]- d, d[, continuous g}.
       by apply; rewrite inE/= in_itv/= ndx dx.
-    have : {within `[- d, d], continuous g}.
-      exact: contFun.
+    have : {within `[- d, d], continuous g} by exact: contFunSeg.
     have ndd : - d < d by rewrite gtrN.
     move/(continuous_within_itvP _ ndd) => [cg _ _].
     by move=> r; rewrite inE/=; exact: cg.
@@ -720,190 +678,214 @@ apply/continuous_within_itvP; first exact: gtrN; split.
 - admit.
 Admitted.
 
-HB.instance Definition _ (g : (contFunType d))
-  (imageg : g @` `[- d, d] `<=` `[- d, d]) :=
-(picard_method_is_contfun imageg).
+HB.instance Definition _ (g : contFunBallType d)
+    (imageg : g @` `[- d, d] `<=` `[- d, d]) :=
+  picard_from_cont'_isContFunSegBuild imageg.
 
-Local Lemma continuous_picard_method (g : (contFunType d))
-  (imageg : g @` `[- d, d] `<=` `[- d, d]) :
-  {within `[- d, d], continuous picard_method_def imageg}.
-Proof.
-exact: contFun.
-Qed.
+Local Lemma continuous_picard_from_cont' (g : contFunBallType d)
+    (imageg : g @` `[- d, d] `<=` `[- d, d]) :
+  {within `[- d, d], continuous picard_from_cont' imageg}.
+Proof. exact: contFunSeg. Abort.
 
-End picard_method.
+End picard_from_cont'.
 
-Definition picard_method {R : realType} (f : R -> R -> R) (d0 : {posnum R})
-  ( k : R) (lcf_x : {in `[- d0%:num, d0%:num], forall y, k.-lipschitz (f^~ y)})
-  (cf_y : {in `[- d0%:num, d0%:num], forall x, {within `[-d0%:num, d0%:num], continuous f x}})
- (g : contFunType (- d0%:num) d0%:num)
-  (imageg : g @` `[- d0%:num, d0%:num] `<=` `[- d0%:num, d0%:num]) :=
-match pselect (g @` `[- d0%:num, d0%:num] `<=` `[- d0%:num, d0%:num]) with
-| left imageg => @picard_method_def R f d0 g imageg
+Section picard_from_cont.
+Context {R : realType}.
+Variables (f : R -> R -> R) (d0 : {posnum R}).
+Local Notation d := d0%:num.
+
+Definition picard_from_cont
+  (k : R) (lcf_x : {in `[- d, d], forall y, k.-lipschitz (f^~ y)})
+  (cf_y : {in `[- d, d], forall x, {within `[-d, d], continuous f x}})
+  (g : contFunSegType (- d) d) : R -> R :=
+match pselect (g @` `[- d, d] `<=` `[- d, d]) with
+| left imageg => @picard_from_cont' R f d0 g imageg
 | _ => cst 0
 end.
 
-Section picard_method_def.
+End picard_from_cont.
+
+(* second, we define picard_to_cont
+   that takes a function continuous over a closed ball
+   and returns a function continuous over a closed ball *)
+Section picard_to_cont.
 Context {R : realType}.
 Local Notation mu := lebesgue_measure.
-Variables (f : R -> R -> R) (d0 : {posnum R}).
+Local Notation contFunBallType x := (contFunSegType (- x) x).
+Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
-Local Notation contFunType x := (contFunType (- x) x).
+Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
+Hypothesis cont2 : {in `[- d, d], forall x, {within `[- d, d], continuous f x}}.
 
-Variables ( k : R).
-Hypothesis (lcf_x : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}).
-Hypothesis (cf_y : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}).
+Local Notation picard_from_cont := (@picard_from_cont R f d0 k lip1 cont2).
 
-Lemma iscontfun_picard (g : contFunType d)
- (imageg : g @` `[- d, d] `<=` `[- d, d])
- : {within `[- d, d],
- continuous (@picard_method R f d0 k lcf_x cf_y g imageg)}.
+Lemma set_fun_picard_from_cont (g : contFunBallType d) :
+  set_fun `[-d, d] setT (picard_from_cont g).
 Proof.
 Admitted.
 
-HB.about ContFun.
+HB.instance Definition _ (g : contFunBallType d) := @isFun.Build
+  R R `[-d, d] setT (picard_from_cont g) (set_fun_picard_from_cont g).
 
-HB.instance Definition _ (g : (contFunType d))
-(imageg : g @` `[- d, d] `<=` `[- d, d]) :=
-  @isContFun.Build R (- d) d
-     (@picard_method R f d0 k lcf_x cf_y g imageg)
-     (@iscontfun_picard g imageg).
+Lemma continuous_picard_from_cont (g : contFunBallType d) :
+  {within `[- d, d], continuous (picard_from_cont g)}.
+Proof.
+Admitted.
 
-(*
-HB.instance Definition _ (g : (contFunType d)) :=
-  @isFun.Build _ _ _ _ (picard_method' g) (isfun_picard' g).
+HB.instance Definition _ (g : contFunBallType d) :=
+  @isContFunSeg.Build R (- d) d
+     (picard_from_cont g)
+     (@continuous_picard_from_cont g).
 
-Local Lemma set_fun_picard_method (g : contFunType d)
-   : @isFun _ _ [set: contFunType d] [set: contFunType d]
-   picard_method'.
+Check fun g : contFunBallType d => (picard_from_cont g : contFunBallType d).
 
-Local Lemma set_fun_picard_method :
-   {homo picard_method' : g /
-       contFun_imaged g >-> contFun_imaged g}.
-Proof. by []. Qed.
+Definition picard_to_cont : contFunBallType d -> contFunBallType d :=
+  picard_from_cont.
+
+Lemma set_fun_picard_to_cont : set_fun [set: contFunBallType d] [set: contFunBallType d]
+  picard_from_cont.
+Admitted.
+
+Fail Check picard_to_cont : {fun [set: contFunBallType d] >-> [set: contFunBallType d]}.
 
 HB.instance Definition _ :=
-    @isFun.Build _ _ _ _ picard_method' set_fun_picard_method.
+    @isFun.Build _ _ _ _ picard_to_cont set_fun_picard_to_cont.
 
-Definition picard_method :
-    {fun [set: (contFunType d)] >-> [set: (contFunType d)]}
-  := picard_method'.
-*)
+Check picard_to_cont : {fun [set: contFunBallType d] >-> [set: contFunBallType d]}.
 
-End picard_method_def.
+(* still, we can't state that it is a contraction for typing reasons *)
+Fail Lemma tmp : is_contraction (picard_to_cont
+  : {fun [set: contFunBallType d] >-> [set: contFunBallType d]}).
 
-(*
-Section picard_sketch.
+End picard_to_cont.
+
+Section picard_to_cont_normedtype.
 Context {R : realType}.
 Local Notation mu := lebesgue_measure.
-Local Notation contFunType x := (contFunType (- x) x).
+Local Notation contFunBallType x := (contFunSegType (- x) x).
 
-HB.instance Definition _ {r : R} := PseudoMetric.copy (contFunType r)
-   (pseudoMetric_normed (contFunType r)).
-HB.instance Definition _ {r} := isPointed.Build (contFunType r) (@cst R R 0).
+HB.instance Definition _ {r : R} := PseudoMetric.copy (contFunBallType r)
+   (pseudoMetric_normed (contFunBallType r)).
+HB.instance Definition _ {r} := isPointed.Build (contFunBallType r) (@cst R R 0).
 
-Variables (f : R -> R -> R) (y_ : R -> R) (d : R).
-Hypothesis (d0 : 0 < d).
+Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
+Local Notation d := d0%:num.
+Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}.
+Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
 
-Variables ( k : R).
-Hypothesis (lcf_x : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}).
-Hypothesis (cf_y : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}).
-
-Hypothesis (y_init_t : y_ 0 = 0).
-
-Lemma is_normZmod_contFunTypee : NormedZmod_PseudoMetric_eq R (contFunType d).
+Lemma is_normZmod_contFunBallType : NormedZmod_PseudoMetric_eq R (contFunBallType d).
 Proof.
 by constructor.
 Qed.
 
-HB.instance Definition _ := is_normZmod_contFunTypee.
+HB.instance Definition _ := is_normZmod_contFunBallType.
 
-Lemma is_pmnormedZmod_contFunTypee :
-  PseudoMetricNormedZmod_Lmodule_isNormedModule R (contFunType d).
+Lemma is_pmnormedZmod_contFunBallType :
+  PseudoMetricNormedZmod_Lmodule_isNormedModule R (contFunBallType d).
 Proof.
 constructor.
 Admitted.
 
 HB.instance Definition _ := Num.Zmodule_isNormed.Build
-  R (contFunType d) (@ler_normD R (- d) d) (@normr0_eq0 R (- d) d)
+  R (contFunBallType d) (@ler_normD R (- d) d) (@normr0_eq0 R (- d) d)
   (@normrMn R (- d) d) (@normrN R (- d) d).
 
-HB.instance Definition _ := is_pmnormedZmod_contFunTypee.
+Fail Lemma ctr_picard : is_contraction (picard_to_cont lcf_x cf_y).
 
-(*
-Notation picard_method := (picard_method d0 lcf_x cf_y y_init_t).
+HB.instance Definition _ := is_pmnormedZmod_contFunBallType.
 
-Lemma ctr_picard : is_contraction picard_method.
+Lemma is_contraction_picard_to_cont : is_contraction
+  (@picard_to_cont R f d0 k lip1 cont2 : contFunBallType d -> contFunBallType d).
 Proof.
-red.
-rewrite /contraction.
-
 Admitted.
+
+End picard_to_cont_normedtype.
+
+Section picard_sketch.
+Context {R : realType}.
+Local Notation mu := lebesgue_measure.
+Local Notation contFunBallType x := (contFunSegType (- x) x).
+
+Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
+Local Notation d := d0%:num.
+Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
+Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
+Variable y_ : R -> R.
+Hypothesis y_init_t : y_ 0 = 0.
+
+Definition tmp : is_contraction (picard_to_cont lip1 cont2) :=
+  (@is_contraction_picard_to_cont R f d0 k lip1 cont2).
 
 Let phi0 := (@cst R R 0%R). (* 0 is init_y *)
 
-Check phi0 : contFunType d.
+Check phi0 : contFunBallType d.
 
-Let phioo := (limn (fun n => iter n picard_method phi0)) : R -> R.
+Let phioo : R -> R := limn (fun n => iter n (picard_to_cont lip1 cont2) phi0).
 
-(* not d, some smaller e *)
-Lemma picard_theorem :
- phioo 0 = 0 /\
-  ({in `]- d, d[, forall x, phioo^`() x = f x (phioo x)}).
+(* TODO: not d, some smaller e *)
+Theorem picard_lindelof :
+  phioo 0 = 0 /\
+  {in `]- d, d[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
 split.
-rewrite /phioo.
-(* contraction_cvg_fixed *)
-(*
-set picard_method : (contFunType d) -> (contFunType d) := (fun (g : (contFunType d)) => (fun t =>
-   init_y
-     + (\int[mu]_(x in `[init_t - e, t]) f x (g x))%R
-       - (\int[mu]_(x in `[init_t - e, init_t]) f x (g x))%R)).
-   (* add properties which should be preserved *))
-).
-have : (forall g , {h | rel g h}).
+  rewrite /phioo.
+  (* contraction_cvg_fixed *)
+  set picard_method : (contFunBallType d) -> (contFunBallType d) :=
+    (fun (g : (contFunBallType d)) => picard_to_cont lip1 cont2 g).
+  (* TODO: fix
+  set picard_method : (contFunBallType d) -> (contFunBallType d) :=
+    (fun (g : (contFunBallType d)) => (fun t =>
+     init_y
+       + (\int[mu]_(x in `[init_t - e, t]) f x (g x))%R
+         - (\int[mu]_(x in `[init_t - e, init_t]) f x (g x))%R)).
+     (* add properties which should be preserved *)
+  *)
+  (* TODO: what it rel?
+  have : (forall g , {h | rel g h}).
+    admit.
+  *)
+  (*
+  TODO: fixme
+  move/dependent_choice/(_ phi0); rewrite /rel => -[phi_ [phi0eq /all_and2[cphi iter_phi]]].
+  *)
+  have cphioo : {in `]- d, d] (* init_t - e, init_t + e[ *) , continuous phioo }.
+    move=> x xte.
+    apply/cvgrPdist_le => eps eps0.
+    near \oo => N. (* forall n > N satisfies
+         (forall x, `|phi_ N x - phioo x| < eps / 3 *)
+    near (@GRing.zero R)^'+ => dlt. (* forall t in ball x t satisfies
+         ( `|phi_ N x - phi_ N t| < eps / 3 *)
+    exists dlt.
+      admit.
+    move=> t/= tadlt.
+    rewrite (_ : eps = eps / 3 + (eps / 3 + eps / 3)); last first.
+      admit.
+    set phi_ := fun n => iter n (picard_to_cont lip1 cont2) phi0.
+    rewrite -[phioo x](subrK (phi_ N x)).
+    rewrite -[_ + _]addrA.
+    rewrite -{2}[phi_ N x](subrK (phi_ N t)).
+    rewrite -[X in _ + X]addrA.
+  (* TODO: fixme
+    apply: (le_trans (ler_normD (phioo x - phi_ N x)%R _)); apply: lerD.
+      admit.
+    apply: (le_trans (ler_normD (phi_ N x - phi_ N t)%R _)); apply: lerD.
+      admit.*)
+    admit.
+(* TODO: fixme exists phioo.
+  split.
+    apply/cvg_lim => //.
+    apply: cvg_near_cst.
+    apply/nearW => n.
+    elim: n.
+      by rewrite phi0eq.
+    by move=> n IH; rewrite iter_phi -addrA subrr addr0.*)
   admit.
-move/dependent_choice/(_ phi0); rewrite /rel => -[phi_ [phi0eq /all_and2[cphi iter_phi]]].
-(* phioo should be (limn (fun n => iter n picard_method phi0). *)
-set phioo := (fun x => lim ((phi_ n x) @[n --> \oo])).
-have cphioo : {in `]init_t - e, init_t + e[, continuous phioo}.
-  move=> x xte.
-  apply/cvgrPdist_le => eps eps0.
-  near \oo => N. (* forall n > N satisfies
-       (forall x, `|phi_ N x - phioo x| < eps / 3 *)
-  near (@GRing.zero R)^'+ => dlt. (* forall t in ball x t satisfies
-       ( `|phi_ N x - phi_ N t| < eps / 3 *)
-  exists dlt.
-    admit.
-  move=> t/= tadlt.
-  rewrite (_ : eps = eps / 3 + (eps / 3 + eps / 3)); last first.
-    admit.
-  rewrite -[phioo x](subrK (phi_ N x)).
-  rewrite -[_ + _]addrA.
-  rewrite -{2}[phi_ N x](subrK (phi_ N t)).
-  rewrite -[X in _ + X]addrA.
-  apply: (le_trans (ler_normD (phioo x - phi_ N x)%R _)); apply: lerD.
-    admit.
-  apply: (le_trans (ler_normD (phi_ N x - phi_ N t)%R _)); apply: lerD.
-    admit.
-  admit.
-exists phioo.
-split.
-  apply/cvg_lim => //.
-  apply: cvg_near_cst.
-  apply/nearW => n.
-  elim: n.
-    by rewrite phi0eq.
-  by move=> n IH; rewrite iter_phi -addrA subrr addr0.
 move=> x xte.
 (* exact: contraction_cvg_fixed *)
 admit.
-*)
 Admitted.
-*)
 
 End picard_sketch.
-*)
 
 (* dy = f(t, y(t)), y(t0) = y0 *)
 Record IVP (R : realType) := {
