@@ -3,7 +3,7 @@ From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum matrix interval poly.
 From mathcomp Require Import mathcomp_extra unstable boolp classical_sets.
 From mathcomp Require Import functions reals interval_inference topology.
-From mathcomp Require Import prodnormedzmodule tvs normedtype landau forms.
+From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
 From mathcomp Require Import sequences derive measure lebesgue_measure.
 From mathcomp Require Import lebesgue_measure lebesgue_integral ereal ftc.
 
@@ -83,7 +83,10 @@ Qed.
 
 End setInterval.
 
-(*
+(* NB: attempt by Ishiguro-san to rewrite FTC2 with a notation
+  for integral that can be swapped (int_a^b = - int_b^a) *)
+(* TODO: maybe not needed right now *)
+
 Notation "`[| x , y |]" := (setInterval (Interval (BLeft x) (BRight y))).
 Notation "`]| x , y |[" := (setInterval (Interval (BRight x) (BLeft y))).
 
@@ -134,12 +137,11 @@ Qed.
 
 End inteitv.
 
-Reserved Notation "\int [ mu ]_( x $ a ~ b ) F"
+(*Reserved Notation "\int [ mu ]_( x $ a ~ b ) F"
   (at level 36, F at level 36, mu at level 10,
   format "'[' \int [ mu ]_( x $ a ~ b )  '/  '  F ']'").
 Notation "\int [ mu ]_( x $ a ~ b ) f" :=
-  (inteitv a b (fun x => f)).
-*)
+  (inteitv a b (fun x => f)).*)
 
 (* We define the type of functions that are continuous over a closed interval *)
 
@@ -168,6 +170,9 @@ Canonical contfunseg_keyed := KeyedPred contfunseg_key.
 
 End contfunseg_pred.
 
+(* NB(rei): was this just motivated by generic predicates such as rpredD?
+or more generally by stability of "cont. over [a,b]"?
+anyway, maybe not needed right now *)
 Section contfun.
 Context {R : realType}.
 Variables a b : R.
@@ -222,16 +227,12 @@ Section contfun_realType.
 Context {R : realType}.
 Variables a b : R.
 
-(*
+(* NB(rei): looks like garbage collect.
 HB.instance Definition _ := @isContFun.Build R a b
 _ _ _ rT
   (@normr rT rT) (@normr_measurable rT setT).
 *)
 
-(*
-HB.instance Definition _ :=
-  isMeasurableFun.Build _ _ _ _ (@expR rT) (@measurable_expR rT).
-*)
 
 End contfun_realType.
 
@@ -475,43 +476,150 @@ HB.instance Definition _ f g := MeasurableFun.copy (f \* g) (f * g).
 
 End ring.
 
+Section contFunSeg_quotient.
+Context {R : realType} (a b : R).
+
+Definition eq_seg (f g : contFunSegType a b) := `[< {in `[a, b], f =1 g} >].
+
+Let eq_seg_refl : reflexive eq_seg.
+Proof. by move=> f; apply/asboolP => r. Qed.
+
+Let eq_seg_sym : symmetric eq_seg.
+Proof. by move=> f g; apply/idP/idP => /asboolP h; apply/asboolP => r /h. Qed.
+
+Let eq_seg_trans : transitive eq_seg.
+Proof.
+by move=> f g h /asboolP fg /asboolP gh; apply/asboolP => r rab; rewrite fg// gh.
+Qed.
+
+Canonical eq_seg_canonical :=
+  EquivRel eq_seg eq_seg_refl eq_seg_sym eq_seg_trans.
+
+Local Open Scope quotient_scope.
+
+Definition eqSegfun : Type := {eq_quot eq_seg}.
+HB.instance Definition _ := Choice.on eqSegfun.
+HB.instance Definition _ := EqQuotient.on eqSegfun.
+Definition eqSegfun_to_fun (f : eqSegfun) : R -> R := repr f.
+Coercion eqSegfun_to_fun : eqSegfun >-> Funclass.
+
+Lemma eq_segP (f g : eqSegfun) : reflect ({in `[a, b], f =1 g}) (f == g %[mod eqSegfun]).
+Proof. by apply/(iffP idP); rewrite eqmodE// => /asboolP. Qed.
+
+End contFunSeg_quotient.
+
+Definition contseg {R : realType} (a b : R) := (@eqSegfun _ a b).
+
+Section contseg.
+Context {R : realType} (a b : R).
+
+Local Notation T := (contseg a b).
+
+HB.instance Definition _ :=
+  gen_eqMixin (contseg a b).
+
+HB.instance Definition _ :=
+  gen_choiceMixin (contseg a b).
+
+Let zero' : T.
+Admitted.
+
+Let add' : T -> T -> T.
+Admitted.
+
+Let addrA' : associative add'.
+Admitted.
+
+Let addrC' : commutative add'.
+Admitted.
+
+Let add0r' : left_id zero' add'.
+Admitted.
+
+HB.instance Definition _ := @GRing.isNmodule.Build
+  T zero' add' addrA' addrC' add0r'.
+
+Let opp' : T -> T.
+Admitted.
+
+Let addNr' : left_inverse zero' opp' add'.
+Admitted.
+
+HB.instance Definition _ := @GRing.isZmodule.Build T
+  zero' opp' add' addrA' addrC' add0r' addNr'.
+
+End contseg.
+
 Section zmodule_normed.
 Context {R : realType} (a b : R).
 
-Definition infty_norm (f : {fun `[a, b] >-> [set: R]}) :=
-  sup ((Num.norm \o f) @` `[a, b]).
+Local Notation V := ((*contFunSegType*) contseg a b).
 
-Local Notation V := (contFunSegType a b).
+Definition infty_norm (f : V) :=
+  sup ((Num.norm \o @repr _ _ f) @` `[a, b]).
 
 Local Notation norm := infty_norm.
 
 (* TODO: wait for quotient *)
-Lemma contFunSeq_eq (f g : contFunSegType a b) : f = g <-> {in `[a, b], f =1 g}.
+Lemma contFunSeq_eq (f g : (*contFunSegType*)contseg a b) :
+  f = g <-> {in `[a, b], repr f =1 repr g}.
 Proof.
-split=> [->//|].
-move: f g => [f [[cf]] [funf]] [g [[cg]] [fung]].
-move=> /= fg.
+split=> [-> // | ].
+move: f g => [/= f Hf] [/= g Hg] fg.
 Admitted.
 
-Let ler_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
+Import Order.TTheory GRing.Theory Num.Def Num.Theory.
+Import numFieldTopology.Exports.
+
+Lemma contFunSeg_norm0 (x : contseg a b) : b < a -> norm x = 0.
 Proof.
-Admitted.
+move=> ba; rewrite /norm [X in sup X](_ : _ = set0) ?sup0//.
+rewrite -subset0 => /= f/= [r]; rewrite in_itv/= => /andP[ar rb] _.
+by move: ba; rewrite ltNge (le_trans ar rb).
+Qed.
 
-Let normr0_eq0 (x : V) : norm x = 0 -> x = 0.
+Let ler_infty_normD (x y : contseg a b) :
+ norm (add' x y) <= norm x + norm y :> R.
 Proof.
+have [ab|ba] := leP a b; last by rewrite !contFunSeg_norm0.
+rewrite /norm/= -sup_sumE//; last 2 first.
+  admit. (* looks true by continuity *)
+  admit. (* looks true by continuity *)
+apply: le_sup.
+- move=> A/= -[s sab] <-{A}.
+  rewrite /down/=.
+  eexists.
+  eexists.
+  exists (`|repr x s|).
+    by exists s.
+  exists (`|repr y s|).
+    by exists s.
+  reflexivity.
+  rewrite (le_trans _ (ler_normD _ _))//.
+  admit.
+- eexists.
+  rewrite /=.
+  (* looks provbable *)
+  admit.
+- (* looks true by continuity *)
 Admitted.
 
-Let normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
+Let infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
+Proof.
+rewrite /norm => xab0.
 Admitted.
 
-Let normrN (x : V) : norm (- x) = norm x.
+Let infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
+Admitted.
+
+Let infty_normrN (x : V) : norm (- x) = norm x.
 Admitted.
 (* TODO: dev the theory of sup following the theory of ess_sup *)
 
 Fail Check V : normedZmodType R.
 
 HB.instance Definition _ := @Num.Zmodule_isNormed.Build R V
-  norm ler_normD normr0_eq0 normrMn normrN.
+  norm ler_infty_normD infty_normr0_eq0 infty_normrMn infty_normrN.
 
 Check V : normedZmodType R.
 
@@ -522,62 +630,6 @@ Fail Check (pseudoMetric_normed V) : normedModType R.
 End zmodule_normed.
 
 HB.about Lmodule_isNormed.
-
-(*
-HB.factory Record Lmodule_isNormed (R : realType) M
-    of GRing.Lmodule R M := {
- norm : M -> R;
- ler_normD : forall x y, norm (x + y) <= norm x + norm y ;
-(* normrMn : forall x n, norm (x *+ n) = norm x *+ n ;*)
- normrN : forall x, norm (- x) = norm x ;
- normrZ : forall (l : R) (x : M), norm (l *: x) = `|l| * norm x ;
- normr0_eq0 : forall x : M, norm x = 0 -> x = 0
-}.
-
-HB.builders Context R M of Lmodule_isNormed R M.
-
-HB.about Num.Zmodule_isNormed.Build.
-
-Lemma normrMn x n : norm (x *+ n) = norm x *+ n.
-Proof.
-move: x.
-rewrite /=.
-Admitted. (* from normrZ *)
-
-HB.instance Definition _ := Num.Zmodule_isNormed.Build
-  R M ler_normD normr0_eq0 normrMn normrN.
-
-Check M : normedZmodType R.
-
-Check (@pseudometric R M).
-
-HB.saturate pseudometric.
-
-Check (pseudometric M : pseudoMetricType R).
-
-HB.instance Definition _ := PseudoMetric.copy M (pseudometric M).
-HB.instance Definition _ := isPointed.Build M 0.
-
-Lemma whatever : NormedZmod_PseudoMetric_eq R M.
-Proof.
-by constructor.
-Qed.
-
-HB.instance Definition _ := whatever.
-
-Lemma coucou : PseudoMetricNormedZmod_Lmodule_isNormedModule R M.
-Proof.
-constructor.
-exact: normrZ.
-Qed.
-
-HB.instance Definition _ := coucou.
-HB.instance Definition _ := isPointed.Build M 0.
-
-Check M : normedModType R.
-
-HB.end.
-*)
 
 (* The goal is to prove Picard-Lindel{\"o}of's theorem.
 
@@ -593,9 +645,8 @@ HB.end.
 
    This function is defined by integration.
 
-   `limn n picard_to_cont (cst 0)' is solution of the ODE.
+   `limn (iter n (picard_to_cont) (cst 0))` is solution of the ODE.
  *)
-
 
 (* first, we define picard_from_cont
    that takes a function continuous over a closed ball *)
@@ -630,7 +681,7 @@ HB.instance Definition _ (g : R -> R)
     (set_fun_picard_from_cont' imageg).
 
 Local Lemma picard_from_cont'_isContFunSegBuild (g : contFunBallType d)
-    (imageg : g @` `[-d, d] `<=` `[- d, d]) :
+    (imageg : g @` `[- d, d] `<=` `[- d, d]) :
   @isContFunSeg R (- d) d (picard_from_cont' imageg).
 Proof.
 constructor.
@@ -759,47 +810,121 @@ Fail Lemma tmp : is_contraction (picard_to_cont
 
 End picard_to_cont.
 
-Section picard_to_cont_normedtype.
+Section contset_pred.
+Context {R : realType}.
+Variables a b : R.
+
+Definition contseg_pred : {pred R -> R}
+  := mem [set f | squashed (@contseg R a b)].
+Definition contseg_pred_key : pred_key (contseg_pred). Proof. exact. Qed.
+Canonical contseg_pred_keyed := KeyedPred (contseg_pred_key).
+
+End contset_pred.
+
+Section contfun.
+Context {R : realType}.
+Variables a b : R.
+Notation T := (contseg a b).
+
+Section Sub.
+Context (f : R -> R) (fP : f \in contseg_pred a b).
+
+Definition contseg_pred_Sub_subproof := unsquash (set_mem fP).
+Fail #[local] HB.instance Definition _ := contseg_pred_Sub_subproof.
+Definition contseg_Sub : contseg a b := f.
+
+End Sub.
+
+Lemma contfunseg_rect (K : T -> Type) :
+  (forall f (Pf : f \in contfunseg a b), K (contfunseg_Sub Pf)) ->
+  forall u : T, K u.
+Proof.
+move=> Ksub [f [[Pf]]]/=.
+suff -> // : Pf = (set_mem (@mem_set _ [set f | _] f Pf)).
+move=> mix.
+Admitted.
+
+Lemma contfunseg_valP f (Pf : f \in contfunseg a b) :
+  contfunseg_Sub Pf = f :> (_ -> _).
+Proof. by []. Qed.
+
+HB.instance Definition _ := isSub.Build _ _ T contfunseg_rect contfunseg_valP.
+
+Lemma contfunseg_eqP (f g : contFunSegType a b) : f = g <-> f =1 g.
+Proof. by split=> [->//|fg]; exact/val_inj/funext. Qed.
+
+HB.instance Definition _ := [Choice of contFunSegType a b by <:].
+
+Lemma cst_is_fun x : @isFun R R `[a, b] [set: R] (cst x).
+Proof. by constructor. Qed.
+
+HB.instance Definition _ x := (cst_is_fun x).
+
+Lemma cst_continuous_subspace (x : R) : {within `[a, b], continuous (cst x)}.
+Proof.
+apply: continuous_subspaceT.
+exact: cst_continuous.
+Qed.
+
+HB.instance Definition _ x := isContFunSeg.Build R a b (@cst R R x)
+  (@cst_continuous_subspace x).
+
+End contfun.
+
+
+(* third, we equip contFunSegType with a structure of normedtype *)
+Section contFunSegType_is_normed.
 Context {R : realType}.
 Local Notation mu := lebesgue_measure.
-Local Notation contFunBallType x := (contFunSegType (- x) x).
+Local Notation contFunBallType x := (contseg (- x) x).
 
 HB.instance Definition _ {r : R} := PseudoMetric.copy (contFunBallType r)
    (pseudoMetric_normed (contFunBallType r)).
-HB.instance Definition _ {r} := isPointed.Build (contFunBallType r) (@cst R R 0).
+HB.instance Definition _ {r} := isPointed.Build (contFunBallType r)
+  (\pi_(contFunBallType r) (@cst R R 0))%qT.
 
-Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
-Local Notation d := d0%:num.
-Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}.
-Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
+Lemma is_normZmod_contFunBallType (e : R) :
+  NormedZmod_PseudoMetric_eq R (contFunBallType e).
+Proof. by constructor. Qed.
 
-Lemma is_normZmod_contFunBallType : NormedZmod_PseudoMetric_eq R (contFunBallType d).
+HB.instance Definition _ (e : R) := is_normZmod_contFunBallType e.
+
+
+
+Lemma contseg_scaler_closed (e : R) : GRing.scaler_closed (@contseg R (- e) e).
 Proof.
-by constructor.
-Qed.
+xxxx
 
-HB.instance Definition _ := is_normZmod_contFunBallType.
+HB.instance Definition _ := GRing.isScaleClosed.Build _ _
+  (@contseg R a b) contfun_scaler_closed.
+HB.howto contFunSegType lmodType.
 
-Lemma is_pmnormedZmod_contFunBallType :
-  PseudoMetricNormedZmod_Lmodule_isNormedModule R (contFunBallType d).
+
+
+HB.instance Definition _ (e : R) :=
+  [SubZmodule_isSubLmodule of @contseg R (- e) e by <:].
+
+Lemma is_pmnormedZmod_contFunBallType (e : R) :
+  PseudoMetricNormedZmod_Lmodule_isNormedModule R (contFunBallType e).
 Proof.
 constructor.
 Admitted.
 
-HB.instance Definition _ := Num.Zmodule_isNormed.Build
-  R (contFunBallType d) (@ler_normD R (- d) d) (@normr0_eq0 R (- d) d)
-  (@normrMn R (- d) d) (@normrN R (- d) d).
+HB.instance Definition _ (e : R) := is_pmnormedZmod_contFunBallType e.
 
-Fail Lemma ctr_picard : is_contraction (picard_to_cont lcf_x cf_y).
+HB.instance Definition _ (e : R) := Num.Zmodule_isNormed.Build
+  R (contFunBallType e) (@ler_normD' R (- e) e) (@normr0_eq0' R (- e) e)
+  (@normrMn' R (- e) e) (@normrN' R (- e) e).
 
-HB.instance Definition _ := is_pmnormedZmod_contFunBallType.
-
-Lemma is_contraction_picard_to_cont : is_contraction
-  (@picard_to_cont R f d0 k lip1 cont2 : contFunBallType d -> contFunBallType d).
+Lemma contFunBallType_is_complete (e : R) (F : set_system (contFunBallType e)) :
+  ProperFilter F -> cauchy F -> cvg F.
 Proof.
 Admitted.
 
-End picard_to_cont_normedtype.
+HB.instance Definition _ (e : R) := Uniform_isComplete.Build
+  (contFunBallType e) (@contFunBallType_is_complete e).
+
+End contFunSegType_is_normed.
 
 Section picard_sketch.
 Context {R : realType}.
@@ -810,76 +935,94 @@ Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
+
+(* we check that picard_to_cont can be stated to be a contradiction *)
+Lemma is_contraction_picard_to_cont : is_contraction (picard_to_cont lip1 cont2).
+Proof.
+Admitted.
+
 Variable y_ : R -> R.
 Hypothesis y_init_t : y_ 0 = 0.
-
-Definition tmp : is_contraction (picard_to_cont lip1 cont2) :=
-  (@is_contraction_picard_to_cont R f d0 k lip1 cont2).
 
 Let phi0 := (@cst R R 0%R). (* 0 is init_y *)
 
 Check phi0 : contFunBallType d.
 
-Let phioo : R -> R := limn (fun n => iter n (picard_to_cont lip1 cont2) phi0).
+Let phi_ := fun n => iter n (picard_to_cont lip1 cont2) phi0.
+
+Let phioo : R -> R := limn phi_.
 
 (* TODO: not d, some smaller e *)
 Theorem picard_lindelof :
   phioo 0 = 0 /\
   {in `]- d, d[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
+Check picard_to_cont lip1 cont2 : contFunBallType d -> contFunBallType d.
+(* in the first version we had this function
+   fun (g : (contFunBallType d)) => (fun t =>
+     init_y
+     + (\int[mu]_(x in `[init_t - e, t]) f x (g x))%R
+     - (\int[mu]_(x in `[init_t - e, init_t]) f x (g x))%R)
+
+  this is `picard_to_cont lip1 cont2` with init_y = 0
+  and e = d
+*)
+have H : limn phi_ = picard_to_cont lip1 cont2 (limn phi_).
+  exact: (@contraction_cvg_fixed R (contFunBallType d) setT
+  (picard_to_cont lip1 cont2)
+  (sval (cid is_contraction_picard_to_cont))
+  (svalP (cid is_contraction_picard_to_cont))
+  phi0 Logic.I closedT).
+(* TODO: what it rel?
+have : (forall g , {h | rel g h}).
+  admit.
+*)
+(*
+TODO: fixme
+move/dependent_choice/(_ phi0); rewrite /rel => -[phi_ [phi0eq /all_and2[cphi iter_phi]]].
+*)
+have cphioo : {in `]- d, d] (* init_t - e, init_t + e[ *), continuous phioo}.
+  move=> x xte.
+  apply/cvgrPdist_le => eps eps0.
+  near \oo => N. (* forall n > N satisfies
+       (forall x, `|phi_ N x - phioo x| < eps / 3 *)
+  near (@GRing.zero R)^'+ => dlt. (* forall t in ball x t satisfies
+       ( `|phi_ N x - phi_ N t| < eps / 3 *)
+  exists dlt.
+    by rewrite /=.
+  move=> t/= tadlt.
+  rewrite (_ : eps = eps / 3 + (eps / 3 + eps / 3)); last first.
+    rewrite -!mulrDl -mulr2n -{2}(mulr1 eps) -(mulr_natr _ 2) -mulrDr.
+    by rewrite nat1r -mulrA divff ?mulr1.
+  rewrite -[phioo x](subrK (phi_ N x)).
+  rewrite -[_ + _]addrA.
+  rewrite -{2}[phi_ N x](subrK (phi_ N t)).
+  rewrite -[X in _ + X]addrA.
+  rewrite (le_trans (ler_normD _ _))// lerD//.
+    rewrite /phioo.
+    near: N.
+    have : phi_ N x @[N --> \oo] --> limn phi_ x.
+      admit.
+    move/(@cvgrPdist_le _ R^o).
+    by apply; rewrite divr_gt0.
+  rewrite (le_trans (ler_normD _ _))// lerD//.
+    admit.
+  admit.
 split.
   rewrite /phioo.
-  (* contraction_cvg_fixed *)
-  set picard_method : (contFunBallType d) -> (contFunBallType d) :=
-    (fun (g : (contFunBallType d)) => picard_to_cont lip1 cont2 g).
-  (* TODO: fix
-  set picard_method : (contFunBallType d) -> (contFunBallType d) :=
-    (fun (g : (contFunBallType d)) => (fun t =>
-     init_y
-       + (\int[mu]_(x in `[init_t - e, t]) f x (g x))%R
-         - (\int[mu]_(x in `[init_t - e, init_t]) f x (g x))%R)).
-     (* add properties which should be preserved *)
-  *)
-  (* TODO: what it rel?
-  have : (forall g , {h | rel g h}).
+  suff : (phi_ n) 0 @[n --> \oo] --> 0.
+    move/cvg_lim => /(_ (@Rhausdorff R)).
+    move=> {2}<-.
+    rewrite /phi_.
     admit.
-  *)
-  (*
-  TODO: fixme
-  move/dependent_choice/(_ phi0); rewrite /rel => -[phi_ [phi0eq /all_and2[cphi iter_phi]]].
-  *)
-  have cphioo : {in `]- d, d] (* init_t - e, init_t + e[ *) , continuous phioo }.
-    move=> x xte.
-    apply/cvgrPdist_le => eps eps0.
-    near \oo => N. (* forall n > N satisfies
-         (forall x, `|phi_ N x - phioo x| < eps / 3 *)
-    near (@GRing.zero R)^'+ => dlt. (* forall t in ball x t satisfies
-         ( `|phi_ N x - phi_ N t| < eps / 3 *)
-    exists dlt.
-      admit.
-    move=> t/= tadlt.
-    rewrite (_ : eps = eps / 3 + (eps / 3 + eps / 3)); last first.
-      admit.
-    set phi_ := fun n => iter n (picard_to_cont lip1 cont2) phi0.
-    rewrite -[phioo x](subrK (phi_ N x)).
-    rewrite -[_ + _]addrA.
-    rewrite -{2}[phi_ N x](subrK (phi_ N t)).
-    rewrite -[X in _ + X]addrA.
-  (* TODO: fixme
-    apply: (le_trans (ler_normD (phioo x - phi_ N x)%R _)); apply: lerD.
-      admit.
-    apply: (le_trans (ler_normD (phi_ N x - phi_ N t)%R _)); apply: lerD.
-      admit.*)
-    admit.
-(* TODO: fixme exists phioo.
-  split.
-    apply/cvg_lim => //.
-    apply: cvg_near_cst.
-    apply/nearW => n.
-    elim: n.
-      by rewrite phi0eq.
-    by move=> n IH; rewrite iter_phi -addrA subrr addr0.*)
-  admit.
+  apply: cvg_near_cst.
+  apply/nearW => n.
+  elim: n.
+    by rewrite /phi_/=.
+  move=> n /=ih.
+  rewrite /picard_from_cont/=.
+  case: pselect => //= imageg.
+  by rewrite /picard_from_cont'/= subrr.
 move=> x xte.
 (* exact: contraction_cvg_fixed *)
 admit.
