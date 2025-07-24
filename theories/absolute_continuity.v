@@ -3128,12 +3128,21 @@ apply: HZ.
 - exact: subIsetl.
 - apply: compact_closedI.
     exact: segment_compact.
-  
   (* have := (continuous_closedP cF).1. *)
   admit.
 - apply/negligible_outer_measure.
-  exists (Z1 `|` [set a; b]); split.
+(*
+  exists (F @^-1` (F @` Z1)); split.
   + admit.
+  + admit.
+  + by rewrite -image_sub K1K.
+*)
+
+(*
+  exists (Z1 `|` [set a; b]); split.
+  + apply: measurableU; first exact: Gdelta_measurable.
+    exact: measurableU.
+ admit.
   + rewrite 2?measureU//=; last 4 first.
     * rewrite set1I ifF//.
       apply/negP/negP; rewrite notin_setE/=.
@@ -3154,113 +3163,18 @@ apply: HZ.
     exact: subIsetr.
   + rewrite -(setUIDK K1 [set a; b]) setUC.
     apply: setUSS; last exact: subIsetr.
-    admit.
-
-(*rewrite 2?measureU//=; last 4 first.
-    + rewrite set1I ifF//.
-      apply/negP/negP; rewrite notin_setE/=.
-      by apply/eqP; rewrite lt_eqF.
-    + exact: Gdelta_measurable.
-    + exact: measurableU.
-    + rewrite /Z1 setIAC.
-      rewrite (_ : `]a, b[ `&` [set a; b] = set0); first by rewrite set0I.
-      rewrite setIUr 2!setI1 2?ifF ?setU0//; apply/negP;
-          rewrite inE/= in_itv/= ab ltxx//=.
-      rewrite 2!lebesgue_measure_set1 2!addr0.
-  - 
-apply/eqP; rewrite -measure_le0/=.
-  apply: (@le_trans _ _ (mu Z1)).
-  + apply: le_outer_measure.
-    rewrite subsetI; split.
-    admit.
-  + apply: (@le_trans _ _ (mu Z)); last by rewrite muZ0.
-    rewrite /mu/completed_lebesgue_stieltjes_measure/completed_measure_extension.
-    rewrite mZIU.
-    apply: le_outer_measure.
-    exact: subIsetr.
-xxx
+    apply: (@subset_trans _ (`]a, b[ `&` F @^-1` K)).
+      rewrite /K1 -setIDA -setIDAC.
+      by rewrite -setDDl setDitv1l setDitv1r.
+    rewrite subsetI; split; first exact: subIsetl.
+have : set_surj `[a, b] `[F a, F b] F.
+  move=> y /= yab.
+  have := (@IVT.
+    rewrite -K1K.
+    move=> x/= [t [/= tab Kt]].
+    apply: subset_trans (@image_preimage_subset _ _ F (\bigcap_n U_ n)).
 *)
-
 Admitted.
-
-(*
-set Z1 := `]a, b[ `&` \bigcap_n U_ n.
-have Z1ab : Z1 `<=` `]a, b[ by exact: subIsetl.
-have Z1oo : (lebesgue_measure (F @` Z1) < +oo)%E.
-  apply: (@le_lt_trans _ _ (mu (F @` `]a, b[))).
-    apply: le_outer_measure.
-    exact: image_subset.
-  apply: (@le_lt_trans _ _ (mu `[F a, F b])).
-    apply: le_outer_measure.
-    apply: continuous_nondecreasing_image_itvoo => //.
-    by move=> x y xab yab; apply: ndF; exact: subset_itv_oo_cc.
-  rewrite completed_lebesgue_measure_itv/=.
-  by case: ifP => //; rewrite -EFinB ltry.
-have gZ1 : Gdelta Z1.
-  apply: GdeltaIr => //.
-  by exists U_.
-(* F(Z) is a Borel set *)
-(* using lemma2 *)
-have mFZ1 : measurable (F @` Z1).
-  exact: measurable_image_Gdelta_set_nondecreasing_fun Z1ab gZ1 => //.
-have ZZ1 : Z `\ a `\ b `<=` Z1.
-  rewrite /Z1.
-  rewrite subsetI; split.
-  - rewrite -(setIidr Zab).
-    rewrite -setU1itv ?bnd_simp ?ltW//.
-    rewrite setIUl setDUl.
-    rewrite setIC -setIDA setDv setI0 set0U.
-    rewrite -setUitv1 ?bnd_simp ?ltW//.
-    rewrite setIUl 2!setDUl -2!setIDA.
-    rewrite -setIDA (setIC [set b]) -setIDA setDv setI0 setU0.
-    exact: subIsetl.
-  - apply: sub_bigcap => n _.
-    apply: subset_trans (ZU n).
-   rewrite setDDl.
-   exact: subDsetl.
-have H1 : (0 < mu (F @` Z1))%E.
-  apply: (lt_le_trans muFZ0).
-  rewrite (_ : mu (F @` Z) = mu (F @` (Z `\ a `\ b))).
-    apply: le_outer_measure.
-    exact: image_subset.
-  rewrite -{1}(setUIDK Z [set a]) -{1}(setUIDK (Z `\ a) [set b]).
-  rewrite 2!image_setU.
-  rewrite 2?measureU/=; last 6 first.
-  - apply: sub_caratheodory; exact: measurable_image_setI_set1.
-  - admit.
-  - admit.
-  - apply: sub_caratheodory; exact: measurable_image_setI_set1.
-  - apply: measurableU.
-      apply: sub_caratheodory; exact: measurable_image_setI_set1.
-  - admit.
-  - admit.
-  by rewrite 2!measure0_image_setI_set1 2!add0r.
-set e := fine (mu (F @` Z1)) / 2.
-have e0 : 0 < e.
-  rewrite /e mulr_gt0//.
-  (* F(Z) has positive measure *)
-  by apply: fine_gt0; rewrite Z1oo andbT.
-(* Let K be ... . Then ... *)
-have H : forall K : set R, compact K -> K `<=` F @` Z1 -> mu K = 0.
-  move=> K cK KFZ1.
-  apply/eqP.
-  rewrite -measure_le0/=.
-  rewrite leNgt.
-  apply/negP => K0.
-  pose K1 := `[a, b] `&` F @^-1` K.
-  have K1ab : K1 `<=` `[a, b].
-    admit.
-  have cK1 : compact K1.
-    admit.
-  have := HZ K1 K1ab cK1.
-  admit.
-move: H1.
-apply/negP.
-rewrite -leNgt.
-rewrite measure_le0/=; apply/eqP.
-apply: HZ => //.
-Admitted.
-*)
 
 End lemma3.
 
