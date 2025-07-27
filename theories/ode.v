@@ -4,8 +4,8 @@ From mathcomp Require Import all_ssreflect ssralg ssrnum matrix interval poly.
 From mathcomp Require Import mathcomp_extra unstable boolp classical_sets.
 From mathcomp Require Import functions reals interval_inference topology.
 From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
-From mathcomp Require Import sequences derive numfun measure lebesgue_measure ereal.
-From mathcomp Require Import lebesgue_integral ftc.
+From mathcomp Require Import ereal sequences derive numfun measure lebesgue_measure.
+From mathcomp Require Import lebesgue_measure lebesgue_integral ftc.
 
 (**md**************************************************************************)
 (* # ODE                                                                      *)
@@ -96,9 +96,6 @@ Local Open Scope ereal_scope.
 Context {R : realType}.
 Let mu := (@lebesgue_measure R).
 
-(*
-TODO restore
-
 Definition inteitv (a b : R) f :=
   if (a < b)%R then \int[mu]_(x in `[a, b]) f x
                else - \int[mu]_(x in `[b, a]) f x.
@@ -137,7 +134,6 @@ rewrite (@continuous_FTC2 _ f F)// ?oppeB 1?addeC//.
   by split => // x xab; apply: dF; rewrite inE/=.
 by move=> x xab; apply: dFf; rewrite inE/=.
 Qed.
-*)
 
 End inteitv.
 
@@ -206,7 +202,6 @@ congr (K (ContFunSeg.Pack _)).
 move : Pf x => [[H1] [H2]] [[?] [?]].
 by rewrite (Prop_irrelevance H1) (Prop_irrelevance H2).
 Qed.
-
 
 Lemma contfunseg_valP f (Pf : f \in contfunseg a b) :
   contfunseg_Sub Pf = f :> (_ -> _).
@@ -572,7 +567,6 @@ Context (ab : a <= b).
 (*Definition quot_contFunSegType : Type := {eq_quot eq_seg}.*)
 Definition quot_contFunSegType := {ideal_quot (ideal_itv ab)}.
 (*Definition quot_contFunSegType : quotType (contFunSegType a b) := {ideal_quot (ideal_itv ab)}.*)
-
 
 (*HB.instance Definition _ := Choice.on quot_contFunSegType.
 HB.instance Definition _ := EqQuotient.on quot_contFunSegType.*)
@@ -953,13 +947,11 @@ Check V : normedZmodType R.
 
 Check (pseudoMetric_normed V) : pseudoMetricType R.
 Check (pseudoMetric_normed V) : normedZmodType R.
-
 Fail Check (pseudoMetric_normed V) : normedModType R.
 
 End zmodule_normed.
 
 HB.about Lmodule_isNormed.
-
 
 (* HB.factory Record Lmodule_isNormed (R : realType) M *)
 (*     of GRing.Lmodule R M := { *)
@@ -1078,7 +1070,6 @@ move=> {x}.
 apply/continuous_within_itvP; [exact: gtrN | split].
 - move=> x; rewrite in_itv/= => /andP[ndx dx].
   rewrite /continuous_at.
-  
   admit.
   admit.
 Admitted.
@@ -1191,6 +1182,7 @@ End picard_from_cont.
 Section picard_to_cont.
 Context {R : realType}.
 Local Notation mu := lebesgue_measure.
+(*Local Notation contFunBallType x := (contFunSegType (- x) x).*)
 Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
