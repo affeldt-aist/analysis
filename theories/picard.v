@@ -688,7 +688,7 @@ constructor.
 rewrite /picard_from_cont'.
 move=> x.
 apply: cvgB; last exact: cvg_cst.
-apply: parameterized_integral_continuous; first exact: gtrN.
+apply: parameterized_integral_continuous; first exact/ltW/gtrN.
 apply: continuous_compact_integrable; first exact: segment_compact.
 move=> {x}.
 apply/continuous_within_itvP; [exact: gtrN | split].

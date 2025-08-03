@@ -2123,3 +2123,46 @@ exact/derivable1_diffP/derivable_horner.
 Qed.
 
 End derive_horner.
+
+Section derive_matrix.
+Variable R : realFieldType.
+Context {m n : nat}.
+
+Lemma derivemxE'' (M : R -> 'M[R]_(m.+1, n.+1)) (t : R) v :
+  derivable M t v ->
+  'D_v M t = \matrix_(i < m.+1, j < n.+1) 'D_v (fun t => M t i j) t.
+Proof.
+move=> /cvg_ex[/= l Hl]; apply/cvg_lim => //=.
+apply/cvgrPdist_le => /= e e0.
+move/cvgrPdist_le : (Hl) => /(_ (e / 2)).
+rewrite divr_gt0// => /(_ isT)[d /= d0 dle].
+near=> x.
+rewrite [in leLHS]/Num.Def.normr/= mx_normrE.
+apply/(bigmax_le _ (ltW e0)) => -[/= i j] _.
+rewrite [in leLHS]mxE/= [X in _ + X]mxE -[X in X - _](subrK (l i j)).
+rewrite -(addrA (_ - _)) (le_trans (ler_normD _ _))// (splitr e) lerD//.
+- rewrite mxE.
+  suff : (h^-1 *: (M (h *: v + t) i j - M t i j)) @[h --> 0^'] --> l i j.
+    move/cvg_lim => /=; rewrite /derive /= => ->//.
+    by rewrite subrr normr0 divr_ge0// ltW.
+  apply/cvgrPdist_le => /= r r0.
+  move/cvgrPdist_le : Hl => /(_ r r0)[/= s s0] sr.
+  near=> y.
+  have : `|l - y^-1 *: (M (y *: v + t) - M t)| <= r.
+    rewrite sr//=; last by near: y; exact: nbhs_dnbhs_neq.
+    by rewrite sub0r normrN; near: y; exact: dnbhs0_lt.
+  apply: le_trans.
+  rewrite [in leRHS]/Num.Def.normr/= mx_normrE.
+  by under eq_bigr do rewrite !mxE; exact: (le_bigmax _ _ (i, j)).
+- rewrite mxE.
+  have : `|l - x^-1 *: (M (x *: v + t) - M t)| <= e / 2.
+    apply: dle => //=; last by near: x; exact: nbhs_dnbhs_neq.
+    by rewrite sub0r normrN; near: x; exact: dnbhs0_lt.
+  apply: le_trans.
+  rewrite [in leRHS]/Num.Def.normr/= mx_normrE/=.
+  under eq_bigr do rewrite !mxE.
+  apply: le_trans; last exact: le_bigmax.
+  by rewrite !mxE.
+Unshelve. all: by end_near. Qed.
+
+End derive_matrix.

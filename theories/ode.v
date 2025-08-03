@@ -194,8 +194,9 @@ Lemma contfunseg_rect (K : T -> Type) :
   forall u : T, K u.
 Proof.
 move=> Ksub [f [[Pf]]]/=.
-suff -> // : Pf = (set_mem (@mem_set _ [set f | _] f Pf)).
-move=> mix.
+have -> : Pf = set_mem (@mem_set _ [set f | _] f Pf) by [].
+move=> abf.
+Fail apply: Ksub.
 Admitted.
 
 Lemma contfunseg_valP f (Pf : f \in contfunseg a b) :
@@ -479,6 +480,27 @@ End ring.
 
 From mathcomp Require Import ring_quotient.
 
+  (* TODO  rewrite rmorphD should work declare patch as a morphism: erestrictD, erestrictM,  *)
+Lemma restrictD [T : pointedType] [R : realFieldType] (D : set T) (f g : T -> R) :
+  (f \+ g)%R \_ D = (f \_ D \+ g \_ D)%R.
+Proof.
+rewrite /patch.
+apply/funext => /= x.
+case: ifPn => xD.
+  by rewrite /GRing.add_fun xD.
+by rewrite /GRing.add_fun (negbTE xD)// addr0.
+Qed.
+
+Lemma restrictM [T : pointedType] [R : realFieldType] (D : set T) (f g : T -> R) :
+  (f \* g)%R \_ D = (f \_ D \* g \_ D)%R.
+Proof.
+rewrite /patch.
+apply/funext => /= x.
+case: ifPn => xD.
+  by rewrite /GRing.mul_fun xD.
+by rewrite /GRing.mul_fun (negbTE xD)// mulr0.
+Qed.
+
 Section ideal_definition.
 Context {R : realType} (a b : R) (ab : a <= b).
 
@@ -501,9 +523,13 @@ split => /=.
   by rewrite inE/= in_itv/= lexx.
 - move=> f u v.
   rewrite !inE => u0 v0.
-  (* TODO  rewrite rmorphD should work declare patch as a morphism: erestrictD, erestrictM,  *)
-  admit.
-Admitted.
+  rewrite restrictD/= v0.
+  rewrite restrictM u0.
+  rewrite /GRing.mul_fun/= fctE.
+  under eq_fun do rewrite mulr0.
+  rewrite /GRing.add_fun.
+  by under eq_fun do rewrite add0r.
+Qed.
 
 HB.instance Definition _ := isIdealr.Build _ ideal_itv idealr_closed_itv.
 
@@ -553,9 +579,17 @@ Proof.
 apply/(iffP idP); rewrite eqmodE//=.
   rewrite /Quotient.equiv.
   rewrite inE.
-  admit.
-admit.
-Admitted.
+  move=> fgab0 x xab.
+  move/(congr1 (fun z => z x)) : fgab0.
+  by rewrite patchE xab => /eqP; rewrite subr_eq0/= => /eqP.
+move=> abfg.
+rewrite /Quotient.equiv inE; apply/funext => y.
+rewrite patchE.
+case: ifPn => //= yab.
+rewrite !fctE.
+apply/eqP; rewrite subr_eq0; apply/eqP.
+exact: abfg.
+Qed.
 
 End contFunSeg_quotient.
 
@@ -655,11 +689,26 @@ Proof.
 split=> [->//|fg].
 Abort.
 
+Let normr_repr_has_sup (x : V) :
+  has_sup [set (normr \o repr x) x0 | x0 in `[a, b]].
+Proof.
+rewrite /has_sup; split.
+  exists (`|repr x a|)=> /=.
+  by exists a => //; rewrite in_itv/= lexx ab.
+pose abs_x := normr \o repr x.
+have cont_abs_x : {within `[a, b], continuous abs_x}.
+  (* TODO: use repr_comp_continuous *)
+  admit.
+have [c cab abc] := @EVT_max _ abs_x _ _ ab cont_abs_x.
+exists (`|repr x c|) => /= _ /= [z zab] <-.
+exact: abc.
+Admitted.
+
 Let ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
 Proof.
 rewrite /norm/= -sup_sumE//; last 2 first.
-  admit. (* looks true by continuity *)
-  admit. (* looks true by continuity *)
+  exact: normr_repr_has_sup.
+  exact: normr_repr_has_sup.
 apply: le_sup.
 - move=> A/= -[s sab] <-{A}.
   rewrite /down/=.
@@ -819,7 +868,7 @@ constructor.
 rewrite /picard_from_cont'.
 move=> x.
 apply: cvgB; last exact: cvg_cst.
-apply: parameterized_integral_continuous; first exact: gtrN.
+apply: parameterized_integral_continuous; first exact/ltW/gtrN.
 apply: continuous_compact_integrable; first exact: segment_compact.
 move=> {x}.
 apply/continuous_within_itvP; [exact: gtrN | split].
