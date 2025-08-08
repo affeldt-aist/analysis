@@ -2914,6 +2914,12 @@ have Zoo : (mu Z < +oo)%E.
   by rewrite lebesgue_measure_itv/= lte_fin ab -EFinD ltry.
 have [U_ [ZU oU mZIU]] := lebesgue_measure_Gdelta_approx Zoo.
 set Z1 := `]a, b[ `&` \bigcap_n U_ n.
+have muZ10 : mu Z1 = 0.
+  apply/eqP; rewrite -measure_le0/= -muZ0.
+  rewrite completed_lebesgue_measureE.
+  rewrite /lebesgue_measure/lebesgue_stieltjes_measure/measure_extension mZIU.
+  apply: le_outer_measure.
+  exact: subIsetr.
 have Z1ab : Z1 `<=` `]a, b[ by exact: subIsetl.
 have Z1oo : (mu (F @` Z1) < +oo)%E.
   apply: (@le_lt_trans _ _ (mu (F @` `[a, b]))).
@@ -3024,7 +3030,22 @@ apply: lusinN'.
   rewrite closed_setIS; last exact: interval_closed.
   apply: (continuous_closedP _).1 => //.
   exact: compact_closed.
-
+- apply/eqP; rewrite -measure_le0/= -muZ10.
+  have bijF := continuous_increasing_set_bij cF incF.
+  have [F' FF'] := pPbij bijF.
+  rewrite /K1 FF' -inv_sub_image; last first.
+    apply: (subset_trans KFZ1).
+    rewrite -continuous_increasing_image_itv//.
+    apply: image_subset.
+    apply: (subset_trans Z1ab).
+    exact: subset_itv_oo_cc.
+  apply: le_outer_measure.
+  rewrite image_sub.
+  apply: subset_trans (@inv_image_sub _ _ _ _ _ Z1 _) => /=; last first.
+    apply: (subset_trans Z1ab).
+    exact: subset_itv_oo_cc.
+  rewrite invV.
+  by move=> ? ?/=; rewrite -FF'; exact: KFZ1.
 Abort.
 
   (* Lemma open_subset_itvoocc S : open S -> S `<=` `[a, b] -> S `<=` `]a, b[. *)
@@ -3170,17 +3191,7 @@ apply: HZ.
     exact: subIsetl.
   rewrite -closure_neitv_oo//.
   exact: closure_subset.
-- 
-have : compact (`[a, b] `&` (F @^-1` K)).
-  rewrite setIC.
-  rewrite -(@setIid _ `[a, b]%classic) setICA.
-  apply: compact_closedI => //; first exact: segment_compact.
-  rewrite closed_setIS => //.
-  apply: (continuous_closedP _).1 => //.
-  exact: compact_closed.
- move=> _.
-
-  rewrite /K1.
+- rewrite /K1.
   rewrite -(@setIidl _ (closure Z1 `&` F @^-1` K) `[a, b]%classic); last first.
     apply: subIset; left.
     rewrite -closure_neitv_oo//.
@@ -3211,13 +3222,14 @@ have : compact (`[a, b] `&` (F @^-1` K)).
   - by apply: sub_caratheodory; exact: Gdelta_measurable.
   - apply: measurableD => //; last first.
       by apply: sub_caratheodory; exact: Gdelta_measurable.
-    (* closure Z1 is bigger than Z1 at most countable points *)
-    admit.
+    apply: sub_caratheodory.
+    apply: closed_measurable.
+    exact: closed_closure.
   - by rewrite setDE setICA/= setIA setICK.
   rewrite oppeD; last first.
     by rewrite muZ10.
   rewrite addeA subee; last by rewrite muZ10.
-  rewrite add0e oppe_ge0 measure_le0/=; apply/eqP.
+  rewrite add0e oppe_ge0.
   (* countable *)
   admit.
 
