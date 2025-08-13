@@ -5,7 +5,7 @@ From mathcomp Require Import mathcomp_extra unstable boolp classical_sets.
 From mathcomp Require Import functions reals interval_inference topology.
 From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
 From mathcomp Require Import sequences derive numfun measure lebesgue_measure.
-From mathcomp Require Import lebesgue_measure lebesgue_integral ereal ftc.
+(*From mathcomp Require Import lebesgue_integral ereal ftc.*)
 
 (**md**************************************************************************)
 (* # ODE                                                                      *)
@@ -96,6 +96,9 @@ Local Open Scope ereal_scope.
 Context {R : realType}.
 Let mu := (@lebesgue_measure R).
 
+(*
+TODO restore
+
 Definition inteitv (a b : R) f :=
   if (a < b)%R then \int[mu]_(x in `[a, b]) f x
                else - \int[mu]_(x in `[b, a]) f x.
@@ -134,6 +137,7 @@ rewrite (@continuous_FTC2 _ f F)// ?oppeB 1?addeC//.
   by split => // x xab; apply: dF; rewrite inE/=.
 by move=> x xab; apply: dFf; rewrite inE/=.
 Qed.
+*)
 
 End inteitv.
 
@@ -561,7 +565,9 @@ Local Open Scope quotient_scope.
 Context (ab : a <= b).
 
 (*Definition quot_contFunSegType : Type := {eq_quot eq_seg}.*)
-Definition quot_contFunSegType : Type := {ideal_quot (ideal_itv ab)}.
+Definition quot_contFunSegType := {ideal_quot (ideal_itv ab)}.
+(*Definition quot_contFunSegType : quotType (contFunSegType a b) := {ideal_quot (ideal_itv ab)}.*)
+
 
 (*HB.instance Definition _ := Choice.on quot_contFunSegType.
 HB.instance Definition _ := EqQuotient.on quot_contFunSegType.*)
@@ -696,13 +702,35 @@ rewrite /has_sup; split.
   exists (`|repr x a|)=> /=.
   by exists a => //; rewrite in_itv/= lexx ab.
 pose abs_x := normr \o repr x.
+have [aeqb | aneqb] := eqVneq a b.
+  subst b.
+  exists (`| repr x a |) => z/= [r].
+  rewrite in_itv/=.
+  by rewrite -eq_le => /eqP <- <-.
+have ab' : a < b.
+  by rewrite lt_neqAle aneqb ab.
 have cont_abs_x : {within `[a, b], continuous abs_x}.
-  (* TODO: use repr_comp_continuous *)
-  admit.
+  have /continuous_within_itvP : {within `[a, b], continuous (repr x)} by exact: contFunSeg.
+  move=> /(_ ab')[H1 H2 H3].
+  rewrite /abs_x.
+  apply/continuous_within_itvP => //.
+  split.
+  - move=> y yab.
+    apply: continuous_comp.
+      exact: H1.
+    exact: norm_continuous.
+  - rewrite /=.
+    apply: cvg_comp.
+      exact: H2.
+    exact: norm_continuous.
+  - rewrite /=.
+    apply: cvg_comp.
+      exact: H3.
+    exact: norm_continuous.
 have [c cab abc] := @EVT_max _ abs_x _ _ ab cont_abs_x.
 exists (`|repr x c|) => /= _ /= [z zab] <-.
 exact: abc.
-Admitted.
+Qed.
 
 Let ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
 Proof.
@@ -713,13 +741,21 @@ apply: le_sup.
 - move=> A/= -[s sab] <-{A}.
   rewrite /down/=.
   eexists.
-  eexists.
-  exists (`|x s|).
+  split.
+  exists (`|repr x s|).
     by exists s.
-  exists (`|y s|).
+  exists (`|repr y s|).
     by exists s.
   reflexivity.
+  have : infty_norm0 (repr (x + y)) = infty_norm0 (repr x) + infty_norm0 (repr y).
+    rewrite /infty_norm0/=.
+    rewrite -sup_sumE//.
+    admit.
+  rewrite /infty_norm0.
+
+
   rewrite (le_trans _ (ler_normD _ _))//.
+  
   admit.
 - eexists.
   rewrite /=.
@@ -730,12 +766,19 @@ Admitted.
 
 Let infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
 Proof.
+rewrite /norm.
+rewrite /infty_norm0.
+
 Admitted.
 
 Let infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
 Admitted.
 
 Let infty_normrN (x : V) : norm (- x) = norm x.
+Proof.
+rewrite /norm /infty_norm0.
+
+
 Admitted.
 (* TODO: dev the theory of sup following the theory of ess_sup *)
 
