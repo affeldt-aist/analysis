@@ -49,7 +49,6 @@ Abort.
 
 End completed_algebra_lemmas.
 
-
 Section lemmas.
 
 (* PR? *)
@@ -667,6 +666,113 @@ by apply: setSD.
 Qed.
 
 End measurable_squeeze.
+
+
+
+Section open_disjoint_bigcup.
+Context {R : realType} {T : set R}.
+
+Let ointsub := fun A U : set R => [/\ open A, is_interval A & A `<=` U].
+
+Let oitv_prop (iU : set R * set R) :=
+  [/\ iU.1 `<=` T `\` iU.2, open iU.1 & is_interval iU.1].
+
+Let oitv_type := {iU : set R * set R| oitv_prop iU}.
+
+Let i_ (iU : oitv_type) := (proj1_sig iU).1.
+Let U_ (iU : oitv_type) := (proj1_sig iU).2.
+
+Let oitv_rel (iU jV : oitv_type) :=
+    U_ jV = U_ iU `|` i_ jV.
+
+Definition oitvs (A : set R) : {x : set R | [/\ x `<=` A, open x & is_interval x]}.
+have [neA|_] := pselect (A !=set0).
+  have [oA|_ ] := pselect (open A).
+    have := dense_rat neA oA.
+    move/cid => [q [Aq /cid2[rq _ rqr]]].
+    exists (bigcup_ointsub A rq); split.
+    - exact: bigcup_ointsub_sub.
+    - exact: open_bigcup_ointsub.
+    - exact: is_interval_bigcup_ointsub.
+  by exists set0; split.
+by exists set0; split.
+Defined.
+
+Let I_ A := proj1_sig (oitvs A).
+
+Let open_I0 A : ~ open A -> I_ A = set0.
+Admitted.
+
+Let empty_I0 A : A = set0 -> I_ A = set0.
+Admitted.
+
+Let next_oitv iU : { j : set R | [/\ j `<=` T `\` (i_ iU `|` U_ iU),
+   open j & is_interval j]}.
+Proof.
+have := @dense_rat R (T `\` (i_ iU `|` U_ iU)).
+Admitted.
+
+Lemma open_bigcup_ooitv (U : set R) : open U ->
+  exists i : (set R)^nat,
+ [/\ (forall n, i n `<=` T), (forall n, open (i n)), (forall n, is_interval (i n)),
+ trivIset [set: nat] i &
+   U = \bigcup_n (i n)].
+Proof.
+move=> oU.
+have [->// |U0] := eqVneq U (@set0 R).
+exists (fun=> set0); split => //.
+- by move=> _.
+- by move=> _.
+- by move=> _.
+- move=> i j _ _.
+  by move/set0P; rewrite set0I eqxx//.
+- by rewrite bigcup0.
+move/set0P in U0.
+have /= [q [Uq /cid2[rq _ rqr]]] := dense_rat U0 oU.
+pose I0 := bigcup_ointsub U rq.
+
+
+have : forall x, {i : set R |
+   (fun i0 i1 => [/\ open i1, @is_interval R i1
+         & i1 `<=` U `\` i0]) x i}.
+  admit.
+move/dependent_choice/(_ I0).
+move=> [i [i0I0 /all_and3[openi itvi disji]]].
+exists i; split => //.
+- admit.
+- elim => //.
+  rewrite i0I0.
+  exact: open_bigcup_ointsub.
+- elim => //.
+  rewrite i0I0.
+  exact: is_interval_bigcup_ointsub.
+- apply/trivIsetP => /= j k _ _.
+  rewrite neq_lt=> /orP[jk|kj].
+    rewrite disjoints_subset.
+    
+Admitted.
+
+End open_disjoint_bigcup.
+
+Section lebesgue_measure_closure.
+Context {R : realType}.
+Notation mu := lebesgue_measure.
+
+Lemma lebesgue_measure_closure_open (A : set R) : open A ->
+  mu A = mu (closure A).
+Proof.
+move=> oA.
+have [->|] := eqVneq A set0.
+  by rewrite closure0.
+move/set0P => neA.
+have [i [_ oi itvi trivi AUi]] := @open_bigcup_ooitv _ [set: R] _ oA.
+rewrite AUi.
+rewrite measure_bigcup//=; last first.
+  move=> n _.
+  exact: is_interval_measurable.
+Admitted.
+
+End lebesgue_measure_closure.
 
 (* NB: work starts here *)
 
@@ -3208,7 +3314,7 @@ apply: HZ.
   exact: compact_closed.
 - apply/eqP; rewrite eq_le; apply/andP; split => //.
   rewrite -muZ10.
-  rewrite (_ : mu Z1 = mu (closure Z1)).
+  have -> : mu Z1 = mu (closure Z1); last first.
     apply: le_outer_measure.
     exact: subIsetl.
   apply/eqP; rewrite eq_le; apply/andP; split.
@@ -3231,6 +3337,32 @@ apply: HZ.
   rewrite addeA subee; last by rewrite muZ10.
   rewrite add0e oppe_ge0.
   (* countable *)
+
+apply/lee_addgt0Pr => d d0.
+rewrite add0e.
+rewrite leNgt; apply/negP => pcZ1.
+
+  apply: (@le_trans _ _ (mu (\bigcap_n (closure (U_ n)) `\` Z1))).
+    apply: le_outer_measure.
+    apply: setSD.
+    rewrite closureEbigcap.
+    move=> C HC.
+    move=> n _.
+    apply: HC; split; first exact: closed_closure.
+    apply: subset_trans _ (@subset_closure _ (U_ n)).
+    apply: subIset; right.
+    exact: bigcap_inf.
+  rewrite setD_bigcap.
+  apply: (@le_trans _ _ (mu (closure (U_ 0) `\` Z1))).
+    apply: le_outer_measure.
+    exact: bigcap_inf.
+  apply: (@le_trans _ _ (mu (closure (U_ 0) `\` U_ 0))).
+    
+  rewrite /Z1.
+  rewrite measure_le0/=; apply/eqP.
+  
+  apply: countable_lebesgue_measure0.
+rewrite /Z1.
   admit.
 
 (*
