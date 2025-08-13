@@ -96,6 +96,9 @@ Local Open Scope ereal_scope.
 Context {R : realType}.
 Let mu := (@lebesgue_measure R).
 
+(*
+TODO restore
+
 Definition inteitv (a b : R) f :=
   if (a < b)%R then \int[mu]_(x in `[a, b]) f x
                else - \int[mu]_(x in `[b, a]) f x.
@@ -134,6 +137,7 @@ rewrite (@continuous_FTC2 _ f F)// ?oppeB 1?addeC//.
   by split => // x xab; apply: dF; rewrite inE/=.
 by move=> x xab; apply: dFf; rewrite inE/=.
 Qed.
+*)
 
 End inteitv.
 
