@@ -671,86 +671,119 @@ End measurable_squeeze.
 
 Section open_disjoint_bigcup.
 Context {R : realType} {T : set R}.
+Hypothesis (oT : open T).
 
-Let ointsub := fun A U : set R => [/\ open A, is_interval A & A `<=` U].
+(* Let ointsub := fun A U : set R => [/\ open A, is_interval A & A `<=` U]. *)
 
-Let oitv_prop (iU : set R * set R) :=
-  [/\ iU.1 `<=` T `\` iU.2, open iU.1 & is_interval iU.1].
+Let elt_prop (iq : set R * rat.rat) := iq.1 = bigcup_ointsub T iq.2.
 
-Let oitv_type := {iU : set R * set R| oitv_prop iU}.
+Let elt_type := {iU : set R * rat.rat * set R | elt_prop iU.1}.
 
-Let i_ (iU : oitv_type) := (proj1_sig iU).1.
-Let U_ (iU : oitv_type) := (proj1_sig iU).2.
+Let I_ (iU : elt_type) := (proj1_sig iU).1.1.
+Let U_ (iU : elt_type) := (proj1_sig iU).2.
 
-Let oitv_rel (iU jV : oitv_type) :=
-    U_ jV = U_ iU `|` i_ jV.
+Let elt_rel (i j : elt_type) :=
+    [/\ I_ j `<=` T `\` U_ i & U_ j = U_ i `|` I_ j].
 
-Definition oitvs (A : set R) : {x : set R | [/\ x `<=` A, open x & is_interval x]}.
-have [neA|_] := pselect (A !=set0).
-  have [oA|_ ] := pselect (open A).
-    have := dense_rat neA oA.
-    move/cid => [q [Aq /cid2[rq _ rqr]]].
-    exists (bigcup_ointsub A rq); split.
-    - exact: bigcup_ointsub_sub.
-    - exact: open_bigcup_ointsub.
-    - exact: is_interval_bigcup_ointsub.
-  by exists set0; split.
-by exists set0; split.
-Defined.
-
-Let I_ A := proj1_sig (oitvs A).
-
-Let open_I0 A : ~ open A -> I_ A = set0.
-Admitted.
-
-Let empty_I0 A : A = set0 -> I_ A = set0.
-Admitted.
-
-Let next_oitv iU : { j : set R | [/\ j `<=` T `\` (i_ iU `|` U_ iU),
-   open j & is_interval j]}.
+Let next_elt U : { j : set R * rat.rat | [/\
+   j.1 = bigcup_ointsub (T `\` U) j.2 & j.1 `<=` T `\` U]}.
 Proof.
-have := @dense_rat R (T `\` (i_ iU `|` U_ iU)).
+have [TT|TT] := eqVneq T setT.
+  admit.
+have [UT|UT] := eqVneq U T.
+  exists (set0.
+  admit.
+have := @dense_rat R (T `\` U).
 Admitted.
 
-Lemma open_bigcup_ooitv (U : set R) : open U ->
+Lemma open_bigcup_ooitv :
   exists i : (set R)^nat,
  [/\ (forall n, i n `<=` T), (forall n, open (i n)), (forall n, is_interval (i n)),
  trivIset [set: nat] i &
-   U = \bigcup_n (i n)].
+   T = \bigcup_n (i n)].
 Proof.
-move=> oU.
-have [->// |U0] := eqVneq U (@set0 R).
-exists (fun=> set0); split => //.
-- by move=> _.
-- by move=> _.
-- by move=> _.
-- move=> i j _ _.
-  by move/set0P; rewrite set0I eqxx//.
-- by rewrite bigcup0.
-move/set0P in U0.
-have /= [q [Uq /cid2[rq _ rqr]]] := dense_rat U0 oU.
-pose I0 := bigcup_ointsub U rq.
+have [->// |T0] := eqVneq T (@set0 R).
+  exists (fun=> set0); split => //.
+  - by move=> _.
+  - by move=> _.
+  - by move=> _.
+  - move=> i j _ _.
+    by move/set0P; rewrite set0I eqxx//.
+  - by rewrite bigcup0.
+have := open_bigcup_rat oT.
+have := card_rat.
+move/card_set_bijP => [/= f].
+rewrite setTT_bijective => -[g cfg cgf].
+pose ratAT := [set q | rat.ratr q \in T].
+pose no_dup_index := [set n | n \in f @` ratAT /\ 
+forall m, (f @` ratAT) m -> (m < n)%N ->
+  bigcup_ointsub T (g n) `&` bigcup_ointsub T (g m) = set0].
 
-
-have : forall x, {i : set R |
-   (fun i0 i1 => [/\ open i1, @is_interval R i1
-         & i1 `<=` U `\` i0]) x i}.
+have fung : set_fun no_dup_index ratAT g.
   admit.
-move/dependent_choice/(_ I0).
-move=> [i [i0I0 /all_and3[openi itvi disji]]].
-exists i; split => //.
+have surjg : set_surj no_dup_index ratAT g.
+  admit.
+rewrite (reindex_bigcup g _ _ _ fung surjg) => Ubigcup.
+exists (fun n => if pselect (no_dup_index n) then bigcup_ointsub T (g n) else set0).
+  split.
+- move=> n.
+  case: ifP => _; last by [].
+Restart.
+have [->// |T0] := eqVneq T (@set0 R).
+  exists (fun=> set0); split => //.
+  - by move=> _.
+  - by move=> _.
+  - by move=> _.
+  - move=> i j _ _.
+    by move/set0P; rewrite set0I eqxx//.
+  - by rewrite bigcup0.
+
+move/set0P in T0.
+have /= [q0 [Uq0 /cid2[rq0 _ rq0r]]] := dense_rat T0 oT.
+pose I0 := bigcup_ointsub T rq0.
+have oI0 : open I0.
+  admit.
+have itvI0 : is_interval I0.
+  admit.
+have [v [v0 Pv]] : {i : nat -> elt_type |
+   i 0%N = exist _ (I0, I0) (conj oI0 itvI0) /\
+   forall n, elt_rel (i n) (i n.+1)}.
+  apply: dependent_choice_Type => -[[J V] [/= oJ itvJ]].
+  have [I [oI itvI ITV]] := next_elt V.
+  exists (exist _ (I, (V `|` I)) (conj oI itvI)); split => //.
+  rewrite /I_/=.
+  admit.
+have Ubig n : U_ (v n) = \big[setU/set0]_(i < n.+1) I_ (v i).
+  elim: n => [|n ih]//.
+    rewrite v0/U_/=.
+    rewrite big_ord_recr/= big_ord0 set0U.
+    by rewrite /I_/= v0/=.
+  by have [_ ->] := Pv n; rewrite big_ord_recr/= -ih.
+exists (fun n => (proj1_sig (v n)).1).
+split => //.
 - admit.
-- elim => //.
-  rewrite i0I0.
-  exact: open_bigcup_ointsub.
-- elim => //.
-  rewrite i0I0.
-  exact: is_interval_bigcup_ointsub.
-- apply/trivIsetP => /= j k _ _.
-  rewrite neq_lt=> /orP[jk|kj].
-    rewrite disjoints_subset.
-    
-Admitted.
+- admit.
+- admit.
+- admit.
+- rewrite eqEsubset; split; last first.
+    move=> x [n _].
+    move: (Pv n).
+    move=> [_ _ [q]].
+    admit.
+    rewrite (open_bigcup_rat oT).
+    move=> x [q /= Uq Uqx].
+    near \oo => n.
+    apply: (@bigsetU_bigcup _ _ n.+1).
+    move: (Ubig n) => <-.
+    rewrite /I_.
+; last first.
+  move=> x [n _ H].
+   move: (Ubig n).
+   rewrite /I_/U_.
+  - move=> x).
+ rewrite bigcup
+admit.
+
 
 End open_disjoint_bigcup.
 
@@ -770,6 +803,7 @@ rewrite AUi.
 rewrite measure_bigcup//=; last first.
   move=> n _.
   exact: is_interval_measurable.
+apply/eqP; rewrite eq_le; apply/andP; split.
 Admitted.
 
 End lebesgue_measure_closure.
