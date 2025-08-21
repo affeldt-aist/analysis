@@ -674,13 +674,70 @@ Lemma bigcup_ointsubxx q : open U ->
  U (rat.ratr q) ->
  bigcup_ointsub U q (rat.ratr q).
 Proof.
-Admitted.
+move=> oU Uq.
+have := open_subball oU Uq.
+move=> [e /= e0 eU].
+have : @ball R R (rat.ratr q) (e / 2) (rat.ratr q).
+  by apply: ballxx; rewrite divr_gt0.
+exists (@ball R R (rat.ratr q) (e/2)) => //.
+rewrite /=; split => //.
+split.
+- by apply: ball_open; rewrite divr_gt0.
+- by apply: ball_is_interval; rewrite divr_gt0.
+- apply: eU => //; last by rewrite divr_gt0.
+  rewrite ball_normE.
+  rewrite /ball/= sub0r normrN.
+  have /normr_idP -> : 0 <= e / 2 by rewrite divr_ge0 ?ltW.
+  rewrite -{1}(add0r e).
+  by rewrite midf_lt.
+Qed.
 
 Lemma bigcup_ointsub_xxP q :
  (U (rat.ratr q) <->
  bigcup_ointsub U q (rat.ratr q)).
 Proof.
 Abort.
+
+Lemma bigcup_ointsub_sup q (I : set R) :
+  open I -> is_interval I -> I `<=` U -> I (rat.ratr q) ->
+  I `<=` bigcup_ointsub U q.
+Proof. move=> oI itvI IU Iq x Ix; by exists I. Qed.
+
+Lemma nondisjoint_bigcup_ointsub (p q : rat.rat) :
+  bigcup_ointsub U p `&` bigcup_ointsub U q !=set0 ->
+    bigcup_ointsub U p = bigcup_ointsub U q.
+Proof.
+move=> [x /= [[A [[oA itvA AU Ap Ax]]] [B [[oB itvB BU Bq Bx]]]]].
+rewrite eqEsubset; split.
+- apply: bigcup_ointsub_sup.
+  + exact: open_bigcup_ointsub.
+  + exact: is_interval_bigcup_ointsub.
+  + exact: bigcup_ointsub_sub.
+  exists (A `|` B) => /= ; last by right.
+  split; first split.
+  + exact: openU.
+  + apply/connected_intervalP.
+    apply: connectedU.
+    * by exists x.
+    * exact/connected_intervalP.
+    * exact/connected_intervalP.
+  + by rewrite subUset.
+  + by left.
+- apply: bigcup_ointsub_sup.
+  + exact: open_bigcup_ointsub.
+  + exact: is_interval_bigcup_ointsub.
+  + exact: bigcup_ointsub_sub.
+  exists (A `|` B) => /= ; last by left.
+  split; first split.
+  + exact: openU.
+  + apply/connected_intervalP.
+    apply: connectedU.
+    * by exists x.
+    * exact/connected_intervalP.
+    * exact/connected_intervalP.
+  + by rewrite subUset.
+  + by right.
+Qed.
 
 End bigcup_ointsub_leamms.
 
@@ -811,10 +868,23 @@ split.
       by rewrite cfg.
     move=> q/= Tq.
     pose g1 := (pinv_ (fun=> 0%N) nodup_index g).
+    have : {in reprs, g1 =1 f}.
+      move=> x.
+      rewrite inE=> -[n []].
+      rewrite inE/= => -[p pT fpn] Hn gnx.
+      rewrite -gnx.
     exists (g1 q); last first.
       rewrite pinvK//.
       admit.
     split.
+      rewrite inE/=.
+      exists q => //.
+      rewrite -(cgf (g1 q)).
+      rewrite /g1 pinvK//.
+      rewrite inE/=.
+      exists (g1 q) => //.
+      + exact: (set_bij_inj bijg).
+      + 
       admit.
     admit.
 (*    exists (f q); last by rewrite cfg.
