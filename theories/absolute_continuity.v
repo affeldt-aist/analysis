@@ -741,6 +741,64 @@ Qed.
 
 End bigcup_ointsub_leamms.
 
+From mathcomp Require Import wochoice rat.
+
+Section open_disjoint_intervals.
+Context {R : realType}.
+Variable U : set R.
+Hypothesis oU : open U.
+
+Variables (f : rat -> nat) (g : nat -> rat).
+Hypotheses (cfg : cancel f g) (cgf : cancel g f).
+
+Let open_disjoint :
+  U = \bigcup_(q in [set q | forall p, U (ratr p) -> (f p < f q)%N ->
+                      bigcup_ointsub U q `&` bigcup_ointsub U p = set0])
+    bigcup_ointsub U q.
+Proof.
+rewrite [LHS]open_bigcup_rat//.
+apply/seteqP; split => /=; last first.
+  move=> r [q/= ?] Uqr.
+  exists q => //=.
+  (* TODO: lemma *)
+  case: Uqr => /= V [[oV Vitv VU] Vq Vr].
+  apply/mem_set.
+  exact: VU.
+move=> r [q/= Uq] Uqr.
+suff [p [pUq Up]] : exists p_idx : nat,
+    let p := g p_idx in
+    ratr p \in bigcup_ointsub U q /\
+    (forall q, ratr q \in bigcup_ointsub U q -> (f p <= f q)%N).
+  exists (g p).
+    rewrite /= => t Ut tp.
+    apply/notP.
+    move=> /eqP/set0P[s [ps ts]].
+    have : ratr t \in bigcup_ointsub U t.
+      apply/mem_set.
+      by apply: bigcup_ointsubxx => //.
+    move/Up.
+    by rewrite leqNgt => /negP; apply.
+  have <- : bigcup_ointsub U q = bigcup_ointsub U (g p).
+    apply: nondisjoint_bigcup_ointsub.
+    exists (ratr (g p)); split => //.
+      by apply/set_mem.
+    apply: bigcup_ointsubxx => //.
+    move/set_mem : pUq.
+    by apply: bigcup_ointsub_sub.
+  by [].
+
+exists (f q) => /=.
+split.
+  rewrite cfg.
+  apply/mem_set.
+  apply: bigcup_ointsubxx => //.
+  by apply/set_mem.
+move=> p pUp.
+rewrite cfg.
+Abort.
+
+End open_disjoint_intervals.
+
 Section open_disjoint_bigcup.
 Context {R : realType} {T : set R}.
 Hypothesis (oT : open T).
@@ -867,12 +925,32 @@ split.
       rewrite /ratAT/=.
       by rewrite cfg.
     move=> q/= Tq.
+    rewrite /reprs/=.
+    pose g1 := pinv nodup_index(*?*) g.
+    exists (g1 q); last first.
+      rewrite pinvK//=.
+      rewrite inE/=.
+      exists (g1 q) =>//.
+      red.
+      rewrite /=.
+      by rewrite cfg.
+    split.
+      rewrite inE/=.
+      by exists q.
+    move=> m/= [p].
+    rewrite /ratAT/= => pT.
+    move=> <-{m} fpfq.
+    apply/notP.
+    move=> /eqP.
+    move=> /set0P.
+    move/nondisjoint_bigcup_ointsub.
+    
+    
+
+    
+
+    
     pose g1 := (pinv_ (fun=> 0%N) nodup_index g).
-    have : {in reprs, g1 =1 f}.
-      move=> x.
-      rewrite inE=> -[n []].
-      rewrite inE/= => -[p pT fpn] Hn gnx.
-      rewrite -gnx.
     exists (g1 q); last first.
       rewrite pinvK//.
       admit.
@@ -883,28 +961,9 @@ split.
       rewrite /g1 pinvK//.
       rewrite inE/=.
       exists (g1 q) => //.
-      + exact: (set_bij_inj bijg).
-      + 
-      admit.
+      + admit.
+      + admit.
     admit.
-(*    exists (f q); last by rewrite cfg.
-    split; first by rewrite inE.
-    move=> _/= [p ratATp <-] fpq.
-    have nodupfp : nodup_index (f p).
-    case: bijg.
-    rewrite /set_fun/set_inj/set_surj/reprs.
-    admit
-split.
-*)
-(*
-    apply/not_exists2P => abs.
-    
-    have : exists n, nodup_index n /\ (bigcup_ointsub T q (rat.ratr (g n))).
-      admit.
-    move=> [n [nodup_indexn qgn]].
-    exists n => //.
-    case: qgn => A/=.
-*)
   move: bijg => [fung injg surjg].
   rewrite (reindex_bigcup _ _ _ _ fung surjg).
   rewrite bigcup_mkcond.
