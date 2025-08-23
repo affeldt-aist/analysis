@@ -751,7 +751,7 @@ Hypothesis oU : open U.
 Variables (f : rat -> nat) (g : nat -> rat).
 Hypotheses (cfg : cancel f g) (cgf : cancel g f).
 
-Let open_disjoint :
+Let open_disjoint' :
   U = \bigcup_(q in [set q | forall p, U (ratr p) -> (f p < f q)%N ->
                       bigcup_ointsub U q `&` bigcup_ointsub U p = set0])
     bigcup_ointsub U q.
@@ -765,37 +765,138 @@ apply/seteqP; split => /=; last first.
   apply/mem_set.
   exact: VU.
 move=> r [q/= Uq] Uqr.
-suff [p [pUq Up]] : exists p_idx : nat,
+suff [p_idx [pUq Up]] : exists p_idx : nat,
     let p := g p_idx in
     ratr p \in bigcup_ointsub U q /\
-    (forall q, ratr q \in bigcup_ointsub U q -> (f p <= f q)%N).
-  exists (g p).
+    (forall q', ratr q' \in bigcup_ointsub U q -> (f p <= f q')%N).
+  exists (g p_idx).
     rewrite /= => t Ut tp.
     apply/notP.
     move=> /eqP/set0P[s [ps ts]].
-    have : ratr t \in bigcup_ointsub U t.
-      apply/mem_set.
-      by apply: bigcup_ointsubxx => //.
-    move/Up.
-    by rewrite leqNgt => /negP; apply.
-  have <- : bigcup_ointsub U q = bigcup_ointsub U (g p).
+    have := Up t.
+    have H : ratr t \in bigcup_ointsub U q.
+      rewrite inE.
+      rewrite (@nondisjoint_bigcup_ointsub _ _ _ (g p_idx))//.
+        rewrite (@nondisjoint_bigcup_ointsub _ _ _ t)//.
+          by apply: bigcup_ointsubxx => //.
+        by exists s.
+      exists (ratr (g p_idx)).
+      split.
+        by apply/set_mem.
+      apply: bigcup_ointsubxx => //.
+      apply: bigcup_ointsub_sub.
+      apply/set_mem.
+      exact: pUq.
+    move/(_ H).
+    by rewrite leqNgt tp.
+  have <- : bigcup_ointsub U q = bigcup_ointsub U (g p_idx).
     apply: nondisjoint_bigcup_ointsub.
-    exists (ratr (g p)); split => //.
+    exists (ratr (g p_idx)); split => //.
       by apply/set_mem.
     apply: bigcup_ointsubxx => //.
     move/set_mem : pUq.
     by apply: bigcup_ointsub_sub.
   by [].
-
-exists (f q) => /=.
-split.
-  rewrite cfg.
-  apply/mem_set.
+pose T : finType := 'I_(f q).+1.
+pose P := [pred i : T | ratr (g i) \in bigcup_ointsub U q].
+have Pord_max : P ord_max.
+  rewrite /P/=.
+  rewrite inE.
+  rewrite cfg//.
   apply: bigcup_ointsubxx => //.
   by apply/set_mem.
+pose min : T := [arg min_(i < @ord_max (f q) | P i) idfun i].
+exists min => /=.
+split.
+  suff: P min by [].
+  rewrite /min.
+  by case: arg_minnP.
 move=> p pUp.
-rewrite cfg.
-Abort.
+rewrite /min.
+case: arg_minnP => //= i giq ismall.
+rewrite cgf.
+have [H|H] := ltnP (f p) ((f q).+1).
+  have @j' : 'I_(f q).+1.
+    by apply: (@Ordinal _ (f p)).
+  have := ismall j'.
+  rewrite /j'/=.
+  rewrite cfg.
+  by move/(_ pUp).
+rewrite (leq_trans _ (ltnW H))//.
+have := ismall ord_max.
+apply.
+rewrite /= cfg//.
+apply/mem_set.
+apply/bigcup_ointsubxx => //.
+exact/set_mem.
+Qed.
+
+Let I (q : rat) := if
+    (pselect (forall p, U (ratr p) -> (f p < f q)%N ->
+      bigcup_ointsub U q `&` bigcup_ointsub U p = set0)) then
+    bigcup_ointsub U q
+  else
+    set0.
+
+Let I_trivIset : trivIset [set q | U (ratr q)] I.
+Proof.
+apply/trivIsetP => /= i j Ui Uj.
+wlog : i j Ui Uj / i < j.
+  move=> wlg.
+  rewrite neq_lt => /orP[|] ij.
+    by rewrite wlg// lt_eqF.
+  by rewrite setIC wlg// lt_eqF.
+move=> ij _.
+rewrite /I/=.
+case: pselect => /=; case: pselect => /=.
+- move=> H1 H2.
+  have [H3|H3] := ltnP (f i) (f j).
+    by rewrite setIC H1//.
+  rewrite H2//.
+  rewrite ltn_neqAle H3 andbT.
+  have : i != j.
+    by rewrite lt_eqF//.
+  apply: contra => /eqP.
+  move/can_inj : cfg.
+  by move=> /[apply] => /esym/eqP.
+- by rewrite setI0.
+- by rewrite set0I.
+- by rewrite setI0.
+Qed.
+
+Lemma open_disjoint :
+  exists I : rat -> set R,
+    (forall n, open (I n) /\ is_interval (I n)) /\
+     trivIset [set q | U (ratr q)] I /\
+     U = \bigcup_n I n.
+Proof.
+exists I; split.
+  move=> q.
+  split.
+  rewrite /I.
+  case: pselect => //= _.
+    exact: open_bigcup_ointsub.
+  exact: open0.
+  rewrite /I.
+  case: pselect => //= _.
+    exact: is_interval_bigcup_ointsub.
+  by red.
+split.
+  exact: I_trivIset.
+rewrite open_disjoint'.
+rewrite bigcup_mkcond.
+apply: eq_bigcup => // q _.
+rewrite /I.
+case: pselect => //=.
+  move=> H.
+  rewrite ifT//.
+  by rewrite inE/=.
+move=> H.
+rewrite ifF//.
+apply/negbTE.
+rewrite notin_setE/=.
+done.
+Qed.
 
 End open_disjoint_intervals.
 
