@@ -7,6 +7,9 @@
 - in `constructive_ereal.v`:
   + lemma `ltgte_fin_num`
 
+- in `function_spaces.v`:
+  + lemmas `cvg_big`, `continuous_big`
+
 ### Changed
 
 - in `lebesgue_stieltjes_measure.v` specialized from `numFieldType` to `realFieldType`:
