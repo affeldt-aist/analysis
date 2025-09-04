@@ -52,7 +52,7 @@ Section lemmas.
 (* PR? *)
 Lemma ball_is_interval (R : realType) (x e : R) :
   0 < e -> is_interval (ball x e).
-Proof. by move=> e0; rewrite ball_itv; exact: interval_is_interval. Qed.
+Proof. by move=> e0; rewrite ball_itv; exact: interval_is_interval. Abort.
 
 (* TODO: PR near nat_topology.nbhs_infty_ger *)
 Lemma nbhs_infty_gtr {R : realType} (r : R) :
@@ -665,6 +665,51 @@ Qed.
 
 End measurable_squeeze.
 
+Section inf_sup_lemmas.
+Lemma has_bound_not_subset1_inf_sup {R : realType} (S : set R) :
+  has_lbound S -> has_ubound S -> ~ (is_subset1 S) ->
+  inf S < sup S.
+Proof.
+move=> hlS hbS.
+move=> /existsNP[x] /existsNP[y] /not_implyP[Sx] /not_implyP[Sy] /eqP xy.
+wlog : x y Sx Sy xy / x < y.
+  move=> wlg; move: xy; rewrite neq_lt => /orP[xy|yx].
+    by apply: (wlg _ _ Sx Sy) => //; rewrite lt_eqF.
+  by apply: (wlg _ _ Sy Sx) => //; rewrite lt_eqF.
+move=> {}xy; apply: (@le_lt_trans _ _ x).
+  rewrite -(inf1 x); apply: le_inf; last 2 first.
+      by exists x.
+    by split => //; exists x.
+  move=> _ /= [_ -> <-].
+  by exists (- x); split => //=; exists x.
+apply: (@lt_le_trans _ _ y) => //.
+rewrite -(sup1 y); apply: le_sup; last 2 first.
+    by exists y.
+  by split=> //; exists y.
+rewrite sub1set.
+rewrite inE.
+by exists y.
+Qed.
+
+End inf_sup_lemmas.
+
+Section not_subset1P.
+
+Lemma not_subset1P {R : realType} (D : set R) (F : {fun D >-> [set: R]}) z :
+  ~ is_subset1 (D `&` F @^-1` [set z]) <->
+  (exists x y, [/\ x != y, D x, D y, F x = z & F y = z]).
+Proof.
+split.
+  move=> /existsNP[x] /existsNP[y].
+  move=> /not_implyP[[/= abx /= FxFr]] /not_implyP[[aby /= FyFr]] /eqP xy.
+  by exists x, y.
+move=> [x [y [xy xab yab FxFr FyFr]]].
+apply/existsNP; exists x; apply/existsNP; exists y.
+by apply/not_implyP; split => //; apply/not_implyP; split => //; exact/eqP.
+Qed.
+
+End not_subset1P.
+
 From mathcomp Require Import rat.
 
 Section bigcup_ointsub_lemmas.
@@ -677,7 +722,7 @@ move=> oU Uq.
 have [e /= e0 eU] := open_subball oU Uq.
 pose B := ball (@ratr R q) (e / 2).
 have oB : open B by apply: ball_open; rewrite divr_gt0.
-have iB : is_interval B by apply: ball_is_interval; rewrite divr_gt0.
+have iB : is_interval B by rewrite /B ball_itv; exact: interval_is_interval.
 have BU : B `<=` U.
   apply: eU => //; last by rewrite divr_gt0.
   rewrite ball_normE/= /ball/= sub0r normrN.
@@ -981,7 +1026,63 @@ Qed.
 
 End open_real_disjoint_intervals.
 
-(*Definition is_subset2 {T : eqType} (A : set T) :=
+Section locally_finite.
+Context {T : topologicalType}.
+
+(* https://proofwiki.org/wiki/Definition:Locally_Finite_Set_of_Subsets *)
+Definition locally_finite :=
+  [set F : (set (set T)) | forall x : T, exists U : set T, nbhs x U /\
+     finite_set [set A | A \in F /\ A `&` U != set0]].
+
+(* https://proofwiki.org/wiki/
+     Open_Set_Disjoint_from_Set_is_Disjoint_from_Closure *)
+(* for closures_locally_finite *)
+Lemma disj_set_closure (A B : set T) :
+  open B -> [disjoint A & B] -> [disjoint (closure A) & B].
+Proof.
+Admitted.
+
+(* https://proofwiki.org/wiki/
+     Closures_of_Elements_of_Locally_Finite_Set_is_Locally_Finite *)
+(* for closed_locally_finite_bigcup_closed *)
+Lemma closures_locally_finite (F : set (set T)) :
+  locally_finite F ->
+    locally_finite [set B | exists A, A \in F /\ B = closure A].
+Proof.
+Admitted.
+
+Let restr_sets (F : set (set T)) (U : set T) := [set A | F A /\ A `&` U !=set0].
+Let UU (F : set (set T)) := [set U | open U /\ finite_set (restr_sets F U)].
+
+(* https://proofwiki.org/wiki/
+     Union_of_Closed_Locally_Finite_Set_of_Subsets_is_Closed *)
+Lemma closed_locally_finite_bigcup_closed (F : set (set T)) :
+  locally_finite F ->
+  (forall A : set T, F A -> closed A) ->
+  closed (\bigcup_(A in F) A).
+Proof.
+have [|] := pselect (F !=set0); last first.
+  move/set0P/negP/negPn/eqP => ->.
+  by rewrite bigcup0// => _ _; exact: closed0.
+move=> [A FA].
+move=> lfinF clF.
+have : forall x, exists U, U x /\ UU F U.
+  admit.
+(* have : cover _ (UU F) [set: T] . *)
+have [U [oU fFU]] : UU F !=set0.
+  admit.
+have : U `&` (\bigcup_(A in F) A) = \bigcap_(X in (restr_sets F U)) (U `&` X).
+Admitted.
+
+Lemma locally_finite_closure_bigcupE (A : set (set T)) :
+locally_finite A ->
+  closure (\bigcup_(X in A) X) = \bigcup_(X in A) (closure X).
+Proof.
+Admitted.
+
+End locally_finite.
+
+Definition is_subset2 {T : eqType} (A : set T) :=
   exists r s : T, r != s /\ A = [set r; s].
 
 Section closure_bigcup.
@@ -1008,44 +1109,189 @@ Lemma closure_bigcup (I : nat -> set R) :
   (forall q : nat, open (I q) /\ is_interval (I q)) ->
   closure (\bigcup_n I n) = \bigcup_n (closure (I n)).
 Proof.
-move=> tI oiI.
+move=> tI /all_and2 [oI iI].
 apply/seteqP; split; last first.
   move=> /= r [i _] Iir.
   rewrite (bigcup_setD1 i)//.
   rewrite closureU.
   by left.
 have -> : \bigcup_n closure (I n) =
-    \bigcup_n (I n `|` close_open (oiI n).1 (oiI n).2).
+    \bigcup_n (I n `|` close_open (oI n) (iI n)).
   apply/seteqP; split => /= r.
     move=> [i _ Iir].
     exists i => //.
     move: Iir.
-    rewrite (closure_openE (oiI i).1 (oiI i).2) => -[].
+    rewrite (closure_openE (oI i) (iI i)) => -[].
       by left.
     by right.
   move=> [i _] [Iir|].
     exists i => //.
     rewrite closure_openE//.
-    exact: (oiI i).1.
-    exact: (oiI i).2.
-    move=> oIi iIi.
     by left.
   move=> ir.
   exists i => //=.
   rewrite closure_openE.
-  exact: (oiI i).1.
-  exact: (oiI i).2.
-  move=> oIi iIi.
-  right.
-  rewrite (_ : oIi = (oiI i).1)//.
-  by rewrite (_ : iIi = (oiI i).2).
+  by right.
+move=> x.
+  rewrite closure_limit_point/= => -[[n _ Inx]|].
+  exists n => //.
+  by left.
+move/limit_pointP => [x_ ].
+admit.
 Abort.
 
-End closure_bigcup.*)
+(* StackExchange :
+  https://math.stackexchange.com/questions/195311/
+  union-of-closure-of-sets-is-the-closure-of-the-union-true-for-finite-false-for
+ *)
+Lemma in_mem_closedP (x : R) (A : set R) :
+  closure A x <->
+ (forall U, nbhs x U -> U `&` A !=set0).
+Proof.
+Admitted.
+
+Lemma closure_bigcup0 (A : (set R)^nat) n :
+  closure (\bigcup_(i < n) (A i)) = \bigcup_(i < n) (closure (A i)).
+Proof.
+rewrite eqEsubset; split; last first.
+  apply: bigcup_sub => i /= iltn.
+  apply: closure_subset.
+  exact: bigcup_sup.
+apply: subsetC2.
+move=> x.
+rewrite -setTD/= => -[_ H].
+have : forall i : 'I_ n, exists U' : set R, nbhs x U' /\ U' `&` A i = set0.
+  move=> i.
+  move: H => /exists2P/forallNP/(_ i).
+  move/not_andP => [//=|].
+  move/in_mem_closedP.
+  move/existsNP => [U'].
+  move/not_implyP => [xU'].
+  move/set0P/negP/negbNE/eqP => UAi0.
+  by exists U'.
+move/choice => [U0 /all_and2[xU disjU]].
+move/in_mem_closedP.
+apply/existsNP.
+Abort.
+
+End closure_bigcup.
+
+Section bigcup_cintsub.
+Context {R : realType}.
+
+Definition nondeg_interval :=
+[set A : set R | is_interval A /\ ~ is_subset1 A].
+
+Lemma nondeg_intervalP A : nondeg_interval A <->
+  [/\ is_interval A, A !=set0 & inf A < sup A].
+Proof.
+split.
+- move=> [itvA Nsub1A].
+  split => //.
+  + apply/set0P/negP; move/eqP => A0; apply: Nsub1A.
+    by rewrite A0.
+  + apply: has_bound_not_subset1_inf_sup.
+    * 
+      admit.
+    * admit.
+  + admit.
+- move=> [itvA A0 inf_sup].
+  split => //.
+  admit.
+Abort.
+
+Definition nondeg_set :=
+[set A : set R | closure (interior A) = A].
+
+Definition cintsub (A C : set R) :=
+  [/\ closed A, is_interval A & A `<=` C].
+
+(*
+bigcup_ointsub =
+fun R : realType =>
+let ointsub :=
+  fun A U : set R => [/\ open A, is_interval A & A `<=` U] in
+let ointsub_rat :=
+  fun (U : set R) (q : rat) => [set A | ointsub A U /\ A (ratr q)]
+  in
+fun (U : set R) (q : rat) => \bigcup_(A in ointsub_rat U q) A
+     : forall [R : realType], set R -> rat -> set R
+*)
+
+Lemma closed_disjoint (A : set R) : compact A -> nondeg_set A ->
+   exists I : (set R)^nat,
+[/\ (forall n, closed (I n)), (forall n, is_interval (I n)),
+  trivIset [set: nat] I & A = \bigcup_n I n].
+Proof.
+Abort.
+
+
+End bigcup_cintsub.
+
+Section closed_disjoint.
+Context {R : realType}.
+
+Lemma unprovable_closed_disjoint (C : set R) : (closed C) ->
+ exists I : (set R)^nat,
+[/\ (forall n, closed (I n)), (forall n, is_interval (I n)),
+  trivIset [set: nat] I & C = \bigcup_n I n].
+Proof.
+(* counter exaample: Cantor set
+ * Cantor set is compact but uncountable union of closed set(singleton)
+ *) Abort.
+
+Lemma closed_disjoint (C : set R) : compact C ->
+ exists I : (set R)^nat,
+[/\ (forall n, closed (I n)), (forall n, is_interval (I n)),
+  trivIset [set: nat] I & C = \bigcup_n I n].
+Proof.
+move=> cC.
+(* if C is compact, there is a closed interval I0 such that
+   C `<=` I0. *)
+set I0 := Rhull C.
+have I0E : I0 = `[inf C, sup C].
+  rewrite /I0/Rhull.
+  rewrite ifT//=; last first.
+    apply: asboolT.
+    exists (inf C).
+    move=> x Cx.
+    admit.
+  admit.
+(* Since ~` C is open, ~` C is written by countable union of open intervals
+   by disjoint_open *)
+have oCC : open (~` C).
+  rewrite openC.
+  exact: compact_closed.
+have [U ] := open_disjoint oCC.
+move=> [/all_and2[oU iU] [disjU cCU]].
+(* I0 `\` ~` C is countable union of closed interval? *)
+Admitted.
+
+End closed_disjoint.
 
 Section lebesgue_measure_closure.
 Context {R : realType}.
 Notation mu := lebesgue_measure.
+
+Lemma bigcup_closure (B: nat -> set R) :
+(forall i, is_interval (B i)) -> (forall i, ~ is_subset1 (B i)) ->
+  trivIset [set: nat] B ->
+closure (\bigcup_i B i) = \bigcup_i (closure (B i)).
+Proof.
+move=> disjB.
+rewrite eqEsubset; split.
+- move=> x.
+  rewrite closure_limit_point/= => -[|].
+  + move=> [n In Bnx].
+    exists n => //.
+    exact: subset_closure.
+  + move/limit_pointP.
+    move=> [/= p_ [pB px cvgp]].
+ (* rewrite /limit_point/= => limpx. *)
+ (*    pose e (n : nat) : R := n%:R^-1. *)
+ (*    pose U n := (ball x (e n)). *)
+ (*    poset n_ (i : nat) := proj1_sig ( *)
+Admitted.
 
 Lemma lebesgue_measure_closure_open (A : set R) : open A ->
   mu A = mu (closure A).
@@ -1056,8 +1302,16 @@ have [->|] := eqVneq A set0.
 move/set0P => neA.
 have [I [oiI] [tI AE]] := @open_disjoint _ _ oA.
 rewrite [in LHS]AE.
+have ccA : closed (closure A).
+  exact: closed_closure.
 apply/eqP; rewrite eq_le; apply/andP; split.
-  move=> [:tmp].
+  rewrite le_measure ?inE//.
+  - apply: bigcup_measurable => // k _.
+    apply: open_measurable.
+    by have /all_and2[] := oiI.
+  - exact: closed_measurable.
+  by rewrite AE; exact: subset_closure.
+(*  move=> [:tmp].
   rewrite le_measure ?inE//.
     abstract: tmp.
     apply: bigcup_measurable => // k _.
@@ -1067,10 +1321,13 @@ apply/eqP; rewrite eq_le; apply/andP; split.
   exact: closed_closure.
   rewrite AE.
   exact: subset_closure.
+*)
 rewrite measure_bigcup//=; last first.
   move=> n _.
   apply: is_interval_measurable.
   by have [] := oiI n.
+
+
 Admitted.
 
 End lebesgue_measure_closure.
@@ -2396,44 +2653,6 @@ Qed.
 
 End lemma1.
 
-Lemma has_bound_not_subset1_inf_sup {R : realType} (S : set R) :
-  has_lbound S -> has_ubound S -> ~ (is_subset1 S) ->
-  inf S < sup S.
-Proof.
-move=> hlS hbS.
-move=> /existsNP[x] /existsNP[y] /not_implyP[Sx] /not_implyP[Sy] /eqP xy.
-wlog : x y Sx Sy xy / x < y.
-  move=> wlg; move: xy; rewrite neq_lt => /orP[xy|yx].
-    by apply: (wlg _ _ Sx Sy) => //; rewrite lt_eqF.
-  by apply: (wlg _ _ Sy Sx) => //; rewrite lt_eqF.
-move=> {}xy; apply: (@le_lt_trans _ _ x).
-  rewrite -(inf1 x); apply: le_inf; last 2 first.
-      by exists x.
-    by split => //; exists x.
-  move=> _ /= [_ -> <-].
-  by exists (- x); split => //=; exists x.
-apply: (@lt_le_trans _ _ y) => //.
-rewrite -(sup1 y); apply: le_sup; last 2 first.
-    by exists y.
-  by split=> //; exists y.
-rewrite sub1set.
-rewrite inE.
-by exists y.
-Qed.
-
-Lemma not_subset1P {R : realType} (D : set R) (F : {fun D >-> [set: R]}) z :
-  ~ is_subset1 (D `&` F @^-1` [set z]) <->
-  (exists x y, [/\ x != y, D x, D y, F x = z & F y = z]).
-Proof.
-split.
-  move=> /existsNP[x] /existsNP[y].
-  move=> /not_implyP[[/= abx /= FxFr]] /not_implyP[[aby /= FyFr]] /eqP xy.
-  by exists x, y.
-move=> [x [y [xy xab yab FxFr FyFr]]].
-apply/existsNP; exists x; apply/existsNP; exists y.
-by apply/not_implyP; split => //; apply/not_implyP; split => //; exact/eqP.
-Qed.
-
 (* PR https://github.com/math-comp/analysis/pull/1451 *)
 
 Lemma discontinuityP1 {R : realType} (f : R -> R) (r : R) :
@@ -2846,9 +3065,8 @@ have neZn : bigcup_ointsub Z (index n) !=set0.
   split => //.
   split.
   - apply: (@ball_open _ R^o) => //.
-    exact: ball_is_interval.
-  - rewrite /B.
-    rewrite /e/=.
+    rewrite /B ball_itv; exact: interval_is_interval.
+  - rewrite /B/e/=.
     near: e'.
     apply: (@open_subball _ R^o) => //.
     by move: nZ; rewrite /= inE.
@@ -3643,6 +3861,8 @@ apply/lee_addgt0Pr => d d0.
 rewrite add0e.
 rewrite leNgt; apply/negP => pcZ1.
 
+(*
+
   apply: (@le_trans _ _ (mu (\bigcap_n (closure (U_ n)) `\` Z1))).
     apply: le_outer_measure.
     apply: setSD.
@@ -3665,6 +3885,8 @@ rewrite leNgt; apply/negP => pcZ1.
   apply: countable_lebesgue_measure0.
 rewrite /Z1.
   admit.
+
+*)
 
 (*
 set K1 := `[a, b] `&` F @^-1` K.
