@@ -1030,9 +1030,24 @@ Section locally_finite.
 Context {T : topologicalType}.
 
 (* https://proofwiki.org/wiki/Definition:Locally_Finite_Set_of_Subsets *)
+Definition restr_sets (F : set (set T)) (U : set T) :=
+     [set A | F A /\ A `&` U !=set0].
+
 Definition locally_finite :=
   [set F : (set (set T)) | forall x : T, exists U : set T, nbhs x U /\
-     finite_set [set A | A \in F /\ A `&` U != set0]].
+     finite_set (restr_sets F U)].
+
+Let open_disj_set (F : set (set T)) :=
+   [set U | open U /\ finite_set (restr_sets F U)].
+
+Lemma locally_finite_set0 F : locally_finite F -> F !=set0.
+Proof.
+move=> lF.
+apply/set0P/negP => /eqP F0.
+have [|] := pselect ([set: T] !=set0); last first.
+  move/set0P/negP/negPn/eqP => T0.
+  move: lF.
+Admitted.
 
 (* https://proofwiki.org/wiki/
      Open_Set_Disjoint_from_Set_is_Disjoint_from_Closure *)
@@ -1042,17 +1057,32 @@ Lemma disj_set_closure (A B : set T) :
 Proof.
 Admitted.
 
+Definition closures (F : set (set T)) :=
+      [set B | exists A, F A /\ B = closure A].
+
+Lemma bigcup_closuresE (F : set (set T)) :
+  \bigcup_(B in closures F) B = \bigcup_(A in F) (closure A).
+Proof.
+Admitted.
+
 (* https://proofwiki.org/wiki/
      Closures_of_Elements_of_Locally_Finite_Set_is_Locally_Finite *)
 (* for closed_locally_finite_bigcup_closed *)
 Lemma closures_locally_finite (F : set (set T)) :
   locally_finite F ->
-    locally_finite [set B | exists A, A \in F /\ B = closure A].
+    locally_finite (closures F).
 Proof.
-Admitted.
+move=> lF.
+set BB := [set B | exists A, A \in F /\ B = closure A].
+move=> x.
+have [Ux [Uxx finFUx]]:= lF x.
+set BBx := restr_sets BB Ux.
+exists Ux; split => //.
+apply: card_le_finite finFUx.
 
-Let restr_sets (F : set (set T)) (U : set T) := [set A | F A /\ A `&` U !=set0].
-Let UU (F : set (set T)) := [set U | open U /\ finite_set (restr_sets F U)].
+(* apply: pcard_surjP. *)
+admit.
+Admitted.
 
 (* https://proofwiki.org/wiki/
      Union_of_Closed_Locally_Finite_Set_of_Subsets_is_Closed *)
@@ -1066,19 +1096,44 @@ have [|] := pselect (F !=set0); last first.
   by rewrite bigcup0// => _ _; exact: closed0.
 move=> [A FA].
 move=> lfinF clF.
-have : forall x, exists U, U x /\ UU F U.
+have : forall x, exists U, U x /\ open_disj_set F U.
   admit.
 (* have : cover _ (UU F) [set: T] . *)
-have [U [oU fFU]] : UU F !=set0.
+have [U [oU fFU]] : open_disj_set F !=set0.
   admit.
 have : U `&` (\bigcup_(A in F) A) = \bigcap_(X in (restr_sets F U)) (U `&` X).
+  admit.
+admit.
+
 Admitted.
+
+(* https://proofwiki.org/wiki/Closure_of_Union_contains_Union_of_Closures *)
+Lemma subset_closure_bigcup (A : set (set T)) :
+  \bigcup_(X in A) closure X `<=` closure (\bigcup_(X in A) X).
+Proof.
+apply: bigcup_sub => X AX.
+apply: closure_subset.
+by move=> ?; exists X.
+Qed.
 
 Lemma locally_finite_closure_bigcupE (A : set (set T)) :
 locally_finite A ->
   closure (\bigcup_(X in A) X) = \bigcup_(X in A) (closure X).
 Proof.
-Admitted.
+move=> lA.
+have lcA : locally_finite (closures A).
+  exact: closures_locally_finite.
+have cUcA : closed (\bigcup_(B in A) (closure B)).
+  rewrite -bigcup_closuresE.
+  apply: closed_locally_finite_bigcup_closed.
+  - exact: closures_locally_finite.
+  - move=> _ [? [? ->]]; exact: closed_closure.
+rewrite eqEsubset; split.
+- rewrite ((closure_id _).1 cUcA); apply: closure_subset.
+  apply: subset_bigcup.
+  by move=> ? _; exact: subset_closure.
+- exact: subset_closure_bigcup.
+Qed.
 
 End locally_finite.
 
