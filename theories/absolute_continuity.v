@@ -1084,6 +1084,95 @@ apply: card_le_finite finFUx.
 admit.
 Admitted.
 
+Definition open_coverT :=
+  [set F : set (set T) |
+      (forall A, F A -> open A) /\ (\bigcup_(A in F) A = [set: T])].
+
+Lemma open_coverTP (F : set (set T)) : open_coverT F <->
+  ((forall A, F A -> open A) /\ (forall x : T, exists A, F A /\ A x)).
+Proof.
+split => -[H1 H2].
+- split => //.
+  move=> x.
+  have : [set: T] x by [].
+  rewrite -H2 => -[A FA Ax].
+  by exists A; split.
+- split => //.
+  rewrite eqEsubset; split => x//= _.
+  have [A [FA Ax]] := H2 x.
+  by exists A.
+Qed.
+
+Lemma open_coverT_open (F : set (set T)) A : open_coverT F ->
+  F A -> open A.
+Proof. move=> [+ _]; exact. Qed.
+
+Lemma open_coverT_coverT (F : set (set T)) : open_coverT F ->
+  \bigcup_(A in F) A = [set: T].
+Proof. by move=> [_ +]. Qed.
+
+Lemma open_coverT_point (F : set (set T)) : open_coverT F ->
+(forall x : T, exists A, F A /\ A x).
+Proof. by move/open_coverTP=> [_ +]. Qed.
+
+(* https://proofwiki.org/wiki/Characterization_of_Open_Set_by_Open_Cover *)
+Lemma open_open_coverT_subspace (F : set (set T)) E :
+  open_coverT F ->
+  open E <-> (forall U, F U -> (@open (subspace U) E)).
+Proof.
+move=> ocF.
+split.
+- move=> oE U FU.
+  have oU : open U by exact: (@open_coverT_open F).
+  rewrite -open_setIS//.
+  exact: openI => //.
+- move=> oF.
+  have {}oF : forall U : set T, F U -> (@open T (E `&` U)).
+    move=> U FU.
+    rewrite open_setIS//.
+      exact: oF.
+    exact: (@open_coverT_open F).
+  rewrite -(setIT E).
+  rewrite -(open_coverT_coverT ocF).
+  rewrite setI_bigcupr.
+  apply: bigcup_open => U FU.
+  exact: oF.
+Qed.
+
+(* https://proofwiki.org/wiki/Characterization_of_Closed_Set_by_Open_Cover *)
+Lemma closed_open_coverT_subspace (F : set (set T)) E :
+  open_coverT F ->
+  closed E <-> (forall U, F U -> (@closed (subspace U) E)).
+Proof.
+move=> ocF; split=> [cE|cEU].
+- move=> U FU.
+  have oU : open U.
+    move: ocF.
+      rewrite /open_coverT/= => -[].
+      by move/(_ U FU).
+  rewrite -openC.
+  rewrite -open_setIS => //.
+  apply: openI => //.
+  by rewrite openC.
+- rewrite -openC.
+  apply/(open_open_coverT_subspace _ ocF).
+  move=> U FU.
+  rewrite openC.
+  exact: cEU.
+Qed.
+
+Lemma restr_sets_bigcupIl (F : set (set T)) (U : set T) :
+ \bigcup_(A in F) (U `&` A) = \bigcup_(A in (restr_sets F U)) (U `&` A).
+Proof.
+rewrite (bigcupID (restr_sets F U) _ F) -[RHS]setU0; congr setU => //.
+  by rewrite (setIidr _)//; move=> ?[].
+apply: bigcup0 => A.
+rewrite /restr_sets/= => -[FA ].
+rewrite -implypN => /(_ FA).
+move/set0P/negP/negbNE/eqP.
+by rewrite setIC.
+Qed.
+
 (* https://proofwiki.org/wiki/
      Union_of_Closed_Locally_Finite_Set_of_Subsets_is_Closed *)
 Lemma closed_locally_finite_bigcup_closed (F : set (set T)) :
@@ -1091,6 +1180,32 @@ Lemma closed_locally_finite_bigcup_closed (F : set (set T)) :
   (forall A : set T, F A -> closed A) ->
   closed (\bigcup_(A in F) A).
 Proof.
+move=> lF clF.
+set UU := open_disj_set F.
+have cover_UU : open_coverT UU.
+  apply/open_coverTP.
+  split; first by move=> + [].
+  move=> x.
+  have [A [+ finFA]] := lF x.
+  rewrite nbhsE/= => -[U].
+  rewrite open_nbhsE => -[oU Ux] UA.
+  exists U; split => //; last by move/nbhs_singleton : Ux.
+  split => //.
+  apply: sub_finite_set finFA.
+  move=> X; rewrite /restr_sets/= => -[FX XU0]; split=> //.
+  apply: subset_nonempty XU0.
+  exact: setIS.
+apply/(closed_open_coverT_subspace _ cover_UU).
+move=> U [oU finFU].
+
+rewrite -openC -open_setSI//.
+rewrite -(setCK U) -setCU.
+rewrite -bigcupUr; last first.
+  exists U.
+  have : UU U.
+  rewrite /UU/open_disj_set.
+rewrite -setCD.
+rewrite (restr_sets_bigcupIl F U).
 have [|] := pselect (F !=set0); last first.
   move/set0P/negP/negPn/eqP => ->.
   by rewrite bigcup0// => _ _; exact: closed0.
