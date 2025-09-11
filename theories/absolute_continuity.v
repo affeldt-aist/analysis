@@ -2634,7 +2634,7 @@ Qed.
 
 (* https://heil.math.gatech.edu/6337/spring11/section1.3.pdf *)
 (* Theorem 1.37 (a) => (c) *)
-Lemma lebesgue_measurablity_decomp_Gdelta0 (X E : set R):
+Lemma lebesgue_measurability_decomp_Gdelta0 (X E : set R):
   open X -> E `<=` X -> lebesgue_measurability E ->
   exists (U_ : (set R)^nat) (Z : set R),
   [/\ (forall n, U_ n `<=` X /\ open (U_ n)),
@@ -3986,6 +3986,7 @@ set e := fine (mu (F @` Z1)) / 2.
 have e0 : 0 < e by rewrite divr_gt0 ?fine_gt0 ?FZ1oo ?FZ10.
 have [K [cK KFZ1 Z1Ke]] := lebesgue_regularity_inner mFZ1 FZ1oo e0.
 
+(* K1 := \bigcap_i (closure U_ i)? *)
 set K1 := (closure Z1) `&` F @^-1` K.
 have K1K : F @` K1 = K.
   rewrite eqEsubset; split.
@@ -4069,6 +4070,16 @@ apply: HZ.
   rewrite addeA subee; last by rewrite muZ10.
   rewrite add0e oppe_ge0.
   (* countable *)
+
+
+apply: (@le_trans _ _ (mu ((\bigcap_i (closure (U_ i))) `\` Z1))).
+  (* closureI *)
+  admit.
+
+
+apply: (@le_trans _ _ (mu ((closure (U_ 0%N)) `\` (U_ 0%N)))).
+  admit.
+
 
 apply/lee_addgt0Pr => d d0.
 rewrite add0e.
