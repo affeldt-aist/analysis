@@ -1040,6 +1040,7 @@ Definition locally_finite :=
 Let open_disj_set (F : set (set T)) :=
    [set U | open U /\ finite_set (restr_sets F U)].
 
+(*
 Lemma locally_finite_set0 F : locally_finite F -> F !=set0.
 Proof.
 move=> lF.
@@ -1047,7 +1048,7 @@ apply/set0P/negP => /eqP F0.
 have [|] := pselect ([set: T] !=set0); last first.
   move/set0P/negP/negPn/eqP => T0.
   move: lF.
-Admitted.
+Abort. *)
 
 (* https://proofwiki.org/wiki/
      Open_Set_Disjoint_from_Set_is_Disjoint_from_Closure *)
@@ -1173,12 +1174,39 @@ move/set0P/negP/negbNE/eqP.
 by rewrite setIC.
 Qed.
 
+Section closed_locally_finite_bigcup_closed.
+
+Arguments open : clear implicits.
+Arguments closed : clear implicits.
+
+Lemma closed_subspaceTI (A U: set T) : 
+closed (subspace A) U = closed (subspace A) (A `&` U).
+Proof.
+apply: propext.
+split=> cAU.
+- apply: closedI => //.
+  exact: closed_subspaceT.
+- rewrite -{1}(setTI U).
+  rewrite -(setUv A).
+  rewrite setIUl.
+  apply: closedU => //.
+  rewrite -openC.
+  rewrite setCI setCK.
+  rewrite -(setUIDK (A `|` ~` U) A).
+  apply: openU.
+  + rewrite setUK.
+    exact: open_subspaceT.
+  + rewrite setDUD setDv set0U.
+    apply: open_subspace_out.
+    exact: subDsetr.
+Qed.
+
 (* https://proofwiki.org/wiki/
      Union_of_Closed_Locally_Finite_Set_of_Subsets_is_Closed *)
 Lemma closed_locally_finite_bigcup_closed (F : set (set T)) :
   locally_finite F ->
-  (forall A : set T, F A -> closed A) ->
-  closed (\bigcup_(A in F) A).
+  (forall A : set T, F A -> closed T A) ->
+  closed T (\bigcup_(A in F) A).
 Proof.
 move=> lF clF.
 set UU := open_disj_set F.
@@ -1197,30 +1225,20 @@ have cover_UU : open_coverT UU.
   exact: setIS.
 apply/(closed_open_coverT_subspace _ cover_UU).
 move=> U [oU finFU].
+rewrite closed_subspaceTI.
+rewrite setI_bigcupr.
+rewrite restr_sets_bigcupIl.
+apply: closed_bigcup.
+  exact: finFU.
+move=> /= A FUA.
+apply: closedI.
+  exact: closed_subspaceT.
+apply: closed_subspaceW.
+apply: clF.
+by case: FUA.
+Qed.
 
-rewrite -openC -open_setSI//.
-rewrite -(setCK U) -setCU.
-rewrite -bigcupUr; last first.
-  exists U.
-  have : UU U.
-  rewrite /UU/open_disj_set.
-rewrite -setCD.
-rewrite (restr_sets_bigcupIl F U).
-have [|] := pselect (F !=set0); last first.
-  move/set0P/negP/negPn/eqP => ->.
-  by rewrite bigcup0// => _ _; exact: closed0.
-move=> [A FA].
-move=> lfinF clF.
-have : forall x, exists U, U x /\ open_disj_set F U.
-  admit.
-(* have : cover _ (UU F) [set: T] . *)
-have [U [oU fFU]] : open_disj_set F !=set0.
-  admit.
-have : U `&` (\bigcup_(A in F) A) = \bigcap_(X in (restr_sets F U)) (U `&` X).
-  admit.
-admit.
-
-Admitted.
+End closed_locally_finite_bigcup_closed.
 
 (* https://proofwiki.org/wiki/Closure_of_Union_contains_Union_of_Closures *)
 Lemma subset_closure_bigcup (A : set (set T)) :
