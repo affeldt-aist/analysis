@@ -1040,50 +1040,75 @@ Definition locally_finite :=
 Let open_disj_set (F : set (set T)) :=
    [set U | open U /\ finite_set (restr_sets F U)].
 
-(*
-Lemma locally_finite_set0 F : locally_finite F -> F !=set0.
-Proof.
-move=> lF.
-apply/set0P/negP => /eqP F0.
-have [|] := pselect ([set: T] !=set0); last first.
-  move/set0P/negP/negPn/eqP => T0.
-  move: lF.
-Abort. *)
-
 (* https://proofwiki.org/wiki/
      Open_Set_Disjoint_from_Set_is_Disjoint_from_Closure *)
 (* for closures_locally_finite *)
 Lemma disj_set_closure (A B : set T) :
   open B -> [disjoint A & B] -> [disjoint (closure A) & B].
 Proof.
-Admitted.
+move=> oB disjAB.
+apply/disj_setPLR.
+rewrite (closure_id (~` B)).1; last first.
+  by rewrite closedC.
+apply: closure_subset.
+exact/disj_setPLR.
+Qed.
 
-Definition closures (F : set (set T)) :=
-      [set B | exists A, F A /\ B = closure A].
-
-Lemma bigcup_closuresE (F : set (set T)) :
-  \bigcup_(B in closures F) B = \bigcup_(A in F) (closure A).
+Lemma closure_image_restr_setsE (F : set (set T)) (U : set T) :
+  open U ->
+  restr_sets (closure @` F) U = closure @` (restr_sets F U).
 Proof.
-Admitted.
+move=> oU.
+rewrite eqEsubset; split.
+- move=> Y [[X FX cXY] /set0P/negP YU0].
+  exists X => //.
+  split => //.
+  apply/set0P/negP.
+  move/eqP/disj_set2P/(disj_set_closure oU)/disj_set2P/eqP.
+  by rewrite cXY.
+- move=> Y [X [Fx [x [Xx Ux]] cXY]].
+  split.
+  by rewrite -cXY; exists X.
+  exists x; split => //.
+  rewrite -cXY.
+  exact: subset_closure.
+Qed.
+
+Lemma restr_sets_subset (F : set (set T)) (A B : set T) :
+  A `<=` B -> restr_sets F A `<=` restr_sets F B.
+Proof.
+move=> AB X [FX XA0].
+split => //.
+apply: (@subset_nonempty _ (X `&` A)) => //.
+exact: setIS.
+Qed.
+
+Lemma restr_sets_subset_finite_set (F : set (set T)) (A B : set T) :
+  A `<=` B -> finite_set (restr_sets F B) -> finite_set (restr_sets F A).
+Proof.
+move=> AB.
+apply: sub_finite_set.
+exact: restr_sets_subset.
+Qed.
 
 (* https://proofwiki.org/wiki/
      Closures_of_Elements_of_Locally_Finite_Set_is_Locally_Finite *)
 (* for closed_locally_finite_bigcup_closed *)
 Lemma closures_locally_finite (F : set (set T)) :
   locally_finite F ->
-    locally_finite (closures F).
+    locally_finite (closure @` F).
 Proof.
 move=> lF.
 set BB := [set B | exists A, A \in F /\ B = closure A].
 move=> x.
-have [Ux [Uxx finFUx]]:= lF x.
-set BBx := restr_sets BB Ux.
-exists Ux; split => //.
-apply: card_le_finite finFUx.
-
-(* apply: pcard_surjP. *)
-admit.
-Admitted.
+have [U [Ux finFU]]:= lF x.
+exists (interior U); split=> //.
+  exact: nbhs_interior.
+rewrite closure_image_restr_setsE//; last exact: open_interior.
+apply: finite_image.
+apply: restr_sets_subset_finite_set finFU.
+exact: interior_subset.
+Qed.
 
 Definition open_coverT :=
   [set F : set (set T) |
@@ -1179,7 +1204,7 @@ Section closed_locally_finite_bigcup_closed.
 Arguments open : clear implicits.
 Arguments closed : clear implicits.
 
-Lemma closed_subspaceTI (A U: set T) : 
+Lemma closed_subspaceTI (A U: set T) :
 closed (subspace A) U = closed (subspace A) (A `&` U).
 Proof.
 apply: propext.
@@ -1254,13 +1279,13 @@ locally_finite A ->
   closure (\bigcup_(X in A) X) = \bigcup_(X in A) (closure X).
 Proof.
 move=> lA.
-have lcA : locally_finite (closures A).
+have lcA : locally_finite (closure @` A).
   exact: closures_locally_finite.
 have cUcA : closed (\bigcup_(B in A) (closure B)).
-  rewrite -bigcup_closuresE.
+  rewrite -(bigcup_image _ closure)/=.
   apply: closed_locally_finite_bigcup_closed.
   - exact: closures_locally_finite.
-  - move=> _ [? [? ->]]; exact: closed_closure.
+  - move=> _ [? _ <-]; exact: closed_closure.
 rewrite eqEsubset; split.
 - rewrite ((closure_id _).1 cUcA); apply: closure_subset.
   apply: subset_bigcup.
