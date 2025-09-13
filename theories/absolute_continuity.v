@@ -4087,50 +4087,7 @@ apply: HZ.
     = Z1 `\` (F @^-1` preimages_gt1 `[a, b] [set: R] F).
     admit.
   exact: subDsetl.
-apply: (@le_trans _ _ (mu (F )).
-(* ? *)
-
-
-(* K1 := \bigcap_i (closure U_ i)? *)
-set K1 := Z1 `&` F @^-1` K.
-have K1K : F @` K1 = K.
-  rewrite eqEsubset; split.
-    apply: (subset_trans sub_image_setI).
-    apply: subIset; right.
-    exact: image_preimage_subset.
-  move=> r Kr/=.
-  pose L := Z1 `&` preimage F [set r].
-  have L0 : L !=set0.
-    have [x Z1x Fxr] := KFZ1 r Kr.
-    by exists x; split.
-  move: (L0) => [r'] /[dup] Lr'.
-  rewrite /L/= => [[r'ab Fr'r]].
-  exists r' => //.
-  rewrite /K1/=; split => //.
-  by rewrite Fr'r.
-have : (0 < mu (F @` K1))%E.
-  rewrite K1K.
-  have := Z1Ke.
-  rewrite measureD//; last exact: compact_measurable.
-  rewrite setIidr//.
-  rewrite lteBlDl; last first.
-    rewrite ge0_fin_numE//.
-    apply: le_lt_trans FZ1oo.
-    exact: le_outer_measure.
-  rewrite -lteBlDr//.
-  rewrite completed_lebesgue_measureE.
-  apply: le_lt_trans.
-  rewrite sube_ge0// /e EFinM fineK; last by rewrite ge0_fin_numE.
-  rewrite muleC gee_pMl//.
-  rewrite lee_fin invf_le1//.
-  by rewrite -[leLHS](mulr1n 1) ler_nat.
-apply/negP.
-rewrite -leNgt.
-rewrite measure_le0/=.
-apply/eqP.
-
-apply: HZ.
-v
+Admitted.
 
 End lemma3'.
 
