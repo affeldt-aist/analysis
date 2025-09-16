@@ -2779,7 +2779,7 @@ Definition abs_contN (a b : R) (f : R -> R) :=
 Fail Lemma lusinN_total_variation a b f : abs_contN a b f ->
   lusinN `[a, b]%classic (total_variation a ^~ f).
 
-Lemma abs_contN_dominates a b (f : cumulative R) : abs_contN a b f ->
+Lemma abs_contN_dominates a b (f : cumulative R R) : abs_contN a b f ->
   mu `<< lebesgue_stieltjes_measure f.
 Proof.
 Abort.
@@ -4178,15 +4178,65 @@ Admitted.
 
 End lemma6.
 
+(* NB: A is supposed to be a perfect set so that A is closed *)
+Definition contiguous_intervals {R : realType} (A : set R) : (set R)^nat :=
+  match pselect (closed A) with
+  | left H => sval (cid (open_disjoint (closed_openC H)))
+  | right _ => cst set0
+  end.
+
+Definition contiguous_intervals1 {R : realType} (A : set R) : R^nat :=
+  fun n => inf (contiguous_intervals A n).
+
+Definition contiguous_intervals2 {R : realType} (A : set R) : R^nat :=
+  fun n => sup (contiguous_intervals A n).
+
+Definition oscillation {R : realType} (f : R -> R) (A : set R) : \bar R :=
+  ereal_sup ((EFin \o f) @` A) - ereal_inf ((EFin \o f) @` A).
+
 Section lemma4.
 Context (R : realType).
 Context (a b : R) (ab : a < b).
+Local Notation mu := (@completed_lebesgue_measure R).
+Local Open Scope ereal_scope.
 
-Let ex_perfect_set (cmf : cumulative R) (cZ : set R) :
+Lemma lemma4 (f : R -> R) (P : set R) :
+  is_interval (f @` `[a, b]) ->
+  perfect_set P ->
+  a \in P -> b \in P ->
+  let a_ := contiguous_intervals1 P in
+  let b_ := contiguous_intervals2 P in
+  `|f b - f a|%:E <= mu (f @` `[a, b])
+                  <= (mu^*)%mu (f @` P) +
+                     \sum_(0 <= i <oo) oscillation f `[a_ i, b_ i]%classic.
+Proof.
+move=> fab perfectP aP bP/=.
+set a_ := contiguous_intervals1 P.
+set b_ := contiguous_intervals2 P.
+have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `]a_ i, b_ i[.
+  admit.
+apply/andP; split.
+  admit.
+rewrite H1.
+apply: (@le_trans _ _ (mu [set f x | x in P] +
+         mu (\bigcup_i [set f x | x in `](a_ i), (b_ i)[]))).
+  admit.
+rewrite measurable_mu_extE/=; last first.
+  admit.
+rewrite leeD2l//.
+rewrite measure_semi_bigcup//=; last 3 first.
+  admit.
+  admit.
+  admit.
+apply: lee_nneseries => // n _.
+Abort.
+Local Close Scope ereal_scope.
+
+Let ex_perfect_set (cmf : cumulative R R) (cZ : set R) :
   let f := cmf in
   cZ `<=` `[a, b] ->
   {within `[a, b], continuous f} ->
-  {in `[a, b], {homo f : x y / x <= y}} ->
+  {in `[a, b], {homo f : x y / (x <= y)}} ->
   bounded_variation a b f ->
   exists n, exists I : nat -> R * R,
   (forall i, trivIset setT (fun i => `[(I i).1, (I i).2]%classic) /\
