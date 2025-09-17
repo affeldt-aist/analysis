@@ -4194,6 +4194,72 @@ Definition contiguous_intervals2 {R : realType} (A : set R) : R^nat :=
 Definition oscillation {R : realType} (f : R -> R) (A : set R) : \bar R :=
   ereal_sup ((EFin \o f) @` A) - ereal_inf ((EFin \o f) @` A).
 
+Section oscillation_lemma.
+Context (R : realType).
+Local Open Scope ereal_scope.
+
+Implicit Types (f : R -> R) (A : set R).
+
+Lemma oscillation0 f : oscillation f set0 = -oo.
+Proof. by rewrite /oscillation image_set0 ereal_sup0 addNye. Qed.
+
+Lemma ocsillation_hasNub f A :
+  ~ has_ubound (f @` A) -> A !=set0 -> oscillation f A = +oo.
+Proof.
+move=> hasNubA A0.
+rewrite /oscillation.
+rewrite -image_comp (@hasNub_ereal_sup _ (f @` A))//; last first.
+- have [x Ax] := A0.
+  by exists (f x).
+rewrite addye//.
+apply/eqP.
+rewrite eqe_oppLRP/=.
+move/ereal_inf_pinfty.
+move=> H.
+have [x Ax] := A0.
+have := ltry (f x).
+apply/negP.
+rewrite -leNgt.
+rewrite leye_eq.
+apply/eqP.
+apply: H.
+by exists (f x).
+Qed.
+
+Lemma ocsillation_hasNlb f A :
+  ~ has_lbound (f @` A) -> A !=set0 -> oscillation f A = +oo.
+Proof.
+move=> hasNlbA A0.
+rewrite /oscillation.
+rewrite ereal_infEN oppeK.
+rewrite [X in _ + ereal_sup X = _](_: _ = (EFin \o (-%R f)) @` A); last first.
+  by rewrite image_comp eqEsubset; split => _ [x Ax <-]; exists x.
+rewrite -(image_comp (- f)%R).
+rewrite (@hasNub_ereal_sup _ ((- f)%R @` A))//; last 2 first.
+- rewrite -image_comp.
+  by move/has_lb_ubN.
+- have [x Ax] := A0.
+  exists (- f x)%R.
+  by exists x.
+rewrite addey//.
+apply/eqP.
+rewrite ereal_supEN.
+rewrite eqe_oppLRP/=.
+move/ereal_inf_pinfty.
+move=> H.
+have [x Ax] := A0.
+have := ltry (- f x).
+apply/negP.
+rewrite -leNgt.
+rewrite leye_eq.
+apply/eqP.
+apply: H.
+exists (f x)%:E => //.
+by exists x.
+Qed.
+
+End oscillation_lemma.
+
 Section lemma4.
 Context (R : realType).
 Context (a b : R) (ab : a < b).
