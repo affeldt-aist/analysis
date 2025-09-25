@@ -3972,7 +3972,6 @@ Arguments continuous_at : clear implicits.
 (*     3. In Hypothesis and proof, when Gdelta-type doesn't means Gdelta set, *)
 (*        "compact" means precompact, as compactness in `[a, b]?              *)
 Lemma image_measure0_Lusin_nondecreasing (F : R -> R) :
-
   {within `[a, b], continuous F} ->
   (* increasing means nondecreasing or not? *)
   {in `[a, b] &, {homo F : x y / x <= y}} ->
@@ -4191,6 +4190,69 @@ Definition contiguous_intervals1 {R : realType} (A : set R) : R^nat :=
 Definition contiguous_intervals2 {R : realType} (A : set R) : R^nat :=
   fun n => sup (contiguous_intervals A n).
 
+Section contiguous_intervals_lemmas.
+Context {R : realType}.
+Implicit Type (A : set R).
+
+Lemma open_contiguous_intervals (A : set R) :
+  forall i, open (contiguous_intervals A i).
+Proof.
+move=> i.
+rewrite /contiguous_intervals.
+case: pselect => cA//.
+case: cid => I//= [+ _].
+by move=> /all_and2[].
+Qed.
+
+Lemma is_interval_contiguous_intervals (A : set R) :
+  forall i, is_interval (contiguous_intervals A i).
+Proof.
+move=> i.
+rewrite /contiguous_intervals.
+case: pselect => cA//.
+case: cid => I//= [+ _].
+by move=> /all_and2[_ +].
+Qed.
+
+Lemma disjoint_contiguous_intervals (A : set R) :
+  trivIset [set: nat] (contiguous_intervals A).
+Proof.
+rewrite /contiguous_intervals.
+case: pselect => cA//.
+  by case: cid => I//= [_ [+ _]].
+exact: trivIset_set0.
+Qed.
+
+Lemma bigcup_contiguous_intervals (A : set R) :
+  closed A -> ~` A = \bigcup_i (contiguous_intervals A) i.
+Proof.
+rewrite /contiguous_intervals.
+case: pselect => cA//.
+by case: cid => I//= [_ [_ +]].
+Qed.
+
+(* for subspace of compact interval? *)
+Lemma contiguous_intervals_subset (A : set R) :
+  has_ubound A -> has_lbound A ->
+  forall i, contiguous_intervals A i `<=` [set` Rhull A].
+Proof.
+Abort.
+
+Lemma contiguous_ooitv A i :
+  has_ubound A -> has_lbound A ->
+  contiguous_intervals A i =
+   `]contiguous_intervals1 A i, contiguous_intervals2 A i[%classic.
+Proof.
+move=> [u Au] [l Al].
+rewrite /contiguous_intervals1/contiguous_intervals2.
+rewrite -{1}(@RhullK _ (contiguous_intervals A i)); last first.
+  by rewrite inE; exact: is_interval_contiguous_intervals.
+rewrite /Rhull.
+rewrite 2?ifT/=.
+Abort.
+
+End contiguous_intervals_lemmas.
+
 Definition oscillation {R : realType} (f : R -> R) (A : set R) : \bar R :=
   ereal_sup ((EFin \o f) @` A) - ereal_inf ((EFin \o f) @` A).
 
@@ -4266,10 +4328,16 @@ Context (a b : R) (ab : a < b).
 Local Notation mu := (@completed_lebesgue_measure R).
 Local Open Scope ereal_scope.
 
+Lemma image_bigcup_disjoint (f : R -> R) (I : Type) (A : set I)
+   (S : I -> set R) :
+  trivIset A S -> f @` (\bigcup_(i in A) S i) = \bigcup_(i in A) (f @` (S i)).
+Proof.
+Admitted.
+
 Lemma lemma4 (f : R -> R) (P : set R) :
   is_interval (f @` `[a, b]) ->
   perfect_set P ->
-  a \in P -> b \in P ->
+  a = inf P -> b = sup P ->
   let a_ := contiguous_intervals1 P in
   let b_ := contiguous_intervals2 P in
   `|f b - f a|%:E <= mu (f @` `[a, b])
@@ -4280,6 +4348,21 @@ move=> fab perfectP aP bP/=.
 set a_ := contiguous_intervals1 P.
 set b_ := contiguous_intervals2 P.
 have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `]a_ i, b_ i[.
+  rewrite -image_bigcup_disjoint; last first.
+    admit.
+  rewrite -image_setU.
+  congr (f @` _).
+  rewrite bigcup_contiguous_intervals.
+
+  rewrite eqEsubset; split => x/=.
+    rewrite in_itv/=; move/andP => [ax xb].
+    rewrite -(notE (P x)).
+    rewrite orNp => nPx.
+    
+rewrite /a_/b_.
+rewrite /contiguous_intervals1/contiguous_intervals2.
+rewrite /contiguous_intervals.
+  admit.
   admit.
 apply/andP; split.
   admit.
