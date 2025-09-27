@@ -1026,6 +1026,27 @@ Qed.
 
 End open_real_disjoint_intervals.
 
+Section open_disjoint_refined.
+Context {R : realType}.
+
+Lemma open_disjoint_refined (U : set R) :
+ open U ->
+  exists I : (nat -> set R) * (set R * set R),
+  (forall q, open (I.1 q) /\ is_interval (I.1 q) /\
+      has_ubound (I.1 q) /\ has_lbound (I.1 q) ) (* bounded_set? *)
+  /\ open I.2.1 /\ is_interval I.2.1 /\ ~ has_ubound I.2.1 /\
+    open I.2.2 /\ is_interval I.2.2 /\ has_ubound I.2.2 /\ has_lbound I.2.2
+   /\ trivIset setT (fun n => if n == 0 then I.2.1 else
+                               if n == 1 then I.2.2 else I.1 n.-2)
+   /\ U = \bigcup_q I.1 q.
+Proof.
+
+
+Admitted.
+
+
+End open_disjoint_refined.
+
 Section locally_finite.
 Context {T : topologicalType}.
 
@@ -4184,11 +4205,11 @@ Definition contiguous_intervals {R : realType} (A : set R) : (set R)^nat :=
   | right _ => cst set0
   end.
 
-Definition contiguous_intervals1 {R : realType} (A : set R) : R^nat :=
-  fun n => inf (contiguous_intervals A n).
+Definition contiguous_intervals1 {R : realType} (A : set R) : (\bar R)^nat :=
+  fun n => ereal_of_itv_bound (Rhull (contiguous_intervals A n)).1.
 
-Definition contiguous_intervals2 {R : realType} (A : set R) : R^nat :=
-  fun n => sup (contiguous_intervals A n).
+Definition contiguous_intervals2 {R : realType} (A : set R) : (\bar R)^nat :=
+  fun n => ereal_of_itv_bound (Rhull (contiguous_intervals A n)).2.
 
 Section contiguous_intervals_lemmas.
 Context {R : realType}.
@@ -4236,6 +4257,22 @@ Lemma contiguous_intervals_subset (A : set R) :
   has_ubound A -> has_lbound A ->
   forall i, contiguous_intervals A i `<=` [set` Rhull A].
 Proof.
+move=> hasuA haslA n x ciAnx/=.
+rewrite in_itv/=.
+rewrite 2?ifT; last 2 first.
+- exact/asboolP.
+- exact/asboolP.
+apply/andP; split.
+
+move: ciAnx.
+  rewrite /contiguous_intervals.
+  case: pselect => //= cA .
+  
+  
+case: pselect `[< A (inf A) >].
+
+apply: sub_Rhull.
+
 Abort.
 
 Lemma contiguous_ooitv A i :
