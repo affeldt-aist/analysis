@@ -1032,10 +1032,10 @@ Context {R : realType}.
 Lemma open_disjoint_refined (U : set R) :
  open U ->
   exists I : (nat -> set R) * (set R * set R),
-  (forall q, open (I.1 q) /\ is_interval (I.1 q) /\
-      has_ubound (I.1 q) /\ has_lbound (I.1 q) ) (* bounded_set? *)
+  (forall q, open (I.1 q) /\ is_interval (I.1 q)
+     (*  /\ has_ubound (I.1 q) /\ has_lbound (I.1 q) *) ) (* bounded_set? *)
   /\ open I.2.1 /\ is_interval I.2.1 /\ ~ has_ubound I.2.1 /\
-    open I.2.2 /\ is_interval I.2.2 /\ has_ubound I.2.2 /\ has_lbound I.2.2
+    open I.2.2 /\ is_interval I.2.2 /\ has_ubound I.2.2 /\ ~ has_lbound I.2.2
    /\ trivIset setT (fun n => if n == 0 then I.2.1 else
                                if n == 1 then I.2.2 else I.1 n.-2)
    /\ U = \bigcup_q I.1 q.
@@ -4198,6 +4198,112 @@ Admitted.
 
 End lemma6.
 
+Section complement_inner.
+Context {R : realType}.
+Implicit Type (A : set R).
+
+Definition complement_inner A :=
+  [set` Rhull A] `\` A.
+
+Lemma complement_inner0 A :
+  is_interval A -> complement_inner A = set0.
+Proof.
+by move=> itvA; rewrite /complement_inner -((is_intervalP A).1 itvA) setDv.
+Qed.
+
+Lemma complement_inner_set0 :
+  complement_inner set0 = set0.
+Proof. by rewrite complement_inner0. Qed.
+
+Lemma complement_innerT :
+  complement_inner setT = set0.
+Proof. by rewrite complement_inner0. Qed.
+
+Let complement_inner_sup A :
+  has_ubound A -> ~ (complement_inner A) (sup A).
+Proof.
+move=> hasubA.
+rewrite /complement_inner/=.
+apply/not_andP.
+rewrite orpN => Asup.
+have lt_sup := sup_ub_strict hasubA Asup.
+rewrite in_itv/=.
+case: ifP; move/asboolP => //= haslbA; case: ifP; move/asboolP => //= _.
+  move/asboolPn : Asup => -> /=.
+  by rewrite ltxx andbF.
+move/asboolPn : Asup => -> /=.
+by rewrite ltxx.
+Qed.
+
+Let complement_inner_inf A :
+  has_lbound A -> ~ (complement_inner A) (inf A).
+Proof.
+move=> haslbA.
+rewrite /complement_inner/=.
+apply/not_andP.
+rewrite orpN => Ainf.
+have gt_inf := inf_lb_strict haslbA Ainf.
+rewrite in_itv/=.
+case: ifP; move/asboolP => //= _.
+move/asboolPn/negPf : Ainf => -> /=.
+by rewrite ltxx.
+Qed.
+
+Lemma closed_open_complement_inner A :
+  closed A -> open (complement_inner A).
+Proof.
+move=> cA.
+rewrite /complement_inner setDE.
+admit.
+
+Admitted.
+
+Lemma complement_inner_subset_Rhull A :
+  complement_inner A `<=` [set` Rhull A].
+Proof. exact: subDsetl. Qed.
+
+Lemma has_ubound_complement_inner A :
+  has_ubound A -> has_ubound (complement_inner A).
+Proof.
+have [|] := pselect (A !=set0); last first.
+  move/set0P/negP/negbNE/eqP => -> _.
+  rewrite complement_inner_set0.
+  exact: has_ubound0.
+move=> A0 /[dup]/asboolP ubA [ub ubAub].
+exists ub => x [/= + _].
+rewrite in_itv/= => /andP [_].
+rewrite ubA/=.
+have [Asup|NAsup] := pselect (A (sup A)).
+  move /asboolP : (Asup) => -> /=.
+  move/le_trans; apply.
+  exact: ubAub.
+move/asboolPn: (NAsup) => -> /= xsupA.
+apply/ltW; apply: (lt_le_trans xsupA).
+exact: sup_le_ub.
+Qed.
+
+Lemma has_lbound_complement_inner A :
+  has_lbound A -> has_lbound (complement_inner A).
+Proof.
+have [|] := pselect (A !=set0); last first.
+  move/set0P/negP/negbNE/eqP => -> _.
+  rewrite complement_inner_set0.
+  exact: has_lbound0.
+move=> A0 /[dup]/asboolP lbA [lb lbAlb].
+exists lb => x [/= + _].
+rewrite in_itv/= => /andP [+ _].
+rewrite lbA/=.
+have [Ainf|NAinf] := pselect (A (inf A)).
+  move /asboolP : (Ainf) => -> /=.
+  apply:le_trans.
+  exact: lbAlb.
+move/asboolF: (NAinf) => -> /= xinfA.
+apply/ltW; apply: (le_lt_trans _ xinfA).
+exact: lb_le_inf.
+Qed.
+
+Lemma complement_inner.
+
 (* NB: A is supposed to be a perfect set so that A is closed *)
 Definition contiguous_intervals {R : realType} (A : set R) : (set R)^nat :=
   match pselect (closed A) with
@@ -4244,19 +4350,24 @@ case: pselect => cA//.
 exact: trivIset_set0.
 Qed.
 
-Lemma bigcup_contiguous_intervals (A : set R) :
+Lemma bigcup_contiguous_intervals A :
   closed A -> ~` A = \bigcup_i (contiguous_intervals A) i.
 Proof.
+move=> cA.
 rewrite /contiguous_intervals.
-case: pselect => cA//.
+case: pselect => ? //.
 by case: cid => I//= [_ [_ +]].
 Qed.
 
 (* for subspace of compact interval? *)
 Lemma contiguous_intervals_subset (A : set R) :
-  has_ubound A -> has_lbound A ->
-  forall i, contiguous_intervals A i `<=` [set` Rhull A].
+  forall i, contiguous_intervals A i `<=` ~` A.
 Proof.
+move=> n.
+rewrite /contiguous_intervals.
+case: pselect => cA//=.
+rewrite (bigcup_contiguous_intervals cA).
+
 move=> hasuA haslA n x ciAnx/=.
 rewrite in_itv/=.
 rewrite 2?ifT; last 2 first.
