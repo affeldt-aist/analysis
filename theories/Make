@@ -108,5 +108,16 @@ charge.v
 kernel.v
 pi_irrational.v
 gauss_integral.v
+
+absolute_continuity.v
+banach_zarecki/banach_zarecki_lemma1.v
+banach_zarecki/banach_zarecki_lemma2.v
+banach_zarecki/banach_zarecki_lemma3.v
+banach_zarecki/banach_zarecki_lemma4.v
+banach_zarecki/banach_zarecki_lemma6.v
+banach_zarecki/banach_zarecki_lemma7.v
+banach_zarecki/banach_zarecki_lemma8.v
+banach_zarecki/banach_zarecki_theorem.v
+
 all_analysis.v
 showcase/summability.v
