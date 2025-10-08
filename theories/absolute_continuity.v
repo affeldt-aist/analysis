@@ -43,8 +43,7 @@ Context {V : normedModType K}.
 Context {R : realType}.
 Implicit Types (A : set R).
 
-Lemma bounded_has_ubound A :
-  bounded_set A -> has_ubound A.
+Lemma bounded_has_ubound A : bounded_set A -> has_ubound A.
 Proof.
 move=> [bnd [_ bndA]].
 exists (bnd + 1) => x Ax.
@@ -53,8 +52,7 @@ apply: bndA => //.
 by rewrite ltrDl.
 Qed.
 
-Lemma bounded_has_lbound A :
-  bounded_set A -> has_lbound A.
+Lemma bounded_has_lbound A : bounded_set A -> has_lbound A.
 Proof.
 move=> [bnd [_ bndA]].
 exists (- (bnd + 1)) => x Ax.
@@ -73,7 +71,7 @@ split.
   + apply: bounded_has_ubound; exact: compact_bounded.
   + apply: bounded_has_lbound; exact: compact_bounded.
 - move=> A [cA [ub ubA] [lb lbA]].
-Admitted.
+Abort.
 
 End bounded_set_lemmas.
 
@@ -104,15 +102,6 @@ Lemma ball_is_interval (R : realType) (x e : R) :
   0 < e -> is_interval (ball x e).
 Proof. by move=> e0; rewrite ball_itv; exact: interval_is_interval. Abort.
 
-(* TODO: PR near nat_topology.nbhs_infty_ger *)
-Lemma nbhs_infty_gtr {R : realType} (r : R) :
-  \forall n \near \oo, (r < n%:R)%R.
-Proof.
-exists (`|(ceil r)|.+1)%N => // n /=; rewrite -(ler_nat R); apply: lt_le_trans.
-rewrite -natr1 -[ltLHS]addr0 ler_ltD//.
-by rewrite (le_trans (ceil_ge _))// natr_absz ler_int ler_norm.
-Qed.
-
 (* TODO:PR in topology_structure? *)
 Lemma bigcap_open (R : topologicalType) (F : (set R) ^nat)  :
   (forall i, open (F i)) ->
@@ -127,33 +116,6 @@ move=> n IH.
 rewrite bigcap_mkord big_ord_recr/=.
 apply: openI => //.
 by rewrite -bigcap_mkord.
-Qed.
-
-(* TODO: PR *)
-Lemma countable_lebesgue_measure0 {R : realType} (S : set R) :
-  countable S -> lebesgue_measure S = 0.
-Proof.
-move/countable_injP => [f injf].
-rewrite -(injpinv_image (fun=> 0) injf).
-rewrite [X in lebesgue_measure X](_ : _ =
-    \bigcup_(x in f @` S) [set 'pinv_(fun=> 0) S f x]); last first .
-  rewrite eqEsubset; split => x/=.
-    move=> [n [xn Sxn xnn nx]].
-    exists n => //=.
-    by exists xn.
-  move=> [n [xn Sxn xnn] /= xinvn].
-  exists n => //=.
-  by exists xn.
-rewrite measure_bigcup/=; last 2 first.
-    move=> ? _; exact: measurable_set1.
-  move=> i j [xi Sxi <-] [xj Sxj <-].
-  rewrite !pinvKV ?inE//.
-  by move=> [x /=[<- <-]].
-apply: lim_near_cst => //.
-apply/nearW => n.
-under eq_bigr do rewrite lebesgue_measure_set1.
-rewrite big_const_idem//=.
-exact: addr0.
 Qed.
 
 (* TODO: PR *)
@@ -333,37 +295,29 @@ move=> cf ndf x/= [r rab] <-{x}.
 move: rab; rewrite in_itv/= => /andP[ar rb].
 have [cabf fa fb] := (continuous_within_itvP f (lt_trans ar rb)).1 cf.
 rewrite in_itv/=; apply/andP; split.
-  move: (fa) => /cvg_lim <-; last first.
-    exact: Rhausdorff.
+  move: (fa) => /cvg_lim <-; last exact: Rhausdorff.
   apply: limr_le.
-  - apply/cvg_ex.
-    exists (f a).
+  - apply/cvg_ex; exists (f a).
     exact: fa.
   - near=> a0.
     apply: ndf.
-    rewrite in_itv/=; apply/andP; split => //.
-    rewrite (le_lt_trans _ rb)//.
-    near: a0.
-    by apply: nbhs_right_le.
-    by rewrite in_itv/= ar.
-    near: a0.
-    by apply: nbhs_right_le.
-move: (fb) => /cvg_lim <-; last first.
-  exact: Rhausdorff.
+    + rewrite in_itv/=; apply/andP; split => //.
+      rewrite (le_lt_trans _ rb)//.
+      by near: a0; exact: nbhs_right_le.
+    + by rewrite in_itv/= ar.
+    + by near: a0; apply: nbhs_right_le.
+move: (fb) => /cvg_lim <-; last exact: Rhausdorff.
 apply: limr_ge.
-- apply/cvg_ex.
-  exists (f b).
+- apply/cvg_ex; exists (f b).
   exact: fb.
 - near=> b0.
   apply: ndf.
-  by rewrite in_itv/= ar.
-  rewrite in_itv/=; apply/andP; split => //.
-  by rewrite (lt_trans ar)//.
-  near: b0.
-  by apply: nbhs_left_ge.
+  + by rewrite in_itv/= ar.
+  + rewrite in_itv/=; apply/andP; split => //.
+    by rewrite (lt_trans ar).
+  + by near: b0; apply: nbhs_left_ge.
 Unshelve. all: by end_near. Qed.
 
-(* used in Banack-Zarecki *)
 Lemma continuous_nondecreasing_image_itvcc (a b : R) (f : R -> R) :
   a <= b ->
   {within `[a, b], continuous f} ->
@@ -456,8 +410,9 @@ Unshelve. all: by end_near. Qed.
 Lemma continuous_nondecreasing_image_itvoo_itv (a b : R) (f : R -> R) : a < b ->
   {within `[a, b] , continuous f} ->
   {in `]a, b[ &, {homo f : x y / (x <= y)%O}} ->
-exists b0 b1,
-  f @` `]a, b[%classic = [set x | x \in (Interval (BSide b0 (f a)) (BSide b1 (f b)))].
+  exists b0 b1,
+    f @` `]a, b[%classic =
+    [set x | x \in Interval (BSide b0 (f a)) (BSide b1 (f b))].
 Proof.
 move=> ab cf ndf.
 have ndfcc := continuous_in_nondecreasing_oo_cc ab cf ndf.
@@ -552,9 +507,8 @@ have [fa|fa] := pselect (\forall x \near a^'+, f x = f a).
       |by exists r; rewrite // in_itv/= ar rb].
 Unshelve. all: by end_near. Qed.
 
-Lemma integral_continuous_nondecreasing_itv
-(a b : R) (f : R -> R) :
-  (a < b) ->
+Lemma integral_continuous_nondecreasing_itv (a b : R) (f : R -> R) :
+  a < b ->
   {within `[a, b] , continuous f} ->
   {in `]a, b[ &, {homo f : x y / (x <= y)%O}} ->
   lebesgue_measure (f @` `]a, b[) = ((f b)%:E - (f a)%:E)%E.
@@ -575,12 +529,11 @@ End move_to_realfun.
 
 (* TODO: generalize for PR? *)
 Section closure_neitv.
-
-Context (R : realType).
-Implicit Type (a b: R).
+Context {R : realType}.
+Implicit Type a b : R.
 
 Lemma closure_neitv_oo a b : a < b ->
-closure `]a, b[%classic = `[a, b]%classic.
+  closure `]a, b[%classic = `[a, b]%classic.
 Proof.
 move=> ab.
 set c := (a + b) / 2%:R.
@@ -593,7 +546,7 @@ by rewrite subr_gt0.
 Qed.
 
 Lemma closure_neitv_oc a b : a < b ->
-closure `]a, b]%classic = `[a, b]%classic.
+  closure `]a, b]%classic = `[a, b]%classic.
 Proof.
 move=> ab.
 rewrite eqEsubset; split.
@@ -608,7 +561,7 @@ exact: subset_itv_oo_oc.
 Qed.
 
 Lemma closure_neitv_co a b : a < b ->
-closure `[a, b[%classic = `[a, b]%classic.
+  closure `[a, b[%classic = `[a, b]%classic.
 Proof.
 move=> ab.
 rewrite eqEsubset; split.
@@ -623,14 +576,14 @@ exact: subset_itv_oo_co.
 Qed.
 
 Lemma closure_neitv_cc a b : a < b ->
-closure `[a, b]%classic = `[a, b]%classic.
+  closure `[a, b]%classic = `[a, b]%classic.
 Proof.
 symmetry; apply/closure_id; rewrite -closure_neitv_oo//.
 exact: closed_closure.
 Qed.
 
 Lemma closure_neitv a b (x y : bool) : a < b ->
-closure [set` (Interval (BSide x a) (BSide y b))] = `[a, b]%classic.
+  closure [set` (Interval (BSide x a) (BSide y b))] = `[a, b]%classic.
 Proof.
 move=> ab.
 case: x; case: y.
@@ -682,6 +635,7 @@ Qed.
 End measurable_squeeze.
 
 Section inf_sup_lemmas.
+
 Lemma has_bound_not_subset1_inf_sup {R : realType} (S : set R) :
   has_lbound S -> has_ubound S -> ~ (is_subset1 S) ->
   inf S < sup S.
