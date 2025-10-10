@@ -994,6 +994,34 @@ move=> q/= Uq.
 by exists (f q).
 Qed.
 
+Definition open_disjointI : (set R)^nat := sval (cid open_disjoint).
+
+Lemma open_disjointI_open i : open (open_disjointI i).
+Proof.
+rewrite /open_disjointI.
+by case: cid => //= I [/(_ i)[]].
+Qed.
+
+Lemma open_disjointI_is_interval i : is_interval (open_disjointI i).
+Proof.
+rewrite /open_disjointI.
+by case: cid => //= I [/(_ i)[]].
+Qed.
+
+Lemma open_disjointI_trivIset :
+  trivIset [set: nat] open_disjointI.
+Proof.
+rewrite /open_disjointI.
+by case: cid => //= I [_ []].
+Qed.
+
+Lemma open_disjointI_bigcup :
+  U = \bigcup_q open_disjointI q.
+Proof.
+rewrite /open_disjointI.
+by case: cid => //= I [_ []].
+Qed.
+
 End open_real_disjoint_intervals.
 
 Section open_disjoint_refined.
