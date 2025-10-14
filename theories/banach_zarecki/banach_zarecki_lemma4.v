@@ -272,6 +272,31 @@ Qed.
 
 End cplt_hull.
 
+(* TODO: PR? *)
+Section open_mem_lemmas.
+Context {R : realType}.
+Implicit Type (A : set R).
+
+Lemma open_haslb_memNinf A : has_lbound A -> open A ->
+  ~ (A (inf A)).
+Proof.
+move=> haslbA oA.
+rewrite -{1}((interior_id A).1 oA).
+move/(left_bounded_interior haslbA) => /=.
+by rewrite ltxx.
+Qed.
+
+Lemma open_hasub_memNsup A : has_ubound A -> open A ->
+  ~ (A (sup A)).
+Proof.
+move=> hasubA oA.
+rewrite -{1}((interior_id A).1 oA).
+move/(right_bounded_interior hasubA) => /=.
+by rewrite ltxx.
+Qed.
+
+End open_mem_lemmas.
+
 (* NB: A is supposed to be a perfect set so that A is closed *)
 Definition contiguous_intervals {R : realType} (A : set R) : (set R)^nat :=
   match pselect (closed A) with
@@ -318,7 +343,6 @@ rewrite /contiguous_intervals; case: pselect => ? //.
 by rewrite -open_disjointI_bigcup.
 Qed.
 
-(* for subspace of compact interval? *)
 Lemma contiguous_intervals_subsetC A n :
   contiguous_intervals A n `<=` ~` A.
 Proof.
@@ -336,6 +360,7 @@ Lemma contiguous_ooitv A :
 Proof.
 move=> /[dup] hasubA [u Au] /[dup] haslbA [l Al] i.
 rewrite /contiguous_intervals1/contiguous_intervals2.
+
 rewrite -{1}(@RhullK _ (contiguous_intervals A i)); last first.
   by rewrite inE; exact: is_interval_contiguous_intervals.
 
@@ -345,7 +370,7 @@ rewrite 2?ifT/=; last 2 first.
   
 Abort.
 
-Lemma continuous_intervalS A n :
+Lemma contiguous_intervalsS A n :
   contiguous_intervals A n `<=` cplt_hull A.
 Proof.
 have [cA|cA] := pselect (closed A).
@@ -358,14 +383,14 @@ Lemma has_lbound_contiguous_intervals A :
   has_lbound A -> forall n, has_lbound (contiguous_intervals A n).
 Proof.
 move/inf_lt_cplt_hull => lbA i; exists (inf A) => r.
-by move/continuous_intervalS/lbA => /= /ltW.
+by move/contiguous_intervalsS/lbA => /= /ltW.
 Qed.
 
 Lemma has_ubound_contiguous_intervals A :
   has_ubound A -> forall n, has_ubound (contiguous_intervals A n).
 Proof.
 move/cplt_hull_lt_sup => lbA i; exists (sup A) => r.
-by move/continuous_intervalS/lbA => /= /ltW.
+by move/contiguous_intervalsS/lbA => /= /ltW.
 Qed.
 
 Lemma contiguous_intervals1_fin_num A : has_lbound A ->
@@ -387,12 +412,48 @@ rewrite /contiguous_intervals2 /Rhull; case: ifPn => /=; case: ifPn => //.
 by move/asboolP.
 Qed.
 
-Lemma fine_contiguous_intervals1 A : has_lbound A ->
+Lemma bigcup_contiguous_intervals_fine A :
+  compact A -> cplt_hull A =
+      \bigcup_k `]fine (contiguous_intervals1 A k),
+                   fine (contiguous_intervals2 A k)[%classic.
+Proof.
+move=> cA.
+have closedA : closed A by exact: compact_closed.
+rewrite bigcup_contiguous_intervals//.
+apply: eq_bigcupr => n _.
+transitivity [set` Rhull (contiguous_intervals A n)].
+  by rewrite RhullK//; rewrite inE; exact: is_interval_contiguous_intervals.
+have haslbA : has_lbound A.
+  apply: bounded_has_lbound.
+  exact: compact_bounded.
+have hasubA : has_ubound A.
+  apply: bounded_has_ubound.
+  exact: compact_bounded.
+have [haslbciA hasubciA citvAinf citvAsup] :
+  [/\ has_lbound (contiguous_intervals A n),
+       has_ubound (contiguous_intervals A n),
+       ~ contiguous_intervals A n (inf (contiguous_intervals A n))&
+       ~ contiguous_intervals A n (sup (contiguous_intervals A n))].
+  split.
+  - exact: has_lbound_contiguous_intervals.
+  - exact: has_ubound_contiguous_intervals.
+  - apply: open_haslb_memNinf.
+    + exact: has_lbound_contiguous_intervals.
+    + exact: open_contiguous_intervals.
+  - apply: open_hasub_memNsup.
+    + exact: has_ubound_contiguous_intervals.
+    + exact: open_contiguous_intervals.
+rewrite /contiguous_intervals1/contiguous_intervals2/Rhull/=.
+move/asboolP: haslbciA ->; move/asboolP: hasubciA ->.
+by move/asboolF: citvAinf ->;move/asboolF: citvAsup ->.
+Qed.
+
+Lemma fine_contiguous_intervals1 A : compact A -> has_lbound A ->
   forall i, fine (contiguous_intervals1 A i) = inf (contiguous_intervals A i).
 Proof.
 Admitted.
 
-Lemma fine_contiguous_intervals2 A : has_ubound A ->
+Lemma fine_contiguous_intervals2 A : compact A -> has_ubound A ->
   forall i, fine (contiguous_intervals2 A i) = sup (contiguous_intervals A i).
 Proof.
 Admitted.
@@ -409,21 +470,6 @@ rewrite /Rhull; case: ifPn => /asboolP lbA; case: ifPn => // /asboolP ubA.
 - rewrite in_itv/=.
   apply/andP; split.
     have [|]/= := boolP (`[< A (inf A) >]) => /asboolP infA//.
-Abort.
-
-Lemma contiguous_intervalU (A : set R) : perfect_set A ->
-  let a := inf A in
-  let b := sup A in
-  let a_ := contiguous_intervals1 A in
-  let b_ := contiguous_intervals2 A in
-  `[a, b]%classic = A `|` \bigcup_i `](fine (a_ i)), (fine (b_ i))[%classic.
-Proof.
-move=> perfectA a b a_ b_.
-apply/seteqP; split.
-  move=> x/= xab.
-  have [|Ax] := pselect (A x); [by left|right].
-  have : cplt_hull A x.
-    split => //=.
 Abort.
 
 Lemma eq_Rhull_itvccP A (a b : R) :
@@ -512,7 +558,6 @@ apply: subsetI_eq0. (* TODO: generalize this lemma to trivIset *)
   by apply: interval_ooS; exact: Rull_fst_snd.
 Qed.
 
-
 Lemma lemma4 (f : R -> R) (P : set R) :
   is_interval (f @` `[a, b]) ->
   (* perfect_set P *) closed P ->
@@ -526,6 +571,10 @@ Lemma lemma4 (f : R -> R) (P : set R) :
 Proof.
 move=> fab closedP.
 move/[dup]/eq_Rhull_itvccP => [[haslbP Pinf infa] [hasubP Psup supa]] Pab.
+have compactP : compact P.
+  (* Heine-Borel theorem,
+     bounded_closed_compact for A : set (matrix.matrix R 1 1 *)
+  admit.
 set a_ := contiguous_intervals1 P.
 set b_ := contiguous_intervals2 P.
 have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `]fine (a_ i), fine (b_ i)[.
@@ -540,19 +589,28 @@ have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `]fine (a_ i), fine (b_ i)[
     have -> : `](fine (a_ i)), (fine (b_ i))[%classic =
                    [set` Rhull (contiguous_intervals P i)].
       rewrite /Rhull.
-      rewrite ifT; last first.
-      rewrite fine_contiguous_intervals1// fine_contiguous_intervals2//.
-      
-    
-    apply: (@subset_trans _ (cplt_hull P)).
-    apply: interval_ooS.
-      have : has_ubound P.
-        exists b => z Pz.
-        rewrite bP.
-      admit.
-    admit.
-  move=> x/= xab.
-  admit.
+      rewrite ifT; last exact/asboolP/has_lbound_contiguous_intervals.
+      rewrite ifT; last exact/asboolP/has_ubound_contiguous_intervals.
+      congr ([set` Interval (BSide _ _) (BSide _ _)]); apply: eq_fun => _.
+      - apply/esym/asboolF.
+        apply: open_haslb_memNinf.
+        + exact: has_lbound_contiguous_intervals.
+        + exact: open_contiguous_intervals.
+      - exact: fine_contiguous_intervals1.
+      - apply/esym/asboolP.
+        apply: open_hasub_memNsup.
+        + exact: has_ubound_contiguous_intervals.
+        + exact: open_contiguous_intervals.
+      - exact: fine_contiguous_intervals2.
+    rewrite RhullK; last first.
+      rewrite inE.
+      exact: is_interval_contiguous_intervals.
+    apply: (subset_trans (@contiguous_intervalsS _ P i)).
+    exact: cplt_hull_subset_Rhull.
+  rewrite /a_.
+  rewrite -bigcup_contiguous_intervals_fine//.
+  rewrite setDUK; last exact: sub_Rhull.
+  by rewrite Pab.
 apply/andP; split.
   admit.
 rewrite H1.
