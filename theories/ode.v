@@ -193,7 +193,6 @@ Definition contfunseg_Sub_subproof := unsquash (set_mem fP).
 
 End Sub.
 
-
 Lemma contfunseg_rect (K : T -> Type) :
   (forall f (Pf : f \in contfunseg a b), K (contfunseg_Sub Pf)) ->
   forall u : T, K u.
