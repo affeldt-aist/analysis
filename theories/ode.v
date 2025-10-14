@@ -189,19 +189,34 @@ Context (f : R -> R) (fP : f \in contfunseg a b).
 
 Definition contfunseg_Sub_subproof := unsquash (set_mem fP).
 #[local] HB.instance Definition _ := contfunseg_Sub_subproof.
-Definition contfunseg_Sub : contFunSegType a b := f.
+ Definition contfunseg_Sub : contFunSegType a b :=  {| ContFunSeg.sort := f; ContFunSeg.class := contfunseg_Sub_subproof |}.
 
 End Sub.
+
+Lemma Pff f :   ContFunSeg.axioms_ a b f -> f \in contfunseg a b.
+Proof.
+  move => H.
+  apply mem_set.
+  apply (squash H).
+Defined.
 
 Lemma contfunseg_rect (K : T -> Type) :
   (forall f (Pf : f \in contfunseg a b), K (contfunseg_Sub Pf)) ->
   forall u : T, K u.
 Proof.
-move=> Ksub [f [[Pf]]]/=.
-have -> : Pf = set_mem (@mem_set _ [set f | _] f Pf) by [].
-move=> abf.
-Fail apply: Ksub.
-Admitted.
+move=> Ksub [f Pf].
+suff ->: ( K {| ContFunSeg.sort := f; ContFunSeg.class := Pf |} = K (contfunseg_Sub (Pff Pf))) by apply Ksub.
+unfold contfunseg_Sub, contfunseg_Sub_subproof.
+rewrite /Pff/= mem_setK.
+suff <-: (Pf = unsquash (squash Pf)) =>  //.
+remember (unsquash (squash Pf)) as Pf'.
+destruct Pf as [[H1] [H2]].
+destruct Pf' as [[H1'] [H2']].
+suff <-: (H1 = H1').
+suff <-: (H2 = H2') => //.
+apply Prop_irrelevance.
+Qed.
+
 
 Lemma contfunseg_valP f (Pf : f \in contfunseg a b) :
   contfunseg_Sub Pf = f :> (_ -> _).
