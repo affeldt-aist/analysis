@@ -34,6 +34,22 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Section Rbounded_closed_compact.
+Context {R : realType}.
+
+(* can be proved by bounded_closed_compact? *)
+Lemma Rbounded_closed_compact (A : set R) :
+  bounded_set A -> closed A -> compact A.
+Proof.
+move=> [M [Mreal normAltM]] Acl.
+have Mnco : compact `[(- (M + 1)), (M + 1)] by exact: segment_compact.
+apply: subclosed_compact Acl Mnco _ => v /normAltM normvleM.
+suff : `|v| <= M + 1 by rewrite ler_norml.
+by apply: le_trans (normvleM _ _); last by rewrite ltrDl.
+Qed.
+
+End Rbounded_closed_compact.
+
 (* TODO: generalize and PR *)
 Section bounded_set_lemmas.
 (*
@@ -61,6 +77,26 @@ apply: bndA => //.
 by rewrite ltrDl.
 Qed.
 
+Lemma Rbounded_setE :
+   @bounded_set = [set A : set R | has_lbound A /\ has_ubound A].
+Proof.
+rewrite eqEsubset; split => A/=.
+  by move=> /[dup]/bounded_has_lbound ? /bounded_has_ubound ?; split.
+move=> [[l Al] [u Au]].
+exists (maxr `|u| `|l|); split => //.
+move=> x ulx z Az/=.
+apply/ltW.
+apply: (le_lt_trans _ ulx).
+rewrite ler_norml; apply/andP; split.
+- suff lz : - `|l| <= z.
+    rewrite /maxr; case: ifP=> // /negP/negP; rewrite -leNgt -lerN2.
+    by move/le_trans; apply.
+  rewrite lerNl -normrN ler_normr lerN2; apply/orP; left.
+  exact: Al.
+- suff zu : z <= `|u| by rewrite /maxr; case: ifP => // /ltW; apply: le_trans.
+  by rewrite ler_normr; apply/orP; left; exact: Au.
+Qed.
+
 Lemma Rcompact_boundE :
   @compact R = [set A | [/\ closed A, has_ubound A & has_lbound A]].
 Proof.
@@ -70,8 +106,10 @@ split.
   + exact: compact_closed.
   + apply: bounded_has_ubound; exact: compact_bounded.
   + apply: bounded_has_lbound; exact: compact_bounded.
-- move=> A [cA [ub ubA] [lb lbA]].
-Abort.
+- move=> A [cA haslbA hasubA].
+  apply: Rbounded_closed_compact => //.
+  by rewrite Rbounded_setE.
+Qed.
 
 End bounded_set_lemmas.
 
