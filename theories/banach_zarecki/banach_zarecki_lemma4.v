@@ -10,7 +10,13 @@ From mathcomp Require Import absolute_continuity.
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 4)                                         *)
 (*                                                                            *)
-(*   contiguous_intervals == TODO                                             *)
+(*   cplt_hull P            == A relative complement of P in convex hull of P.*)
+(*   contiguous_intervals P == A countable family of component intervals of   *)
+(*                             cplt_hull P, called as "intervals contiguous   *)
+(*                             to P" in Ene's Proof.                          *)
+(* ref: https://projecteuclid1.org/journals/real-analysis-exchange/volume-23/ *)
+(*issue-1/An-Elementary-Proof-of-the-Banach-Zarecki-Theorem/rae/              *)
+(*1337086099.full*)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -31,6 +37,47 @@ apply/seteqP; split => [_ [x [i Di Six <-]]|_ [i Di [x Six <-]]].
   by exists i.
 by exists x => //; exists i.
 Qed.
+
+(* TODO: PR? *)
+Section open_mem_lemmas.
+Context {R : realType}.
+Implicit Type (A : set R).
+
+Lemma open_haslb_memNinf A : has_lbound A -> open A ->
+  ~ (A (inf A)).
+Proof.
+move=> haslbA oA.
+rewrite -{1}((interior_id A).1 oA).
+move/(left_bounded_interior haslbA) => /=.
+by rewrite ltxx.
+Qed.
+
+Lemma open_hasub_memNsup A : has_ubound A -> open A ->
+  ~ (A (sup A)).
+Proof.
+move=> hasubA oA.
+rewrite -{1}((interior_id A).1 oA).
+move/(right_bounded_interior hasubA) => /=.
+by rewrite ltxx.
+Qed.
+
+End open_mem_lemmas.
+
+Section Rbounded_closed_compact.
+Context {R : realType}.
+
+(* can be proved by bounded_closed_compact? *)
+Lemma Rbounded_closed_compact (A : set R) :
+  bounded_set A -> closed A -> compact A.
+Proof.
+move=> [M [Mreal normAltM]] Acl.
+have Mnco : compact `[(- (M + 1)), (M + 1)] by exact: segment_compact.
+apply: subclosed_compact Acl Mnco _ => v /normAltM normvleM.
+suff : `|v| <= M + 1 by rewrite ler_norml.
+by apply: le_trans (normvleM _ _); last by rewrite ltrDl.
+Qed.
+
+End Rbounded_closed_compact.
 
 Section cplt_hull.
 Context {R : realType}.
@@ -272,31 +319,6 @@ Qed.
 
 End cplt_hull.
 
-(* TODO: PR? *)
-Section open_mem_lemmas.
-Context {R : realType}.
-Implicit Type (A : set R).
-
-Lemma open_haslb_memNinf A : has_lbound A -> open A ->
-  ~ (A (inf A)).
-Proof.
-move=> haslbA oA.
-rewrite -{1}((interior_id A).1 oA).
-move/(left_bounded_interior haslbA) => /=.
-by rewrite ltxx.
-Qed.
-
-Lemma open_hasub_memNsup A : has_ubound A -> open A ->
-  ~ (A (sup A)).
-Proof.
-move=> hasubA oA.
-rewrite -{1}((interior_id A).1 oA).
-move/(right_bounded_interior hasubA) => /=.
-by rewrite ltxx.
-Qed.
-
-End open_mem_lemmas.
-
 (* NB: A is supposed to be a perfect set so that A is closed *)
 Definition contiguous_intervals {R : realType} (A : set R) : (set R)^nat :=
   match pselect (closed A) with
@@ -352,23 +374,6 @@ apply: (@subset_trans _ (cplt_hull A)); last first.
 rewrite [in X in _ `<=` X](open_disjointI_bigcup (closed_open_cplt_hull cA)).
 exact: bigcup_sup.
 Qed.
-
-Lemma contiguous_ooitv A :
-  has_ubound A -> has_lbound A ->
-  forall i, EFin @` (contiguous_intervals A i) =
-   `]contiguous_intervals1 A i, contiguous_intervals2 A i[%classic.
-Proof.
-move=> /[dup] hasubA [u Au] /[dup] haslbA [l Al] i.
-rewrite /contiguous_intervals1/contiguous_intervals2.
-
-rewrite -{1}(@RhullK _ (contiguous_intervals A i)); last first.
-  by rewrite inE; exact: is_interval_contiguous_intervals.
-
-rewrite /Rhull.
-rewrite 2?ifT/=; last 2 first.
-  apply/asboolP.
-  
-Abort.
 
 Lemma contiguous_intervalsS A n :
   contiguous_intervals A n `<=` cplt_hull A.
@@ -451,12 +456,32 @@ Qed.
 Lemma fine_contiguous_intervals1 A : compact A ->
   forall i, fine (contiguous_intervals1 A i) = inf (contiguous_intervals A i).
 Proof.
+move=> cptA i.
+
 Admitted.
 
 Lemma fine_contiguous_intervals2 A : compact A ->
   forall i, fine (contiguous_intervals2 A i) = sup (contiguous_intervals A i).
 Proof.
 Admitted.
+
+Lemma contiguous_ooitv A :
+  has_ubound A -> has_lbound A ->
+  forall i, EFin @` (contiguous_intervals A i) =
+   `]contiguous_intervals1 A i, contiguous_intervals2 A i[%classic.
+Proof.
+move=> /[dup] hasubA [u Au] /[dup] haslbA [l Al] i.
+rewrite /contiguous_intervals1/contiguous_intervals2.
+
+rewrite -{1}(@RhullK _ (contiguous_intervals A i)); last first.
+  by rewrite inE; exact: is_interval_contiguous_intervals.
+
+rewrite /Rhull.
+rewrite 2?ifT/=; last 2 first.
+  apply/asboolP.
+  
+Abort.
+
 
 End contiguous_intervals_lemmas.
 
@@ -572,9 +597,8 @@ Proof.
 move=> fab closedP.
 move/[dup]/eq_Rhull_itvccP => [[haslbP Pinf infa] [hasubP Psup supa]] Pab.
 have compactP : compact P.
-  (* Heine-Borel theorem,
-     bounded_closed_compact for A : set (matrix.matrix R 1 1 *)
-  admit.
+  apply: Rbounded_closed_compact => //.
+  by rewrite Rbounded_setE.
 set a_ := contiguous_intervals1 P.
 set b_ := contiguous_intervals2 P.
 have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `]fine (a_ i), fine (b_ i)[.
@@ -612,7 +636,36 @@ have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `]fine (a_ i), fine (b_ i)[
   rewrite setDUK; last exact: sub_Rhull.
   by rewrite Pab.
 apply/andP; split.
-  admit.
+  (* wlog? *)
+  have [fafb|] := pselect (f a < f b)%R.
+    have -> : `|f b - f a|%:E = mu `[f a, f b].
+      rewrite completed_lebesgue_measure_itv/= lte_fin fafb -EFinD.
+      move: fafb.
+      rewrite -subr_gt0.
+      by move/ltW/normr_idP ->.
+    apply: le_outer_measure => /= x/= xfab.
+    apply: (fab (f a) (f b)).
+    - exists a => //=.
+      by rewrite boundl_in_itv/= bnd_simp ltW.
+    - exists b => //=.
+      by rewrite boundr_in_itv/= bnd_simp ltW.
+    - by rewrite in_itv/= in xfab.
+    move/negP; rewrite -leNgt.
+    rewrite le_eqVlt => /predU1P[-> |].
+      by rewrite subrr normr0 measure_ge0.
+  rewrite -normrN opprB => fbfa.
+  have -> : `|f a - f b|%:E = mu `[f b, f a].
+    rewrite completed_lebesgue_measure_itv/= lte_fin fbfa -EFinD.
+    move: fbfa.
+    rewrite -subr_gt0.
+    by move/ltW/normr_idP ->.
+  apply: le_outer_measure => /= x/= xfba.
+  apply: (fab (f b) (f a)).
+  - exists b => //=.
+   by rewrite boundr_in_itv/= bnd_simp ltW.
+  - exists a => //=.
+   by rewrite boundl_in_itv/= bnd_simp ltW.
+  - by rewrite in_itv/= in xfba.
 rewrite H1.
 apply: (@le_trans _ _ (mu [set f x | x in P] +
          mu (\bigcup_i [set f x | x in `]fine (a_ i), fine (b_ i)[]))).
