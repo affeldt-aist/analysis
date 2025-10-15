@@ -746,45 +746,94 @@ have [c cab abc] := @EVT_max _ abs_x _ _ ab cont_abs_x.
 exists (`|repr x c|) => /= _ /= [z zab] <-.
 exact: abc.
 Qed.
+Lemma eqmod_on_itv f g :
+  f = g %[mod V] -> {in `[a,b]%R, f =1 g}.
+Proof.
+  move => /eqmodP H x in_itv.
+  rewrite /Quotient.equiv_equiv/Quotient.equiv/=/ideal_itv/= in H.
+  move  /set_mem : H => // H.
+  apply subr0_eq.
+  have := congr1 (fun h => h x) H.
+  rewrite patchE.
+  case : ifPn => // /negP H0.
+  contradict H0.
+  by apply mem_set. 
+Qed.
+
+Lemma infty_norm_itv_eq (f g :  contFunSegType a b):  {in `[a,b]%R, f =1 g} -> infty_norm0 f = infty_norm0 g.
+Proof.
+  intros.
+  rewrite /infty_norm0 /=.
+  f_equal.
+  apply eq_set => /= r.
+  apply propext.
+  split => [[//= x0 in_itv <- ] | [//=x0 in_itv <-]].
+  - exists x0 => //.
+    suff -> : f x0 = g x0 by [].
+    apply H => //.
+  - exists x0 => //.
+    suff -> : f x0 = g x0 by [].
+    apply H => //.
+ Qed.
+
+Lemma qnorm_piE x : norm (\pi_V x) = infty_norm0 x.
+Proof.
+  rewrite /norm /=.
+  have /eqmod_on_itv Heq : repr (\pi_V x) = x %[mod V] by rewrite reprK.
+  by apply infty_norm_itv_eq.
+Qed.
 
 Let ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
 Proof.
-rewrite /norm/= -sup_sumE//; last 2 first.
+  rewrite /norm/= -sup_sumE//; last 2 first.
   exact: normr_repr_has_sup.
   exact: normr_repr_has_sup.
-apply: le_sup.
-- move=> A/= -[s sab] <-{A}.
-  rewrite /down/=.
-  eexists.
-  split.
-  exists (`|repr x s|).
+  apply: le_sup.
+  - move=> A/= -[s sab] <-{A}.
+    rewrite /down/=.
+    eexists.
+    split.
+    exists (`|repr x s|).
     by exists s.
-  exists (`|repr y s|).
+    exists (`|repr y s|).
     by exists s.
-  reflexivity.
-  have : infty_norm0 (repr (x + y)) = infty_norm0 (repr x) + infty_norm0 (repr y).
-    rewrite /infty_norm0/=.
-    rewrite -sup_sumE//.
-    admit.
-  rewrite /infty_norm0.
-
-
-  rewrite (le_trans _ (ler_normD _ _))//.
-  
-  admit.
-- eexists.
-  rewrite /=.
-  (* looks provable *)
-  admit.
-- (* looks true by continuity *)
+     reflexivity.
+    suff  -> : (repr (x + y) s = repr x s + repr y s) by exact: ler_normD.
+    suff /eqmod_on_itv ->: (repr (x+y) = repr x + repr y %[mod V]) =>//.
+    rewrite Quotient.pi_add !reprK //.
+   - by apply normr_repr_has_sup.
+   - rewrite /has_sup.
+     split.
+     + exists ((normr \o repr x) a + (normr \o repr y) a)=> /=.
+       exists ((normr \o repr x) a) => //; [exists a => //; rewrite in_itv/= lexx ab // | ].
+       exists ((normr \o repr y) a) => //; exists a => //; rewrite in_itv/= lexx ab //.
+    + admit.
+     (* looks true by continuity *)
 Admitted.
 
 Let infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
 Proof.
-rewrite /norm.
-rewrite /infty_norm0.
-
-Admitted.
+  rewrite /norm/infty_norm0 /=.
+  move => H.
+  rewrite -(reprK x)  -(reprK 0).
+  apply /eqquotP.
+  rewrite /Quotient.equiv_equiv/Quotient.equiv/=/ ideal_itv/=.
+  apply mem_set; rewrite /cst /=.
+  apply funext => x0 /=.
+  rewrite patchE.
+  case : ifPn => // /set_mem in_itv.
+  rewrite /GRing.opp/GRing.add /=.
+  have -> : ( {in `[a,b]%R, repr (0 : V) =1 (0 : contFunSegType a b)}) => //.
+  apply /eqmod_on_itv.
+  rewrite reprK /GRing.zero /= /Quotient.zero /= -lock /= //.
+  rewrite subr0.
+  apply /eqP;rewrite -normr_le0.
+  have := (sup_upper_bound (normr_repr_has_sup x)).
+  rewrite H /ubound /=.
+  move => H0.
+  apply H0.
+  exists x0 => //.
+Qed.
 
 Let infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
 Admitted.
