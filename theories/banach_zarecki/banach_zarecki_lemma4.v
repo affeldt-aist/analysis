@@ -448,12 +448,12 @@ move/asboolP: haslbciA ->; move/asboolP: hasubciA ->.
 by move/asboolF: citvAinf ->;move/asboolF: citvAsup ->.
 Qed.
 
-Lemma fine_contiguous_intervals1 A : compact A -> has_lbound A ->
+Lemma fine_contiguous_intervals1 A : compact A ->
   forall i, fine (contiguous_intervals1 A i) = inf (contiguous_intervals A i).
 Proof.
 Admitted.
 
-Lemma fine_contiguous_intervals2 A : compact A -> has_ubound A ->
+Lemma fine_contiguous_intervals2 A : compact A ->
   forall i, fine (contiguous_intervals2 A i) = sup (contiguous_intervals A i).
 Proof.
 Admitted.
