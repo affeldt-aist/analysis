@@ -783,6 +783,13 @@ Proof.
   by apply infty_norm_itv_eq.
 Qed.
 
+Local Lemma sup_le A (x : R) : has_sup A -> A x -> x <= sup A. 
+Proof.
+  move=> supA Ax.
+  have /sup_upper_bound := supA.
+  by move/(_ x Ax).
+Qed.
+
 Let ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
 Proof.
   rewrite /norm/= -sup_sumE//; last 2 first.
@@ -807,9 +814,11 @@ Proof.
      + exists ((normr \o repr x) a + (normr \o repr y) a)=> /=.
        exists ((normr \o repr x) a) => //; [exists a => //; rewrite in_itv/= lexx ab // | ].
        exists ((normr \o repr y) a) => //; exists a => //; rewrite in_itv/= lexx ab //.
-    + admit.
-     (* looks true by continuity *)
-Admitted.
+    + rewrite /has_ubound.
+      exists (sup [set (normr \o repr x) x0 | x0 in `[a, b]] + sup [set (normr \o repr y) x0 | x0 in `[a, b]]).
+      apply ubP => _ [x0 xs] [y0 ys] <-.
+      apply lerD;apply sup_le => //.
+Qed.
 
 Let infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
 Proof.
@@ -836,14 +845,18 @@ Proof.
 Qed.
 
 Let infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
+Proof.
 Admitted.
 
 Let infty_normrN (x : V) : norm (- x) = norm x.
 Proof.
-rewrite /norm /infty_norm0.
-
-
-Admitted.
+  rewrite -(reprK x) /GRing.opp /= -Quotient.pi_opp !qnorm_piE/norm /infty_norm0.
+  f_equal.
+  apply eq_set => /= x0.
+  apply propext;split => [[x1 in_itv] | [x1 in_itv]] H;exists x1 =>//.
+  rewrite -normrN //.
+  rewrite normrN //.
+Qed.
 (* TODO: dev the theory of sup following the theory of ess_sup *)
 
 Fail Check V : normedZmodType R.
