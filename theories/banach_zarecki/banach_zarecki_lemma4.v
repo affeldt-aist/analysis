@@ -417,6 +417,25 @@ rewrite /contiguous_intervals2 /Rhull; case: ifPn => /=; case: ifPn => //.
 by move/asboolP.
 Qed.
 
+Lemma contiguous_intervals1_le_contiguous_intervals2 A n :
+  (contiguous_intervals1 A n <= contiguous_intervals2 A n)%E.
+Proof.
+rewrite /contiguous_intervals1/Rhull.
+case: ifP => /=; last by move=> _; exact: leNye.
+move=> /asboolP haslbAn; rewrite /contiguous_intervals2/=.
+case: ifP => /=; last by move=> _; exact: leey.
+move=> /asboolP hasubAn.
+have [An0|] := pselect ((contiguous_intervals A n) !=set0); last first.
+  move/set0P/negP/negPn/eqP ->.
+  by rewrite inf0 sup0.
+rewrite -ereal_inf_EFin// -ereal_sup_EFin//.
+move: An0 => [z Anz].
+apply: ereal_inf_le.
+exists z%:E => //.
+apply: ereal_sup_ge.
+by exists z%:E.
+Qed.
+
 Lemma bigcup_contiguous_intervals_fine A :
   compact A -> cplt_hull A =
       \bigcup_k `]fine (contiguous_intervals1 A k),
@@ -453,6 +472,7 @@ move/asboolP: haslbciA ->; move/asboolP: hasubciA ->.
 by move/asboolF: citvAinf ->;move/asboolF: citvAsup ->.
 Qed.
 
+
 Lemma fine_contiguous_intervals1 A : compact A ->
   forall i, fine (contiguous_intervals1 A i) = inf (contiguous_intervals A i).
 Proof.
@@ -481,7 +501,6 @@ rewrite 2?ifT/=; last 2 first.
   apply/asboolP.
   
 Abort.
-
 
 End contiguous_intervals_lemmas.
 
@@ -564,6 +583,24 @@ rewrite /Rhull; case: ifPn => /asboolP lA; case: ifPn => // /asboolP uA /=.
 - by rewrite lee_fin has_bound_inf_sup//; exact/set0P.
 - by rewrite leey.
 - by rewrite leNye.
+Qed.
+
+(* TODO: PR *)
+Lemma hasNlb_ereal_inf (A : set R) :
+  ~ has_lbound A -> A !=set0 -> ereal_inf (EFin @` A) = -oo.
+Proof.
+move=> hasNlbA A0.
+rewrite ereal_infEN.
+rewrite [X in - ereal_sup X = _](_ : _ =
+  (EFin @` (-%R @` A))); last first.
+  rewrite eqEsubset; split.
+  - move=> _ [_ [r Ar <-] <-].
+    by exists (- r)%R.
+  - move=> _ [_ [r Ar <-] <-].
+    by exists r%:E.
+rewrite hasNub_ereal_sup//.
+- by rewrite -has_lb_ubN.
+- exact: image_nonempty.
 Qed.
 
 Lemma trivIset_contiguous_intervals (P : set R) :
@@ -666,18 +703,70 @@ apply/andP; split.
   - exists a => //=.
    by rewrite boundl_in_itv/= bnd_simp ltW.
   - by rewrite in_itv/= in xfba.
+rewrite -measurable_mu_extE; last first.
+  apply: sub_caratheodory.
+  rewrite -(@RhullK _ (f @` `[a, b]))//.
+  by rewrite inE.
 rewrite H1.
-apply: (@le_trans _ _ (mu [set f x | x in P] +
-         mu (\bigcup_i [set f x | x in `]fine (a_ i), fine (b_ i)[]))).
-  admit.
+apply: (@le_trans _ _ (mu^*%mu [set f x | x in P] +
+         mu^*%mu (\bigcup_i [set f x | x in `]fine (a_ i), fine (b_ i)[]))).
+  exact: outer_measureU2.
+apply: leeD2l.
+apply: le_trans.
+  exact: outer_measure_sigma_subadditive.
+rewrite /=.
+apply: lee_nneseries; first by move=> i _ _; exact: outer_measure_ge0.
+move=> n _.
+rewrite /oscillation.
+rewrite [leRHS](_ : _ =
+       mu^*%mu [set` Rhull (f @` `[(fine (a_ n)), (fine (b_ n))] )]).
+  apply: le_outer_measure.
+  apply: subset_trans (@sub_Rhull _ _).
+  apply: image_subset.
+  exact: subset_itv_oo_cc.
 rewrite measurable_mu_extE/=; last first.
-  admit.
-rewrite leeD2l//.
-rewrite measure_semi_bigcup//=; last 3 first.
-  admit.
-  admit.
-  admit.
-apply: lee_nneseries => // n _.
+  apply: sub_caratheodory.
+  exact: measurable_itv.
+rewrite completed_lebesgue_measure_itv.
+have fab0 : [set f x | x in `[(fine (a_ n)), (fine (b_ n))]] !=set0.
+  exists (f (fine (a_ n))) => //.
+  exists (fine (a_ n)) => //=.
+  rewrite boundl_in_itv//= bnd_simp.
+  rewrite fine_le//.
+  - exact: contiguous_intervals1_fin_num.
+  - exact: contiguous_intervals2_fin_num.
+  - exact: contiguous_intervals1_le_contiguous_intervals2.
+have [hasubf|hasNubf] :=
+  pselect (has_ubound (f @` `[(fine (a_ n)), (fine (b_ n))])); last first.
+  rewrite -image_comp hasNub_ereal_sup//.
+  rewrite addye; last first.
+    apply/eqP.
+    move/eqe_oppLRP => /=.
+    move/ereal_inf_pinfty.
+    apply/not_forallP; rewrite notE.
+    have [y [x/= xab fax]] := fab0.
+    by exists y%:E; rewrite ?not_implyP; split => //; exists y => //; exists x.
+  rewrite ifT; last first.
+    rewrite /=; move/asboolF : (hasNubf) => ->.
+    by case: ifP => // _; exact: ltry.
+  rewrite /=; move/asboolF : (hasNubf) => ->.
+  by case: ifP.
+have [haslbf|hasNlbf] :=
+   pselect (has_lbound (f @` `[(fine (a_ n)), (fine (b_ n))])); last first.
+  rewrite -[X in _ - ereal_inf X = _]image_comp hasNlb_ereal_inf//; last first.
+  rewrite ifT; last first.
+    rewrite /=; move/asboolF: (hasNlbf) => ->.
+    move/asboolP: (hasubf) => ->; exact: ltNyr.
+  rewrite /=; move/asboolF: (hasNlbf) => -> /=.
+  have supNy: ereal_sup ((EFin \o f) @` `[(fine (a_ n)), (fine (b_ n))]) != -oo.
+    apply/eqP; move/ereal_sup_ninfty; apply/not_forallP; rewrite notE.
+    have [y [x/= xab fax]] := fab0.
+    by exists y%:E; rewrite ?not_implyP; split => //; exists x=> //; congr EFin.
+  by case: ifP; rewrite addey.
+rewrite /Rhull; move/asboolP: (hasubf) ->; move/asboolP: (haslbf) -> => //.
+case: ifP => /=; last first.
+- move/negP/negP; rewrite -leNgt.
+
 Abort.
 Local Close Scope ereal_scope.
 
