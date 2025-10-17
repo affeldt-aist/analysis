@@ -193,28 +193,18 @@ Definition contfunseg_Sub_subproof := unsquash (set_mem fP).
 
 End Sub.
 
-Lemma Pff f :   ContFunSeg.axioms_ a b f -> f \in contfunseg a b.
-Proof.
-  move => H.
-  apply mem_set.
-  apply (squash H).
-Defined.
 
 Lemma contfunseg_rect (K : T -> Type) :
   (forall f (Pf : f \in contfunseg a b), K (contfunseg_Sub Pf)) ->
   forall u : T, K u.
 Proof.
 move=> Ksub [f Pf].
-suff ->: ( K {| ContFunSeg.sort := f; ContFunSeg.class := Pf |} = K (contfunseg_Sub (Pff Pf))) by apply Ksub.
-unfold contfunseg_Sub, contfunseg_Sub_subproof.
-rewrite /Pff/= mem_setK.
-suff <-: (Pf = unsquash (squash Pf)) =>  //.
-remember (unsquash (squash Pf)) as Pf'.
-destruct Pf as [[H1] [H2]].
-destruct Pf' as [[H1'] [H2']].
-suff <-: (H1 = H1').
-suff <-: (H2 = H2') => //.
-apply Prop_irrelevance.
+rewrite (_ : K _  = K (contfunseg_Sub (mem_set (squash Pf))))//.
+rewrite /contfunseg_Sub /contfunseg_Sub_subproof /= mem_setK.
+rewrite /unsquash; case : cid => // /= => x _.
+congr (K (ContFunSeg.Pack _)).
+move : Pf x => [[H1] [H2]] [[?] [?]].
+by rewrite (Prop_irrelevance H1) (Prop_irrelevance H2).
 Qed.
 
 
@@ -684,8 +674,8 @@ End ring_structure_on_quotient_classes.
 Section zmodule_normed.
 Context {R : realType} (a b : R) (ab : a <= b).
 
-Definition infty_norm0 (f : {fun `[a, b] >-> [set: R]}) :=
-  sup ((Num.norm \o f) @` `[a, b]).
+Definition infty_norm0 (f : {fun `[a, b]%classic >-> [set: R]}) :=
+  sup ((Num.norm \o f) @` `[a, b]%classic).
 
 Local Notation V := (quot_contFunSegType ab).
 
@@ -746,34 +736,23 @@ have [c cab abc] := @EVT_max _ abs_x _ _ ab cont_abs_x.
 exists (`|repr x c|) => /= _ /= [z zab] <-.
 exact: abc.
 Qed.
+
 Lemma eqmod_on_itv f g :
-  f = g %[mod V] -> {in `[a,b]%R, f =1 g}.
+  f = g %[mod V] -> {in `[a,b], f =1 g}.
 Proof.
-  move => /eqmodP H x in_itv.
-  rewrite /Quotient.equiv_equiv/Quotient.equiv/=/ideal_itv/= in H.
-  move  /set_mem : H => // H.
+  move => /eqmodP + x xab.
+  rewrite /Quotient.equiv_equiv /Quotient.equiv /= /ideal_itv /=.
+  move/set_mem =>  H.
   apply subr0_eq.
-  have := congr1 (fun h => h x) H.
-  rewrite patchE.
-  case : ifPn => // /negP H0.
-  contradict H0.
-  by apply mem_set. 
+  rewrite -[RHS]/(cst 0 x) -H patchE; case : ifPn => //. 
+  by rewrite xab.
 Qed.
 
-Lemma infty_norm_itv_eq (f g :  contFunSegType a b):  {in `[a,b]%R, f =1 g} -> infty_norm0 f = infty_norm0 g.
+Lemma infty_norm_itv_eq (f g :  contFunSegType a b):  {in `[a,b], f =1 g} -> infty_norm0 f = infty_norm0 g.
 Proof.
-  intros.
-  rewrite /infty_norm0 /=.
-  f_equal.
-  apply eq_set => /= r.
-  apply propext.
-  split => [[//= x0 in_itv <- ] | [//=x0 in_itv <-]].
-  - exists x0 => //.
-    suff -> : f x0 = g x0 by [].
-    apply H => //.
-  - exists x0 => //.
-    suff -> : f x0 = g x0 by [].
-    apply H => //.
+  move => inab.
+  rewrite /infty_norm0 /=;congr (sup _).
+  apply/seteqP; split; move => _ [ y ? <- ]; exists y; by rewrite //= inab // inE.
  Qed.
 
 Lemma qnorm_piE x : norm (\pi_V x) = infty_norm0 x.
@@ -796,7 +775,7 @@ Proof.
   exact: normr_repr_has_sup.
   exact: normr_repr_has_sup.
   apply: le_sup.
-  - move=> A/= -[s sab] <-{A}.
+  - move=> A -[s sab] <-{A}.
     rewrite /down/=.
     eexists.
     split.
@@ -807,6 +786,7 @@ Proof.
      reflexivity.
     suff  -> : (repr (x + y) s = repr x s + repr y s) by exact: ler_normD.
     suff /eqmod_on_itv ->: (repr (x+y) = repr x + repr y %[mod V]) =>//.
+    by rewrite inE.
     rewrite Quotient.pi_add !reprK //.
    - by apply normr_repr_has_sup.
    - rewrite /has_sup.
@@ -832,7 +812,7 @@ Proof.
   rewrite patchE.
   case : ifPn => // /set_mem in_itv.
   rewrite /GRing.opp/GRing.add /=.
-  have -> : ( {in `[a,b]%R, repr (0 : V) =1 (0 : contFunSegType a b)}) => //.
+  have -> : ( {in `[a,b], repr (0 : V) =1 (0 : contFunSegType a b)}) => //.
   apply /eqmod_on_itv.
   rewrite reprK /GRing.zero /= /Quotient.zero /= -lock /= //.
   rewrite subr0.
@@ -842,8 +822,51 @@ Proof.
   move => H0.
   apply H0.
   exists x0 => //.
+  by rewrite inE.
 Qed.
 
+Local Lemma sup_Mn (A : set R) n: has_sup A -> sup [set x *+n | x in A ] = sup A *+ n.
+Proof.
+move => has_sup.
+elim: n.
+rewrite !mulr0n.
+admit.
+move => n IH.
+rewrite !mulrS.
+rewrite -IH /infty_norm0.
+rewrite -sup_sumE.
+apply /eqP.
+rewrite eq_le.
+apply /andP;split; last first.
+apply sup_le_ub.
+admit.
+move => _ /= [x Ax [_ [x0 Ax0] <-] <-].
+have /orP[ xx0| xx0] := le_total x x0.
+rewrite (@le_trans _ _ (x0 *+ n.+1)) //.
+by rewrite mulrS lerD2r.
+apply sup_le.
+admit.
+by exists x0.
+rewrite (@le_trans _ _ (x *+ n.+1)) //.
+rewrite mulrS lerD2l.
+by rewrite lerMn2r xx0 orbT.
+apply sup_le.
+admit.
+by exists x.
+apply le_sup.
+apply: subset_trans; last by apply: le_down.
+move => _ [x Ax <-] /=.
+exists x => //.
+exists (x *+ n)=> //.
+exists x => //.
+by rewrite mulrS.
+case : has_sup => -[] x Ax _.
+exists (x *+ n.+1)=> //=.
+by exists x.
+Admitted.
+
+
+                                 
 Local Lemma infty_norm0_eq0 : infty_norm0 (0 : contFunSegType a b) = 0.
 Proof.
   rewrite /infty_norm0.
@@ -855,8 +878,19 @@ Qed.
 
 Local Lemma infty_norm0rMn (x : contFunSegType a b) n : infty_norm0 (x *+ n) = infty_norm0 x *+ n.
 Proof.
-  rewrite /infty_norm0.
-  elim n.
+rewrite /infty_norm0.
+rewrite -sup_Mn.
+rewrite image_comp //=.
+congr (sup _).
+apply eq_imagel.
+move => z _ /=.
+rewrite -normrMn /=.
+have /(congr1 (fun a => a z)) <- := (natmulfctE x n).
+congr (normr (_ z)).
+(* This is strange *)
+elim: n x => //=.
+move => n IH x.
+by rewrite !mulrS -IH.
 Admitted.
 
 Lemma infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
