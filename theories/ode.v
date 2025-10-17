@@ -790,7 +790,7 @@ Proof.
   by move/(_ x Ax).
 Qed.
 
-Let ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
+Lemma ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
 Proof.
   rewrite /norm/= -sup_sumE//; last 2 first.
   exact: normr_repr_has_sup.
@@ -820,7 +820,7 @@ Proof.
       apply lerD;apply sup_le => //.
 Qed.
 
-Let infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
+Lemma infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
 Proof.
   rewrite /norm/infty_norm0 /=.
   move => H.
@@ -844,11 +844,36 @@ Proof.
   exists x0 => //.
 Qed.
 
-Let infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
+Local Lemma infty_norm0_eq0 : infty_norm0 (0 : contFunSegType a b) = 0.
 Proof.
+  rewrite /infty_norm0.
+  rewrite -(sup1 0).
+  f_equal.
+  apply eq_set => /= z ;apply propext; split => [[x _ <- ] | ->]; rewrite ?normr0 => //.
+  exists a; by [rewrite bound_itvE | rewrite normr0 ].
+Qed.
+
+Local Lemma infty_norm0rMn (x : contFunSegType a b) n : infty_norm0 (x *+ n) = infty_norm0 x *+ n.
+Proof.
+  rewrite /infty_norm0.
+  elim n.
 Admitted.
 
-Let infty_normrN (x : V) : norm (- x) = norm x.
+Lemma infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
+Proof.
+  rewrite /norm.
+  rewrite -infty_norm0rMn.
+  apply infty_norm_itv_eq.
+  move => x0 in_itv.
+  suff /eqmod_on_itv ->: (repr (x *+ n) = repr x *+ n %[mod V]) =>//.
+  elim n; [rewrite !mulr0n // reprK /GRing.zero /= /Quotient.zero /= -lock // | ].
+  move => n' IHn'; rewrite reprK !mulrS.
+  rewrite reprK in IHn'.
+  rewrite Quotient.pi_add reprK.
+  by move : IHn' <-.
+Qed.
+  
+Lemma infty_normrN (x : V) : norm (- x) = norm x.
 Proof.
   rewrite -(reprK x) /GRing.opp /= -Quotient.pi_opp !qnorm_piE/norm /infty_norm0.
   f_equal.
