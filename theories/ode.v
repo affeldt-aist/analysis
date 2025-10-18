@@ -700,22 +700,22 @@ Proof.
 split=> [->//|fg].
 Abort.
 
-Let normr_repr_has_sup (x : V) :
-  has_sup [set (normr \o repr x) x0 | x0 in `[a, b]].
+Local Lemma normr_has_sup (x : contFunSegType a b) : 
+  has_sup [set (normr \o x) x0 | x0 in `[a, b]].
 Proof.
 rewrite /has_sup; split.
-  exists (`|repr x a|)=> /=.
+  exists (`|x a|)=> /=.
   by exists a => //; rewrite in_itv/= lexx ab.
-pose abs_x := normr \o repr x.
+pose abs_x := normr \o x.
 have [aeqb | aneqb] := eqVneq a b.
   subst b.
-  exists (`| repr x a |) => z/= [r].
+  exists (`|  x a |) => z/= [r].
   rewrite in_itv/=.
   by rewrite -eq_le => /eqP <- <-.
 have ab' : a < b.
   by rewrite lt_neqAle aneqb ab.
 have cont_abs_x : {within `[a, b], continuous abs_x}.
-  have /continuous_within_itvP : {within `[a, b], continuous (repr x)} by exact: contFunSeg.
+  have /continuous_within_itvP : {within `[a, b], continuous x} by exact: contFunSeg.
   move=> /(_ ab')[H1 H2 H3].
   rewrite /abs_x.
   apply/continuous_within_itvP => //.
@@ -733,9 +733,13 @@ have cont_abs_x : {within `[a, b], continuous abs_x}.
       exact: H3.
     exact: norm_continuous.
 have [c cab abc] := @EVT_max _ abs_x _ _ ab cont_abs_x.
-exists (`|repr x c|) => /= _ /= [z zab] <-.
+exists (`|x c|) => /= _ /= [z zab] <-.
 exact: abc.
 Qed.
+
+Let normr_repr_has_sup (x : V) :
+  has_sup [set (normr \o repr x) x0 | x0 in `[a, b]].
+Proof. by apply normr_has_sup. Qed.
 
 Lemma eqmod_on_itv f g :
   f = g %[mod V] -> {in `[a,b], f =1 g}.
@@ -825,33 +829,44 @@ Proof.
   by rewrite inE.
 Qed.
 
+Local Lemma has_sup_Mn (A : set R) n: has_sup A -> has_sup [set x *+n | x in A ].
+Proof.
+  move => [-[] x Ax [y uby]].
+  split; first by exists (x *+ n);exists x.
+  exists (y *+ n).
+  move => _ [y0 Ay0 <-] .
+  rewrite lerMn2r.
+  by apply /orP;right;apply uby.
+Qed.
+
 Local Lemma sup_Mn (A : set R) n: has_sup A -> sup [set x *+n | x in A ] = sup A *+ n.
 Proof.
-move => has_sup.
+move => ex_sup.
 elim: n.
-rewrite !mulr0n.
-admit.
+rewrite !mulr0n -(sup1 0);congr (sup _).
+apply eq_set => /= z ;apply propext; split => [[x _ <- ] | ->]; rewrite ?normr0 => //.
+case : ex_sup => -[] x Ax _;by exists x.
 move => n IH.
 rewrite !mulrS.
 rewrite -IH /infty_norm0.
-rewrite -sup_sumE.
+rewrite -sup_sumE => //; last by apply has_sup_Mn.
 apply /eqP.
 rewrite eq_le.
 apply /andP;split; last first.
 apply sup_le_ub.
-admit.
+case : ex_sup => -[] x Ax _;exists (x+x *+ n); exists x => //.
+exists (x *+ n) => //.
+by exists x.
 move => _ /= [x Ax [_ [x0 Ax0] <-] <-].
 have /orP[ xx0| xx0] := le_total x x0.
 rewrite (@le_trans _ _ (x0 *+ n.+1)) //.
 by rewrite mulrS lerD2r.
-apply sup_le.
-admit.
+apply sup_le; first by apply has_sup_Mn.
 by exists x0.
 rewrite (@le_trans _ _ (x *+ n.+1)) //.
 rewrite mulrS lerD2l.
 by rewrite lerMn2r xx0 orbT.
-apply sup_le.
-admit.
+apply sup_le; first by apply has_sup_Mn.
 by exists x.
 apply le_sup.
 apply: subset_trans; last by apply: le_down.
@@ -860,10 +875,20 @@ exists x => //.
 exists (x *+ n)=> //.
 exists x => //.
 by rewrite mulrS.
-case : has_sup => -[] x Ax _.
+case : ex_sup => -[] x Ax _.
 exists (x *+ n.+1)=> //=.
 by exists x.
-Admitted.
+case : ex_sup => -[] x Ax [y uby].
+split.
+exists (x + x *+ n).
+exists x => //.
+exists (x *+ n) => //.
+by exists x.
+exists (y + y *+ n) => _ [x0 Ax0 [_ [x1 Ax1] <-] <-]. 
+apply lerD;first by apply uby.
+rewrite lerMn2r; apply /orP.
+by right;apply uby.
+Qed.
 
 
                                  
@@ -891,7 +916,8 @@ congr (normr (_ z)).
 elim: n x => //=.
 move => n IH x.
 by rewrite !mulrS -IH.
-Admitted.
+by apply normr_has_sup.
+Qed.
 
 Lemma infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
 Proof.
