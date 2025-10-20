@@ -766,8 +766,15 @@ have [haslbf|hasNlbf] :=
 rewrite /Rhull; move/asboolP: (hasubf) ->; move/asboolP: (haslbf) -> => //.
 case: ifP => /=; last first.
 - move/negP/negP; rewrite -leNgt.
+  rewrite le_eqVlt => /predU1P[|]; last first.
+  + rewrite lte_fin ltNge => /negP Ninfsup.
+    by have := has_bound_inf_sup fab0 haslbf hasubf.
+  + rewrite -ereal_sup_EFin -?ereal_inf_EFin// image_comp => ->;
+    rewrite subee//.
+    by rewrite -image_comp ereal_inf_EFin.
+- move=> _; rewrite EFinN -ereal_sup_EFin -?ereal_inf_EFin// 2?image_comp//.
+Qed.
 
-Abort.
 Local Close Scope ereal_scope.
 
 Let ex_perfect_set (cmf : cumulative R R) (cZ : set R) :
