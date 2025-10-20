@@ -63,22 +63,6 @@ Qed.
 
 End open_mem_lemmas.
 
-Section Rbounded_closed_compact.
-Context {R : realType}.
-
-(* can be proved by bounded_closed_compact? *)
-Lemma Rbounded_closed_compact (A : set R) :
-  bounded_set A -> closed A -> compact A.
-Proof.
-move=> [M [Mreal normAltM]] Acl.
-have Mnco : compact `[(- (M + 1)), (M + 1)] by exact: segment_compact.
-apply: subclosed_compact Acl Mnco _ => v /normAltM normvleM.
-suff : `|v| <= M + 1 by rewrite ler_norml.
-by apply: le_trans (normvleM _ _); last by rewrite ltrDl.
-Qed.
-
-End Rbounded_closed_compact.
-
 Section cplt_hull.
 Context {R : realType}.
 Implicit Type (A : set R).
