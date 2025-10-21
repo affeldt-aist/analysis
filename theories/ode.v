@@ -950,6 +950,7 @@ Check V : normedZmodType R.
 
 Check (pseudoMetric_normed V) : pseudoMetricType R.
 Check (pseudoMetric_normed V) : normedZmodType R.
+
 Fail Check (pseudoMetric_normed V) : normedModType R.
 
 End zmodule_normed.
