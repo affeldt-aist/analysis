@@ -1039,6 +1039,7 @@ Local Notation d := d0%:num.
 Local Notation contFunBallType x := (contFunSegType (- x) x).
 
 Variable k : R.
+Hypothesis k1 : k >= 1.
 (* properties of the function f defining the differential equation: *)
 (* k-lipschitz w.r.t. x *)
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
@@ -1046,22 +1047,22 @@ Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
 
 Definition picard_from_cont' (g : R -> R)
-    (imageg : g @` `[- d, d] `<=` `[- d, d]) : R -> R :=
+    (imageg : g @` `]- d, d[ `<=` `]- d, d[) : R -> R :=
   fun t => (\int[mu]_(x in `[- d, t]) f x (g x) -
             \int[mu]_(x in `[- d, 0%R]) f x (g x))%R.
 
 Local Lemma set_fun_picard_from_cont' (g : R -> R)
-    (imageg : g @` `[- d, d] `<=` `[- d, d]) :
-  {homo picard_from_cont' imageg : x / `[- d, d] x >-> [set: R] x}.
+    (imageg : g @` `]- d, d[ `<=` `]- d, d[) :
+  {homo picard_from_cont' imageg : x / `]- d, d[ x >-> [set: R] x}.
 Proof. by []. Qed.
 
 HB.instance Definition _ (g : R -> R)
-    (imageg : g @` `[- d, d] `<=` `[- d, d]) :=
-  @isFun.Build _ _ `[- d, d] [set: R] (picard_from_cont' imageg)
+    (imageg : g @` `]- d, d[ `<=` `]- d, d[) :=
+  @isFun.Build _ _ `]- d, d[ [set: R] (picard_from_cont' imageg)
     (set_fun_picard_from_cont' imageg).
 
 Local Lemma picard_from_cont'_isContFunSegBuild (g : contFunBallType d)
-    (imageg : g @` `[-d, d] `<=` `[- d, d]) :
+    (imageg : g @` `]-d, d[ `<=` `]- d, d[) :
   @isContFunSeg R (- d) d (picard_from_cont' imageg).
 Proof.
 constructor.
