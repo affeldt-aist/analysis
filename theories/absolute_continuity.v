@@ -2768,7 +2768,7 @@ Fail Lemma differentiable_lusinN a b f : {in `]a, b[%classic, differentiable f} 
 
 End lusinN.
 
-Definition preimages_gt1 {R: Type}. (X : set R) (Y : set R) (f : R -> R) : set R :=
+Definition preimages_gt1 {R: Type} (X : set R) (Y : set R) (f : R -> R) : set R :=
   Y `&` [set y | (* (X `&` f @^-1` [set y] !=set0) /\ *)
          ~ is_subset1 (X `&` f @^-1` [set y])].
 

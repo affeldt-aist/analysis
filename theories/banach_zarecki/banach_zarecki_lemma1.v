@@ -22,7 +22,7 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
 Section lemma1.
-Context {R : realType}.
+Context {R : Type}.
 
 (* Lemma not_subset01P (X : set R) (Y : set R) (f : {fun X >-> Y}) : *)
 (*   not_subset01 f -> *)
