@@ -84,21 +84,16 @@ Lemma cplt_hull_subset_Rhull A :
   cplt_hull A `<=` [set` Rhull A].
 Proof. exact: subDsetl. Qed.
 
-Lemma neg_nonemptyP A : (~ (A !=set0)) <-> (A = set0).
-Proof.
-split.
-- by move/set0P/negP/negbNE/eqP.
-- move=> ->; move/set0P/negP => //.
-Qed.
+(* TODO: single PR *)
+Lemma not_nonemptyP A : (~ (A !=set0)) <-> (A = set0).
+Proof. by split; [|move=> ->]; move/set0P/negP; [move/negbNE/eqP|]. Qed.
 
 Lemma has_ubound_cplt_hull A :
   has_ubound A -> has_ubound (cplt_hull A).
 Proof.
 move=> /[dup]/asboolP u [ub ubAub]; exists ub => x [+ _].
-have [/= A0|] := pselect (A !=set0); last first.
-  move/neg_nonemptyP=> ->; rewrite Rhull0 set_itvoo0.
-  move/set0P/eqP. eqP.
-  by move/set0P/negP/negbNE/eqP => ->; rewrite Rhull0 set_itvoo0.
+have [|/=/contrapT A0] := pselect (~ (A !=set0)).
+  by move/not_nonemptyP ->; rewrite RhullK ?inE.
 by rewrite in_itv/= u => /andP[_]/lteifW/le_trans; apply; exact: sup_le_ub.
 Qed.
 
@@ -137,12 +132,9 @@ Lemma cplt_hull_lt_sup A :
   has_ubound A -> cplt_hull A `<=` [set x | x < sup A].
 Proof.
 move=> hasubA x [/= + nAx].
-rewrite in_itv/=; move/andP => [_]; move/asboolP : (hasubA) => ->.
-case: asboolP => //.
-have [|/asboolPn ->//] := pselect (A (sup A)).
-move=> /[dup]/asboolP -> AsupA/=.
-rewrite le_eqVlt => /orP[|//]; move/eqP => xsupA.
-by move: nAx; rewrite xsupA.
+rewrite in_itv/=; move/andP => [_]; rewrite ifT; last by exact/asboolP.
+have [/asboolP/= ?|//] := boolP `[< A (sup A)>];
+by rewrite le_eqVlt => /predU1P[|//]=> ?; subst.
 Qed.
 
 (* unused *)
