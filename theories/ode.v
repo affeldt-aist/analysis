@@ -1115,11 +1115,11 @@ apply/continuous_within_itvP; [exact: gtrN | split].
 =======
 pose f' := uncurry f.
 
-have cont12 : {in `](- d), d[ `*` `](- d), d[, continuous f'}.
+have cont12 : {in `[(- d), d] `*` `](- d), d[, continuous f'}.
   move=> [y1 y2].
   rewrite !inE => -[/= /[!in_itv]/= /andP[dy1 y1d] /andP[dy2 y2d]].
   rewrite /continuous_at.
-  have /cont2 : y1 \in `[(- d), d] by rewrite inE/= in_itv/= (ltW dy1) ltW.
+  have /cont2 : y1 \in `[(- d), d] by rewrite inE/= in_itv/= dy1 .
   move/continuous_within_itvP; rewrite gtrN// => /(_ isT)[+ _ _].
   move/(_ y2).
   rewrite in_itv/= dy2 y2d => /(_ isT).
@@ -1171,42 +1171,155 @@ have cont12 : {in `](- d), d[ `*` `](- d), d[, continuous f'}.
           move => z /= [] /= H _.
           rewrite mulrC ltW // distrC -ltr_pdivlMr // mulr_gt0 //=.
           by apply: (lt_le_trans (_ : 0 < 1)).
+
 move=> {x}.
+have cont12' : {in `[(- d), d], forall x,  {within `[(- d), d], continuous (fun y => f' (x,y))}}.
+  move => x xd //=.
+  move /(_ x) : cont2.
+  rewrite xd => /(_ isT).
+  move/continuous_within_itvP; rewrite gtrN// => /(_ isT) [cont_f lcont_f rcont_f].
+  apply/continuous_within_itvP; [exact: gtrN | split].
+  move => y yd // .
+  have <- : f' \o (fun y => (x,y)) = [eta f x] by apply/funext => z.
+  apply continuous_comp => //=.
+  red.
+  rewrite /continuous_at.
+  have := @cvg_pair _ _ _ (nbhs y) (nbhs x) (nbhs y) _ _ _ (cst x) id => //=.
+  apply.
+  exact: cvg_cst.
+  exact: cvg_id.
+  apply cont12.
+  rewrite inE;split => //=.
+  apply set_mem => //=.
+  exact: lcont_f.
+  exact: rcont_f.
+
+have lcont_inside : -d < g d < d -> f x (g x) @[x --> d^'-] --> f d (g d).
+  move => gxd //=.
+  pose fg := f' \o (fun x => (x, g x)).
+  suff : fg z @[z -->  d^'-] --> fg d by [].
+  apply: (@cvg_comp _ _ _ (fun x => (x, g x)) f' (d)^'-).
+  apply: (@cvg_pair _ _ _ ((d)^'-) (nbhs d) (nbhs (g d))  _ _ _ _ g).
+  by apply: cvg_at_left_filter.
+  have /continuous_within_itvP  :=  @contFunSeg _ _ _ g.
+  by rewrite gtrN //; move => [] //= _ + _.
+  apply: cont12.
+  rewrite inE;split => //=.
+  rewrite in_itv  /= lexx ltW  //=; exact: gtrN.
+
+have lcont_inside' :  g d = d -> f x (g x) @[x --> d^'-] --> f d (g d).
+  move => gxd //=.
+  pose fg := f' \o (fun x => (x, g x)).
+  suff : fg z @[z -->  d^'-] --> fg d by [].
+  apply: (@cvg_comp _ _ _ (fun x => (x, g x)) f' (d)^'-).
+  apply: (@cvg_pair _ _ _ ((d)^'-) (d^'-) ((g d)^'-)  _ _ _ _ g).
+  exact cvg_id.
+  admit.
+  apply/cvgrPdist_le => /= e e0 //.
+  near_simpl.
+  rewrite /fg /=.
+  move /(_ d): cont12'.
+  rewrite mem_set /=;[ | rewrite in_itv /= lexx ltW //=; exact: gtrN]  => /(_ isT).
+  rewrite inE;split => //=.
+  rewrite in_itv  /= lexx ltW  //=; exact: gtrN.
+  apply gtrN.
+  Search (_ < _).
+  Check gtrN.
+  apply/cvgrPdist_le => /= e e0 //.
+  near_simpl.
+
+  apply: cvg_comp.
+  rewrite fmap_comp /=.
+
+  Search nbhs "comp".
+  apply: continuous_comp.
+  red.
+ rewrite /continuous_at.
+ admit.
+ red.
+ rewrite /continuous_at.
+ apply cont12.
+ have := @cvg_pair _ _ _ (nbhs x) (nbhs x) (nbhs (g x)) _ _ _ id g.
+  apply.
+  exact: cvg_id.
+  apply: (@within_continuous_continuous _ (- d) d).
+  by rewrite gtrN.
+  by have := @contFunSeg _ _ _ g.
+  by rewrite in_itv/= ndx.
+  apply: cont12.
+  rewrite !inE; split => //=.
+    by rewrite !in_itv/= ndx.
+  rewrite !in_itv/=.
+  have := imageg (g x).
+  rewrite /= in_itv/=; apply.
+  exists x => //.
+  by rewrite !in_itv/= ndx/=.
 apply/continuous_within_itvP; [exact: gtrN | split];last 2 first.
   pose fg := f' \o (fun x => (x, g x)).
   suff : fg z @[z -->  (- d)^'+] --> fg (-d) by [].
-  rewrite /fg.
-  apply: (@cvg_comp _ _ _ (fun x => (x, g x)) f' (-d)^'+).
-  apply (@cvg_pair _ _ _ ((-d)^'+) ((-d)^'+) (within (fun u => -d <= u <=d) (nbhs (g (-d)))) _ _ _ id g).
-  exact: cvg_id.
+  rewrite /fg /=.
+  have : (g (-d) = d \/ g (-d) = -d \/ -d < g (-d) < d).
   admit.
-  
+  case => [H0 | ].
+  rewrite H0.
+  apply: (@cvg_comp _ _ _ (fun x => (x, g x)) f' (-d)^'+).
+  apply: (@cvg_pair _ _ _ ((-d)^'+) ((-d)^'+) ((g (-d))^'+)  _ _ _ _ g).
+  exact: cvg_id.
   have /continuous_within_itvP  :=  @contFunSeg _ _ _ g.
-  rewrite gtrN //; move => [] //= _ h _ //.
-  apply: cvg_trans.
-  apply h.
-  rewrite withinE.
+  rewrite gtrN //; move => [] //= _ + _.
+  admit.
+  apply/cvgrPdist_le => /= e e0 //.
+  have /continuous_within_itvP  :=  @contFunSeg _ _ _ g.
+  rewrite gtrN //; move => [] //= _ + _.
+  move => h.
+  move => U [e /= e0  Ub].
+  have [] := (h (ball d e)).
+  rewrite H0.
+     by apply: nbhsx_ballx.
+   move => r /= r0 a.
+   specialize (a (x0)).
+   move => aa ab.
+   apply: Ub.
+   apply a => //.
+   simpl in a.
+   rewrite 
+  Search nbhs at_right.
+  rewrite nbhs_right_ltW.
+  Search cvg_to at_right.
+
+  admit.
+
+  apply/cvgrPdist_le => /= e e0 //.
+  near_simpl.
+  (* apply (@cvg_pair _ _ _ ((-d)^'+) ((-d)^'+) (within (fun u => -d <= u <=d) (nbhs (g (-d)))) _ _ _ id g). *)
+  admit.
   simpl.
-  exact 
-  Check cvgrPdist_le.
-  apply: cvg_withinP.
-  apply /subspace_cvgP.
-  apply /(imageg_closure imageg) => //=.
-  exists (-d) =>//=.
- admit.
-  have /continuous_within_itvP  :=  @contFunSeg _ _ _ g.
-  rewrite gtrN //; move => [] //= _ h _ //.
-  Search nbhs subspace.
-  rewrite -nbhs_subspace_interior.
-  rewrite nbhs_subspaceE.
-  apply h.
-  Unset Printing Notations.
-  Unset Printing Notations.
+
+  (* have /continuous_within_itvP  :=  @contFunSeg _ _ _ g. *)
+  (* rewrite gtrN //; move => [] //= _ + _ //. *)
+ (*  apply: cvg_trans. *)
+ (*  apply h. *)
+ (*  rewrite withinE. *)
+ (*  simpl. *)
+ (*  exact  *)
+ (*  Check cvgrPdist_le. *)
+ (*  apply: cvg_withinP. *)
+ (*  apply /subspace_cvgP. *)
+ (*  apply /(imageg_closure imageg) => //=. *)
+ (*  exists (-d) =>//=. *)
+ (* admit. *)
+  (* have /continuous_within_itvP  :=  @contFunSeg _ _ _ g. *)
+  (* rewrite gtrN //; move => [] //= _ h _ //. *)
+  (* rewrite -nbhs_subspace_interior. *)
+  (* rewrite nbhs_subspaceE. *)
+  (* apply h. *)
+  (* Unset Printing Notations. *)
+  (* Unset Printing Notations. *)
   apply/cvgrPdist_le => /= e e0 //.
   near_simpl.
   rewrite -near2_pair /=.
   have /cont2 : -d \in `[(- d), d] by rewrite inE/=in_itv/= lexx ltW //;exact: gtrN.
-  move/continuous_within_itvP; rewrite gtrN// => /(_ isT) [cont_f lcont_f rcont_f].
+  move/continuous_within_itvP; rewrite gtrN// => /(_ isT) [].
   move/(_ (g (-d))).
   have /continuous_within_itvP  :=  @contFunSeg _ _ _ g.
   rewrite gtrN //; move => [] //= _ + _.
