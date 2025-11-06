@@ -66,26 +66,22 @@ Implicit Type (A : set R).
 (* complement hull? *)
 Definition cplt_hull A := [set` Rhull A] `\` A.
 
-Lemma cplt_hull0 A :
-  is_interval A -> cplt_hull A = set0.
+Lemma cplt_hull0 A : is_interval A -> cplt_hull A = set0.
 Proof.
 by move=> itvA; rewrite /cplt_hull -((is_intervalP A).1 itvA) setDv.
 Qed.
 
-Lemma cplt_hull_set0 :
-  cplt_hull set0 = set0.
+Lemma cplt_hull_set0 : cplt_hull set0 = set0.
 Proof. by rewrite cplt_hull0. Qed.
 
-Lemma cplt_hullT :
-  cplt_hull setT = set0.
+Lemma cplt_hullT : cplt_hull setT = set0.
 Proof. by rewrite cplt_hull0. Qed.
 
-Lemma cplt_hull_subset_Rhull A :
-  cplt_hull A `<=` [set` Rhull A].
+Lemma cplt_hull_subset_Rhull A : cplt_hull A `<=` [set` Rhull A].
 Proof. exact: subDsetl. Qed.
 
-(* TODO: single PR *)
-Lemma not_nonemptyP A : (~ (A !=set0)) <-> (A = set0).
+(* NB: PR in progress *)
+Lemma not_nonemptyP A : ~ (A !=set0) <-> A = set0.
 Proof. by split; [|move=> ->]; move/set0P/negP; [move/negbNE/eqP|]. Qed.
 
 Lemma has_ubound_cplt_hull A :
@@ -106,13 +102,11 @@ have [/= A0|] := pselect (A !=set0); last first.
 rewrite in_itv/= l => /andP[+ _] => /lteifW; apply: le_trans; exact: lb_le_inf.
 Qed.
 
-Lemma cplt_hull_complement A :
-  cplt_hull A `<=` ~` A.
+Lemma cplt_hull_complement A : cplt_hull A `<=` ~` A.
 Proof. rewrite /cplt_hull; exact: subDsetr. Qed.
 
 (* unused *)
-Let cplt_hull_sup A :
-  has_ubound A -> ~ (cplt_hull A) (sup A).
+Let cplt_hull_sup A : has_ubound A -> ~ (cplt_hull A) (sup A).
 Proof.
 move=> ubA; rewrite /cplt_hull/= in_itv/= andC -implypN => Asup.
 by move/asboolPn: (Asup); move/asboolP: (ubA) => -> -> /=; rewrite ltxx andbF.
