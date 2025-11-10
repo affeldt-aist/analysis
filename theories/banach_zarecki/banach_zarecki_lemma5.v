@@ -47,7 +47,33 @@ Context {R : realType}.
 Variables (a b : R) (f : R -> R).
 Hypothesis (ab : a < b).
 
+Implicit Types (s : seq R) (x : R).
+
 Arguments unif_continuous : clear implicits.
+
+Lemma itv_partitionL_nil x :
+  itv_partitionL [::] x = [:: x].
+Proof. by []. Qed.
+
+Lemma itv_partitionR_nil x :
+  itv_partitionR [::] x = [::].
+Proof. by []. Qed.
+
+Lemma itv_partitionL_cons1 s x :
+  path <%R (s ++ [:: x]) ->
+  itv_partitionL (s ++ [:: x]) x = s ++ [:: x].
+Proof.
+move=> ss.
+rewrite /itv_partitionL.
+under eq_filter.
+  move=> t.
+  
+rewrite /=.
+
+Lemma itv_partitionL_merge_cons1 (s : seq R) (x : R) :
+   itv_partitionL (merge <%R s [:: x]) x = itv_partitionL s x.
+Proof.
+
 
 Let variation_merge1 s :
   itv_partition a b s -> (* not necessary? *)
