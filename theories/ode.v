@@ -1,6 +1,7 @@
 (* mathcomp analysis (c) 2025 Inria and AIST. License: CeCILL-C.              *)
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect ssralg ssrnum matrix interval poly.
+From mathcomp Require Import generic_quotient ring_quotient.
 From mathcomp Require Import mathcomp_extra unstable boolp classical_sets.
 From mathcomp Require Import functions reals interval_inference topology.
 From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
@@ -484,8 +485,6 @@ HB.instance Definition _ f g := MeasurableFun.copy (f \* g) (f * g).
 
 End ring.
 
-From mathcomp Require Import ring_quotient.
-
   (* TODO  rewrite rmorphD should work declare patch as a morphism: erestrictD, erestrictM,  *)
 Lemma restrictD [T : pointedType] [R : realFieldType] (D : set T) (f g : T -> R) :
   (f \+ g)%R \_ D = (f \_ D \+ g \_ D)%R.
@@ -600,8 +599,6 @@ Qed.
 
 End contFunSeg_quotient.
 
-From mathcomp Require Import ring_quotient.
-
 (*Section ring_structure_on_quotient_classes.
 Context {R : realType} (a b : R) (ab : a <= b).
 
@@ -696,7 +693,7 @@ Proof.
 split=> [->//|fg].
 Abort.
 
-Local Lemma normr_has_sup (x : contFunSegType a b) : 
+Local Lemma normr_has_sup (x : contFunSegType a b) :
   has_sup [set (normr \o x) x0 | x0 in `[a, b]].
 Proof.
 rewrite /has_sup; split.
@@ -705,7 +702,7 @@ rewrite /has_sup; split.
 pose abs_x := normr \o x.
 have [aeqb | aneqb] := eqVneq a b.
   subst b.
-  exists (`|  x a |) => z/= [r].
+  exists (`| x a |) => z/= [r].
   rewrite in_itv/=.
   by rewrite -eq_le => /eqP <- <-.
 have ab' : a < b.
@@ -1992,6 +1989,7 @@ Local Notation mu := lebesgue_measure.
 (*Local Notation contFunBallType x := (contFunSegType (- x) x).*)
 Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
+Hypothesis k1 : 1 <= k.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[- d, d], continuous f x}}.
 
@@ -2013,10 +2011,11 @@ Proof.
 have := (@contFunSeg _ _ _   g).
 rewrite /picard_from_cont.
 case: pselect => //=.
-move => a cg.
-apply: contFunSeg.
-exact : lip1.
-exact : cont2.
+  move => a cg.
+  apply: contFunSeg.
+  + exact: k1.
+  + exact : lip1.
+  + exact : cont2.
 move => _ _.
 apply: continuous_subspaceT => z;apply: cvg_cst.
 Qed.
@@ -2026,9 +2025,9 @@ HB.instance Definition _ (g : V) :=
      (picard_from_cont g)
      (@continuous_picard_from_cont g).
 
-Search pi.
 Check fun g : V => (\pi_(V)%qT (picard_from_cont g )) : V.
-Definition picard_to_cont x :=  \pi_V%qT (picard_from_cont x). 
+
+Definition picard_to_cont x :=  \pi_V%qT (picard_from_cont x).
 
 Lemma set_fun_picard_to_cont : set_fun [set: V] [set: V]
   picard_to_cont.
@@ -2084,24 +2083,86 @@ Check contFunBallType : zmodType.
 End picard_to_cont_normedtype2.
 
 Section picard_to_cont_normedtype3.
+Local Open Scope quotient_scope.
 Context {R : realType} (r s : R) (rs : r <= s).
 
 Notation V := (quot_contFunSegType rs).
 
-Let cont_scale : R -> V -> V.
-Admitted.
+Definition cont_scale (k : R) (v : V) : V := \pi_V (k *: repr v).
 
-Let cont_scalerA : forall a b v, cont_scale a (cont_scale b v) = cont_scale (a * b) v.
-Admitted.
+Import Quotient.
+
+Let cont_scalerA a b v : cont_scale a (cont_scale b v) = cont_scale (a * b) v.
+Proof.
+rewrite /cont_scale.
+have [-> | a0] := eqVneq a 0; first by rewrite !(scale0r,mul0r).
+apply/eqmodP; rewrite /equiv_equiv/= /equiv/=.
+rewrite -scalerA -scalerBr.
+rewrite inE.
+apply/funext => x/=.
+rewrite patchE; case: ifPn => // xrs.
+rewrite !fctE.
+apply/eqP; rewrite scaler_eq0.
+rewrite (negPf a0)/= subr_eq0.
+apply/eqP.
+case: piP => f.
+by move/eqmod_on_itv => /(_ _ xrs) <-.
+Qed.
 
 Let cont_scale1r : left_id 1 cont_scale.
-Admitted.
+Proof.
+move=> v.
+rewrite /cont_scale/=.
+rewrite [RHS](_ : _ = (\pi_V (repr v))%qT); last first.
+  by rewrite reprK.
+apply/eqmodP.
+by rewrite scale1r.
+Qed.
 
 Let cont_scalerDr : right_distributive cont_scale +%R.
-Admitted.
+Proof.
+move=> k b c.
+rewrite /cont_scale/=.
+have [-> | k0] := eqVneq k 0.
+  by rewrite !scale0r piE//= add0r.
+rewrite /cont_scale/=.
+rewrite piE/=.
+apply/eqmodP.
+rewrite /equiv_equiv /equiv/=.
+rewrite -scalerDr.
+rewrite -scalerBr.
+rewrite inE.
+apply/funext => x/=.
+rewrite patchE; case: ifPn => // xrs.
+rewrite !fctE.
+apply/eqP; rewrite scaler_eq0 (negPf k0)/=.
+rewrite subr_eq0.
+apply/eqP.
+have := @eqmod_on_itv _ _ _ rs (repr (b + c)) (repr b + repr c).
+move=> ->//.
+rewrite pi_add//=.
+by rewrite !reprK.
+Qed.
+
+(* TODO: PR *)
+Lemma restrict0 [T : Type] (K : realFieldType) (D : set T) :
+  (cst 0 : T -> K) \_ D = cst 0.
+Proof.
+apply/funext => x/=.
+rewrite patchE.
+by case: ifPn.
+Qed.
 
 Let cont_scalerDl : forall v, {morph cont_scale^~ v: a b / a + b}.
-Admitted.
+Proof.
+move=> v a b.
+rewrite /cont_scale.
+rewrite piE/=.
+apply/eqmodP; rewrite /equiv_equiv/= /equiv/=.
+rewrite -scalerDl subrr.
+rewrite inE/=.
+by rewrite restrict0.
+Qed.
 
 HB.instance Definition _ :=
   @GRing.Zmodule_isLmodule.Build R V cont_scale cont_scalerA cont_scale1r cont_scalerDr
@@ -2111,7 +2172,42 @@ Lemma is_pmnormedZmod_contFunBallType :
   PseudoMetricNormedZmod_Lmodule_isNormedModule R V.
 Proof.
 constructor.
+move=> l x.
+rewrite /Num.norm/=.
+rewrite /infty_norm /infty_norm0 /=.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  apply: sup_le_ub.
+    exists (`|repr (l *: x) r|).
+    rewrite /=.
+    exists r => //.
+    by rewrite in_itv/= lexx/=.
+  move=> _/= [a ars] <-.
+  have -> : repr (l *: x) a = l *: (repr x a). (* TODO: make a lemma of this *)
+    have : repr (l *: x) = l *: repr x %[mod V].
+      by case: piP => //=.
+    move/(@eqmod_on_itv _ _ _ rs (repr (l *: x)) (l *: repr x)).
+    have ars' : a \in `[r, s].
+      by rewrite inE.
+    by move/(_ _ ars').
+  rewrite normrZ ler_wpM2l//.
+  apply: sup_le.
+    split.
+      (* TODO: copipe *)
+      exists (`|repr (x) r|).
+      rewrite /=.
+      exists r => //.
+      by rewrite in_itv/= lexx/=.
+    (* TODO: exists max of [repr x i | i \in [r, s] ]. *)
+    admit.
+  rewrite /=.
+  by exists a.
+apply: sup_le.
+  admit.
+rewrite /=.
+(* argmax *)
 Admitted.
+
+(* similar to normr_has_sup *)
 
 HB.instance Definition _ := Num.Zmodule_isNormed.Build
   R V (@ler_infty_normD R _ _ rs) (@infty_normr0_eq0 R _ _ rs)
@@ -2129,12 +2225,13 @@ Variable f : R -> R -> R.
 Variable (d0 : {posnum R}).
 Variable k : R.
 Local Notation d := d0%:num.
+Hypothesis k1 : 1 <= k.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[- d, d], continuous f x}}.
 
 Notation V := (quot_contFunSegType (ge0_cp (ge0 d0)).2).
 
-Definition contrac : V -> V := @picard_to_cont R f d0 k lip1 cont2.
+Definition contrac : V -> V := @picard_to_cont R f d0 k k1 lip1 cont2.
 
 Lemma set_fun_picard : set_fun [set: V] [set: V] contrac.
 Proof.
@@ -2146,6 +2243,8 @@ HB.instance Definition _ :=
 
 Lemma is_contraction_picard_to_cont : is_contraction contrac.
 Proof.
+red.
+rewrite /contraction.
 Admitted.
 
 End picard_to_cont_normedtype4.
@@ -2157,18 +2256,19 @@ Local Notation contFunBallType x := (@quot_contFunSegType R _ _ (ge0_cp (ge0 x))
 
 Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
+Hypothesis k1 : 1 <= k.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
 Variable y_ : R -> R.
 Hypothesis y_init_t : y_ 0 = 0.
 
-Definition tmp : is_contraction (contrac lip1 cont2) :=
-  (@is_contraction_picard_to_cont R f d0 k lip1 cont2).
+Definition tmp : is_contraction (contrac k1 lip1 cont2) :=
+  (@is_contraction_picard_to_cont R f d0 k k1 lip1 cont2).
 
 Let phi0 : contFunBallType d0 := 0. (* 0 is init_y *)
 
 Let phioo : contFunBallType d0 :=
-  limn (fun n => iter n (contrac lip1 cont2) phi0).
+  limn (fun n => iter n (contrac k1 lip1 cont2) phi0).
 
 (* TODO: not d, some smaller e *)
 Theorem picard_lindelof :
@@ -2179,7 +2279,7 @@ split.
   rewrite /phioo.
   (* contraction_cvg_fixed *)
   set picard_method : (contFunBallType d0) -> (contFunBallType d0) :=
-    (fun (g : (contFunBallType d0)) => contrac lip1 cont2 g).
+    (fun (g : (contFunBallType d0)) => contrac k1 lip1 cont2 g).
   (* TODO: fix
   set picard_method : (contFunBallType d) -> (contFunBallType d) :=
     (fun (g : (contFunBallType d)) => (fun t =>
@@ -2208,7 +2308,7 @@ split.
     move=> t/= tadlt.
     rewrite (_ : eps = eps / 3 + (eps / 3 + eps / 3)); last first.
       admit.
-    set phi_ := fun n => iter n (picard_to_cont lip1 cont2) phi0.
+    set phi_ := fun n => iter n (picard_to_cont k1 lip1 cont2) phi0.
     rewrite -[phioo x](subrK (phi_ N x)).
     rewrite -[_ + _]addrA.
     rewrite -{2}[phi_ N x](subrK (phi_ N t)).
