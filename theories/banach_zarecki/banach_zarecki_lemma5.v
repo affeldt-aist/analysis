@@ -59,21 +59,76 @@ Lemma itv_partitionR_nil x :
   itv_partitionR [::] x = [::].
 Proof. by []. Qed.
 
-Lemma itv_partitionL_cons1 s x :
-  path <%R (s ++ [:: x]) ->
-  itv_partitionL (s ++ [:: x]) x = s ++ [:: x].
+Lemma itv_partitionL_rcons1 s x :
+  path <%R a (rcons s x) ->
+  itv_partitionL (rcons s x) x = s ++ [:: x].
 Proof.
 move=> ss.
 rewrite /itv_partitionL.
-under eq_filter.
-  move=> t.
-  
-rewrite /=.
+Admitted.
 
-Lemma itv_partitionL_merge_cons1 (s : seq R) (x : R) :
-   itv_partitionL (merge <%R s [:: x]) x = itv_partitionL s x.
+Lemma itv_partitionL_all_lt l x :
+ sorted <%R l -> all (> x) l ->
+ itv_partitionL l x = l ++ [:: x].
 Proof.
+Admitted.
 
+Lemma itv_partitionL_cons h l x :
+  h < x ->
+  itv_partitionL (h :: l) x = h :: itv_partitionL l x.
+Proof.
+by move=> hx; rewrite /itv_partitionL/= hx rcons_cons.
+Qed.
+
+Lemma itv_partitionL_seq1 l x :
+  all (> x) l -> itv_partitionL l x = [:: x].
+Proof.
+move/allP => xl.
+rewrite /itv_partitionL.
+suff -> : [seq x0 <- l | x0 < x] = [::] by [].
+apply/notP.
+move/eqP.
+rewrite -has_filter.
+apply/negP.
+apply/hasPn.
+move=> e el.
+rewrite -leNgt.
+rewrite le_eqVlt.
+apply/orP; right.
+exact: xl.
+Qed.
+
+Lemma itv_partitionR_id l x :
+  all (> x) l -> itv_partitionR l x = l.
+Proof.
+exact/all_filterP.
+Qed.
+
+Lemma itv_partition_merge_concat1 (s : seq R) (x : R) :
+    sorted <%R s -> x \notin s ->
+    merge <%R s [:: x] = itv_partitionL s x ++ itv_partitionR s x.
+Proof.
+elim: s x => //.
+move=> h l IH/= x pl xl.
+case: ifPn.
+- move=> hx.
+  rewrite IH; last 2 first.
+  + exact: path_sorted pl.
+  + by move: xl; rewrite inE negb_or gt_eqF.
+  rewrite ifF; last by apply/negP/negP; rewrite -leNgt ltW.
+  by rewrite itv_partitionL_cons.
+- rewrite -leNgt.
+  rewrite le_eqVlt => /orP; case.
+    move: (xl); rewrite inE/=.
+    by rewrite negb_or => /andP[/negP].
+  move=> xh; rewrite xh.
+  rewrite itv_partitionL_seq1; last first.
+    apply: lt_path_min.
+    by rewrite /= xh pl.
+  rewrite itv_partitionR_id//.
+  apply: lt_path_min.
+  exact: (path_lt_head xh).
+Qed.
 
 Let variation_merge1 s :
   itv_partition a b s -> (* not necessary? *)
@@ -89,11 +144,22 @@ rewrite (@in_itv_partition _ x (merge <%R s [:: x])); last 2 first.
 (* rewrite variation_cat. *)
 Admitted.
 
-Let variation_merge l s t : itv_partition_with_max a b l s ->
+Let variation_merge l s t :
+ itv_partition_with_max a b l s ->
   itv_partition a b t ->
   ((variation a b f (merge <%R s t))%:E <= (variation a b f s)%:E +
-  (size t)%:R%:E * 2 *omega_max a b f s)%E.
+  (size t)%:R%:E * 2 * omega_max a b f s)%E.
 Proof.
+elim: t => /=.
+- move=> _ _.
+  rewrite 2!mul0e adde0 allrel_merge ?cats0; last by exact: allrel0r.
+  exact: lexx.
+move=> h t IH pmaxl partht.
+rewrite /merge.
+elim: s IH pmaxl => /=.
+rewrite /merge.
+
+
 Admitted.
 
 Lemma lemma5' :
@@ -126,24 +192,19 @@ pose eps := ((V' - A) / (4 * m)%:R).
 have eps0 : 0 < eps.
   admit.
 move/(_ _ eps0) => [d d0 unifcf].
-exists d => p [partp pmaxd].
-
-
-
-
-have : [set x%:E | x in variations a b f] != set0.
+exists d => p pmaxd.
+apply: (@lt_le_trans _ _ ((V' + A) / 2)).
+  (* AV' *)
   admit.
-move/ereal_sup_seq => [v'_].
-rewrite /=.
-under [X in X -> _]eq_forall do rewrite exists2E.
-move/choice => [v_] /all_and2 [+ vv'].
-rewrite /variations/=.
-under [X in X -> _]eq_forall do rewrite exists2E.
-move/choice=> [p_] /all_and2[partp pv].
-under eq_cvg => x do rewrite -vv' -pv.
-rewrite cvg_EFin.
-  over.
-Abort.
+pose V0 : R := variation a b f (merge <%R p X').
+apply: (@le_trans _ _ (V0 - (V' - A) / 2)).
+  (* V' < V0, variation_subseq *)
+  admit.
+rewrite lerBlDr -lee_fin EFinD.
+apply: (le_trans (@variation_merge _ p X' pmaxd partX')).
+apply: leeD2l.
+(* unifcf *)
+Admitted.
 
 Lemma lemma5 a b f :
   {within `[a, b], continuous f} ->
