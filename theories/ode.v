@@ -1295,7 +1295,7 @@ Local Notation contFunBallType x := (contFunSegType (- x) x).
 Variable (g : contFunBallType d).
 
 Variable k : R.
-Hypothesis k1 : k >= 1.
+Hypothesis k1 : k > 0.
 (* properties of the function f defining the differential equation: *)
 (* k-lipschitz w.r.t. x *)
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
@@ -1363,12 +1363,12 @@ have [|gNd_oowoR] :
         by rewrite inE/=.
       move=> /lip1 /(_ (- d, t)) /= /(_ (conj Logic.I Logic.I)).
       move=> /le_trans; apply.
-      rewrite -ler_pdivlMl; last by rewrite (lt_le_trans _ k1).
+      rewrite -ler_pdivlMl //.
       rewrite ltr0_norm ?subr_lt0// opprB opprK.
       rewrite -lerBrDr.
       near: t.
       apply: nbhs_right_le.
-      by rewrite ltrBrDl subrr mulr_gt0// invr_gt0 (lt_le_trans _ k1).
+      by rewrite ltrBrDl subrr mulr_gt0// invr_gt0.
 + move: (gNd_oowoR); rewrite inE/= => gNd_ooR.
   move: (gNd_oowoR).
   rewrite inE => /subset_itv_oo_cc gNd_ccR.
@@ -1404,12 +1404,12 @@ have [|gNd_oowoR] :
   move=> /lip1 /(_ (- d, t)) /= /(_ (conj Logic.I Logic.I)).
   move=> /le_trans; apply.
   (* copipe *)
-  rewrite -ler_pdivlMl; last by rewrite (lt_le_trans _ k1).
+  rewrite -ler_pdivlMl; last by [].
   rewrite ltr0_norm ?subr_lt0// opprB opprK.
   rewrite -lerBrDr.
   near: t.
   apply: nbhs_right_le.
-  by rewrite ltrBrDl subrr mulr_gt0// invr_gt0 (lt_le_trans _ k1).
+  by rewrite ltrBrDl subrr mulr_gt0// invr_gt0 //.
 Unshelve. all: end_near. Qed.
 
 End intermediate_lemma.
@@ -1467,7 +1467,7 @@ Variables (f : R -> R -> R) (d0 : {posnum R}).
 Local Notation d := d0%:num.
 
 Variable k : R.
-Hypothesis k1 : k >= 1.
+Hypothesis k1 : k > 0.
 (* properties of the function f defining the differential equation: *)
 (* k-lipschitz w.r.t. x *)
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
@@ -1550,12 +1550,10 @@ apply/continuous_within_itvP; [exact: gtrN | split].
     exists (U,V).
       split.
         apply: nbhsx_ballx; apply /divr_gt0 /mulr_gt0 => //=.
-        by apply: (lt_le_trans (_ : 0 < 1)).
       by apply: nbhsx_ballx.
     rewrite /ball /=.
     move => z /= [] /= H _.
     rewrite mulrC ltW // distrC -ltr_pdivlMr // mulr_gt0 //=.
-    by apply: (lt_le_trans (_ : 0 < 1)).
   suff : fg z @[z --> x] --> fg x by [].
   apply: continuous_comp.
     red.
@@ -1989,7 +1987,7 @@ Local Notation mu := lebesgue_measure.
 (*Local Notation contFunBallType x := (contFunSegType (- x) x).*)
 Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
-Hypothesis k1 : 1 <= k.
+Hypothesis k1 : 0 < k.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[- d, d], continuous f x}}.
 
@@ -2258,7 +2256,7 @@ Variable f : R -> R -> R.
 Variable (d0 : {posnum R}).
 Variable k : R.
 Local Notation d := d0%:num.
-Hypothesis k1 : 1 <= k.
+Hypothesis k1 : 0 < k.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[- d, d], continuous f x}}.
 
@@ -2277,7 +2275,7 @@ HB.instance Definition _ :=
 Lemma is_contraction_picard_to_cont : is_contraction contrac.
 Proof.
 red.
-rewrite /contraction.
+rewrite /contrac/picard_to_cont/picard_from_cont/picard_from_cont'/contraction.
 Admitted.
 
 End picard_to_cont_normedtype4.
@@ -2289,7 +2287,7 @@ Local Notation contFunBallType x := (@quot_contFunSegType R _ _ (ge0_cp (ge0 x))
 
 Variables (f : R -> R -> R) (d0 : {posnum R}) (k : R).
 Local Notation d := d0%:num.
-Hypothesis k1 : 1 <= k.
+Hypothesis k1 : 0 < k.
 Hypothesis lip1 : {in `[- d, d], forall y, k.-lipschitz (f ^~ y)}.
 Hypothesis cont2 : {in `[- d, d], forall x, {within `[-d, d], continuous f x}}.
 Variable y_ : R -> R.
