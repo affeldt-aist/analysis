@@ -60,11 +60,22 @@ Lemma itv_partitionR_nil x :
 Proof. by []. Qed.
 
 Lemma itv_partitionL_rcons1 s x :
-  path <%R a (rcons s x) ->
-  itv_partitionL (rcons s x) x = s ++ [:: x].
+  sorted <%R (rcons s x) ->
+  itv_partitionL (rcons s x) x = rcons s x.
 Proof.
 move=> ss.
 rewrite /itv_partitionL.
+suff -> : [seq x0 <- rcons s x | x0 < x] = s by [].
+rewrite filter_rcons ifF//.
+apply/all_filterP.
+
+move: ss.
+rewrite -(revK (rcons _ _)).
+rewrite rev_sorted.
+rewrite lt_path_sortedE.
+
+rewrite all_rcons => /andP[ax].
+
 Admitted.
 
 Lemma itv_partitionL_all_lt l x :
