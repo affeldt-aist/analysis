@@ -2168,6 +2168,46 @@ HB.instance Definition _ :=
   @GRing.Zmodule_isLmodule.Build R V cont_scale cont_scalerA cont_scale1r cont_scalerDr
   cont_scalerDl.
 
+Local Lemma sup_mult (A : set R) (a : R): has_sup A ->  sup [set normr a * x  | x in A ] = (normr a) * sup A  .
+Proof.
+move =>ex_sup.
+have []:= ex_sup => -[] x Ax ub.
+apply /eqP.
+rewrite eq_le.
+apply /andP;split.
+apply sup_le_ub; first by exists (normr a * x); exists x.
+move => _ [x0 Axo <-].
+apply ler_wpM2l => //.
+apply sup_le => //.
+have [/eqP ->| ha0] := boolP (a == 0).
+rewrite normr0 !mul0r .
+suff ->:  [set 0 * x0 | x0 in A] = [set 0] by rewrite sup1 lexx.
+apply/predeqP => x0 /=;split => [ [x1 _ <-] | -> ].
+  by rewrite mul0r.
+  by exists x => //=; rewrite  mul0r.
+rewrite -ler_pdivlMl; last by rewrite normr_gt0.
+apply sup_le_ub; first by apply ex_sup.
+move => x0 Ax0.
+rewrite ler_pdivlMl; last by rewrite normr_gt0.
+apply sup_le.
+split; first by exists (`|a| * x ); exists x.
+have [x1 ubx1] := ub.
+exists (`|a| * x1).
+move => _ [x2 Ax2 <-].
+apply ler_wpM2l => //.
+by apply ubx1.
+exists x0 => //.
+Qed.
+
+Local Lemma repr_mult l (x : V) a :   a \in `[r, s] -> repr (l *: x) a = l *: (repr x a). 
+Proof.
+    move =>ars.
+    have : repr (l *: x) = l *: repr x %[mod V].
+      by case: piP => //=.
+    move/(@eqmod_on_itv _ _ _ rs (repr (l *: x)) (l *: repr x)).
+    by move/(_ _ ars).
+Qed.
+
 Lemma is_pmnormedZmod_contFunBallType :
   PseudoMetricNormedZmod_Lmodule_isNormedModule R V.
 Proof.
@@ -2182,30 +2222,23 @@ apply/eqP; rewrite eq_le; apply/andP; split.
     exists r => //.
     by rewrite in_itv/= lexx/=.
   move=> _/= [a ars] <-.
-  have -> : repr (l *: x) a = l *: (repr x a). (* TODO: make a lemma of this *)
-    have : repr (l *: x) = l *: repr x %[mod V].
-      by case: piP => //=.
-    move/(@eqmod_on_itv _ _ _ rs (repr (l *: x)) (l *: repr x)).
-    have ars' : a \in `[r, s].
-      by rewrite inE.
-    by move/(_ _ ars').
+  rewrite repr_mult; last by rewrite inE.
   rewrite normrZ ler_wpM2l//.
   apply: sup_le.
-    split.
-      (* TODO: copipe *)
-      exists (`|repr (x) r|).
-      rewrite /=.
-      exists r => //.
-      by rewrite in_itv/= lexx/=.
-    (* TODO: exists max of [repr x i | i \in [r, s] ]. *)
-    admit.
-  rewrite /=.
+  by apply normr_has_sup.
   by exists a.
-apply: sup_le.
-  admit.
-rewrite /=.
-(* argmax *)
-Admitted.
+  rewrite -sup_mult => //; last by apply normr_has_sup.
+  apply le_sup; [ | | by apply normr_has_sup].
+  move => _  [_ [x0 x0rs] <- <-].
+  exists (normr l * (normr \o repr x) x0);split => //=;exists x0.
+  by rewrite inE.
+  rewrite repr_mult; last by rewrite inE.
+  by rewrite normrZ.
+  exists (normr (l * x r));exists (normr (repr x r)).
+  exists r => //=.
+    by rewrite in_itv/= lexx/=.
+    by rewrite normrZ.
+Qed.
 
 (* similar to normr_has_sup *)
 
