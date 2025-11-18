@@ -796,7 +796,7 @@ Proof.
   rewrite /norm/infty_norm0 /=.
   move => H.
   rewrite -(reprK x)  -(reprK 0).
-  apply /eqquotP.
+  apply/eqquotP.
   rewrite /Quotient.equiv_equiv/Quotient.equiv/=/ ideal_itv/=.
   apply mem_set; rewrite /cst /=.
   apply funext => x0 /=.
@@ -2003,6 +2003,14 @@ end.
 
 End picard_from_cont.
 
+(*gtrN : forall [R : numDomainType] [x : R], 0 < x -> - x < x
+
+ge0_cp : forall [R : numDomainType] [x : R], 0 <= x -> (- x <= 0) * (- x <= x)*)
+
+(* TODO: PR to MathComp *)
+Lemma gerN {R : numDomainType} (x : R) : 0 <= x -> - x <= x.
+Proof. by move=> x0; rewrite ge0_cp. Qed.
+
 (* second, we define picard_to_cont
    that takes a function continuous over a closed ball
    and returns a function continuous over a closed ball *)
@@ -2016,20 +2024,20 @@ Hypothesis k1 : 0 < k.
 Hypothesis lip2 : {in `[- d, d], forall x, k.-lipschitz (f x)}.
 Hypothesis cont1 : {in `[- d, d], forall y, {within `[- d, d], continuous f ^~ y}}.
 
-Local Notation picard_from_cont := (@picard_from_cont R f d0 k lip2 cont1).
+Local Notation picard_from_cont_not := (@picard_from_cont R f d0 k lip2 cont1).
 
 Local Notation V := (quot_contFunSegType (ge0_cp (ge0 d0)).2).
 Lemma set_fun_picard_from_cont (g : V) :
-  set_fun `[-d, d] setT (picard_from_cont g).
+  set_fun `[-d, d] setT (picard_from_cont_not g).
 Proof.
   by [].
 Qed.
 
 HB.instance Definition _ (g : V) := @isFun.Build
-  R R `[-d, d] setT (picard_from_cont g) (set_fun_picard_from_cont g).
+  R R `[-d, d] setT (picard_from_cont_not g) (set_fun_picard_from_cont g).
 
 Lemma continuous_picard_from_cont (g : V) :
-  {within `[- d, d], continuous (picard_from_cont g)}.
+  {within `[- d, d], continuous (picard_from_cont_not g)}.
 Proof.
 have := (@contFunSeg _ _ _   g).
 rewrite /picard_from_cont.
@@ -2045,25 +2053,42 @@ Qed.
 
 HB.instance Definition _ (g : V) :=
   @isContFunSeg.Build R (- d) d
-     (picard_from_cont g)
+     (picard_from_cont_not g)
      (@continuous_picard_from_cont g).
 
-Check fun g : V => (\pi_(V)%qT (picard_from_cont g )) : V.
+Check fun g : V => (\pi_(V)%qT (picard_from_cont_not g )) : V.
 
-Definition picard_to_cont x :=  \pi_V%qT (picard_from_cont x).
+Definition picard_to_cont x :=  \pi_V%qT (picard_from_cont_not x).
 
-Lemma set_fun_picard_to_cont : set_fun [set: V] [set: V]
-  picard_to_cont.
+Definition restrictedV := [set f : V | f @` `]- d, d[ `<=` `]-d, d[ ].
+
+Lemma set_fun_picard_to_cont :
+  set_fun restrictedV restrictedV picard_to_cont.
 Proof.
-by [].
-Qed.
+move=> x.
+rewrite /restrictedV/= => xNdd _/= -[r rNdd] <-.
+rewrite /picard_to_cont.
+rewrite in_itv/=.
+rewrite [X in _ < X < _](_ : _ =
+       (picard_from_cont_not x) r); last first.
+  have /eqmod_on_itv : (repr (\pi_(V)%qT (picard_from_cont_not x)) =
+       picard_from_cont_not x %[mod V])%qT.
+    by rewrite reprK.
+  move=> <-//.
+  move/subset_itv_oo_cc : rNdd.
+  by rewrite inE/=.
+rewrite /picard_from_cont/=.
+case: pselect => // {}xNdd.
+rewrite /picard_from_cont'.
+admit. (* NB: this is obviously not provable *)
+Admitted.
 
 Fail Check picard_to_cont : {fun [set: V] >-> [set: V]}.
 
 HB.instance Definition _ :=
     @isFun.Build _ _ _ _ picard_to_cont set_fun_picard_to_cont.
 
-Check picard_to_cont : {fun [set: V] >-> [set: V]}.
+Check picard_to_cont : {fun restrictedV >-> restrictedV}.
 (* still, we can't state that it is a contraction for typing reasons *)
 Fail Lemma tmp : is_contraction (picard_to_cont
   : {fun [set: W] >-> [set: W]}).
@@ -2287,15 +2312,18 @@ Hypothesis cont1 : {in `[- d, d], forall y, {within `[- d, d], continuous f ^~ y
 
 Notation V := (quot_contFunSegType (ge0_cp (ge0 d0)).2).
 
-Definition contrac : V -> V := @picard_to_cont R f d0 k k0 lip2 cont1.
+Notation Vr := (@restrictedV _ d0).
 
-Lemma set_fun_picard : set_fun [set: V] [set: V] contrac.
+Definition contrac : {fun Vr >-> Vr} :=
+  @picard_to_cont R f d0 k k0 lip2 cont1.
+
+Lemma set_fun_picard : set_fun Vr Vr contrac.
 Proof.
 by [].
 Qed.
 
 HB.instance Definition _ :=
-  @isFun.Build _ _ setT setT contrac set_fun_picard.
+  @isFun.Build _ _ Vr Vr contrac set_fun_picard.
 
 Hypothesis dtwok : d0%:num < (2 * k)^-1.
 
@@ -2318,17 +2346,29 @@ have twod0k : 0 <= 2 * d0%:num * k by rewrite mulr_ge0// ltW.
 exists (NngNum twod0k).
 split.
   by rewrite /= mulrAC mulrC -ltr_pdivlMr ?div1r// mulr_gt0.
+rewrite /=.
 move=> -[/= g h _ (* True /\ True ?! *)].
+rewrite /Num.norm/=.
+rewrite /infty_norm.
+rewrite /infty_norm0.
 rewrite /contrac.
 rewrite /picard_to_cont.
 rewrite piE/=.
-rewrite qnorm_piE.
+(*rewrite qnorm_piE.
 rewrite /infty_norm0/=.
 apply: sup_le_ub => //=.
-  admit.
+  set u := _ \o _; exists (u d) => /=; exists d => //.
+  by rewrite in_itv/= lexx gerN.
 move=> _ /= [t tNdd <-].
 rewrite /picard_from_cont/=.
 case: pselect => /= Hg; last first.
+  rewrite sub0r normrN.
+  case: pselect => [|_]; last by rewrite normr0 mulr_ge0.
+  rewrite /picard_from_cont'/= => hNdd.
+  rewrite [in leRHS]/Num.norm/=.
+  rewrite /infty_norm /infty_norm0 /=.
+  Unset Printing Notations.
+.by rewrite abse0.
   admit.
 case: pselect => /= Hh; last first.
   admit.
@@ -2386,7 +2426,7 @@ rewrite ler_wpM2r//.
 rewrite mulrC ler_pM2r//.
 move: tNdd.
 rewrite in_itv/= => /andP[Ndt td].
-by rewrite mulr_natl mulr2n lerD//.
+by rewrite mulr_natl mulr2n lerD//.*)
 Admitted.
 
 End picard_to_cont_normedtype4.
