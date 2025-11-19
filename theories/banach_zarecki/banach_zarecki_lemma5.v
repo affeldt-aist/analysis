@@ -22,34 +22,10 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-
-Section itv_partition_length.
+Section seq_itv_partitionLR_lemmas.
 Context {R : realType}.
-Implicit Types (a b : R) (f : R -> R).
-
-Definition itv_partition_max a b s : R := let pnth := nth b (a :: s) in
-  \big[maxr/0%R]_(0 <= n < size s) `|pnth n.+1 - pnth n|%R.
-
-Definition itv_partition_with_max a b l s :=
-  itv_partition a b s /\ itv_partition_max a b s = l.
-
-Definition variations_with_max a b f l : set R :=
-   [set variation a b f s | s in itv_partition_with_max a b l].
-
-Definition omega_max a b f s : \bar R :=
-   \big[maxe/0%E]_(0 <= n < size s) oscillation f
-    `[(nth b (a :: s)) n, (nth b (a :: s)) n.+1].
-
-End itv_partition_length.
-
-Section lemma5.
-Context {R : realType}.
-Variables (a b : R) (f : R -> R).
-Hypothesis (ab : a < b).
 
 Implicit Types (s : seq R) (x : R).
-
-Arguments unif_continuous : clear implicits.
 
 Lemma itv_partitionL_nil x :
   itv_partitionL [::] x = [:: x].
@@ -58,6 +34,12 @@ Proof. by []. Qed.
 Lemma itv_partitionR_nil x :
   itv_partitionR [::] x = [::].
 Proof. by []. Qed.
+
+Lemma sorted_rcons_all s x : sorted <%R (rcons s x) -> all (<%R^~ x) s.
+Proof.
+rewrite -(revK (rcons _ _)) rev_sorted rev_rcons/= -all_rev.
+by move/order_path_min; move/(_ (rev_trans lt_trans)).
+Qed.
 
 Lemma itv_partitionL_rcons1 s x :
   sorted <%R (rcons s x) ->
@@ -68,28 +50,85 @@ rewrite /itv_partitionL.
 suff -> : [seq x0 <- rcons s x | x0 < x] = s by [].
 rewrite filter_rcons ifF//.
 apply/all_filterP.
+exact: sorted_rcons_all.
+Qed.
 
-move: ss.
+Lemma itv_partitionR_cons s x :
+  all (> x) s ->
+  itv_partitionR (x :: s) x = s.
+Proof.
+move=> pxs.
+rewrite /itv_partitionR/= ifF//.
+by apply/all_filterP.
+Qed.
+
+Lemma path_itv_partitionL s x :
+  sorted <%R s -> sorted <%R (itv_partitionL s x).
+Proof.
+move=> ss.
+rewrite /itv_partitionL.
+rewrite -(revK (rcons _ _)).
+rewrite rev_sorted rev_rcons.
+rewrite -filter_rev/=.
+rewrite (path_sortedE (rev_trans lt_trans)); apply/andP; split.
+- rewrite filter_rev all_rev.
+  apply/allP => e.
+  by rewrite mem_filter => /andP[].
+apply: (sorted_filter (rev_trans lt_trans)).
+by rewrite rev_sorted.
+Qed.
+
+Lemma path_itv_partitionR s x :
+  sorted <%R s -> sorted <%R (itv_partitionR s x).
+Proof. exact: lt_sorted_filter. Qed.
+
+Lemma lt_sorted_itv_partitionL s x :
+  sorted <%R s -> sorted <%R (itv_partitionL s x).
+Proof.
+move=> ss.
+rewrite/itv_partitionL.
 rewrite -(revK (rcons _ _)).
 rewrite rev_sorted.
-rewrite lt_path_sortedE.
+rewrite rev_rcons/=.
+rewrite -filter_rev.
+rewrite (path_sortedE (rev_trans lt_trans)); apply/andP; split.
+  rewrite all_filter.
+  rewrite all_rev.
+  apply/allP.
+  move=> t ts/=.
+  exact: implybb.
+apply: (sorted_filter (rev_trans lt_trans)).
+by rewrite rev_sorted.
+Qed.
 
-rewrite all_rcons => /andP[ax].
+Lemma lt_sorted_itv_partitionR s x :
+  sorted <%R s -> sorted <%R (itv_partitionR s x).
+Proof. move=> ?; exact: lt_sorted_filter. Qed.
 
-Admitted.
+Lemma itv_partitionL_idem s x :
+  sorted <%R (itv_partitionL s x) ->
+  itv_partitionL (itv_partitionL s x) x = itv_partitionL s x.
+Proof. by move=> H; rewrite itv_partitionL_rcons1. Qed.
+
+Lemma itv_partitionR_idem s x :
+  sorted <%R (itv_partitionR s x) ->
+  itv_partitionR (itv_partitionR s x) x = itv_partitionR s x.
+Proof. move=> H; exact/all_filterP/filter_all. Qed.
 
 Lemma itv_partitionL_all_lt l x :
- sorted <%R l -> all (> x) l ->
- itv_partitionL l x = l ++ [:: x].
-Proof.
-Admitted.
+ all (<%R ^~ x) l ->
+ itv_partitionL l x = rcons l x.
+Proof. by move=> lx; congr rcons; exact: all_filterP. Qed.
+
+Lemma itv_partitionR_all_gt l x :
+ all (> x) l ->
+ itv_partitionR l x = l.
+Proof. by move=> xl; apply: all_filterP. Qed.
 
 Lemma itv_partitionL_cons h l x :
   h < x ->
   itv_partitionL (h :: l) x = h :: itv_partitionL l x.
-Proof.
-by move=> hx; rewrite /itv_partitionL/= hx rcons_cons.
-Qed.
+Proof. by move=> hx; rewrite /itv_partitionL/= hx rcons_cons. Qed.
 
 Lemma itv_partitionL_seq1 l x :
   all (> x) l -> itv_partitionL l x = [:: x].
@@ -140,6 +179,36 @@ case: ifPn.
   apply: lt_path_min.
   exact: (path_lt_head xh).
 Qed.
+
+End seq_itv_partitionLR_lemmas.
+
+Section itv_partition_length.
+Context {R : realType}.
+Implicit Types (a b : R) (f : R -> R).
+Implicit Types (s : seq R) (x : R).
+
+Definition itv_partition_max a b s : R := let pnth := nth b (a :: s) in
+  \big[maxr/0%R]_(0 <= n < size s) `|pnth n.+1 - pnth n|%R.
+
+Definition itv_partition_with_max a b l s :=
+  itv_partition a b s /\ itv_partition_max a b s = l.
+
+Definition variations_with_max a b f l : set R :=
+   [set variation a b f s | s in itv_partition_with_max a b l].
+
+Definition omega_max a b f s : \bar R :=
+   \big[maxe/0%E]_(0 <= n < size s) oscillation f
+    `[(nth b (a :: s)) n, (nth b (a :: s)) n.+1].
+
+End itv_partition_length.
+
+Section lemma5.
+Context {R : realType}.
+Variables (a b : R) (f : R -> R).
+Hypothesis (ab : a < b).
+Implicit Types (s : seq R) (x : R).
+
+Arguments unif_continuous : clear implicits.
 
 Let variation_merge1 s :
   itv_partition a b s -> (* not necessary? *)
@@ -217,17 +286,17 @@ apply: leeD2l.
 (* unifcf *)
 Admitted.
 
-Lemma lemma5 a b f :
+Lemma lemma5 :
   {within `[a, b], continuous f} ->
   ereal_inf
-     [set v%:E | s in variations_with_max a b f l] @[l --> 0^'+]
+     [set v%:E | v in variations_with_max a b f l] @[l --> 0^'+]
        --> total_variation a b f.
 Proof.
 move=> cf.
 rewrite /total_variation.
 rewrite /variations.
 rewrite image_comp.
-apply/cvgrPdist_lt.
+
 Abort.
 
 End lemma5.
