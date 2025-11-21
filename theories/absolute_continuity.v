@@ -685,13 +685,13 @@ wlog : x y Sx Sy xy / x < y.
     by apply: (wlg _ _ Sx Sy) => //; rewrite lt_eqF.
   by apply: (wlg _ _ Sy Sx) => //; rewrite lt_eqF.
 move=> {}xy; apply: (@le_lt_trans _ _ x).
-  rewrite -(inf1 x); apply: le_inf; last 2 first.
+  rewrite -(inf1 x); apply: inf_le; last 2 first.
       by exists x.
     by split => //; exists x.
   move=> _ /= [_ -> <-].
   by exists (- x); split => //=; exists x.
 apply: (@lt_le_trans _ _ y) => //.
-rewrite -(sup1 y); apply: le_sup; last 2 first.
+rewrite -(sup1 y); apply: sup_le; last 2 first.
     by exists y.
   by split=> //; exists y.
 rewrite sub1set.
@@ -1951,7 +1951,7 @@ rewrite lerBlDr {}/M.
 move: b ab pb lef ubf => [[|] b|[//|]] ab pb lef ubf; set M := sup _ => Mefp.
 - near=> r; rewrite ler_distl; apply/andP; split.
   + suff: f r <= M by apply: le_trans; rewrite lerBlDr lerDl.
-    apply: sup_ubound => //=; exists r => //; rewrite in_itv/=.
+    apply: ub_le_sup => //=; exists r => //; rewrite in_itv/=.
     apply/andP; split; near: r; [|exact: nbhs_right_lt].
     exact: nbhs_right_ge.
   + rewrite (le_trans Mefp)// lerD2r lef//=; last 2 first.
@@ -1961,7 +1961,7 @@ move: b ab pb lef ubf => [[|] b|[//|]] ab pb lef ubf; set M := sup _ => Mefp.
     by apply/andP; split; near: r; [exact: nbhs_right_ge|exact: nbhs_right_lt].
 - near=> r; rewrite ler_distl; apply/andP; split.
   + suff: f r <= M by apply: le_trans; rewrite lerBlDr lerDl.
-    apply: sup_ubound => //=; exists r => //; rewrite in_itv/=.
+    apply: ub_le_sup => //=; exists r => //; rewrite in_itv/=.
     apply/andP; split; near: r; [exact: nbhs_right_ge|].
     by apply: nbhs_right_le.
   + rewrite (le_trans Mefp)// lerD2r lef//=; last 2 first.
@@ -1971,7 +1971,7 @@ move: b ab pb lef ubf => [[|] b|[//|]] ab pb lef ubf; set M := sup _ => Mefp.
     by apply/andP; split; near: r; [exact: nbhs_right_ge|exact: nbhs_right_le].
 - near=> r; rewrite ler_distl; apply/andP; split.
   suff: f r <= M by apply: le_trans; rewrite lerBlDr lerDl.
-  apply: sup_ubound => //=; exists r => //; rewrite in_itv/= andbT.
+  apply: ub_le_sup => //=; exists r => //; rewrite in_itv/= andbT.
     by near: r; apply: nbhs_right_ge.
   rewrite (le_trans Mefp)// lerD2r lef//.
   - by rewrite in_itv/= andbT; near: r; exact: nbhs_right_ge.
@@ -2029,7 +2029,7 @@ have [lnoo|lnoo] := eqVneq l -oo.
   rewrite ltr0_norm ?subr_lt0// opprB ltrBlDr subrK => zy.
   rewrite (le_trans _ (ltW fyM))// ndf ?ltW//.
     by rewrite in_itv/= -[X in _ && X]/(BLeft z < b)%O/= az/= (lt_trans _ yb).
-  by rewrite in_itv/= -[X in _ && X]/(BLeft y < b)%O/= (lt_trans az zy). *)
+  by rewrite in_itv/= -[X in _ && X]/(BLeft y < b)%O/= (lt_trans az zy). *)admit.
 have [fpoo|fpoo] := pselect {in Interval (BRight a) b, forall x, f x = +oo}.
 (*
   rewrite {}/l in lnoo *; rewrite {}/S in Snoo lnoo *.
@@ -2101,7 +2101,7 @@ have <- : inf [set g x | x in [set` Interval (BLeft a) b]] = fine l.
       + exists (g (a + 1)%R), (a + 1)%R => //=.
 (*        by rewrite in_itv/= andbT ltrDl.*) admit.
   rewrite fineK//; apply/eqP; rewrite eq_le; apply/andP; split; last first.
-    apply: le_ereal_inf => _ /= [_ [m _] <-] <-.
+    apply: ereal_inf_le_tmp => _ /= [_ [m _] <-] <-.
     rewrite /g; case: ifPn => [/andP[am mx]|].
       rewrite fineK// ?f_fin_num//; last by rewrite axA// am ltW.
       exists m => //=.
@@ -2113,7 +2113,7 @@ have <- : inf [set g x | x in [set` Interval (BLeft a) b]] = fine l.
     exists x => /=.
 (*      by rewrite in_itv/= -[X in _ && X]/(BLeft x < b)%O ax xb.*) admit.
     by rewrite fineK// f_fin_num ?inE.
-  apply: lb_ereal_inf => /= y [m] /=.
+  apply: le_ereal_inf_tmp=> /= y [m] /=.
   rewrite in_itv/= -[X in _ && X]/(BLeft m < b)%O => /andP[am mb] <-{y}.
   have [mx|xm] := ltP m x.
     apply: ereal_inf_lbound => /=; exists (fine (f m)); last first.
@@ -2247,7 +2247,7 @@ Qed.
 Lemma wlength_idfun_le {R : realType} : forall A, R.-ocitv.-measurable A ->
   ((@wlength R idfun) A <= ((wlength idfun)^*)%mu A)%E.
 Proof.
-move=> A mA; apply: lb_ereal_inf => /= _ [F [mF AF] <-].
+move=> A mA; apply: le_ereal_inf_tmp => /= _ [F [mF AF] <-].
 by apply: (wlength_sigma_subadditive idfun mF mA AF).
 Qed.
 
@@ -2306,13 +2306,13 @@ Lemma lebesgue_regularity_outer_inf (E : set R) :
   mu E = ereal_inf [set mu U | U in [set U | open U /\ E `<=` U]].
 Proof.
 apply/eqP; rewrite eq_le; apply/andP; split.
-- apply: lb_ereal_inf => /= r /= [A [oA EA] <-{r}].
-  apply: le_ereal_inf => _ /= [] S_ AS_ <-; exists S_ => //.
+- apply: le_ereal_inf_tmp => /= r /= [A [oA EA] <-{r}].
+  apply: ereal_inf_le_tmp => _ /= [] S_ AS_ <-; exists S_ => //.
   move: AS_ => [mS_ AS_].
   by split; [exact: mS_|exact: (subset_trans EA)].
 - apply/lee_addgt0Pr => /= e e0.
   have [U [oU EU /andP[UE UEe]]] := outer_regularity_outer0 E e0.
-  apply: ereal_inf_le => /=.
+  apply: ge_ereal_inf => /=.
   exists (mu U) => //.
   by exists U.
 Qed.
