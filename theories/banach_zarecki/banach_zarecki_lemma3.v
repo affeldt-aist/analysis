@@ -435,7 +435,7 @@ apply: lusinN'.
   apply: (continuous_closedP _).1 => //.
   exact: compact_closed.
 - apply/eqP; rewrite -measure_le0/= -muZ10.
-  have bijF := continuous_increasing_set_bij cF incF.
+  have bijF := continuous_increasing_set_bij ab cF incF.
   have [F' FF'] := pPbij bijF.
   rewrite /K1 FF' -inv_sub_image; last first.
     apply: (subset_trans KFZ1).
