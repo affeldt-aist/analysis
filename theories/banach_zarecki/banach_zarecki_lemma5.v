@@ -182,13 +182,37 @@ Qed.
 
 End seq_itv_partitionLR_lemmas.
 
+Section monoid_nonnegR.
+Context {R : numDomainType}.
+
+Lemma maxr0 : right_id (0%:nng : {nonneg R}) maxr.
+Proof.
+move=> /= x.
+have [|] := leP 0%:nng x.
+  by [].
+rewrite -num_lt/=.
+rewrite lt0F//.
+Qed.
+
+Lemma max0r : left_id (0%:nng : {nonneg R}) maxr.
+Proof.
+move=> x.
+rewrite maxC.
+exact: maxr0.
+Qed.
+
+HB.instance Definition _ :=
+  Monoid.isLaw.Build {nonneg R} 0%:nng maxr maxA max0r maxr0.
+
+End monoid_nonnegR.
+
 Section itv_partition_length.
 Context {R : realType}.
 Implicit Types (a b : R) (f : R -> R).
 Implicit Types (s : seq R) (x : R).
 
 Definition itv_partition_max a b s : R := let pnth := nth b (a :: s) in
-  \big[maxr/0%R]_(0 <= n < size s) `|pnth n.+1 - pnth n|%R.
+  (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
 
 Definition itv_partition_with_max a b l s :=
   itv_partition a b s /\ itv_partition_max a b s = l.
@@ -199,6 +223,98 @@ Definition variations_with_max a b f l : set R :=
 Definition omega_max a b f s : \bar R :=
    \big[maxe/0%E]_(0 <= n < size s) oscillation f
     `[(nth b (a :: s)) n, (nth b (a :: s)) n.+1].
+
+Lemma itv_partition_max_nil a b : itv_partition_max a b [::] = 0.
+Proof. by rewrite /itv_partition_max big_nil. Qed.
+
+Lemma itv_partition_rcons a b s t : itv_partition a b (rcons s t) -> t = b.
+Proof. move=> [_ /=]; by rewrite last_rcons=> /eqP. Qed.
+
+Lemma itv_partition_mem_last a b s : s != [::] -> itv_partition a b s ->
+  b \in s.
+Proof.
+move: s; apply: last_ind => // s t _ _.
+by move/itv_partition_rcons ->; rewrite mem_rcons mem_head.
+Qed.
+
+Lemma itv_partition_nonnil_last a b s : s != [::] -> itv_partition a b s ->
+  forall e, last e s = b.
+Proof.
+move: s; apply: last_ind => // s t _ _ pst e.
+rewrite last_rcons; exact: itv_partition_rcons pst.
+Qed.
+
+Lemma itv_partition_last a b s : itv_partition a b s ->
+  last a s = b.
+Proof.
+have [s0 ps|] := pselect (s != [::]).
+  exact: (itv_partition_nonnil_last s0 ps).
+by move/negP/negPn/eqP ->; move/itv_partition_nil <-.
+Qed.
+
+Lemma itv_partition_lteif a b s : itv_partition a b s ->
+  (a < b ?<= if ~~ (s != [::])).
+Proof.
+move=> ps.
+have [|] := boolP (s != [::]); move=> s0/=; last exact: itv_partition_le ps.
+move: (ps).
+move=> [].
+move/lt_path_min/allP => allas.
+move=> lsb.
+apply: allas.
+exact: (itv_partition_mem_last s0 ps).
+Qed.
+
+Lemma itv_partition_seq1 a b x :
+ itv_partition a b [:: x] -> x = b.
+Proof.
+by move=> abx; rewrite -(itv_partition_last abx).
+Qed.
+
+Lemma itv_partition_max_cons a b s x : s != [::] ->
+  itv_partition a b (x :: s) ->
+  itv_partition_max a b (x :: s) <= itv_partition_max a b s.
+Proof.
+case: s => // h tl _.
+move=> [/= /and3P[ax xh] _ _].
+
+rewrite /itv_partition_max.
+rewrite /=.
+
+rewrite 3?big_nat_recl//=.
+rewrite maxA.
+rewrite !num_max//=.
+rewrite ge_max/=; apply/andP; split; last first.
+  rewrite num_le_max; apply/orP; right => //.
+rewrite num_le_max/=; apply/orP; left.
+
+have := (lt_trans ax xh).
+rewrite -subr_gt0 => ha.
+rewrite (gtr0_norm ha)//.
+
+rewrite -[in leRHS](subrKC x a).
+rewrite opprD addrA.
+rewrite opprB.
+
+rewrite -subr_gt0 in ax; rewrite (gtr0_norm ax).
+rewrite -subr_gt0 in xh; rewrite (gtr0_norm xh).
+
+rewrite /maxr; case: ifP => _.
+  by rewrite lerDl ltW.
+by rewrite lerDr ltW.
+Qed.
+
+Lemma itv_partition_with_max_merge1 a b l s x :
+  itv_partition_with_max a b l s ->
+  itv_partition_max a b (merge <%R s [:: x]) <= l.
+Proof.
+Admitted.
+
+Lemma itv_partition_with_max_merge a b l s t :
+  itv_partition_with_max a b l s ->
+  itv_partition_max a b (merge <%R s t) <= l.
+Proof.
+Admitted.
 
 End itv_partition_length.
 
@@ -230,15 +346,25 @@ Let variation_merge l s t :
   ((variation a b f (merge <%R s t))%:E <= (variation a b f s)%:E +
   (size t)%:R%:E * 2 * omega_max a b f s)%E.
 Proof.
-elim: t => /=.
-- move=> _ _.
-  rewrite 2!mul0e adde0 allrel_merge ?cats0; last by exact: allrel0r.
-  exact: lexx.
-move=> h t IH pmaxl partht.
+elim: s t => /=.
+- move=> t [].
+  move=> /itv_partition_nil <- _.
+  move/itv_partitionxx -> => /=.
+  by rewrite variation_nil add0e 2!mul0e.
+move=> hs s IH t.
+
+
+(*
+- move=> + /itv_partition_nil; move/[swap] <-.
+  move=> [/itv_partitionxx -> _]/=.
+  by rewrite 2!mul0e adde0.
+
+move=> h t IH pmaxl partht/=.
+elim: s .
 rewrite /merge.
 elim: s IH pmaxl => /=.
 rewrite /merge.
-
+*)
 
 Admitted.
 
