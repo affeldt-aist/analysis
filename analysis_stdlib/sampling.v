@@ -1,17 +1,17 @@
 (* mathcomp analysis (c) 2025 Inria and AIST. License: CeCILL-C.              *)
-From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import ssralg poly ssrnum ssrint interval finmap.
-From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
-From mathcomp Require Import cardinality fsbigop.
-Require Reals (*Interval.Tactic*).
+From mathcomp Require Import boot order ssralg interval interval_inference.
+From mathcomp Require Import poly ssrnum ssrint finmap.
+From mathcomp Require Import unstable.
+From mathcomp Require Import boolp classical_sets functions cardinality fsbigop.
+From Stdlib Require Reals (*Interval.Tactic*).
 From mathcomp Require Import (canonicals) Rstruct Rstruct_topology.
 From HB Require Import structures.
 From mathcomp Require Import exp numfun lebesgue_measure lebesgue_integral.
-From mathcomp Require Import reals ereal interval_inference topology normedtype.
+From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences realfun convex real_interval.
 From mathcomp Require Import derive esum measure exp numfun lebesgue_measure.
 From mathcomp Require Import lebesgue_integral kernel probability.
-From mathcomp Require Import hoelder unstable measurable_realfun.
+From mathcomp Require Import hoelder measurable_realfun.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -619,11 +619,11 @@ rewrite [LHS](@integral_power_measureS _ _ _ _ _ MF).
   pose build_MTP := isMeasurableFun.Build _ _ _ _ tuple_prod meas_tuple_prod.
   pose MTP : {mfun _ >-> _} := HB.pack tuple_prod build_MTP.
   pose normMTP : {mfun _ >-> _} := normr \o MTP.
-  rewrite [ltLHS](_ : _ = \int[P]_w `|thead X w|%:E
+  rewrite [ltLHS](_ : _ = (\int[P]_w `|thead X w|%:E)
     * \int[\X_n P]_w `|tuple_prod w|%:E).
     have := @expectation_prod_meas2 _ _ _ _ _ P (\X_n P) (normr \o thead X)
       (normMTP).
-    rewrite unlock /= /tuple_prod => <- //.
+    rewrite unlock /= /tuple_prod => ->//.
     - exact/Lfun_norm.
     - exact/Lfun_norm.
     rewrite lte_mul_pinfty ?ge0_fin_numE ?integral_ge0//.
@@ -734,7 +734,7 @@ rewrite bernoulli_probE// diracE/= mem_set// mule1// diracE/= memNset//.
 by rewrite mule0 adde0 /distribution /= => <-.
 Qed.
 
-Lemma bernoulli_RV2 (X : bernoulliRV P p) : P [set i | X i = 0%R] = (`1-p)%:E.
+Lemma bernoulli_RV2 (X : bernoulliRV P p) : P [set i | X i = 0%R] = p.~%:E.
 Proof.
 have/(congr1 (fun f => f [set 0%:R])):= @bernoulliP _ _ _ _ _ X.
 rewrite bernoulli_probE// diracE/= memNset// mule0// diracE/= mem_set// add0e mule1.
@@ -784,7 +784,7 @@ by case: (X x) => /=; rewrite ?mulr1 ?mulr0.
 Qed.
 
 Lemma bernoulli_variance (X : bernoulliRV P p) :
-  'V_P[bool_to_real R X] = (p * (`1-p))%:E.
+  'V_P[bool_to_real R X] = (p * p.~)%:E.
 Proof.
 rewrite (@varianceE _ _ _ _ (bool_to_real R X));
   [rewrite ?[X in _ \o X]bool_RV_sqr; apply: Lfun_bernoulli..|].
@@ -854,12 +854,12 @@ rewrite /mmt_gen_fun.
 pose mmtX : {RV P >-> R : realType} := expR \o t \o* bool_to_real R X.
 set A := X @^-1` [set true].
 set B := X @^-1` [set false].
-have mA : measurable A by exact: measurable_sfunP.
-have mB : measurable B by exact: measurable_sfunP.
+have mA : measurable A by exact: measurable_funPTI.
+have mB : measurable B by exact: measurable_funPTI.
 have dAB : [disjoint A & B].
   by apply/disj_setPRL; rewrite /A /B preimage_true preimage_false.
 have TAB : setT = A `|` B by rewrite -preimage_setU -setT_bool preimage_setT.
-rewrite unlock TAB integral_setU_EFin//; first by rewrite -TAB.
+rewrite unlock TAB integral_setU//; first by rewrite -TAB; exact/measurable_EFinP.
 under eq_integral.
   move=> x /=.
   rewrite /A inE/= /bool_to_real /= => ->.
@@ -1164,8 +1164,9 @@ have idf (y : R^o) : 0 < 1 + y -> is_derive y (1:R) f (df y).
   rewrite /df0.
   rewrite deriveD// derive_cst derive_id.
   rewrite /GRing.scale /= !(mulr0,add0r,mulr1).
-  rewrite divff ?lt0r_neq0// opprD addrAC addrA subrr add0r.
-  instantiate (df := fun y : R => - (3^-1 * (y + y)) + ln (1 + y)).
+  rewrite divff ?lt0r_neq0// opprD addrAC addrA subrr add0r expr1.
+  rewrite /df.
+  instantiate (df := fun y : R => - (3^-1 * (2 * y)) + ln (1 + y)).
   reflexivity.
 clear df0.
 have y1cc y : y \in `[0, 1] -> 0 < 1 + y.
@@ -1174,7 +1175,7 @@ have y1oo y : y \in `]0, 1[ -> 0 < 1 + y by move/subset_itv_oo_cc/y1cc.
 have dfge0 y : y \in `]0, 1[ -> 0 <= df y.
   move=> /[dup] y01.
   rewrite /df in_itv /= => /andP[y0 y1].
-  rewrite -lerBlDl opprK add0r -mulr2n -(mulr_natl _ 2) mulrA.
+  rewrite -lerBlDl opprK add0r mulrA.
   rewrite [in leLHS](_ : y = 1 + y - 1); first by rewrite addrAC subrr add0r.
   pose iy := Itv01 (ltW y0) (ltW y1).
   have y1E : 1 + y = @convex.conv _ R^o iy 2 1.
