@@ -449,6 +449,7 @@ subgraph cluster_normedtype { "theories/normedtype_theory/normedtype"[label="nor
 subgraph cluster_analysis { "theories/sequences"[label="sequences",URL="mathcomp.analysis.sequences.html",fillcolor=5]}  "classical/boolp" -> "theories/sequences";
   "classical/cardinality" -> "theories/sequences";
   "classical/classical_sets" -> "theories/sequences";
+  "classical/contra" -> "theories/sequences";
   "classical/functions" -> "theories/sequences";
   "classical/mathcomp_extra" -> "theories/sequences";
   "classical/set_interval" -> "theories/sequences";
