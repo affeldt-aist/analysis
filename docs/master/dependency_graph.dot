@@ -86,9 +86,6 @@ digraph depend {
 		"theories/kernel"	[URL="mathcomp.analysis.kernel.html",
 			fillcolor=5,
 			label=kernel];
-		"theories/independence"	[URL="mathcomp.analysis.independence.html",
-			fillcolor=5,
-			label=independence];
 		"theories/pi_irrational"	[URL="mathcomp.analysis.pi_irrational.html",
 			fillcolor=5,
 			label=pi_irrational];
@@ -554,7 +551,6 @@ digraph depend {
 	"theories/lebesgue_integral_theory/lebesgue_integral_differentiation" -> "theories/lebesgue_integral_theory/lebesgue_integral";
 	"theories/charge" -> "theories/ftc";
 	"theories/hoelder" -> "theories/probability";
-	"theories/probability" -> "theories/independence";
 	"theories/probability" -> "theories/all_analysis";
 	"theories/gauss_integral" -> "theories/probability";
 	"theories/kernel" -> "theories/probability";
