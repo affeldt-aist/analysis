@@ -22,6 +22,19 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Section merge_lemmas.
+Context {T : Type} {r : rel T}.
+Implicit Type (s : seq T).
+
+Lemma merge0r s : merge r s [::] = s.
+Proof. by elim: s. Qed.
+
+(* unnecessary? *)
+Lemma merge0l s : merge r [::] s = s.
+Proof. by []. Qed.
+
+End merge_lemmas.
+
 Section seq_itv_partitionLR_lemmas.
 Context {R : realType}.
 
@@ -61,26 +74,6 @@ move=> pxs.
 rewrite /itv_partitionR/= ifF//.
 by apply/all_filterP.
 Qed.
-
-Lemma path_itv_partitionL s x :
-  sorted <%R s -> sorted <%R (itv_partitionL s x).
-Proof.
-move=> ss.
-rewrite /itv_partitionL.
-rewrite -(revK (rcons _ _)).
-rewrite rev_sorted rev_rcons.
-rewrite -filter_rev/=.
-rewrite (path_sortedE (rev_trans lt_trans)); apply/andP; split.
-- rewrite filter_rev all_rev.
-  apply/allP => e.
-  by rewrite mem_filter => /andP[].
-apply: (sorted_filter (rev_trans lt_trans)).
-by rewrite rev_sorted.
-Qed.
-
-Lemma path_itv_partitionR s x :
-  sorted <%R s -> sorted <%R (itv_partitionR s x).
-Proof. exact: lt_sorted_filter. Qed.
 
 Lemma lt_sorted_itv_partitionL s x :
   sorted <%R s -> sorted <%R (itv_partitionL s x).
@@ -123,7 +116,7 @@ Proof. by move=> lx; congr rcons; exact: all_filterP. Qed.
 Lemma itv_partitionR_all_gt l x :
  all (> x) l ->
  itv_partitionR l x = l.
-Proof. by move=> xl; apply: all_filterP. Qed.
+Proof. by exact: all_filterP. Qed.
 
 Lemma itv_partitionL_cons h l x :
   h < x ->
@@ -148,12 +141,6 @@ apply/orP; right.
 exact: xl.
 Qed.
 
-Lemma itv_partitionR_id l x :
-  all (> x) l -> itv_partitionR l x = l.
-Proof.
-exact/all_filterP.
-Qed.
-
 Lemma itv_partition_merge_concat1 (s : seq R) (x : R) :
     sorted <%R s -> x \notin s ->
     merge <%R s [:: x] = itv_partitionL s x ++ itv_partitionR s x.
@@ -175,7 +162,7 @@ case: ifPn.
   rewrite itv_partitionL_seq1; last first.
     apply: lt_path_min.
     by rewrite /= xh pl.
-  rewrite itv_partitionR_id//.
+  rewrite itv_partitionR_all_gt//.
   apply: lt_path_min.
   exact: (path_lt_head xh).
 Qed.
@@ -223,6 +210,12 @@ Definition variations_with_max a b f l : set R :=
 Definition omega_max a b f s : \bar R :=
    \big[maxe/0%E]_(0 <= n < size s) oscillation f
     `[(nth b (a :: s)) n, (nth b (a :: s)) n.+1].
+End itv_partition_length.
+
+Section itv_partition_length_lemmas.
+Context {R : realType}.
+Implicit Types (a b : R) (f : R -> R).
+Implicit Types (s : seq R) (x : R).
 
 Lemma itv_partition_max_nil a b : itv_partition_max a b [::] = 0.
 Proof. by rewrite /itv_partition_max big_nil. Qed.
@@ -277,46 +270,39 @@ Lemma itv_partition_max_cons a b s x : s != [::] ->
 Proof.
 case: s => // h tl _.
 move=> [/= /and3P[ax xh] _ _].
-
-rewrite /itv_partition_max.
-rewrite /=.
-
+rewrite /itv_partition_max/=.
 rewrite 3?big_nat_recl//=.
 rewrite maxA.
 rewrite !num_max//=.
 rewrite ge_max/=; apply/andP; split; last first.
   rewrite num_le_max; apply/orP; right => //.
 rewrite num_le_max/=; apply/orP; left.
-
 have := (lt_trans ax xh).
 rewrite -subr_gt0 => ha.
 rewrite (gtr0_norm ha)//.
-
 rewrite -[in leRHS](subrKC x a).
 rewrite opprD addrA.
 rewrite opprB.
-
 rewrite -subr_gt0 in ax; rewrite (gtr0_norm ax).
 rewrite -subr_gt0 in xh; rewrite (gtr0_norm xh).
-
 rewrite /maxr; case: ifP => _.
   by rewrite lerDl ltW.
 by rewrite lerDr ltW.
 Qed.
 
-Lemma itv_partition_with_max_merge1 a b l s x :
-  itv_partition_with_max a b l s ->
-  itv_partition_max a b (merge <%R s [:: x]) <= l.
+Lemma itv_partition_max_merge1 a b l s x :
+  itv_partition_max a b s <= l ->
+  itv_partition_max a b (merge <=%R s [:: x]) <= l.
 Proof.
 Admitted.
 
-Lemma itv_partition_with_max_merge a b l s t :
-  itv_partition_with_max a b l s ->
-  itv_partition_max a b (merge <%R s t) <= l.
+Lemma itv_partition_max_merge a b l s t :
+  itv_partition_max a b s <= l ->
+  itv_partition_max a b (merge <=%R s t) <= l.
 Proof.
 Admitted.
 
-End itv_partition_length.
+End itv_partition_length_lemmas.
 
 Section lemma5.
 Context {R : realType}.
@@ -340,19 +326,59 @@ rewrite (@in_itv_partition _ x (merge <%R s [:: x])); last 2 first.
 (* rewrite variation_cat. *)
 Admitted.
 
+Lemma merge_rcons s t tt :
+merge <%R s (rcons t tt) = merge <%R (merge <%R s [:: tt]) t.
+Proof.
+Admitted.
+
 Let variation_merge l s t :
- itv_partition_with_max a b l s ->
+  itv_partition a b s -> itv_partition_max a b s <= l ->
   itv_partition a b t ->
   ((variation a b f (merge <%R s t))%:E <= (variation a b f s)%:E +
   (size t)%:R%:E * 2 * omega_max a b f s)%E.
 Proof.
+move: t s.
+apply: last_ind.
+- move=> s _ _.
+  by rewrite merge0r 2!mul0e adde0.
+move=> h t IH s ps sl pht.
+rewrite merge_rcons.
+
+apply: (le_trans (IH _ _ _ _)).
+
+
+
+have allle_ht : allrel <%R [:: h] t.
+  rewrite allrel1l.
+  apply/allP => x xt.
+  have [/= /andP[_ /lt_path_min/allP +] _] := pht; exact.
+rewrite -cat1s -(allrel_merge allle_ht).
+
+
+rewrite mergeA; last 2 first.
+- exact: lt_total.
+- exact: le_trans.
+
+apply: (le_trans (IH _ _ _ _)).
+- admit. (* add an assumption (h \notin s), or weaken the statement? *)
+- exact: itv_partition_max_merge1.
+- rewrite -(@itv_partitionR_all_gt _ t h); last first.
+   apply/allP.
+   rewrite allrel1l in all_lt_ht.
+rewrite (_ : t = itv_partitionL 
+  itv_partitionL_all_lt
+  apply: itv_partition_cons.
+xxx
+
 elim: s t => /=.
 - move=> t [].
   move=> /itv_partition_nil <- _.
   move/itv_partitionxx -> => /=.
   by rewrite variation_nil add0e 2!mul0e.
 move=> hs s IH t.
+move=> [].
 
+rewrite (@in_itv_partition _ x (merge <%R s [:: x])); last 2 first.
 
 (*
 - move=> + /itv_partition_nil; move/[swap] <-.
