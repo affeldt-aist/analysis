@@ -329,7 +329,7 @@ Local Notation sorted := (@sorted R <%R).
 Local Notation path := (@path R <%R).
 Local Notation merge := (@merge R <%R).
 
-(* Local Notation udmerge s t := (undup (merge s t)). *)
+Definition udmerge s t := (undup (merge s t)).
 (*
 Lemma udmerge0r s : sorted s -> udmerge s [::] = s.
 Proof.
@@ -493,6 +493,34 @@ Admitted.
 
 End lt_merge_lemmas.
 
+Definition disj_seq {T : eqType}(s t : seq T) :=
+all (fun x => x \notin s) t /\ all (fun x => x \notin t) s.
+
+
+Section itv_partition_lemmas.
+Context {R : realType}.
+Variables (a b : R) (f : R -> R).
+Hypothesis (ab : a < b).
+Implicit Types (s : seq R) (x : R).
+
+Lemma itv_partition_merge s t :
+ itv_partition a b s ->
+ itv_partition a b t ->
+ disj_seq s t -> itv_partition a b (merge <%R s t).
+Proof.
+move=> ps pt.
+move=> [/allP ts /allP st].
+Admitted.
+
+Lemma itv_partition_udmerge s t :
+ itv_partition a b s ->
+ itv_partition a b t ->
+ itv_partition a b (udmerge s t).
+Proof.
+Admitted.
+
+End itv_partition_lemmas.
+
 Section lemma5.
 Context {R : realType}.
 Variables (a b : R) (f : R -> R).
@@ -503,26 +531,33 @@ Arguments unif_continuous : clear implicits.
 
 Let variation_merge1 s :
   itv_partition a b s -> (* not necessary? *)
-  forall x, x \in `[a, b] ->
+  forall x, x \in `]a, b[ -> x \notin s ->
     ((variation a b f (merge <%R s [:: x]))%:E <=
           (variation a b f s)%:E + 2 * omega_max a b f s)%E.
 Proof.
 move=> parts.
-move=> x; rewrite in_itv/= => /andP[ax xb].
+move=> x; rewrite in_itv/= => /andP[ax xb] xs.
 rewrite (@in_itv_partition _ x (merge <%R s [:: x])); last 2 first.
 - admit.
 - admit.
 (* rewrite variation_cat. *)
+rewrite (@variation_cat _ _ _ x) ?ltW//; last 2 first.
+- apply: (itv_partitionLP ax xb) => //.
+  rewrite itv_partition_merge_concat1//; last first.
+    have [+ _] := parts.
+    exact: path_sorted.
+
 Admitted.
 
 Let variation_merge l s t :
   itv_partition a b s -> itv_partition_max a b s <= l ->
   itv_partition a b t ->
+  disj_seq s t ->
   ((variation a b f (merge <%R s t))%:E <= (variation a b f s)%:E +
   (size t)%:R%:E * 2 * omega_max a b f s)%E.
 Proof.
 have [->|] := pselect (omega_max a b f s = +oo%E).
-  move=> _ _ _.
+  move=> _ _ _ _.
   rewrite -muleA mulry/= gtr0_sg// mul1e.
   case: t => /=.
     rewrite merge0r mul0e adde0//.
@@ -534,15 +569,16 @@ move/eqP; rewrite -ltey => maxoo.
 elim: t s maxoo.
 - move=> s _ _.
   by rewrite merge0r 2!mul0e adde0.
-move=> h t IH s maxoo ps sl pht.
+move=> h t IH s maxoo ps sl pht disjst.
 rewrite merge_cons; last first.
   admit.
-apply: (le_trans (IH _ _ _ _ _)).
+apply: (le_trans (IH _ _ _ _ _ _)).
 - admit. (* lemma *)
 - admit.
 - admit.
 - admit.
-have hab : h \in `[a, b].
+- admit.
+have hab : h \in `]a, b[.
   admit.
 rewrite -(natr1 (size t)) (EFinD (size t)%:R).
 rewrite 2?muleDl ?mul1e => //; last first.
@@ -555,7 +591,10 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
     exact: omega_max_ge0.
   admit.
 rewrite -addeAC leeD2r//.
-exact: variation_merge1.
+apply: variation_merge1 => //.
+have [/allP + _] := disjst.
+apply.
+exact: mem_head.
 Admitted.
 
 (*
