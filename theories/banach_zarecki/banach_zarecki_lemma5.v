@@ -246,7 +246,7 @@ by exact: lt_sorted_uniq.
 Qed.
 
 Lemma itv_partition_in_itv a b s :
-  itv_partition a b s -> {in s, forall x, x \in `]a, b[ \/ x = b}.
+  itv_partition a b s -> {in s, forall x, x \in `]a, b]}.
 Proof.
 move=> /[dup]parts.
 move=> [/[dup]/lt_path_min/allP sa].
@@ -255,17 +255,19 @@ rewrite lt_path_pairwise.
 move/pairwiseP => pwltas.
 move/eqP => lsb.
 move=> x xs.
-rewrite orC -implyNp => xb.
 rewrite in_itv/=; apply/andP; split; first exact: sa.
 rewrite -lsb (last_nth a).
 have xas : x \in a :: s by rewrite in_cons; apply/orP; right.
 rewrite -(nth_index a xas).
+rewrite le_eqVlt; apply/predU1P.
+rewrite -implyNp => nlast.
 apply: pwltas.
 - rewrite inE/=.
   case: ifP => // _.
   by rewrite ltnS index_mem.
 - by rewrite inE//.
-- move: s lsb parts sa pas x xb xs xas.
+- rewrite /=.
+ move: s lsb parts sa pas x nlast xs xas.
   apply: last_ind => // s t IH.
   rewrite last_rcons => ->.
 (*
@@ -290,7 +292,7 @@ Lemma omega_max_le_oscillation a b f s :
  itv_partition a b s ->
 (omega_max a b f s <= oscillation f `[a, b])%E.
 Proof.
-move=> [].
+move/[dup]/itv_partition_in_itv => xab parts.
 rewrite /omega_max.
 apply: bigmax_le.
   exact: oscillation_ge0.
