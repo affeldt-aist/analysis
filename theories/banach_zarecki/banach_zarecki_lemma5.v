@@ -24,7 +24,7 @@ Local Open Scope ring_scope.
 
 Section merge_lemmas.
 Context {T : Type} {r : rel T}.
-Implicit Type (s : seq T).
+Implicit Type (s t : seq T).
 
 Lemma merge0r s : merge r s [::] = s.
 Proof. by elim: s. Qed.
@@ -35,10 +35,21 @@ Proof. by []. Qed.
 
 End merge_lemmas.
 
+Lemma subseq_merge {T : eqType} {r : rel T} (s t : seq T) :
+   subseq s (merge r s t).
+Proof.
+Admitted.
+
 Section seq_itv_partitionLR_lemmas.
 Context {R : realType}.
 
 Implicit Types (s : seq R) (x : R).
+
+Lemma merge_rcons s x :
+  all (<%R x) s ->
+  merge <%R s [:: x] = rcons s x.
+Proof.
+Admitted.
 
 Lemma itv_partitionL_nil x :
   itv_partitionL [::] x = [:: x].
@@ -270,23 +281,27 @@ apply: pwltas.
  move: s lsb parts sa pas x nlast xs xas.
   apply: last_ind => // s t IH.
   rewrite last_rcons => ->.
-(*
-  move/[swap]/eqP ->.
-rewrite /=.
-  case: ifP => _.
-    by case: s parts sa pas lsb xs xas.
-  rewrite -(@index_last _ a); last first.
-    exact: lt_path_uniq.
-  rewrite /=.
-  case: ifP.
-    rewrite lsb => /eqP ab.
-    move: parts.
-    rewrite ab; move/itv_partitionxx => s0.
-    by move: xs; rewrite s0.
-  move=> _.
-  rewrite ltnS.
-*)
-Admitted.
+  move=> patsb asb psb x/[swap] xsb.
+  rewrite nth_index; last first.
+    by rewrite in_cons; apply/orP; right.
+    move/[swap] => _.
+    rewrite -last_nth last_rcons => xb.
+  rewrite ifF; last first.
+    rewrite -subr_eq0; apply/negP/negP.
+    apply: ltr0_neq0.
+    rewrite subr_lt0.
+    exact: asb.
+  rewrite (_ : index x (rcons s b) = index x s); last first.
+    rewrite -cats1 index_cat.
+    rewrite ifT//.
+    move: xsb.
+    by rewrite mem_rcons in_cons => /predU1P; case.
+  rewrite size_rcons ltnS.
+  rewrite index_mem.
+  move: xsb.
+  rewrite mem_rcons in_cons.
+  by move/predU1P; case.
+Qed.
 
 Lemma omega_max_le_oscillation a b f s :
  itv_partition a b s ->
@@ -298,19 +313,30 @@ apply: bigmax_le.
   exact: oscillation_ge0.
 move=> n _.
 apply: oscillation_sub.
-
-rewrite big_mkord.
-have := (@bigmax_le _ (\bar R) _ (iota 0 (size s))
- (fun n => (oscillation f `[(nth b (a :: s) n), (nth b (a :: s) n.+1)])) 0%E
-  (oscillation f `[a, b])).
-apply.
+case: n => //=.
+have ss0 : (0 < size s)%N.
+  admit.
+apply: subset_itvl; rewrite bnd_simp.
+  have := xab (nth b s 0).
+  move/(_ (mem_nth b ss0)).
+  by rewrite in_itv/= => /andP[].
+move=> n.
+have [|] :=  ltnP n (size s).
+  move/(mem_nth b) => nths.
+  apply: subset_itvScc; rewrite bnd_simp.
+Admitted.
 
 Lemma omega_max_merge a b f s t :
 (omega_max a b f s < +oo)%E ->
 (omega_max a b f (merge <%R s t) < +oo)%E.
 Proof.
+Admitted.
 
-
+Lemma le_omega_max a b f s t :
+  subseq s t ->
+  (omega_max a b f t <= omega_max a b f s)%E.
+Proof.
+Admitted.
 
 End itv_partition_length.
 
@@ -626,16 +652,40 @@ Let variation_merge1 s :
 Proof.
 move=> parts.
 move=> x; rewrite in_itv/= => /andP[ax xb] xs.
+
+have : exists s0 s1 : R, [/\ s0 \in s, s1 \in s &
+ merge <%R s [:: x] = itv_partitionL s s0 ++ [:: x; s1] ++ itv_partitionR s s1].
+ admit.
+
+(*
 rewrite (@in_itv_partition _ x (merge <%R s [:: x])); last 2 first.
 - admit.
 - admit.
 (* rewrite variation_cat. *)
+have Rx : (itv_partitionR (merge <%R s [:: x]) x) = itv_partitionR s x.
+  admit.
 rewrite (@variation_cat _ _ _ x) ?ltW//; last 2 first.
 - apply: (itv_partitionLP ax xb) => //.
   rewrite itv_partition_merge_concat1//; last first.
     have [+ _] := parts.
     exact: path_sorted.
-
+  apply: (@itv_partition_cat _ _ x).
+  + exact: (itv_partitionLP ax xb).
+  + exact: (itv_partitionRP ax xb).
+- rewrite Rx.
+  exact: (itv_partitionRP ax xb).
+rewrite Rx.
+rewrite merge_rcons; last first.
+  admit.
+rewrite itv_partitionL_rcons1; last first.
+  admit.
+rewrite -cats1.
+rewrite (@variation_cat _ _ _ ) //; last 3 first.
+- exact: ltW.
+- admit.
+- admit.
+rewrite -addrAC EFinD.
+*)
 Admitted.
 
 Let variation_merge l s t :
@@ -679,7 +729,8 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
   rewrite leeD2l//.
   rewrite lee_pmul//.
     exact: omega_max_ge0.
-  admit.
+  apply: le_omega_max.
+  exact: subseq_merge.
 rewrite -addeAC leeD2r//.
 apply: variation_merge1 => //.
 have /disj_seq_allP[/allP + _] := disjst.
@@ -784,8 +835,9 @@ rewrite lerBlDr -lee_fin EFinD.
 have [pabp abpd] := pmaxd.
 have abp_led : itv_partition_max a b p <= d.
   by rewrite le_eqVlt; apply/predU1P; left.
-apply: (le_trans (@variation_merge _ p X' pabp abp_led partX')).
-apply: leeD2l. 
+apply: (le_trans (@variation_merge _ p X' pabp abp_led partX' _)).
+  admit.
+apply: leeD2l.
 (* unifcf *)
 Admitted.
 
