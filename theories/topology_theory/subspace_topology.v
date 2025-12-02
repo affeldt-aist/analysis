@@ -318,13 +318,6 @@ Global Instance subspace_proper_filter {T : topologicalType}
     (A : set T) (x : subspace A) :
   ProperFilter (nbhs_subspace x) := nbhs_subspace_filter x.
 
-Definition from_subspace {T U : Type} (A : set T) (f : T -> U) : subspace A -> U :=
-  f.
-Arguments from_subspace {T U} A f.
-
-Notation "{ 'within' A , 'continuous' f }" :=
-  (continuous (from_subspace A f)) : classical_set_scope.
-
 Arguments nbhs_subspaceP {T} A x.
 
 Section SubspaceRelative.
