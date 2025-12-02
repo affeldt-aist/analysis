@@ -43,6 +43,13 @@ Local Open Scope ring_scope.
 Definition subspace {T : Type} (A : set T) := T.
 Arguments subspace {T} _ : simpl never.
 
+Definition from_subspace {T U : Type} (A : set T) (f : T -> U) : subspace A -> U :=
+  f.
+Arguments from_subspace {T U} A f.
+
+Notation "{ 'within' A , 'continuous' f }" :=
+  (continuous (from_subspace A f)) : classical_set_scope.
+
 Definition incl_subspace {T A} (x : subspace A) : T := x.
 
 Section Subspace.
@@ -102,7 +109,7 @@ Lemma subspace_cvgP (F : set_system T) (x : T) : Filter F -> A x ->
 Proof. by case: _ / nbhs_subspaceP. Qed.
 
 Lemma subspace_continuousP {S : topologicalType} (f : T -> S) :
-  continuous (f : subspace A -> S) <->
+  (*continuous (f : subspace A -> _)*) {within A, continuous f} <->
   (forall x, A x -> f @ within A (nbhs x) --> f x) .
 Proof.
 split => [ctsf x Ax W /=|wA x].
@@ -120,7 +127,7 @@ by apply: cvg_trans _ (L x Ax); apply: fmap_within_eq=> ? ?; rewrite feq.
 Qed.
 
 Lemma continuous_subspace_in {U : topologicalType} (f : subspace A -> U) :
-  continuous f = {in A, continuous f}.
+  {within A, continuous f} = {in A, continuous f}.
 Proof.
 rewrite propeqE in_setP subspace_continuousP /continuous_at //=; split.
   by move=> Q x Ax; case: (nbhs_subspaceP x) => //=; exact: Q.
