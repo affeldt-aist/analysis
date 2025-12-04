@@ -31,8 +31,13 @@ Proof. by elim: s. Qed.
 
 End merge_lemmas.
 
-Lemma subseq_merge {T : eqType} {r : rel T} (s t : seq T) :
+Lemma subseq_mergel {T : eqType} {r : rel T} (s t : seq T) :
    subseq s (merge r s t).
+Proof.
+Admitted.
+
+Lemma subseq_merger {T : eqType} {r : rel T} (s t : seq T) :
+   sorted r t -> subseq t (merge r s t).
 Proof.
 Admitted.
 
@@ -216,6 +221,28 @@ End lt_merge_lemmas.
 Definition disj_seq {T : eqType}(s t : seq T) :=
 [disjoint [set` s] & [set` t]].
 
+(* unlike subseq, disj_seq s t is true when s and t is disjoint as sets,
+   not that each one be not a subseq of the other.
+   i.e. disj_seq [:: a; a; b] [:: a; b; b] is false although
+~ (subseq [:: a; a; b] [:: a; b; b] \/ subseq [:: a; b; b] [:: a; a; b]) is true *)
+Example subseqNdisj_seq {T : eqType} :
+let disj_seq' s t := ~~ (subseq s t || subseq t s) in
+  forall a b : T, a == b = false ->
+   let s := [:: a; a; b] in
+   let t := [:: a; b; b] in
+  disj_seq' s t /\ ~ disj_seq s t.
+Proof.
+move=> disj_seq' a b ab s t.
+split.
+- apply/norP; split.
+  + by rewrite /= eqxx ?ifF ?ifF.
+  + rewrite /= eqxx ifF; last by rewrite eq_sym.
+    by rewrite eqxx.
+- rewrite /disj_seq disj_set2E; apply/negP.
+  apply/set0P.
+  exists a => /=; split; exact: mem_head.
+Qed.
+
 Lemma disj_seq_allP {T : eqType} (s t : seq T) :
   disj_seq s t <-> (all (fun x => x \notin s) t /\ all (fun x => x \notin t) s).
 Proof.
@@ -309,12 +336,31 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
   rewrite lee_pmul//.
     exact: omega_max_ge0.
   apply: le_omega_max.
-  exact: subseq_merge.
+  apply: subseq_mergel.
 rewrite -addeAC leeD2r//.
 apply: variation_merge1 => //.
 have /disj_seq_allP[/allP + _] := disjst.
 apply.
 exact: mem_head.
+Admitted.
+
+Lemma variation_subseq' s t :
+  subseq s t ->
+  variation a b f s <= variation a b f t.
+Proof.
+elim: s a t.
+- move=> ? ? _; by rewrite variation_nil variation_ge0.
+move=> hs s IHs a'.
+elim => //.
+move=> ht t IHt.
+(*
+apply: (@le_trans _ _ (variation a b f s)).
+  exact: variation_cons.
+elim: t; first by move=> /=/eqP ->.
+move=> h t IH.
+move=> sht.
+apply: (le_trans (IH _)).
+*)
 Admitted.
 
 Lemma lemma5' :
@@ -331,6 +377,8 @@ set Tf : \bar R := total_variation a b f.
 rewrite /Tf/total_variation.
 move=> ATf.
 have TfA0 : 0 < fine Tf - A.
+  rewrite subr_gt0 /Tf.
+  
   admit.
 have [eV' /= [V' [X' partX' X'V'] V'eV']] := ub_ereal_sup_adherent TfA0 bvf.
 rewrite -/(total_variation a b f) -/Tf.
@@ -358,12 +406,10 @@ apply: (@le_trans _ _ (V0 - (V' - A) / 2)).
     admit.
   rewrite lerDr subr_ge0.
   rewrite -X'V'.
-  apply: variation_subseq => //.
-  - apply: itv_partition_merge => //.
-    by have [] := pmaxd.
-  - (* ? *) admit.
-  - rewrite /subseq.
-  admit.
+  apply: variation_subseq' => //.
+  - apply: subseq_merger.
+    have [+ _] := partX'.
+    exact: path_sorted.
 rewrite lerBlDr -lee_fin EFinD.
 have [pabp abpd] := pmaxd.
 have abp_led : itv_partition_max a b p <= d.
