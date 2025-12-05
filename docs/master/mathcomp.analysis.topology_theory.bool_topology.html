@@ -35,7 +35,8 @@
           </li>
 <li><details id="mathcomp.analysis.lebesgue_integral_theory"><summary>lebesgue_integral_theory</summary>
           <ul>
-          <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_Rintegral.html">lebesgue_Rintegral</a></li>
+          <li><a href="mathcomp.analysis.lebesgue_integral_theory.giry.html">giry</a></li>
+<li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_Rintegral.html">lebesgue_Rintegral</a></li>
 <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integrable.html">lebesgue_integrable</a></li>
 <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integral.html">lebesgue_integral</a></li>
 <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integral_definition.html">lebesgue_integral_definition</a></li>
@@ -92,6 +93,7 @@
 <li><a href="mathcomp.analysis.topology_theory.connected.html">connected</a></li>
 <li><a href="mathcomp.analysis.topology_theory.discrete_topology.html">discrete_topology</a></li>
 <li><a href="mathcomp.analysis.topology_theory.matrix_topology.html">matrix_topology</a></li>
+<li><a href="mathcomp.analysis.topology_theory.metric_structure.html">metric_structure</a></li>
 <li><a href="mathcomp.analysis.topology_theory.nat_topology.html">nat_topology</a></li>
 <li><a href="mathcomp.analysis.topology_theory.num_topology.html">num_topology</a></li>
 <li><a href="mathcomp.analysis.topology_theory.one_point_compactification.html">one_point_compactification</a></li>
@@ -226,60 +228,50 @@ This file equips bool with the discrete pseudometric.
 <span class="vernacular">Local</span><span class="vernacular"> Open</span><span class="vernacular"> Scope</span><span class="id"> ring_scope</span>.<br/>
 <br/>
 <span id="HB_unnamed_factory_1" class="id"><a name="HB_unnamed_factory_1" class="" title="HB_unnamed_factory_1 :
-forall [d : disp_t] [T : porderType d] (f : interval int -> T -> bool)
-  (i : Itv.t),
-isSub.axioms_ T (Itv.spec f i) (Itv.def f i)
+forall K : choiceType,
+isSub.axioms_ (seq K) (canonical_keys (K:=K)) (finSet K)
 
 HB_unnamed_factory_1 is not universe polymorphic
-Arguments HB_unnamed_factory_1 [d T] f%function_scope i
+Arguments HB_unnamed_factory_1 K
 HB_unnamed_factory_1 is transparent (level 1000)
-Expands to: Constant mathcomp.algebra.interval_inference.HB_unnamed_factory_1
-Declared in
-library mathcomp.algebra.interval_inference, line 455, characters 0-53
+Expands to: Constant mathcomp.finmap.finmap.HB_unnamed_factory_1
+Declared in library mathcomp.finmap.finmap, line 494, characters 0-55
 ">HB</a></span>.<span id="HB_unnamed_factory_1" class="id"><a name="HB_unnamed_factory_1" class="" title="HB_unnamed_factory_1 :
-forall [d : disp_t] [T : porderType d] (f : interval int -> T -> bool)
-  (i : Itv.t),
-isSub.axioms_ T (Itv.spec f i) (Itv.def f i)
+forall K : choiceType,
+isSub.axioms_ (seq K) (canonical_keys (K:=K)) (finSet K)
 
 HB_unnamed_factory_1 is not universe polymorphic
-Arguments HB_unnamed_factory_1 [d T] f%function_scope i
+Arguments HB_unnamed_factory_1 K
 HB_unnamed_factory_1 is transparent (level 1000)
-Expands to: Constant mathcomp.algebra.interval_inference.HB_unnamed_factory_1
-Declared in
-library mathcomp.algebra.interval_inference, line 455, characters 0-53
+Expands to: Constant mathcomp.finmap.finmap.HB_unnamed_factory_1
+Declared in library mathcomp.finmap.finmap, line 494, characters 0-55
 ">instance</a></span><span class="vernacular"> Definition</span><span id="HB_unnamed_factory_1" class="id"><a name="HB_unnamed_factory_1" class="" title="HB_unnamed_factory_1 :
-forall [d : disp_t] [T : porderType d] (f : interval int -> T -> bool)
-  (i : Itv.t),
-isSub.axioms_ T (Itv.spec f i) (Itv.def f i)
+forall K : choiceType,
+isSub.axioms_ (seq K) (canonical_keys (K:=K)) (finSet K)
 
 HB_unnamed_factory_1 is not universe polymorphic
-Arguments HB_unnamed_factory_1 [d T] f%function_scope i
+Arguments HB_unnamed_factory_1 K
 HB_unnamed_factory_1 is transparent (level 1000)
-Expands to: Constant mathcomp.algebra.interval_inference.HB_unnamed_factory_1
-Declared in
-library mathcomp.algebra.interval_inference, line 455, characters 0-53
+Expands to: Constant mathcomp.finmap.finmap.HB_unnamed_factory_1
+Declared in library mathcomp.finmap.finmap, line 494, characters 0-55
 "> _</a></span><span id="HB_unnamed_factory_1" class="id"><a name="HB_unnamed_factory_1" class="" title="HB_unnamed_factory_1 :
-forall [d : disp_t] [T : porderType d] (f : interval int -> T -> bool)
-  (i : Itv.t),
-isSub.axioms_ T (Itv.spec f i) (Itv.def f i)
+forall K : choiceType,
+isSub.axioms_ (seq K) (canonical_keys (K:=K)) (finSet K)
 
 HB_unnamed_factory_1 is not universe polymorphic
-Arguments HB_unnamed_factory_1 [d T] f%function_scope i
+Arguments HB_unnamed_factory_1 K
 HB_unnamed_factory_1 is transparent (level 1000)
-Expands to: Constant mathcomp.algebra.interval_inference.HB_unnamed_factory_1
-Declared in
-library mathcomp.algebra.interval_inference, line 455, characters 0-53
+Expands to: Constant mathcomp.finmap.finmap.HB_unnamed_factory_1
+Declared in library mathcomp.finmap.finmap, line 494, characters 0-55
 "> :=</a></span><span id="HB_unnamed_factory_1" class="id"><a name="HB_unnamed_factory_1" class="" title="HB_unnamed_factory_1 :
-forall [d : disp_t] [T : porderType d] (f : interval int -> T -> bool)
-  (i : Itv.t),
-isSub.axioms_ T (Itv.spec f i) (Itv.def f i)
+forall K : choiceType,
+isSub.axioms_ (seq K) (canonical_keys (K:=K)) (finSet K)
 
 HB_unnamed_factory_1 is not universe polymorphic
-Arguments HB_unnamed_factory_1 [d T] f%function_scope i
+Arguments HB_unnamed_factory_1 K
 HB_unnamed_factory_1 is transparent (level 1000)
-Expands to: Constant mathcomp.algebra.interval_inference.HB_unnamed_factory_1
-Declared in
-library mathcomp.algebra.interval_inference, line 455, characters 0-53
+Expands to: Constant mathcomp.finmap.finmap.HB_unnamed_factory_1
+Declared in library mathcomp.finmap.finmap, line 494, characters 0-55
 "> hasNbhs</a></span>.<span class="id"><a href="mathcomp.classical.filter.html#hasNbhs.Build">Build</a></span><span class="id"> </span><span class="id"><a href="https://rocq-prover.org/corelib/Corelib.Init.Datatypes.html#bool">bool</a></span><span class="id"> </span><span class="id"><a href="mathcomp.classical.filter.html#principal_filter">principal_filter</a></span>.<br/>
 <span id="Datatypes_bool__canonical__discrete_topology_PointedDiscreteTopology" class="id"><span id="Datatypes_bool__canonical__discrete_topology_DiscreteTopology" class="id"><span id="Datatypes_bool__canonical__topology_structure_PointedTopological" class="id"><span id="Datatypes_bool__canonical__topology_structure_Topological" class="id"><span id="HB_unnamed_mixin_7" class="id"><span id="Datatypes_bool__canonical__discrete_topology_DiscreteNbhs" class="id"><span id="discrete_topology_Discrete_ofNbhs__to__topology_structure_Nbhs_isTopological" class="id"><span id="HB_unnamed_factory_4" class="id"><a name="Datatypes_bool__canonical__discrete_topology_PointedDiscreteTopology" class="" title="Datatypes_bool__canonical__discrete_topology_PointedDiscreteTopology
 not a defined object.

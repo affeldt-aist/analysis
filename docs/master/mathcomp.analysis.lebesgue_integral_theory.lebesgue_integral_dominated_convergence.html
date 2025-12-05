@@ -35,7 +35,8 @@
           </li>
 <li><details id="mathcomp.analysis.lebesgue_integral_theory"><summary>lebesgue_integral_theory</summary>
           <ul>
-          <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_Rintegral.html">lebesgue_Rintegral</a></li>
+          <li><a href="mathcomp.analysis.lebesgue_integral_theory.giry.html">giry</a></li>
+<li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_Rintegral.html">lebesgue_Rintegral</a></li>
 <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integrable.html">lebesgue_integrable</a></li>
 <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integral.html">lebesgue_integral</a></li>
 <li><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integral_definition.html">lebesgue_integral_definition</a></li>
@@ -92,6 +93,7 @@
 <li><a href="mathcomp.analysis.topology_theory.connected.html">connected</a></li>
 <li><a href="mathcomp.analysis.topology_theory.discrete_topology.html">discrete_topology</a></li>
 <li><a href="mathcomp.analysis.topology_theory.matrix_topology.html">matrix_topology</a></li>
+<li><a href="mathcomp.analysis.topology_theory.metric_structure.html">metric_structure</a></li>
 <li><a href="mathcomp.analysis.topology_theory.nat_topology.html">nat_topology</a></li>
 <li><a href="mathcomp.analysis.topology_theory.num_topology.html">num_topology</a></li>
 <li><a href="mathcomp.analysis.topology_theory.one_point_compactification.html">one_point_compactification</a></li>
@@ -574,7 +576,6 @@ Qed.</div></details>
 <span class="id">-</span><span class="gallina-kwd"> by</span><span class="id"> apply:</span><span class="id"> </span><span class="id"><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integrable.html#integrable_fin_num">integrable_fin_num</a></span><span class="id"> =&gt;</span><span class="id"> //;</span><span class="id"> exact:</span><span class="id"> </span><span class="id"><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integrable.html#integrableD">integrableD</a></span>.<br/>
 <span class="id">-</span><span class="id"> apply:</span><span class="id"> </span><span class="id"><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integral_monotone_convergence.html#ge0_le_integral">ge0_le_integral</a></span><span class="id"> =&gt;</span><span class="id"> //</span>.<br/>
 &nbsp;&nbsp;<span class="id">+</span><span class="gallina-kwd"> by</span><span class="id"> apply:</span><span class="id"> </span><span class="id"><a href="mathcomp.analysis.measure_theory.measurable_function.html#measurableT_comp">measurableT_comp</a></span><span class="id"> =&gt;</span><span class="id"> //;</span><span class="id"> case/</span><span class="id"><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integrable.html#integrableP">integrableP</a></span><span class="id">:</span> (<span class="id">mfpn</span><span class="id"> n</span>).<br/>
-&nbsp;&nbsp;<span class="id">+</span><span class="gallina-kwd"> by</span><span class="id"> move=&gt;</span><span class="id"> x</span><span class="id"> Ex;</span><span class="id"> rewrite</span><span class="id"> </span><span class="id"><a href="mathcomp.reals.constructive_ereal.html#adde_ge0">adde_ge0</a></span>.<br/>
 &nbsp;&nbsp;<span class="id">+</span><span class="gallina-kwd"> by</span><span class="id"> apply:</span><span class="id"> </span><span class="id"><a href="mathcomp.analysis.lebesgue_integral_theory.measurable_fun_approximation.html#emeasurable_funD">emeasurable_funD</a></span><span class="id">;</span><span class="id"> [move:</span><span class="id"> mfp</span><span class="id"> |</span><span class="id"> move:</span><span class="id"> mfn];</span><span class="id"> case/</span><span class="id"><a href="mathcomp.analysis.lebesgue_integral_theory.lebesgue_integrable.html#integrableP">integrableP</a></span>.<br/>
 &nbsp;&nbsp;<span class="id">+</span><span class="gallina-kwd"> by</span><span class="id"> move=&gt;</span><span class="id"> ?</span><span class="id"> ?;</span><span class="id"> rewrite</span><span class="id"> fpn;</span><span class="id"> exact:</span><span class="id"> </span><span class="id"><a href="mathcomp.reals.constructive_ereal.html#lee_abs_sub">lee_abs_sub</a></span>.<br/>
 &nbsp;&nbsp;<span class="id">+</span><span class="gallina-kwd"> by</span><span class="id"> move=&gt;</span><span class="id"> x</span><span class="id"> Ex;</span><span class="id"> rewrite</span><span class="id"> </span><span class="id"><a href="mathcomp.reals.constructive_ereal.html#adde_ge0">adde_ge0</a></span>.<br/>
