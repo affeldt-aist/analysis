@@ -7,7 +7,7 @@ From mathcomp Require Import reals constructive_ereal topology normedtype.
 From mathcomp Require Import ereal sequences.
 From mathcomp Require Import measure lebesgue_measure realfun.
 From mathcomp Require Import absolute_continuity banach_zarecki_lemma2.
-From mathcomp Require Import banach_zarecki_lemma3.
+From mathcomp Require Import banach_zarecki_lemma3 banach_zarecki_lemma5.
 From mathcomp Require Import banach_zarecki_lemma4 (* for contiguous intervals *).
 
 (**md**************************************************************************)
