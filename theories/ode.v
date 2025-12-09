@@ -1417,7 +1417,7 @@ Context {R : realType}.
 Let U := R.
 Local Notation mu := lebesgue_measure.
 Variables (f : R -> U -> R) (a b : R).
-Hypothesis ab : a < b.
+Hypothesis ab : a <= b.
 Variables (u0 : U) (r : {posnum R}).
 
 Let B : set R := closed_ball u0 r%:num.
@@ -1434,6 +1434,8 @@ Hypothesis imageg : g @` `[a, b] `<=` B.
 Lemma within_continuous_tmp :
   {within `[a, b], continuous fun x0 : R => f x0 (g x0)}.
 Proof.
+move: ab; rewrite le_eqVlt => /predU1P[<-| ab'].
+  by rewrite set_itv1; exact: continuous_subspace1.
 apply/continuous_within_itvP; [by [] | split].
 - move=> x; rewrite in_itv/= => /andP[ndx dx].
   rewrite /continuous_at.
@@ -1463,7 +1465,7 @@ apply/continuous_within_itvP; [by [] | split].
       apply/mem_set.
       apply/imageg => /=; exists x => //.
       by rewrite in_itv/= (ltW ndx) (ltW dx).
-    move/continuous_within_itvP => /(_ ab).
+    move/continuous_within_itvP => /(_ ab').
     move=> [+ Htmp1 Htmp2].
     move/(_ x).
     rewrite /continuous_at.
@@ -1504,13 +1506,13 @@ apply/continuous_within_itvP; [by [] | split].
     move=> /le_trans; apply.
     rewrite -ler_pdivlMl//.
     near: t.
-    move/continuous_within_itvP : cg => /(_ ab)[+ _ _] => /(_ x).
+    move/continuous_within_itvP : cg => /(_ ab')[+ _ _] => /(_ x).
     rewrite in_itv/= ndx dx => /(_ isT).
     rewrite /continuous_at => /cvgrPdist_le.
     apply.
     by rewrite mulr_gt0 ?divr_gt0 ?invr_gt0//.
-- by apply: (@picard_from_cont'_isContFunSegBuild_helper R f a b ab u0 r g _ _ k0) => //.
-- by apply: (@picard_from_cont'_isContFunSegBuild_helper_left R f a b ab u0 r g _ _ k0) => //.
+- by apply: (@picard_from_cont'_isContFunSegBuild_helper R f a b ab' u0 r g _ _ k0) => //.
+- by apply: (@picard_from_cont'_isContFunSegBuild_helper_left R f a b ab' u0 r g _ _ k0) => //.
 Unshelve. all: end_near. Qed.
 
 End f_g_comp.
@@ -1523,7 +1525,7 @@ Context {R : realType}.
 Let U := R.
 Local Notation mu := lebesgue_measure.
 Variables (f : R -> U -> R) (a b : R).
-Hypothesis ab : a < b.
+Hypothesis ab : a <= b.
 Variables (u0 : U) (r : {posnum R}).
 
 Let B : set R := closed_ball u0 r%:num.
@@ -1615,6 +1617,27 @@ by apply/mem_set/AB/set_mem.
 Qed.
 (* NB: why is in1_subset_itv so specialized?! *)
 
+Lemma within_continuous_comp_norm {R : realType} a y (f : R -> R) :
+  a <= y ->
+  {within `[a, y], continuous fun x => f x} ->
+  {within `[a, y], continuous fun x => `|f x|}.
+Proof.
+rewrite le_eqVlt => /predU1P[<-|ay].
+  rewrite set_itv1 => _.
+  exact: continuous_subspace1.
+move/continuous_within_itvP => /(_ ay)[H1 H2 H3].
+apply/continuous_within_itvP => //; split => //.
+  move=> z zay.
+  apply: continuous_comp => //.
+    by apply: H1.
+  exact: norm_continuous.
+apply: cvg_comp.
+  apply: H2.
+  by apply: cvg_norm.
+apply: cvg_comp.
+apply: H3.
+by apply: cvg_norm.
+Qed.
 
 (* second, we define picard_to_cont
    that takes a function continuous over a closed ball
@@ -1694,7 +1717,7 @@ rewrite /picard_from_cont.
 case: pselect => //=.
   move => z cg.
   apply: (@contFunSeg _ a (a + Delta)).
-  + exact: aaDelta.
+  + exact: (ltW aaDelta).
   + exact: k0.
   + exact : lip2_Delta.
   + exact : cont1_Delta.
@@ -1743,37 +1766,96 @@ rewrite (le_trans (le_normr_Rintegral _ _))//=.
   apply: continuous_compact_integrable.
     by apply: segment_compact.
   move: (yaaDelta); rewrite in_itv/= => /andP[].
-  rewrite le_eqVlt => /predU1P[ay _|ay yaDelta].
-    subst y.
-    rewrite set_itv1.
-    by apply: continuous_subspace1.
+  move=> ay yaDelta.
   apply: (within_continuous_tmp ay k0).
-  apply: lipschitzW lip2_Delta.
-  apply: subset_itvl.
-  by rewrite bnd_simp.
-  rewrite -/B.
-  move=> x xB.
-  have := cont1_Delta xB.
-  apply: continuous_subspaceW.
-  apply: subset_itvl.
-  by rewrite bnd_simp.
-  admit. (* TODO: priority *)
-  apply: subset_trans abu0r.
-  apply: image_subset.
-  apply: subset_itvl.
-  by rewrite bnd_simp.
-under eq_Rintegral.
-  move=> /= x xay.
-  rewrite -(subrK (f x u0) (f x (F x))).
-  over.
-rewrite /=.
+  - apply: lipschitzW lip2_Delta.
+    apply: subset_itvl.
+    by rewrite bnd_simp.
+  - rewrite -/B.
+    move=> x xB.
+    have := cont1_Delta xB.
+    apply: continuous_subspaceW.
+    apply: subset_itvl.
+    by rewrite bnd_simp.
+  - have := @contFunSeg _ _ _ F.
+    apply: continuous_subspaceW.
+    apply: subset_itvl.
+    by rewrite bnd_simp.
+  - apply: subset_trans abu0r.
+    apply: image_subset.
+    apply: subset_itvl.
+    by rewrite bnd_simp.
 rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (`|f x (F x) - f x u0| + `|f x u0|)))//.
-  Check ge0_le_integral.
-  admit.
+  apply: le_Rintegral => //=.
+  - apply: continuous_compact_integrable => //.
+      exact: segment_compact.
+    have yb : y <= b.
+      move: yaaDelta.
+      rewrite in_itv/= /Delta => /andP[_] /le_trans; apply.
+      rewrite -lerBrDl.
+      by rewrite ge_min lexx.
+    have : {within `[a, y], continuous fun x0 : measurableTypeR R => f x0 (F x0)}.
+      apply: (@within_continuous_tmp R f a y _ _ _ k) => //.
+      + move: yaaDelta.
+        by rewrite in_itv/= => /andP[].
+      + apply: lipschitzW lip2.
+        apply: subset_itvl.
+        by rewrite bnd_simp.
+      + move=> /= x xB.
+        apply: continuous_subspaceW; last exact: cont1.
+        apply: subset_itvl.
+        by rewrite bnd_simp /Delta.
+      + have := @contFunSeg _ _ _ F.
+        apply: continuous_subspaceW.
+        apply: subset_itvl.
+        rewrite bnd_simp.
+        by move: yaaDelta; rewrite in_itv/= => /andP[].
+      + apply: subset_trans invariant.
+        apply: image_subset.
+        apply: subset_itvl.
+        rewrite bnd_simp.
+        by move: yaaDelta; rewrite in_itv/= => /andP[].
+      + apply: within_continuous_comp_norm.
+        move: yaaDelta.
+        by rewrite in_itv/= => /andP[].
+  - admit. (* should be similar to the above*)
+  - move=> x xay.
+    rewrite (le_trans _ (ler_normD _ _))//.
+    by rewrite subrK.
 rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
-  admit.
+  apply: le_Rintegral => //=.
+  - admit.
+  - admit.
+  - move=> x xay.
+    rewrite lerD//.
+      have xaaDelta : x \in `[a, (a + Delta)%E]. admit.
+      move/lip2_Delta : (xaaDelta).
+      move/(_ (F x, u0)).
+      apply.
+      split => /=.
+        apply: invariant => /=.
+        exists x => //.
+        by rewrite inE in xaaDelta.
+      by apply: closed_ballxx.
+    rewrite /hmax.
+    apply: sup_le => /=.
+      admit.
+    exists x => //.
+    admit. (*1*)
 rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) ((k * r%:num + hmax))))//.
-  admit.
+  apply: le_Rintegral => //=.
+  - admit.
+  - admit.
+  - move=> x xay.
+    rewrite lerD2r.
+    rewrite ler_pM2l//.
+    have : B (F x).
+      apply: invariant => /=.
+      exists x => //.
+      admit. (* same as 1 *)
+    rewrite /B.
+    rewrite closed_ball_itv//= in_itv/=.
+    by rewrite ler_distl.
 rewrite Rintegral_cst//.
 rewrite /= (* to remove a reverse_coercion *).
 rewrite lebesgue_measure_itv/=.
@@ -2054,6 +2136,12 @@ Proof. by rewrite /twodk mulrn_wge0// mulr_ge0// ltW. Qed.*)
 
 Local Notation mu := (@lebesgue_measure _).
 
+Lemma reprE (h : quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho))) x :
+  (*x \in `[a, b] ->*) repr h x = h x.
+Proof.
+by [].
+Qed.
+
 Lemma is_contraction_picard_to_cont : is_contraction contrac.
 Proof.
 rewrite /is_contraction.
@@ -2113,6 +2201,8 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
       apply: Vrx => /=.
       exists x0 => //.
       admit.
+    apply: Hg2 => /=.
+    exists x0 => //.
     admit.
   rewrite (*TODO: ge0_*) RintegralZl//=.
   admit.
@@ -2128,7 +2218,13 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `|x - y| ))//.
   apply: sup_le => //=.
     admit. (* maybe something we already did... *)
   exists x0; last first.
-    admit.
+    have {}x0at : x0 \in `[a, t].
+      by rewrite inE.
+    congr (`| _ |).
+    rewrite -[RHS]/((x \- y) x0).
+    move: x0at.
+(*    apply/eq_segP.*)
+    admit. (* TODO: about repr *)
   admit.
 rewrite (@le_trans _ _ (k * `|x - y| * (t - a)))//.
 rewrite -mulrA ler_wpM2l//; first exact: ltW.
