@@ -102,7 +102,7 @@ rewrite [X in subseq _ X](_ : _ = merge r (s0 :: s1) t1)// IH//.
 exact: path_sorted t0t1.
 Qed.
 
-Lemma merge_neq0 {T : eqType} {r : rel T} s t :
+Lemma merge_neq0 s t :
   (s != [::]) || (t != [::]) -> merge r s t != [::].
 Proof.
 elim: t s => [s|t0 t1 ih s].
@@ -305,17 +305,39 @@ rewrite -[leLHS]/(nth b (a :: s) n.+1).
 by apply: itv_partition_nth_le => //.
 Qed.
 
-Lemma omega_max_merge a b f s t :
-(omega_max a b f s < +oo)%E ->
-(omega_max a b f (merge <%R s t) < +oo)%E.
+Lemma omega_max_cons a b f s x :
+  a <= x <= head a s ->
+  s != [::] ->
+  (omega_max a b f (x :: s) <= omega_max a b f s)%E.
 Proof.
-Admitted.
+elim: s => // h s' IH /=/andP[ax xh] _.
+rewrite /omega_max/=.
+rewrite 3?big_nat_recl//=.
+rewrite maxA.
+apply: le_max2 => //.
+rewrite maxEge; case: ifPn => _; apply: oscillation_sub.
+  by apply: subset_itvl; rewrite bnd_simp.
+by apply: subset_itvr; rewrite bnd_simp.
+Qed.
 
 Lemma le_omega_max a b f s t :
+s != [::] ->
   subseq s t ->
   (omega_max a b f t <= omega_max a b f s)%E.
 Proof.
+elim: t s => //=.
+  by move => ? /negP.
+move=> x t' IHs s; move/IHs => IHs'.
 Admitted.
+
+Lemma omega_max_merge a b f s t :
+s != [::] ->
+(omega_max a b f (merge <%R s t) <= omega_max a b f s )%E.
+Proof.
+move=> s0.
+apply: le_omega_max => //.
+exact: subseq_mergel.
+Qed.
 
 End itv_partition_length.
 
@@ -478,11 +500,16 @@ elim: t s maxoo.
 - move=> s _ _.
   by rewrite merge0r 2!mul0e adde0.
 move=> h t IH s maxoo ps sl pht disjst.
+have s0 : s != [::].
+    apply: itv_partition_neq0 ps.
+    by move: ab; rewrite lt_neqAle => /andP[].
 rewrite merge_cons; last first.
   have [+ _] := pht.
   by rewrite /= => /andP[].
 apply: (le_trans (IH _ _ _ _ _ _)).
-- admit. (* lemma *)
+-  have := omega_max_merge a b f [:: h] s0.
+  move/le_lt_trans; apply.
+  exact: maxoo.
 - admit.
 - admit.
 - admit.
@@ -503,7 +530,7 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
     - apply: path_merge.
         by move: hab; rewrite in_itv/= => /andP[].
       by case: ps.
-  apply: le_omega_max.
+  apply: le_omega_max => //.
   exact: subseq_mergel.
 rewrite -addeAC leeD2r//.
 apply: variation_merge1 => //.
@@ -521,6 +548,7 @@ elim: s a t.
 move=> hs s IHs a'.
 elim => //.
 move=> ht t IHt.
+
 (*
 apply: (@le_trans _ _ (variation a b f s)).
   exact: variation_cons.
