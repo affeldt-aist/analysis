@@ -31,8 +31,48 @@ Proof. by elim: s. Qed.
 
 End merge_lemmas.
 
-Lemma subseq_mergel {T : eqType} {r : rel T} (s t : seq T) :
-  subseq s (merge r s t).
+Section merge_lemmas_eqType.
+Context {T : eqType} {r : rel T}.
+Implicit Types (s t : seq T) (x : T).
+
+(* unused *)
+Lemma merger_cons s t x : all (r x) t ->
+  merge r (x :: s) t = x :: merge r s t.
+Proof.
+elim: t.
+  by rewrite 2!merge0r.
+move=> b t' IH.
+move/allP => allxt.
+rewrite /=.
+rewrite ifT//.
+apply: allxt.
+exact: mem_head.
+Qed.
+
+(* unused *)
+Lemma merge_cons_mergel s t x :
+  transitive r ->
+  all (r x) t -> merge r s (x :: t) = merge r (merge r s [:: x]) t.
+Proof.
+move=> transr.
+elim: s => /=.
+  elim: t => // b t' IHt.
+  rewrite /= => /andP[rxb rbt'].
+  by rewrite rxb.
+move=> a s' IH pxt.
+case: ifP.
+- rewrite (IH pxt).
+  move=> rax.
+  rewrite merger_cons//.
+  apply/allP => z zt.
+  apply: (@transr x _ _ rax).
+  by have /allP := pxt; exact.
+- move=> raxf.
+  by rewrite merger_cons.
+Qed.
+
+Lemma subseq_mergel s t :
+   subseq s (merge r s t).
 Proof.
 elim: s t => [t|a l ih t]; first exact: sub0seq.
 elim: t l ih => // t0 t1 ih s IH.
@@ -46,7 +86,7 @@ rewrite [X in subseq _ X](_ : _ = merge r (a :: s) t1)//.
 exact: ih.
 Qed.
 
-Lemma subseq_merger {T : eqType} {r : rel T} (s t : seq T) : transitive r ->
+Lemma subseq_merger s t : transitive r ->
   sorted r t -> subseq t (merge r s t).
 Proof.
 move=> rtrans.
@@ -71,6 +111,8 @@ move=> /orP[|_].
   by move: s => [//|s0 s1 _ /=]; case: ifPn.
 by move: s => [//|s0 s1/=]; case: ifPn.
 Qed.
+
+End merge_lemmas_eqType.
 
 Section itv_partition_lemmas.
 Context {R : realType}.
@@ -609,7 +651,7 @@ rewrite lt_neqAle; apply/andP; split.
   admit.
 have : `|x' - y'|%:nng <=
   (\big[maxr/widen_itv 0%:itv]_(0 <= n0 < size p)
-      widen_itv `|nth b p n0 - nth b (a :: p) n0|%:itv).
+      widen_itv `|nth b (a :: p) n0 - nth b p n0|%:itv).
   rewrite big_mkord.
   have [|] := leqP (size (a :: p)) n.
     move=> /= apn.
@@ -630,31 +672,32 @@ have : `|x' - y'|%:nng <=
     by rewrite num_abs_le /x'/y' xb yb subrr.
   apply: (bigmax_sup (Ordinal np)) => //=.
 (* have [yx|] := ltP y x. *)
-have xx' : x = x' by [].
-have yy' : y = y' by [].
-   wlog  : x y x' y' Hx Hy xx' yy' / y < x. 
-(*
+  have xx' : x = x' by [].
+  have yy' : y = y' by [].
+  wlog  : x y x' y' Hx Hy xx' yy' / y < x. 
     move=> H.
-
-    rewrite distrC.
-
-    have [xy|] := ltP x y; first apply: (H y x) => //.
+    have [xy|] := ltP x y.
+      rewrite (_ : widen_itv `|x' - y'|%:itv = widen_itv `|y' - x'|%:itv); last first.
+        admit.
+      exact: (H y x).
     rewrite le_eqVlt => /predU1P[xy|].
       have <- : x' = y' by [].
       by rewrite subrr num_abs_le.
     exact: (H x y).
   move=> xy.
+  rewrite -xx' -yy'.
   rewrite num_abs_le; last first.
-  rewrite subr_ge0.
-  apply: ltW.
-  
-  rewrite /x'/y' => //.
-  exact: n.
-
+    by rewrite subr_ge0 ltW.
+  rewrite nngE/=.
+  rewrite ger0_norm; last first.
+    rewrite subr_ge0 ltW//.
+    case: n np Hx Hy => //=.
+      move=> p0 Hx Hy.
+    have := itv_partition_in_itv pabp.
 rewrite /=.
 
 have := (@bigmax_sup _ {nonneg R}).
-*)
+
 Admitted.
 
 Lemma lemma5 :
