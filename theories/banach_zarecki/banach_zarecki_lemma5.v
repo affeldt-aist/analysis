@@ -62,10 +62,23 @@ rewrite [X in subseq _ X](_ : _ = merge r (s0 :: s1) t1)// IH//.
 exact: path_sorted t0t1.
 Qed.
 
+Lemma merge_neq0 {T : eqType} {r : rel T} s t :
+  (s != [::]) || (t != [::]) -> merge r s t != [::].
+Proof.
+elim: t s => [s|t0 t1 ih s].
+  by rewrite eqxx orbF merge0r.
+move=> /orP[|_].
+  by move: s => [//|s0 s1 _ /=]; case: ifPn.
+by move: s => [//|s0 s1/=]; case: ifPn.
+Qed.
+
 Section itv_partition_lemmas.
 Context {R : realType}.
 Variables (a b : R) (s : seq R).
 Hypothesis (parts : itv_partition a b s).
+
+Lemma itv_partition_neq0 : a != b -> itv_partition a b s -> s != [::].
+Proof. by elim: s a b => // a' b' /negbTE a'b' []/=; rewrite a'b'. Qed.
 
 Lemma itv_partition_sorted : itv_partition a b s -> sorted <%R s.
 Proof. by case => sa _; exact: path_sorted sa. Qed.
@@ -156,21 +169,19 @@ rewrite sube_ge0 ?sfin ?ifin//.
 by apply: ereal_inf_sup; exists fb.
 Qed.
 
-Lemma omega_max_ge0 a b f s : a <= b -> path <%R a s ->
+Lemma omega_max_ge0 a b f s : s != [::] -> a <= b -> path <=%R a s ->
   (0 <= omega_max a b f s)%E.
 Proof.
-move=> ab.
-case: s => //.
-  admit.
-  (* by rewrite /omega_max/= big_mkord big_ord0. *)
-move=> h s pahs.
-apply: (@le_trans _ _ (oscillation f
-    `[(nth b (a :: h :: s)) 0, (nth b (a :: h :: s)) 1])).
-apply: oscillation_ge0; last first.
-  admit.
+move=> s0 ab sa.
 rewrite /omega_max.
-exact: (le_bigmax_seq _ 0) => //.
-Admitted.
+rewrite (@le_trans _ _ ( oscillation f `[a, (nth b s 0)]))//.
+  apply: oscillation_ge0.
+  move/pathP : sa => /(_ b 0)/=.
+  by rewrite lt0n size_eq0 s0 => /(_ isT).
+rewrite (le_bigmax_seq -oo%E O xpredT
+  (fun i => oscillation f `[(nth b (a :: s) i), (nth b (a :: s) i.+1)]))//.
+by rewrite mem_index_iota leqnn lt0n size_eq0.
+Qed.
 
 Lemma oscillation_sub f i j :
 i `<=` j -> (oscillation f i <= oscillation f j)%E.
@@ -233,28 +244,24 @@ Qed.
 
 Lemma omega_max_le_oscillation a b f s :
   a < b ->
- itv_partition a b s ->
-(omega_max a b f s <= oscillation f `[a, b])%E.
+  itv_partition a b s ->
+  (omega_max a b f s <= oscillation f `[a, b])%E.
 Proof.
 move=> ab.
 move/[dup]/itv_partition_in_itv => xab parts.
 rewrite /omega_max.
+rewrite big_seq.
 apply: bigmax_le.
-  admit.
-move=> n _.
+  by rewrite leNye.
+move=> /= n.
+rewrite mem_iota add0n subn0 leq0n/= => ns.
 apply: oscillation_sub.
-case: n => //=.
-have ss0 : (0 < size s)%N.
-  admit.
-apply: subset_itvl; rewrite bnd_simp.
-  have := xab (nth b s 0).
-  move/(_ (mem_nth b ss0)).
-  by rewrite in_itv/= => /andP[].
-move=> n.
-have [|] :=  ltnP n (size s).
-  move/(mem_nth b) => nths.
-  apply: subset_itvScc; rewrite bnd_simp.
-Admitted.
+apply: subset_itvScc; rewrite bnd_simp.
+  apply: itv_partition_nth_ge => //.
+  by rewrite ltnS ltnW.
+rewrite -[leLHS]/(nth b (a :: s) n.+1).
+by apply: itv_partition_nth_le => //.
+Qed.
 
 Lemma omega_max_merge a b f s t :
 (omega_max a b f s < +oo)%E ->
@@ -371,6 +378,20 @@ Admitted.
 
 End itv_partition_lemmas.
 
+Lemma path_merge {R : realType} (a : R) s h :
+  a < h ->
+  path <%R a s -> path <=%R a (merge <%R s [:: h]).
+Proof.
+elim: s a h => [a h ah _/=|s0 s1 ih a h ah].
+  by rewrite ltW// andbT.
+rewrite /= => /andP[as0 s0s1].
+case: ifPn => s0h /=.
+  by rewrite (ltW as0)/= ih.
+rewrite (ltW ah)/=.
+rewrite leNgt/= s0h/=.
+by apply: sub_path s0s1 => x y /ltW.
+Qed.
+
 Section lemma5.
 Context {R : realType}.
 Variables (a b : R) (f : R -> R).
@@ -435,8 +456,11 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
   rewrite leeD2l//.
   rewrite lee_pmul//.
     apply: omega_max_ge0.
-    admit.
-    admit.
+    - by apply: merge_neq0; rewrite orbT.
+    - exact: ltW.
+    - apply: path_merge.
+        by move: hab; rewrite in_itv/= => /andP[].
+      by case: ps.
   apply: le_omega_max.
   exact: subseq_mergel.
 rewrite -addeAC leeD2r//.
