@@ -32,19 +32,43 @@ Proof. by elim: s. Qed.
 End merge_lemmas.
 
 Lemma subseq_mergel {T : eqType} {r : rel T} (s t : seq T) :
-   subseq s (merge r s t).
+  subseq s (merge r s t).
 Proof.
-Admitted.
+elim: s t => [t|a l ih t]; first exact: sub0seq.
+elim: t l ih => // t0 t1 ih s IH.
+rewrite /=; case: ifPn => rat0.
+  by rewrite /= eqxx IH.
+rewrite /=; case: ifPn => [/eqP|] at0.
+  move: rat0; rewrite -{}at0 {t0} => raa.
+  rewrite [X in subseq _ X](_ : _ = merge r (a :: s) t1)//.
+  exact: (subseq_trans (subseq_cons _ _) (ih s IH)).
+rewrite [X in subseq _ X](_ : _ = merge r (a :: s) t1)//.
+exact: ih.
+Qed.
 
-Lemma subseq_merger {T : eqType} {r : rel T} (s t : seq T) :
-   sorted r t -> subseq t (merge r s t).
+Lemma subseq_merger {T : eqType} {r : rel T} (s t : seq T) : transitive r ->
+  sorted r t -> subseq t (merge r s t).
 Proof.
-Admitted.
+move=> rtrans.
+elim: t s => [s _|t0 t1 ih s]; first exact: sub0seq.
+elim: s t0 t1 ih => // s0 s1 ih t0 t1 IH t0t1.
+rewrite /=; case: ifPn => rs0t0.
+  rewrite /=; case: ifPn => [/eqP ->|t0s0]; last exact: ih.
+  have : subseq (s0 :: t1) (merge r s1 (s0 :: t1)).
+    by apply: ih => //; exact: path_le t0t1.
+  by apply: subseq_trans; exact: subseq_cons.
+rewrite /= eqxx.
+rewrite [X in subseq _ X](_ : _ = merge r (s0 :: s1) t1)// IH//.
+exact: path_sorted t0t1.
+Qed.
 
 Section itv_partition_lemmas.
 Context {R : realType}.
 Variables (a b : R) (s : seq R).
 Hypothesis (parts : itv_partition a b s).
+
+Lemma itv_partition_sorted : itv_partition a b s -> sorted <%R s.
+Proof. by case => sa _; exact: path_sorted sa. Qed.
 
 Lemma last_mem_itv_partition : a < b ->
  b \in s.
@@ -91,20 +115,46 @@ forall (F : T -> R) (HF : forall x, 0 <= F x),
    (\big[maxr/0%R]_(0 <= k < n) P k).
 *)
 
-(* change definition? *)
+(* TODO: PR *)
+Lemma ereal_inf_sup (A : set (\bar R)) : A !=set0 ->
+  (ereal_inf A <= ereal_sup A)%E.
+Proof.
+move=> [a Aa].
+by rewrite (@le_trans _ _ a)//; [exact: ereal_inf_lbound|exact: ereal_sup_ubound].
+Qed.
+
 Lemma oscillation_ge0 f a b : a <= b -> (0 <= oscillation f `[a, b])%E.
 Proof.
 move=> ab.
-have fab0 : [set (EFin \o f) x | x in `[a, b]] !=set0.
- by exists (f b)%:E; exists b => //=; rewrite boundr_in_itv bnd_simp ab.
-have [|] := pselect (ereal_sup [set (EFin \o f) x | x in `[a, b]] = +oo%E).
-  rewrite /oscillation => ->.
-  rewrite addye//.
-  apply/negP; move/eqP/eqe_oppP; rewrite oppeK/=.
-  move/ereal_inf_pinfty.
-  have [x [r abr frx]] := fab0.
-  move/(_ x) => /=.
-Admitted.
+rewrite /oscillation.
+have [fb fb0] : [set (EFin \o f) x | x in `[a, b]] !=set0.
+  by exists (f b)%:E; exists b => //=; rewrite boundr_in_itv bnd_simp ab.
+set s : \bar R := ereal_sup _.
+set i : \bar R := ereal_inf _.
+have fbsup : (fb <= s)%E by rewrite ereal_sup_ubound.
+have inffb : (i <= fb)%E by rewrite ereal_inf_lbound.
+have [sfin|] := boolP (s \is a fin_num); last first.
+  rewrite fin_numE negb_and !negbK => /predU1P[sy|/eqP sy].
+    move/ereal_sup_ninfty : (sy) => /(_ _ fb0)/=.
+    by case: fb0 => [x _ <-].
+  have [iy|iy] := eqVneq i +oo%E.
+    move: inffb.
+    case: fb0 => [x _ <-/=].
+    by rewrite iy leye_eq.
+  rewrite sy.
+  case: i iy {inffb} => // [r _|].
+    by rewrite addye.
+  by rewrite leey.
+have [ifin|] := boolP (i \is a fin_num); last first.
+  rewrite fin_numE negb_and !negbK => /predU1P[iy|/eqP iy].
+    rewrite iy addey//.
+    by move: sfin; rewrite fin_numE => /andP[].
+  move: inffb.
+  case: fb0 => [x _ <-/=].
+  by rewrite iy.
+rewrite sube_ge0 ?sfin ?ifin//.
+by apply: ereal_inf_sup; exists fb.
+Qed.
 
 Lemma omega_max_ge0 a b f s : a <= b -> path <%R a s ->
   (0 <= omega_max a b f s)%E.
@@ -388,7 +438,7 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
     admit.
     admit.
   apply: le_omega_max.
-  apply: subseq_mergel.
+  exact: subseq_mergel.
 rewrite -addeAC leeD2r//.
 apply: variation_merge1 => //.
 have /disj_seq_allP[/allP + _] := disjst.
@@ -469,8 +519,8 @@ apply: (@le_trans _ _ (V0 - (V' - A) / 2)).
   rewrite -X'V'.
   apply: variation_subseq' => //.
   - apply: subseq_merger.
-    have [+ _] := partX'.
-    exact: path_sorted.
+      exact: lt_trans.
+    exact: itv_partition_sorted partX'.
 rewrite lerBlDr -lee_fin EFinD.
 have [pabp abpd] := pmaxd.
 have abp_led : itv_partition_max a b p <= d.
