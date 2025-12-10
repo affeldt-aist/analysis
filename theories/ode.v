@@ -2169,11 +2169,17 @@ rewrite /picard_to_cont.
 rewrite piE/=.*)
 (*rewrite qnorm_piE.*)
 rewrite /infty_norm0/=.
+have aad :   a <= (a + Delta f a b k u0 r rho) by rewrite lerDl ltW// Delta_gt0.
 apply: sup_le_ub => //=.
   set u := _ \o _; exists (u a) => /=; exists a => //.
-  rewrite in_itv/= lexx/=.
-  by rewrite lerDl ltW// Delta_gt0.
+  by rewrite in_itv/= lexx.
 move=> _ /= [t tNdd <-].
+have tb : t <= b.
+  move: tNdd.
+  rewrite in_itv/= => /andP[Ndt].
+  move=> /le_trans; apply.
+  rewrite -lerBrDl /Delta.
+  by rewrite ge_min lexx.
 rewrite /picard_from_cont/=.
 case: pselect => //= Hg.
 case: pselect => [|//].
@@ -2194,16 +2200,21 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
       admit.
     move=> x0 x0at.
     have : x0 \in `[a, b].
-      admit.
+    rewrite inE.
+    by apply /subset_itvl/x0at.
     move/lip2.
     rewrite /dominated_by/= => /(_ (x x0, y x0)) /=.
     apply; split.
       apply: Vrx => /=.
       exists x0 => //.
-      admit.
+      apply /subset_itvl/x0at.
+      move: tNdd.
+      by rewrite in_itv/= => /andP[Ndt].
     apply: Hg2 => /=.
     exists x0 => //.
-    admit.
+    apply /subset_itvl/x0at.
+    move: tNdd.
+    by rewrite in_itv/= => /andP[Ndt].
   rewrite (*TODO: ge0_*) RintegralZl//=.
   admit.
 rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `|x - y| ))//.
@@ -2216,16 +2227,21 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `|x - y| ))//.
   rewrite /infty_norm.
   rewrite /infty_norm0/=.
   apply: sup_le => //=.
-    admit. (* maybe something we already did... *)
-  exists x0; last first.
+  by apply normr_has_sup.
+  have x0ad :   x0 \in `[a, (a + Delta f a b k u0 r rho)%E].
+    rewrite inE.
+    rewrite inE in x0at.
+    apply /subset_itvl/x0at.
+    move: tNdd.
+    by rewrite in_itv/= => /andP[Ndt].
+    exists x0; first by (rewrite inE in x0ad).
     have {}x0at : x0 \in `[a, t].
       by rewrite inE.
+    
     congr (`| _ |).
-    rewrite -[RHS]/((x \- y) x0).
-    move: x0at.
-(*    apply/eq_segP.*)
-    admit. (* TODO: about repr *)
-  admit.
+    rewrite /Quotient.equiv_equiv /Quotient.equiv /= /ideal_itv //=.
+    apply (@eqmod_on_itv _  _ _ (ltW (aaDelta_subproof f ab u0 r k0 rho)) (repr (x-y)) (repr x - repr y)) => //.
+    rewrite Quotient.pi_add Quotient.pi_opp !reprK //.
 rewrite (@le_trans _ _ (k * `|x - y| * (t - a)))//.
 rewrite -mulrA ler_wpM2l//; first exact: ltW.
   rewrite Rintegral_cst//.
@@ -2271,7 +2287,15 @@ Proof.
 Admitted.
 
 Lemma Vr0 : (@restrictedV _ f a _ k _ u0 r k0 rho : set V) !=set0.
-Admitted.
+Proof.
+exists (pi V (cst u0)).
+move => _ [y x0] <-.
+suff -> : quot_contFunSegType_to_fun  (\pi_(V)%qT (cst u0)) y = u0 by apply closed_ballxx.
+rewrite /quot_contFunSegType_to_fun/=.
+have /eqmod_on_itv : (repr (\pi_(V)%qT (cst u0)) = cst u0 %[mod V])%qT by rewrite reprK. 
+apply.
+by rewrite inE.
+Qed.
 
 Check (V : pseudoMetricType R).
 Check (V : normedModType R).
