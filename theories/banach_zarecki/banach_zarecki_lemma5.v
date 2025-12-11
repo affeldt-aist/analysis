@@ -475,10 +475,28 @@ Qed.
 Lemma merge_cons s t x :
   path x t -> merge s (x :: t) = merge (merge s [:: x]) t.
 Proof.
-move=> pxt.
-rewrite /merge//=.
-elim: s => //.
-Admitted.
+move=> xt.
+elim: s x t xt => [x t xt|s0 s1 ih x t xt].
+  by rewrite /= merger_cons// order_path_min//; exact: lt_trans.
+rewrite /=.
+rewrite -/(merge (s0 :: s1) t).
+case: ifPn => [s0x|].
+  rewrite merger_cons//; last first.
+    rewrite order_path_min//.
+      exact: lt_trans.
+    apply: path_le xt => //.
+    exact: lt_trans.
+  by rewrite ih.
+rewrite -leNgt => xs0.
+case: t xt xs0 => [//|t0 t1 xt xs0].
+rewrite /=.
+rewrite -/(merge (s0 :: s1) t1).
+rewrite -/(merge (x :: s0 :: s1) t1).
+case: ifPn => [s0t0|].
+  by rewrite (le_lt_trans xs0).
+rewrite -leNgt => t0s0.
+by move: xt => /= /andP[->].
+Qed.
 
 End lt_merge_lemmas.
 
