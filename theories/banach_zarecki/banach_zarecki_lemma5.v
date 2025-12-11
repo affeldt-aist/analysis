@@ -212,9 +212,7 @@ by apply: ereal_inf_sup; exists fb.
 Qed.
 
 Lemma omega_max_nil a b f : omega_max a b f [::] = -oo%E.
-Proof.
-rewrite /omega_max.
-Admitted.
+Proof. by rewrite /omega_max /= big_nil. Qed.
 
 Lemma omega_max_ge0 a b f s : s != [::] -> a <= b -> path <=%R a s ->
   (0 <= omega_max a b f s)%E.
