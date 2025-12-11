@@ -338,12 +338,24 @@ move=> ht t IHt a s s0.
 elim: s t s0 IHt => // hs s IHs t _ IHt /= /andP[ahs phss] phtt.
 case: ifPn.
   move/eqP => hsht qst.
+  case: s IHs phss qst => [|h s IHs phss qst].
+(*
+    rewrite hsht.
+
+    rewrite /omega_max/=.
+    rewrite big_nat1/= big_nat_recl/=.
+    apply: bigmax_le.
+*)
+  admit.
   rewrite /omega_max/=.
   rewrite 2?big_nat_recl//= hsht.
-  rewrite le_max; apply/orP.
+  rewrite le_max2 => //.
+  (* apply: IHt => //. *)
     admit.
-  admit.
-Admitted.
+  (* rewrite le_max; apply/orP. *)
+    admit.
+
+Abort.
 (*
 rewrite /=; case: ifPn => hshht /andP[ahs] phss.
   move=> /andP[hhtht phtt] sub_stt.
@@ -386,16 +398,42 @@ elim: s IHs' => //.
 Admitted.
 *)
 
-Lemma omega_max_merge a b f s t :
-s != [::] ->
-(omega_max a b f (merge <%R s t) <= omega_max a b f s )%E.
+Import Order.Def.
+
+Lemma omega_max_merge1 a b f s x :
+  s != [::] -> path <=%R a s -> last a s == b ->
+  a <= x <= b ->
+(omega_max a b f (merge <%R s [:: x]) <= omega_max a b f s)%E.
 Proof.
-move=> s0.
-apply: le_omega_max => //.
-  admit.
-  admit.
-exact: subseq_mergel.
-Admitted.
+move: s a.
+elim => // h s IH a _ pahs lsb.
+case: s IH pahs lsb => [_|].
+  rewrite /= andbT => /[swap]/eqP -> ab.
+  move=> /andP[ax xb].
+  rewrite ifF; last by apply/negP/negP; rewrite -leNgt.
+  rewrite /omega_max/=.
+  rewrite !big_nat_recl//= !big_nil/=.
+  rewrite 2!maxeNy.
+  rewrite ge_max; apply/andP; split; apply: oscillation_sub.
+  - exact: subset_itvl.
+  - exact: subset_itvr.
+move=> s0 s1 IH.
+rewrite [s0 :: s1]lock => /=/andP[ah phs] ls1b /andP[ax xb].
+case: ifPn => [hx|].
+  rewrite /omega_max/=.
+  rewrite !big_nat_recl//=.
+  rewrite le_max2//.
+  rewrite -lock IH//=.
+  - by move: phs; rewrite -lock.
+  - by move: ls1b; rewrite -lock.
+  - by rewrite xb ltW.
+rewrite -leNgt => xh.
+rewrite /omega_max/=.
+rewrite !big_nat_recl//=.
+rewrite maxA le_max2// ge_max; apply/andP; split; apply: oscillation_sub.
+- exact: subset_itvl.
+- exact: subset_itvr.
+Qed.
 
 End itv_partition_length.
 
@@ -488,15 +526,15 @@ Lemma itv_partition_merge s t :
  disj_seq s t -> itv_partition a b (merge <%R s t).
 Proof.
 move=> ps pt.
-move=> /disj_seq_allP[/allP ts /allP st].
-Admitted.
+(*move=> /disj_seq_allP[/allP ts /allP st].*)
+Abort.
 
 Lemma itv_partition_udmerge s t :
  itv_partition a b s ->
  itv_partition a b t ->
  itv_partition a b (udmerge s t).
 Proof.
-Admitted.
+Abort.
 
 End itv_partition_lemmas.
 
@@ -512,6 +550,15 @@ case: ifPn => s0h /=.
 rewrite (ltW ah)/=.
 rewrite leNgt/= s0h/=.
 by apply: sub_path s0s1 => x y /ltW.
+Qed.
+
+(* *)
+Lemma path_ltW {R : realType} (a : R) s : path <%R a s -> path <=%R a s.
+Proof.
+rewrite le_path_pairwise lt_path_pairwise => H.
+apply: (@sub_in_pairwise _ (fun x => x \in [set: R]) _ _ _ _ _ H).
+  move=> x y _ _; exact: ltW.
+apply/allP => x _; exact: in_setT.
 Qed.
 
 Section lemma5.
@@ -565,9 +612,16 @@ rewrite merge_cons; last first.
   have [+ _] := pht.
   by rewrite /= => /andP[].
 apply: (le_trans (IH _ _ _ _ _ _)).
--  have := omega_max_merge a b f [:: h] s0.
-  move/le_lt_trans; apply.
-  exact: maxoo.
+- have [] := ps.
+  move/path_ltW => psle lasb.
+  have ahb : a <= h <= b.
+    apply/andP; split.
+    + by have [/=/andP[/ltW+ _] _] := pht.
+    + rewrite -(@nth_index _ b h (h :: t)); last exact: mem_head.
+      apply: itv_partition_nth_le; first by rewrite /= eqxx//.
+      apply: itv_partition_cons pht.
+  have := @omega_max_merge1 _ a b f s h s0 psle lasb ahb.
+  by move/le_lt_trans; apply.
 - admit.
 - admit.
 - admit.
@@ -588,10 +642,10 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
     - apply: path_merge.
         by move: hab; rewrite in_itv/= => /andP[].
       by case: ps.
-  apply: le_omega_max => //.
-    admit.
-    admit.
-  exact: subseq_mergel.
+  apply: omega_max_merge1 => //.
+  - admit.
+  - admit.
+  - admit.
 rewrite -addeAC leeD2r//.
 apply: variation_merge1 => //.
 have /disj_seq_allP[/allP + _] := disjst.
