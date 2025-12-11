@@ -440,10 +440,23 @@ Context {R : realType}.
 Implicit Types (a b : R) (f : R -> R).
 Implicit Types (s : seq R) (x : R).
 
+Lemma itv_partition_max0 a b s :
+  0 <= itv_partition_max a b s.
+Proof.
+rewrite /itv_partition_max.
+Admitted.
+
+
 Lemma itv_partition_max_merge1 a b l s x :
   itv_partition_max a b s <= l ->
   itv_partition_max a b (merge <=%R s [:: x]) <= l.
 Proof.
+elim: s => //.
+  move=> ? /=.
+  rewrite /itv_partition_max/=.
+  rewrite big_nat_recl// big_nil/=.
+  
+rewrite /itv_partition_max/=.
 Admitted.
 
 Lemma itv_partition_max_merge a b l s t :
@@ -536,6 +549,35 @@ Variables (a b : R).
 Hypothesis (ab : a < b).
 Implicit Types (s : seq R) (x : R).
 
+Lemma itv_partition_merge1 h s :
+a <= h <= b ->
+h \notin s ->
+itv_partition a b s ->
+  itv_partition a b (merge <%R s [:: h]).
+Proof.
+move: s a h.
+elim.
+  move=> h a' _ _ /=.
+  admit.
+move=> s0 s1 IH h hs hhsb pabl.
+rewrite /=.
+case: ifPn => //.
+move=> s0h.
+  split.
+    move=> /=; apply/andP; split.
+      admit.
+    have : hs \notin s1.
+      admit.
+    move/IH.
+    move/(_ s0).
+    admit.
+  admit.
+rewrite -leNgt.
+rewrite le_eqVlt => /predU1P[|].
+  admit.
+move=> hss0.
+Admitted.
+
 Lemma itv_partition_merge s t :
  itv_partition a b s ->
  itv_partition a b t ->
@@ -576,6 +618,7 @@ apply: (@sub_in_pairwise _ (fun x => x \in [set: R]) _ _ _ _ _ H).
   move=> x y _ _; exact: ltW.
 apply/allP => x _; exact: in_setT.
 Qed.
+
 
 Section lemma5.
 Context {R : realType}.
@@ -638,7 +681,9 @@ apply: (le_trans (IH _ _ _ _ _ _)).
       apply: itv_partition_cons pht.
   have := @omega_max_merge1 _ a b f s h s0 psle lasb ahb.
   by move/le_lt_trans; apply.
-- admit.
+  apply: itv_partition_merge1 => //=.
+    admit.
+  admit.
 - admit.
 - admit.
 - admit.
