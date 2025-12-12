@@ -735,6 +735,27 @@ Let normr_repr_has_sup (x : V) :
   has_sup [set (normr \o repr x) x0 | x0 in `[a, b]].
 Proof. by apply normr_has_sup. Qed.
 
+Lemma infty_norm_le  (g : contFunSegType a b)  (u : R) : {in `[a, b], forall x, `| g x | <= u} -> infty_norm0 g <= u.
+Proof.
+  move => h.
+  rewrite /infty_norm0.
+  apply sup_le_ub.
+  exists (normr (g a)); exists a => //.
+    by rewrite /= in_itv/= lexx //.
+    move => _ [x xab] <-.
+    apply h.
+    by rewrite inE.
+Qed.
+
+Lemma infty_norm_ge (g : contFunSegType a b) x: x \in `[a, b] -> `|g x| <= infty_norm0 g.  
+Proof.
+   move => h. 
+   rewrite /infty_norm0.
+   rewrite sup_upper_bound //=.
+   apply normr_has_sup.
+   exists x => //.
+   by rewrite -inE.
+Qed.
 Lemma eqmod_on_itv f g :
   f = g %[mod V] -> {in `[a,b], f =1 g}.
 Proof.
@@ -746,6 +767,13 @@ Proof.
   by rewrite xab.
 Qed.
 
+
+Lemma eval_mod_on_itv f x : x \in `[a,b] -> (\pi_V f : V) x = f x.
+Proof.
+  move => xab.
+  apply eqmod_on_itv => //.
+  by rewrite reprK.
+Qed.
 Lemma infty_norm_itv_eq (f g :  contFunSegType a b):  {in `[a,b], f =1 g} -> infty_norm0 f = infty_norm0 g.
 Proof.
   move => inab.
@@ -1700,6 +1728,7 @@ Local Notation V := (quot_contFunSegType (ltW aaDelta)).
 
 Definition restrictedV := [set f : V | f @` `[a, a + Delta] `<=` (*interior*) B ].
 
+
 Lemma set_fun_picard_from_cont (g : V) :
   set_fun `[a, a + Delta] setT (picard_from_cont_not g).
 Proof.
@@ -1878,6 +1907,15 @@ rewrite -ler_pdivlMl//; last first.
 rewrite 2!ge_min.
 by rewrite mulrC lexx/= orbT.
 Admitted.
+
+Lemma picard_to_cont_init g :  [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num -> picard_from_cont_not g a = u0.
+Proof.
+  rewrite /picard_from_cont_not.
+   case: pselect => [| // ] .
+  move => a0.
+  rewrite /picard_from_cont'.
+  by rewrite set_itv1 Rintegral_set1 addr0.
+Qed.
 
 Fail Check picard_to_cont : {fun [set: V] >-> [set: V]}.
 
@@ -2109,12 +2147,45 @@ Let B := closed_ball u0 r%:num.
 Hypothesis lip2 : {in `[a, b], forall x, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 
-Notation V := (quot_contFunSegType (ltW a)).
 
 Variable rho : {posnum R}. (* rho < 1 *)
 Hypothesis rho1 : (rho%:num < 1).
 
+Notation V := (quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho))).
 Notation Vr := (@restrictedV _ f a b k ab u0 r k0 rho).
+
+
+
+Lemma restrictedVball : Vr = @closed_ball R V (pi V (cst u0)) r%:num.
+Proof.
+  rewrite closed_ballE => //.
+  rewrite /Vr.
+  apply eq_set => /= f' ;apply propext;split => h.  
+  - 
+    rewrite -(@reprK _ V f').
+    rewrite /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+    rewrite qnorm_piE.
+    apply infty_norm_le => /=.
+    apply (ltW (aaDelta_subproof f ab u0 r k0 rho)).
+    move => x adx.
+    move /(_ (f' x)) : h.
+    rewrite closed_ballE => //.
+    apply.
+    exists x => //.
+    by rewrite -inE.
+ -  move => _ [x xad] <-.
+    rewrite closed_ballE => //.
+    rewrite /closed_ball_ /=.
+    have -> :  (u0 - f' x) = ((pi V (cst u0)) - f' : V) x.
+    by rewrite -(@reprK _ V f')  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add !eval_mod_on_itv => //;rewrite inE.
+    rewrite -(@reprK _ V f').
+    rewrite /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+    rewrite eval_mod_on_itv;last by rewrite inE.
+    rewrite -inE in xad.
+    apply (le_trans (infty_norm_ge (ltW (aaDelta_subproof f ab u0 r k0 rho)) _ xad)).
+    rewrite -(qnorm_piE (ltW (aaDelta_subproof f ab u0 r k0 rho))).
+    by rewrite Quotient.pi_add Quotient.pi_opp reprK.
+Qed.
 
 Definition contrac : {fun Vr >-> Vr} :=
   @picard_to_cont R f a b k ab u0 r k0 lip2 cont1 rho.
@@ -2282,9 +2353,6 @@ Let phi0 : quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho)) := 0. (
 
 Notation V := (quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho))).
 
-Lemma closed_Vr : closed (@restrictedV _ f a _ k _ u0 r k0 rho : set V).
-Proof.
-Admitted.
 
 Lemma Vr0 : (@restrictedV _ f a _ k _ u0 r k0 rho : set V) !=set0.
 Proof.
@@ -2299,17 +2367,40 @@ Qed.
 
 Check (V : pseudoMetricType R).
 Check (V : normedModType R).
-
 Lemma quot_contFUnSegType_cauchy_cvg :
   forall (F : set_system V), ProperFilter F -> cauchy F -> cvg F.
 Proof.
-Admitted.
+move=> F FF Fc.
+(* Check (fun t =>lim  (@^~t @ F)). *)
 
+(* apply/cvg_ex; exists (pi V (fun t => lim (@^~t @ F))). *)
+(* Check lim. *)
+(* Search cvg_to. *)
+(* have /(_ _) /cauchy_cvg /cvg_app_entourageP cvF : cauchy (@^~_ @ F). *)
+
+(*   move=> t A /= entA; rewrite near_simpl -near2E near_map2. *)
+(*   near=>x. *)
+
+(*   apply Fc. *)
+(*   by apply: Fc; exists A. *)
+(* apply/cvg_ex; exists (fun t => lim (@^~t @ F)). *)
+(* apply/cvg_fct_entourageP => A entA; near=> f => t; near F => g. *)
+(* apply: (entourage_split (g t)) => //; first by near: g; apply: cvF. *)
+(* move: (t); near: g; near: f; apply: nearP_dep; apply: Fc. *)
+(* by exists (split_ent A)^-1%relation => /=. *)
+(* Unshelve. all: by end_near. Qed. *)
+Admitted.
 Fail Check (V : completeType).
 
 HB.instance Definition _ := Uniform_isComplete.Build V quot_contFUnSegType_cauchy_cvg.
 
 Check (V : completeType).
+
+Lemma closed_Vr : closed (@restrictedV _ f a _ k _ u0 r k0 rho : set V).
+Proof.
+  rewrite restrictedVball.
+  apply closed_ball_closed.
+Qed.
 
 Let phioo : quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho)) :=
   sval (cid2 (@banach_fixed_point R V (@restrictedV _ f a _ k _ u0 r k0 rho : set V)
@@ -2334,17 +2425,17 @@ Theorem picard_lindelof_existence :
   phioo a = u0 /\
   {in `[a, a + Delta f a b k u0 r rho], forall x, phioo^`() x = f x (phioo x)}.
 Proof.
-split.
+  split.
   rewrite phiooE.
   rewrite /contrac.
-  rewrite /picard_to_cont.
-  transitivity (((picard_from_cont (lip2_Delta_subproof lip2 (rho:=rho)) (cont1_Delta_subproof cont1 (rho:=rho)) phioo)) a).
-    admit.
-  rewrite /picard_from_cont.
-  case: pselect; last admit.
-  move=> a0.
-  rewrite /picard_from_cont'.
-  by rewrite set_itv1 Rintegral_set1 addr0.
+  rewrite eval_mod_on_itv; last by rewrite inE/= in_itv/= lexx (ltW (aaDelta_subproof f ab u0 r k0 rho)).
+  rewrite /picard_from_cont /= picard_to_cont_init //.
+  rewrite phiooE.
+  move => _ [x xad] <-.
+  simpl.
+  (* have := (set_fun_picard_to_cont (@restrictedV _ f a _ k _ u0 r k0 rho)). *)
+  (* apply. *)
+  admit.
 move=> x xaa.
 rewrite phiooE.
 rewrite /contrac.
