@@ -559,9 +559,19 @@ split; last by rewrite last_rcons.
 exact: path_lt_head pxs.
 Qed.
 
+Lemma itv_partition_head a b h s :
+s != [::] ->
+a < h < head b s -> itv_partition a b s ->
+ itv_partition a b (h :: s).
+Proof.
+case: s => // s0 s1 _ /andP[ah hs0] /[dup]pabs [/=/andP[as0 pas] /eqP sb].
+split; first by rewrite /=; apply/and3P; split => //.
+by rewrite -sb.
+Qed.
+
 Lemma itv_partition_merge1 a b h s :
 a < b ->
-a <= h <= b ->
+a < h < b ->
 h \notin s ->
 itv_partition a b s ->
   itv_partition a b (merge <%R s [:: h]).
@@ -583,7 +593,7 @@ rewrite /=; case: ifPn => //.
       apply: itv_partition_cons1 H.
       case: s1 hs s0b => //.
       move=> _ /= s0b.
-      have := lt_le_trans s0h hb.
+      have := lt_trans s0h hb.
       by rewrite s0b ltxx.
     - by apply/andP; split => //; exact: ltW.
     - have/negP := hs.
@@ -594,9 +604,11 @@ rewrite /=; case: ifPn => //.
   by have [/andP[]] := H.
 rewrite -leNgt.
 rewrite le_eqVlt => /predU1P[|].
-  admit.
+  by move=> hs0; move: hs; rewrite hs0 mem_head.
 move=> hss0.
-Admitted.
+apply: itv_partition_head => //.
+by rewrite /= a'h hss0.
+Qed.
 
 Lemma itv_partition_merge a b s t :
  itv_partition a b s ->
