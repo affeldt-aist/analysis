@@ -2331,16 +2331,54 @@ rewrite /picard_from_cont'/=.
 rewrite !fctE.
 rewrite (addrC u0).
 rewrite addrKA.
-rewrite -RintegralB//=; last 2 first.
-admit.
-admit.
+have integrable1 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (x x0))).
+  apply integrable_comp => //=.
+  by rewrite inE.
+  move => _ [x0 h] <-.
+  apply: Hg => /=.
+  exists x0 => //.
+  apply /subset_itvl/h.
+  rewrite bnd_simp.
+  by move: tNdd; rewrite !in_itv/= => /andP[] .
+
+have integrable2 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (y x0))).
+  apply integrable_comp => //=.
+  by rewrite inE.
+  move => _ [x0 h] <-.
+  apply: Hg2 => /=.
+  exists x0 => //.
+  apply /subset_itvl/h.
+  rewrite bnd_simp.
+  by move: tNdd; rewrite !in_itv/= => /andP[] .
+rewrite -RintegralB//=.
 rewrite (le_trans (le_normr_Rintegral _ _))//=.
-  admit.
+    under [x in integrable _ _  x]eq_fun do rewrite EFinB.
+    rewrite integrableB //=.
+have integrable3 :   mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E).
+    apply integrable_norm => //=.
+    under [x in integrable _ _  x]eq_fun do rewrite EFinB.
+    rewrite integrableB //=.
+    apply continuous_compact_integrable => //=.
+    exact: segment_compact.
+    apply /continuous_subspaceW/contFunSeg.
+    apply: subset_itvl.
+    rewrite bnd_simp.
+    by move : tNdd;rewrite in_itv /= => /andP[].
+    apply continuous_compact_integrable => //=.
+    exact: segment_compact.
+    apply /continuous_subspaceW/contFunSeg.
+    apply: subset_itvl.
+    rewrite bnd_simp.
+    by move : tNdd;rewrite in_itv /= => /andP[].
 rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
   rewrite (@le_trans _ _ (\int[mu]_(t0 in `[a, t]) (k * `|x t0 - y t0|)))//.
-    apply: le_Rintegral => //=; last 3 first.
-      admit.
-      admit.
+    apply: le_Rintegral => //=.
+      apply integrable_norm => //=.
+      under [x in integrable _ _  x]eq_fun do rewrite EFinB.
+      rewrite integrableB //=.
+      under [x in integrable _ _  x]eq_fun do rewrite EFinM.
+      rewrite integrableMr //=.
+      exact: bounded_cst.
     move=> x0 x0at.
     have : x0 \in `[a, b].
     rewrite inE.
@@ -2358,36 +2396,32 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
     apply /subset_itvl/x0at.
     move: tNdd.
     by rewrite in_itv/= => /andP[Ndt].
-  rewrite (*TODO: ge0_*) RintegralZl//=.
-  admit.
+  rewrite RintegralZl//=.
 rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `|x - y| ))//.
   rewrite ler_pM2l//.
   apply: le_Rintegral => //=.
-    admit.
-    admit.
-  move=> /= x0 x0at.
-  rewrite [leRHS]/Num.norm/=.
-  rewrite /infty_norm.
-  rewrite /infty_norm0/=.
-  apply: sup_le => //=.
-  by apply normr_has_sup.
+  apply measurable_bounded_integrable => //=.
+  rewrite lebesgue_measure_itv //=.
+  case: ifPn => //=.
+  by rewrite -EFinD ltry.
+  exact: bounded_cst.
+  move => x0 x0at .
   have x0ad :   x0 \in `[a, (a + Delta f a b k u0 r rho)%E].
     rewrite inE.
     rewrite inE in x0at.
     apply /subset_itvl/x0at.
     move: tNdd.
     by rewrite in_itv/= => /andP[Ndt].
-    exists x0; first by (rewrite inE in x0ad).
-    have {}x0at : x0 \in `[a, t].
-      by rewrite inE.
-    (*Todo: Show Cyril *)
-    congr (`| _ |).
-    apply (@eqmod_on_itv _  _ _ (ltW (aaDelta_subproof f ab u0 r k0 rho)) _ (repr x - repr y)) => //.
-    rewrite Quotient.pi_add Quotient.pi_opp !reprK //.
+  have -> : x x0 - y x0 = (x - y : V) x0.
+    apply (@eqmod_on_itv _  _ _ (ltW (aaDelta_subproof f ab u0 r k0 rho)) (repr x - repr y)) => //.
+    by rewrite Quotient.pi_add Quotient.pi_opp !reprK //.
+  apply: infty_norm_ge => //=.
 rewrite (@le_trans _ _ (k * `|x - y| * (t - a)))//.
 rewrite -mulrA ler_wpM2l//; first exact: ltW.
   rewrite Rintegral_cst//.
+  rewrite ler_pM => //.
   admit.
+
 rewrite [leLHS]mulrAC.
 rewrite ler_wpM2r//.
 move: tNdd.
@@ -2504,7 +2538,7 @@ Proof.
   rewrite phiooE.
   move => _ [x xad] <-.
   simpl.
-(*   (* have := (set_fun_picard_to_cont (@restrictedV _ f a _ k _ u0 r k0 rho)). *) *)
+ (* have := (set_fun_picard_to_cont (@restrictedV _ f a _ k _ u0 r k0 rho)).  *)
 (*   (* apply. *) *)
 (*   admit. *)
 (* move=> x xaa. *)
