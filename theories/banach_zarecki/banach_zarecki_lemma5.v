@@ -545,11 +545,22 @@ Admitted.
 
 Section itv_partition_lemmas.
 Context {R : realType}.
-Variables (a b : R).
-Hypothesis (ab : a < b).
-Implicit Types (s : seq R) (x : R).
+Implicit Types (a b : R) (s : seq R) (x : R).
 
-Lemma itv_partition_merge1 h s :
+Lemma itv_partition_cons1 a b s x :
+  s != [::] ->
+  itv_partition a b (x :: s) -> itv_partition a b s.
+Proof.
+move: s; apply: last_ind => // s t _ _ [/[swap]/eqP].
+rewrite /= last_rcons => -> /andP[ax pxs].
+have ab : a < b.
+  apply: (lt_le_trans ax); have := path_lt_le_last pxs; by rewrite last_rcons.
+split; last by rewrite last_rcons.
+exact: path_lt_head pxs.
+Qed.
+
+Lemma itv_partition_merge1 a b h s :
+a < b ->
 a <= h <= b ->
 h \notin s ->
 itv_partition a b s ->
@@ -557,28 +568,37 @@ itv_partition a b s ->
 Proof.
 move: s a h.
 elim.
-  move=> h a' _ _ /=.
-  admit.
-move=> s0 s1 IH h hs hhsb pabl.
-rewrite /=.
-case: ifPn => //.
-move=> s0h.
-  split.
-    move=> /=; apply/andP; split.
-      admit.
-    have : hs \notin s1.
-      admit.
-    move/IH.
-    move/(_ s0).
-    admit.
-  admit.
+  move=> a' h a'b /andP[a'h hb] _ /=.
+  move/itv_partition_nil.
+  move: a'b. rewrite -subr_gt0 lt0r.
+  by move/andP => [+ _]; rewrite subr_eq0 eq_sym; move/eqP.
+move=> s0 s1 IH a' h a'b /andP[a'h hb] hs.
+rewrite /=; case: ifPn => //.
+  move=> s0h H.
+  have : itv_partition s0 b (merge <%R s1 [:: h]).
+    apply: IH.
+    - have [] := H.
+      move => /=/andP[_ /lt_path_min/allP +] /eqP s0b; rewrite -s0b; apply.
+      rewrite s0b; apply: last_mem_itv_partition a'b.
+      apply: itv_partition_cons1 H.
+      case: s1 hs s0b => //.
+      move=> _ /= s0b.
+      have := lt_le_trans s0h hb.
+      by rewrite s0b ltxx.
+    - by apply/andP; split => //; exact: ltW.
+    - have/negP := hs.
+      by rewrite in_cons; move/negP/norP => [].
+    - have [/=/andP[a's0 ps lsb]] := H.
+      by split.
+  move=> []; split => //=; apply/andP; split => //.
+  by have [/andP[]] := H.
 rewrite -leNgt.
 rewrite le_eqVlt => /predU1P[|].
   admit.
 move=> hss0.
 Admitted.
 
-Lemma itv_partition_merge s t :
+Lemma itv_partition_merge a b s t :
  itv_partition a b s ->
  itv_partition a b t ->
  disj_seq s t -> itv_partition a b (merge <%R s t).
@@ -587,7 +607,7 @@ move=> ps pt.
 (*move=> /disj_seq_allP[/allP ts /allP st].*)
 Abort.
 
-Lemma itv_partition_udmerge s t :
+Lemma itv_partition_udmerge a b s t :
  itv_partition a b s ->
  itv_partition a b t ->
  itv_partition a b (udmerge s t).
@@ -704,7 +724,8 @@ apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
         by move: hab; rewrite in_itv/= => /andP[].
       by case: ps.
   apply: omega_max_merge1 => //.
-  - admit.
+  - apply: path_ltW.
+    by have [] := ps.
   - admit.
   - admit.
 rewrite -addeAC leeD2r//.
