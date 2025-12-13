@@ -1915,7 +1915,20 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
       by apply: closed_ballxx.
     rewrite /hmax.
     apply: sup_le => /=.
-      admit.
+      split; first by exists (`| f a u0|);exists a => //=; rewrite bound_itvE ltW.
+      have [M [Mb1 Mb2]] : bounded_set [set `|f t u0| | t in `[a,b]].
+        apply compact_bounded.
+        apply continuous_compact.
+        apply within_continuous_comp_norm.
+        by rewrite ltW.
+        by apply cont1;rewrite inE;apply: closed_ballxx.
+        by apply segment_compact.
+      exists (M+1).
+      move => _ [x0 x0ab] <- /=.
+      rewrite -normr_id.
+      apply Mb2.
+      by rewrite ltrDl.
+      exists x0 => //.
     exists x => //.
     move: xay; rewrite !in_itv/= => /andP[] -> /=.
     move /le_trans.
@@ -1991,14 +2004,18 @@ rewrite -ler_pdivlMl//; last first.
   exact: hmax_ge0.
 rewrite 2!ge_min.
 by rewrite mulrC lexx/= orbT.
-Admitted.
+Qed.
 
-Lemma picard_to_cont_init g :  [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num -> picard_from_cont_not g a = u0.
+Lemma picard_from_cont_simpl g t :   [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num -> picard_from_cont_not g t = u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
 Proof.
   rewrite /picard_from_cont_not.
    case: pselect => [| // ] .
-  move => a0.
-  rewrite /picard_from_cont'.
+  by rewrite /picard_from_cont'.
+Qed.
+Lemma picard_to_cont_init g :  [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num -> picard_from_cont_not g a = u0.
+Proof.
+  move => h.
+  rewrite picard_from_cont_simpl => //.
   by rewrite set_itv1 Rintegral_set1 addr0.
 Qed.
 
@@ -2240,7 +2257,6 @@ Notation V := (quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho))).
 Notation Vr := (@restrictedV _ f a b k ab u0 r k0 rho).
 
 
-
 Lemma restrictedVball : Vr = @closed_ball R V (pi V (cst u0)) r%:num.
 Proof.
   rewrite closed_ballE => //.
@@ -2282,6 +2298,7 @@ Qed.
 
 HB.instance Definition _ :=
   @isFun.Build _ _ Vr Vr contrac set_fun_picard.
+
 
 (*Hypothesis dtwok : d0%:num < (2 * k)^-1.
 
@@ -2501,14 +2518,15 @@ HB.instance Definition _ := Uniform_isComplete.Build V quot_contFUnSegType_cauch
 
 Check (V : completeType).
 
-Lemma closed_Vr : closed (@restrictedV _ f a _ k _ u0 r k0 rho : set V).
+Notation Vr := (@restrictedV _ f a b k ab u0 r k0 rho).
+Lemma closed_Vr : closed Vr.
 Proof.
   rewrite restrictedVball.
   apply closed_ball_closed.
 Qed.
 
 Let phioo : quot_contFunSegType (ltW (aaDelta_subproof f ab u0 r k0 rho)) :=
-  sval (cid2 (@banach_fixed_point R V (@restrictedV _ f a _ k _ u0 r k0 rho : set V)
+  sval (cid2 (@banach_fixed_point R V Vr
   (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho)
   (@is_contraction_picard_to_cont _ f _ _ ab _ k0 u0 r lip2 cont1 rho rho1)
   closed_Vr
@@ -2520,55 +2538,52 @@ rewrite {}/phioo.
 by case: cid2.
 Qed.
 
-Check (@banach_fixed_point R V (@restrictedV _ f a _ k _ u0 r k0 rho : set V)
+Check (@banach_fixed_point R V Vr
   (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho)
   (@is_contraction_picard_to_cont _ f _ _ ab _ k0 u0 r lip2 cont1 rho rho1)
   closed_Vr
   Vr0).
 
+Lemma contrac_simpl g t : Vr g ->  t \in `[a, (a + Delta f a b k u0 r rho)%E] ->  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho) g t = u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
+Proof.
+    move => Vrg taad.
+    rewrite /contrac.
+    rewrite eval_mod_on_itv //.
+    apply picard_from_cont_simpl =>//.
+Qed.
+
+
 Theorem picard_lindelof_existence :
   phioo a = u0 /\
-  {in `[a, a + Delta f a b k u0 r rho], forall x, phioo^`() x = f x (phioo x)}.
+  {in `]a, a + Delta f a b k u0 r rho[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
+  have Vrphioo : Vr phioo.
+    by apply (svalP (cid2 (banach_fixed_point (is_contraction_picard_to_cont ab k0 lip2 cont1 rho1) closed_Vr Vr0))).
+
   split.
-  rewrite phiooE.
-  rewrite /contrac.
-  rewrite eval_mod_on_itv; last by rewrite inE/= in_itv/= lexx (ltW (aaDelta_subproof f ab u0 r k0 rho)).
-  rewrite /picard_from_cont /= picard_to_cont_init //.
-  rewrite phiooE.
-  move => _ [x xad] <-.
-  simpl.
- (* have := (set_fun_picard_to_cont (@restrictedV _ f a _ k _ u0 r k0 rho)).  *)
-(*   (* apply. *) *)
-(*   admit. *)
-(* move=> x xaa. *)
-(* rewrite phiooE. *)
-(* rewrite /contrac. *)
-(* rewrite /picard_to_cont. *)
-(* transitivity *)
-(*   ((picard_from_cont (lip2_Delta_subproof lip2 (rho:=rho)) (cont1_Delta_subproof cont1 (rho:=rho)) phioo)^`() x). *)
-(*   admit. *)
-(* transitivity (f x *)
-(*     ((picard_from_cont (lip2_Delta_subproof lip2 (rho:=rho)) (cont1_Delta_subproof cont1 (rho:=rho)) phioo x))); last first. *)
-(*   admit. *)
-(* rewrite /picard_from_cont. *)
-(* case: pselect; last admit. *)
-(* move=> a0. *)
-(* rewrite /picard_from_cont'. *)
-(* transitivity (f x (phioo x)). *)
-(*   admit. *)
-(* rewrite {1}phiooE. *)
-(* congr (f x _). *)
-(* rewrite /contrac. *)
-(* rewrite /picard_to_cont. *)
-(* transitivity ( *)
-(* ((picard_from_cont (lip2_Delta_subproof lip2 (rho:=rho)) (cont1_Delta_subproof cont1 (rho:=rho)) phioo x)) *)
-(* ). *)
-(*   admit. *)
-(* rewrite /picard_from_cont. *)
-(* case: pselect; last admit. *)
-(* move=> a1. *)
-(* by rewrite /picard_from_cont'. *)
+  - rewrite phiooE.
+    rewrite /contrac.
+    rewrite eval_mod_on_itv; last by rewrite inE/= in_itv/= lexx (ltW (aaDelta_subproof f ab u0 r k0 rho)).
+    rewrite /picard_from_cont /= picard_to_cont_init //.
+  move => t tad.
+  rewrite {1}phiooE.
+  suff -> :  (contrac ab k0 lip2 cont1 rho phioo)^`() t =  (fun x0 => (u0 + (\int[mu]_(x in `[a, x0]) f x (phioo x))%R))^`()  t.
+    admit.
+      rewrite /derive1.
+      rewrite contrac_simpl //;last by move: tad; rewrite !inE;apply: subset_itv_oo_cc.
+    (* suff : *)
+  (* \forall x0 \near (nbhs t), *)
+  (*   contrac ab k0 lip2 cont1 rho phioo x0 *)
+  (*   = (u0 + (\int[mu]_(x in `[a, x0]) f x (phioo x))%R). *)
+  (*     move => H0. *)
+      congr (lim _).
+
+      rewrite /fmap.
+      apply eq_set => /= x.
+      apply /propext;split => [[e e0 eh] | ].
+      rewrite /preimage/=.
+      near=>h.
+      simpl.
 Admitted.
 
 End picard_sketch.
