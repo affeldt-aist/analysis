@@ -2450,6 +2450,229 @@ Admitted.
 
 End picard_to_cont_normedtype4.
 
+Section completeness.
+Context {R : realType}.
+Variables  (a b : R).
+Hypothesis ab : a <= b.
+
+Notation V := (quot_contFunSegType ab).
+
+Check (V : pseudoMetricType R).
+Check (V : normedModType R).
+
+Lemma infty_norm_gt_V (f : V) e: `| f | <  e -> {in `[a, b], forall x : R, `|f x| < e}. 
+Proof.
+   rewrite -{1}(reprK f).
+   rewrite qnorm_piE => h.
+   move => x xab.
+   apply /le_lt_trans/h.
+   by apply infty_norm_ge.
+Qed.
+Lemma infty_norm_le_V (f : V) e:  {in `[a, b], forall x : R, `|f x| <= e} -> `| f | <=  e.
+Proof.
+   move => h.
+   rewrite -(reprK f).
+   rewrite qnorm_piE.
+   by apply infty_norm_le.
+Qed.
+Definition lim_fun (F : set_system V) (FF: ProperFilter F) (Fc : cauchy F) := (fun t => lim (@^~t @ F)) : R->R.
+Lemma lim_fun_is_fun (F : set_system V) (FF: ProperFilter F) (Fc : cauchy F)  : @isFun R R `[a, b] [set: R] (@lim_fun F FF Fc).
+Proof. by constructor. Qed.
+
+HB.instance Definition _ F FF Fc := (@lim_fun_is_fun F FF Fc).
+
+Lemma lim_fun_cvg_pt (F : set_system V) (FF: ProperFilter F) (Fc : cauchy F) :  forall (e : R), e > 0 -> forall t, t \in `[a,b] ->  \forall f \near F,  `|lim_fun FF Fc t - (f : V) t| <= e.
+Proof.
+have /(_ _ _) /cauchy_cvg /cvg_app_entourageP cvF :   forall t : R, t \in `[a,b] -> cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
+  move=> t tab A /= [e e0 ee]; rewrite near_simpl -near2E near_map2.
+  apply : Fc.
+  exists e => //.
+  move => /= [f g].
+  move /infty_norm_gt_V => h.
+  apply ee => /=.
+  have <- : (f - g : V) t = (f : V) t - (g : V) t.
+    rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+    by rewrite !eval_mod_on_itv.
+  by apply h.
+have  cvg_pt : forall (t : R),  t \in `[a,b] ->  x @[x --> fmap (fun h : V => h t) F] --> lim_fun FF Fc t.
+  move => t tab.
+  apply /cvg_entourageP.
+  by apply cvF.
+move => e e0 t tab.
+move /(_ t tab) : cvg_pt.
+move/cvgrPdist_le/(_ _ e0).
+apply.
+Qed.
+
+Lemma lim_fun_cvg_uniform (F : set_system V) (FF: ProperFilter F) (Fc : cauchy F) :  forall (e : R), e > 0 -> \forall f \near F, forall t, t \in `[a,b] ->  `|lim_fun FF Fc t - (f : V) t| <= e. 
+Proof.
+  move => e e0.
+  have e20 : 0 < e/2 by rewrite divr_gt0.
+  have := (Fc _ (entourage_ball V (PosNum e20))).
+  move => [/= [ha hb] /= [n1 n2]] H.
+
+  near=>f.
+  move=>t tab.
+  near F => g.
+  rewrite -(subrK (g t) (lim_fun FF Fc t)).
+  rewrite -!(addrA _ (g t)).
+  rewrite (le_trans (ler_normD _ _))//.
+  rewrite (splitr e) lerD//.
+  near:g.
+  by apply lim_fun_cvg_pt;rewrite // divr_gt0.
+  have c1 : ball f (e/2) g.
+     apply (H (f,g)).
+     split => //=.
+     by near:f.
+     by near:g.
+     rewrite /ball /= in c1.
+     rewrite /pseudoMetric_from_normedZmodType.ball /= in c1.
+  rewrite distrC.
+  have <- : (f - g : V) t = (f : V) t - (g : V) t.
+    rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+    by rewrite !eval_mod_on_itv.
+    rewrite ltW //.
+    apply infty_norm_gt_V => //.
+Unshelve. all: by end_near. Qed.
+
+Lemma lim_fun_cont (F : set_system V) (FF: ProperFilter F) (Fc : cauchy F) : {within `[a, b], continuous (@lim_fun F FF Fc)}.
+Proof.
+move: ab; rewrite le_eqVlt => /predU1P[<-| ab'].
+  by rewrite set_itv1; exact: continuous_subspace1.
+apply continuous_within_itvP => //.
+split.
+- move => t tab.
+  rewrite /continuous_at.
+  apply/cvgrPdist_le => /= e e0.
+  near_simpl.
+  near F => f; near=> t'.
+  have t'ab: t' \in `[a,b].
+      near: t'.
+      move : tab.
+      rewrite in_itv/= => /andP[ndx dx].
+      exists (Num.min (b - t) (t - a)) => /=.
+      rewrite lt_min subr_gt0 dx/=.
+        by rewrite subr_gt0.
+      move=> z/=.
+      rewrite lt_min => /andP[H1 H2].
+      rewrite inE/= in_itv/=; apply/andP; split.
+        move: H2.
+        rewrite -ltrBlDr opprK addrC.
+        rewrite -ltrBrDr => /ltW/le_trans; apply.
+        rewrite -lerBrDr opprK -lerBlDl.
+        by rewrite ler_norm.
+      move: H1.
+      rewrite ltrBrDr => /ltW; apply/le_trans.
+      by rewrite -lerBlDr distrC ler_norm.
+  rewrite -(subrK (f t) (lim_fun FF Fc t)).
+  rewrite -!(addrA _ (f t)).
+  rewrite (le_trans (ler_normD _ _))//.
+  rewrite (splitr e) lerD//.
+    have : t \in `[a,b] by rewrite inE;apply: subset_itv_oo_cc.
+    move : (t).
+    near:f.
+    by apply lim_fun_cvg_uniform;rewrite // divr_gt0 //.
+  rewrite -(subrK (f t') (f t)).
+  rewrite -!(addrA _ (f t')).
+  rewrite (le_trans (ler_normD _ _))//.
+  rewrite (splitr (e/2)) lerD//.
+    near:t'.
+    move /(continuous_within_itvP _ ab') : (@contFunSeg _ _ _ f ) => [+ _ _].
+    move /(_ t tab).
+    move /(cvgrPdist_le).
+    apply.
+    by do 2 rewrite // divr_gt0 //.
+  rewrite distrC.
+  move : (t') t'ab.
+  near:f.
+  apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
+-  apply/cvgrPdist_le => /= e e0.
+Admitted.
+
+HB.instance Definition _ F FF Fc := isContFunSeg.Build R a b _ (@lim_fun_cont F FF Fc).
+
+Fail Check (V : completeType).
+
+Lemma cvg_V_entourageP  (F : set_system V) (FF : Filter F)
+    (f : V) :
+  F --> f <-> forall A, entourage A ->
+              \forall g \near F, {in `[a, b], forall t : R, A (f t, (g : V) t)}.
+Proof.
+split => [/cvg_entourageP /= Ff A [eps eps0 /= H]|/=Ff].
+   apply: (Ff [set fg : V*V| {in `[a, b], forall t : R, A (fg.1 t, fg.2 t)}]).
+   exists eps => //.
+   rewrite /pseudoMetric_from_normedZmodType.ball /=.
+   move => /= x bx t tab.
+   apply H => /=.
+   have -> : ((x.1 : V) t - (x.2 : V) t = (x.1 - x.2 :V) t).
+      rewrite -(reprK x.1) -(reprK x.2)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+      by rewrite !eval_mod_on_itv.
+   apply: infty_norm_gt_V => //.
+apply/cvg_entourageP => /= A [e e0 sPA].
+have e20 : 0 < e / 2 by rewrite divr_gt0.
+have e2: (e / 2 < e).
+   by rewrite ltr_pdivrMr// mulrC ltr_pMl //= ltrDr.
+near=>g.
+apply: sPA.
+apply /le_lt_trans/e2.
+apply infty_norm_le_V => /= .
+move => t tab.
+have -> : (f - g : V) t = f t - (g : V) t. 
+    rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+    by rewrite !eval_mod_on_itv.
+rewrite ltW //.
+move : t tab.
+near:g.
+have := (Ff [set xy : R *R | ball xy.1 (PosNum e20)%:num xy.2]).
+apply.
+apply entourage_ball.
+Unshelve. all: by end_near. Qed.
+
+Lemma quot_contFUnSegType_cauchy_cvg :
+  forall (F : set_system V), ProperFilter F -> cauchy F -> cvg F.
+Proof.
+  move=> F FF Fc.
+  have /(_ _ _) /cauchy_cvg /cvg_app_entourageP cvF :   forall t : R, t \in `[a,b] -> cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
+  move=> t tab A /= [e e0 ee]; rewrite near_simpl -near2E near_map2.
+  apply : Fc.
+  exists e => //.
+  move => /= [f g].
+  move /infty_norm_gt_V => h.
+  apply ee => /=.
+  have <- : (f - g : V) t = (f : V) t - (g : V) t. 
+    rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+    by rewrite !eval_mod_on_itv.
+  by apply h.
+  apply /cvg_ex.
+  exists ( pi V (@lim_fun F FF Fc : contFunSegType a b)).
+  apply /cvg_V_entourageP => /=.
+   move=> A /= entA.
+   near=>f.
+   move => t tab.
+   near F => g.
+   apply : (entourage_split (g t)) => //.
+
+   rewrite eval_mod_on_itv => //; first by near:g;apply: cvF.
+   move: (t) (tab); near: g; near: f; apply: nearP_dep; apply: Fc.
+   rewrite /nbhs /=.
+   have [e e0 ee] := (entourage_split_ent entA).
+   exists e => //.
+   move => [/= x y].
+   rewrite /pseudoMetric_from_normedZmodType.ball/=.
+   move /infty_norm_gt_V => h t tab.
+   apply ee => /=.
+   rewrite distrC. 
+   have -> : ((x : V) t - (y : V) t = (x - y :V) t).
+      rewrite -(reprK y) -(reprK x)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+      by rewrite !eval_mod_on_itv.
+   by apply: h.
+Unshelve. all: by end_near. Qed.
+
+HB.instance Definition _ := Uniform_isComplete.Build V quot_contFUnSegType_cauchy_cvg.
+
+Check (V : completeType).
+End completeness.
+
 Section picard_sketch.
 Context {R : realType}.
 Local Notation mu := lebesgue_measure.
@@ -2487,12 +2710,6 @@ apply.
 by rewrite inE.
 Qed.
 
-Check (V : pseudoMetricType R).
-Check (V : normedModType R).
-Lemma quot_contFUnSegType_cauchy_cvg :
-  forall (F : set_system V), ProperFilter F -> cauchy F -> cvg F.
-Proof.
-move=> F FF Fc.
 (* Check (fun t =>lim  (@^~t @ F)). *)
 
 (* apply/cvg_ex; exists (pi V (fun t => lim (@^~t @ F))). *)
@@ -2511,12 +2728,7 @@ move=> F FF Fc.
 (* move: (t); near: g; near: f; apply: nearP_dep; apply: Fc. *)
 (* by exists (split_ent A)^-1%relation => /=. *)
 (* Unshelve. all: by end_near. Qed. *)
-Admitted.
-Fail Check (V : completeType).
-
-HB.instance Definition _ := Uniform_isComplete.Build V quot_contFUnSegType_cauchy_cvg.
-
-Check (V : completeType).
+(* Admitted. *)
 
 Notation Vr := (@restrictedV _ f a b k ab u0 r k0 rho).
 Lemma closed_Vr : closed Vr.
