@@ -442,10 +442,7 @@ Implicit Types (s : seq R) (x : R).
 
 Lemma itv_partition_max0 a b s :
   0 <= itv_partition_max a b s.
-Proof.
-rewrite /itv_partition_max.
-Admitted.
-
+Proof. by rewrite /itv_partition_max. Qed.
 
 Lemma itv_partition_max_merge1 a b l s x :
   itv_partition_max a b s <= l ->
@@ -463,6 +460,7 @@ Lemma itv_partition_max_merge a b l s t :
   itv_partition_max a b s <= l ->
   itv_partition_max a b (merge <=%R s t) <= l.
 Proof.
+
 Admitted.
 
 End itv_partition_length_lemmas.
@@ -675,6 +673,10 @@ have : exists s0 s1 : R, [/\ s0 \in s, s1 \in s &
  admit.
 Admitted.
 
+Lemma disj_seq_merge_ltW s t : disj_seq s t -> merge <%R s t = merge <=%R s t.
+Proof.
+Admitted.
+
 Let variation_merge l s t :
   itv_partition a b s -> itv_partition_max a b s <= l ->
   itv_partition a b t ->
@@ -716,8 +718,12 @@ apply: (le_trans (IH _ _ _ _ _ _)).
   apply: itv_partition_merge1 => //=.
     admit.
   admit.
-- admit.
-- admit.
+- rewrite disj_seq_merge_ltW; last first.
+    admit.
+  exact: itv_partition_max_merge1.
+- apply: (itv_partition_cons1 _ pht).
+  have pt := itv_partition_cons pht.
+  apply: itv_partition_neq0 pt. (* ? *) admit.
 - admit.
 have hab : h \in `]a, b[.
   admit.
@@ -885,7 +891,7 @@ rewrite /itv_partition_max/=.
 (* HB instance, {nonneg R} is Monoid *)
 rewrite lt_neqAle; apply/andP; split.
   admit.
-have : `|x' - y'|%:nng <=
+have : `|x' - y'|%:nng <= 
   (\big[maxr/widen_itv 0%:itv]_(0 <= n0 < size p)
       widen_itv `|nth b (a :: p) n0 - nth b p n0|%:itv).
   rewrite big_mkord.
@@ -929,8 +935,10 @@ have : `|x' - y'|%:nng <=
     rewrite subr_ge0 ltW//.
     case: n np Hx Hy => //=.
       move=> p0 Hx Hy.
-    have := itv_partition_in_itv pabp.
-rewrite /=.
+      have := itv_partition_in_itv pabp.
+      admit.
+    admit.
+  admit.
 
 have := (@bigmax_sup _ {nonneg R}).
 
