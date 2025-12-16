@@ -2434,8 +2434,11 @@ rewrite (@le_trans _ _ (k * `|x - y| * (t - a)))//.
 rewrite -mulrA ler_wpM2l//; first exact: ltW.
   rewrite Rintegral_cst//.
   rewrite ler_pM => //.
-  admit.
-
+  move: tNdd.
+  rewrite in_itv/= => /andP[+ _].
+  rewrite le_eqVlt => /predU1P[-> | ].
+  by rewrite set_itv1 lebesgue_measure_set1 subrr lexx.
+  rewrite /= (lebesgue_measure_itv `[a,t]%R) /= lte_fin => -> //.
 rewrite [leLHS]mulrAC.
 rewrite ler_wpM2r//.
 move: tNdd.
@@ -2443,7 +2446,7 @@ rewrite in_itv/= => /andP[Ndt].
 rewrite -lerBlDl.
 rewrite /Delta !le_min => /andP[_ /andP[_]].
 by rewrite ler_pdivlMr// mulrC.
-Admitted.
+Qed.
 
 End picard_to_cont_normedtype4.
 
@@ -2544,6 +2547,7 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
   move : (tab).
   rewrite -{1}setUitv1/=; last by rewrite bnd_simp ltW.
   rewrite -{1}setU1itv/=; last by rewrite bnd_simp.
+  (* split t=a, t \in ]a,b[, t=b *)
   rewrite inE/= in_itv/= => -[[->|tab']|->].
   - near=> t' => t'ab.
     rewrite -(subrK (f a) (lim_fun FF Fc a)).
