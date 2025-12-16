@@ -2545,7 +2545,7 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
   rewrite -{1}setUitv1/=; last by rewrite bnd_simp ltW.
   rewrite -{1}setU1itv/=; last by rewrite bnd_simp.
   rewrite inE/= in_itv/= => -[[->|tab']|->].
-  - near=>t' => t'ab.
+  - near=> t' => t'ab.
     rewrite -(subrK (f a) (lim_fun FF Fc a)).
     rewrite -!(addrA _ (f a)).
     rewrite (le_trans (ler_normD _ _))//.
@@ -2556,8 +2556,24 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
     rewrite -(subrK (f t') (f a)).
     rewrite -!(addrA _ (f t')).
     rewrite (le_trans (ler_normD _ _))//.
-    admit.
-  - near=>t' => t'ab.
+    rewrite (splitr (e/2)) lerD//.
+      move : t'ab.
+      rewrite -{1}setU1itv/=; last by rewrite bnd_simp.
+      rewrite inE/= in_itv/= => -[-> | ].
+      rewrite subrr normr0 ltW //.
+      do 2 rewrite divr_gt0 //.
+      near:t'.
+      move  /cvgrPdist_le : lc .
+      move /( _ (e/ 2/ 2)) => [| e1 e10 eh].
+      do 2 rewrite divr_gt0 //.
+      exists e1 => //.
+      move => x bx /andP [xa _].
+      by apply eh.
+    rewrite distrC.
+    move : (t') t'ab.
+    near:f.
+    apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
+  - near=> t' => t'ab.
     rewrite -(subrK (f t) (lim_fun FF Fc t)).
     rewrite -!(addrA _ (f t)).
     rewrite (le_trans (ler_normD _ _))//.
@@ -2578,7 +2594,35 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
     move : (t') t'ab.
     near:f.
     apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
-  -  admit (* same as 1 *).
+(* Todo: same as 1 *)
+  - near=> t' => t'ab.  
+    rewrite -(subrK (f b) (lim_fun FF Fc b)).
+    rewrite -!(addrA _ (f b)).
+    rewrite (le_trans (ler_normD _ _))//.
+    rewrite (splitr e) lerD//.
+      suff: forall t, t \in `[a,b] ->   `|lim_fun FF Fc t - f t| <= e / 2 by apply;rewrite inE /= in_itv/= lexx ltW //.
+      near:f.
+      by apply lim_fun_cvg_uniform;rewrite // divr_gt0 //.
+    rewrite -(subrK (f t') (f b)).
+    rewrite -!(addrA _ (f t')).
+    rewrite (le_trans (ler_normD _ _))//.
+    rewrite (splitr (e/2)) lerD//.
+      move : t'ab.
+       rewrite -{1}setUitv1/=; last by rewrite bnd_simp ltW.
+      rewrite inE/= in_itv/= => -[ | -> ];last first.
+      rewrite subrr normr0 ltW //.
+      do 2 rewrite divr_gt0 //.
+      near:t'.
+      move  /cvgrPdist_le : rc .
+      move /( _ (e/ 2/ 2)) => [| e1 e10 eh].
+      do 2 rewrite divr_gt0 //.
+      exists e1 => //.
+      move => x bx /andP [_ xb].
+      by apply eh.
+    rewrite distrC.
+    move : (t') t'ab.
+    near:f.
+    apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
 apply continuous_within_itvP => //.
 split.
 - move => t tab.
@@ -2619,7 +2663,7 @@ have : t' \in `[a,b].
   apply cvg_id.
   apply: H => //.
   rewrite inE /= in_itv/= lexx ltW //.
-Unshelve. all: by end_near. Admitted.
+Unshelve. all: by end_near. Qed.
 
 HB.instance Definition _ F FF Fc := isContFunSeg.Build R a b _ (@lim_fun_cont F FF Fc).
 
