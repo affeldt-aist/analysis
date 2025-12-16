@@ -1256,15 +1256,6 @@ Hypothesis lip2 : {in `[t0, t1], forall x, k.-lipschitz_B (f x)}.
 (* within-continuous for all y *)
 Hypothesis cont1 : {in B, forall y, {within `[t0, t1], continuous f ^~ y}}.
 
-(* Local Lemma in_itv_cases (x  : R) : x \in `[-d, d] -> (x = -d \/ x = d) \/ x \in `]-d, d[. *)
-(* Proof. *)
-(*   rewrite -setUitv1/=; last by rewrite bnd_simp ge0_cp. *)
-(*   rewrite -setU1itv/=; last by rewrite bnd_simp gtrN. *)
-(*   rewrite inE/= in_itv/= => -[[?|?]|?]. *)
-(*     by left; left. *)
-(*     by right; rewrite inE/= in_itv/=. *)
-(*     by left; right. *)
-(* Qed. *)
 
 Local Lemma picard_from_cont'_isContFunSegBuild_helper
     (imageg : g @` `[t0, t1] `<=` B) :
@@ -2315,6 +2306,12 @@ Proof.
 by [].
 Qed.
 
+(* Local Lemma in_itv_cases (x  : R) : x \in `[a, b] ->  x \in `]a, b[ \/ (x = a \/ x = b). *)
+(* Proof. *)
+(*   rewrite -setUitv1/=; last by rewrite bnd_simp ltW. *)
+(*   rewrite -setU1itv/=; last by rewrite bnd_simp . *)
+(*   rewrite inE/= in_itv/= => -[[?|?]|?]. *)
+(* Qed. *)
 Lemma is_contraction_picard_to_cont : is_contraction contrac.
 Proof.
 rewrite /is_contraction.
@@ -2539,55 +2536,90 @@ Lemma lim_fun_cont (F : set_system V) (FF: ProperFilter F) (Fc : cauchy F) : {wi
 Proof.
 move: ab; rewrite le_eqVlt => /predU1P[<-| ab'].
   by rewrite set_itv1; exact: continuous_subspace1.
+
+have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t' \in `[a,b] -> `|lim_fun FF Fc t - lim_fun FF Fc t'| <= e.
+  move => e e0 t tab.
+  near F => f.
+  move /(continuous_within_itvP _ ab') : (@contFunSeg _ _ _ f ) => [mc lc rc].
+  move : (tab).
+  rewrite -{1}setUitv1/=; last by rewrite bnd_simp ltW.
+  rewrite -{1}setU1itv/=; last by rewrite bnd_simp.
+  rewrite inE/= in_itv/= => -[[->|tab']|->].
+  - near=>t' => t'ab.
+    rewrite -(subrK (f a) (lim_fun FF Fc a)).
+    rewrite -!(addrA _ (f a)).
+    rewrite (le_trans (ler_normD _ _))//.
+    rewrite (splitr e) lerD//.
+      suff: forall t, t \in `[a,b] ->   `|lim_fun FF Fc t - f t| <= e / 2 by apply;rewrite inE /= in_itv/= lexx ltW //.
+      near:f.
+      by apply lim_fun_cvg_uniform;rewrite // divr_gt0 //.
+    rewrite -(subrK (f t') (f a)).
+    rewrite -!(addrA _ (f t')).
+    rewrite (le_trans (ler_normD _ _))//.
+    admit.
+  - near=>t' => t'ab.
+    rewrite -(subrK (f t) (lim_fun FF Fc t)).
+    rewrite -!(addrA _ (f t)).
+    rewrite (le_trans (ler_normD _ _))//.
+    rewrite (splitr e) lerD//.
+      move : (t) (tab).
+      near:f.
+      by apply lim_fun_cvg_uniform;rewrite // divr_gt0 //.
+    rewrite -(subrK (f t') (f t)).
+    rewrite -!(addrA _ (f t')).
+    rewrite (le_trans (ler_normD _ _))//.
+    rewrite (splitr (e/2)) lerD//.
+      near:t'.
+      move  /(_ _ tab'): mc.
+      rewrite /continuous_at cvgrPdist_le /=.
+      apply.
+      do 2 rewrite divr_gt0 //.
+    rewrite distrC.
+    move : (t') t'ab.
+    near:f.
+    apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
+  -  admit (* same as 1 *).
 apply continuous_within_itvP => //.
 split.
 - move => t tab.
-  rewrite /continuous_at.
   apply/cvgrPdist_le => /= e e0.
-  near_simpl.
-  near F => f; near=> t'.
-  have t'ab: t' \in `[a,b].
-      near: t'.
-      move : tab.
-      rewrite in_itv/= => /andP[ndx dx].
-      exists (Num.min (b - t) (t - a)) => /=.
-      rewrite lt_min subr_gt0 dx/=.
-        by rewrite subr_gt0.
-      move=> z/=.
-      rewrite lt_min => /andP[H1 H2].
-      rewrite inE/= in_itv/=; apply/andP; split.
-        move: H2.
-        rewrite -ltrBlDr opprK addrC.
-        rewrite -ltrBrDr => /ltW/le_trans; apply.
-        rewrite -lerBrDr opprK -lerBlDl.
-        by rewrite ler_norm.
-      move: H1.
-      rewrite ltrBrDr => /ltW; apply/le_trans.
-      by rewrite -lerBlDr distrC ler_norm.
-  rewrite -(subrK (f t) (lim_fun FF Fc t)).
-  rewrite -!(addrA _ (f t)).
-  rewrite (le_trans (ler_normD _ _))//.
-  rewrite (splitr e) lerD//.
-    have : t \in `[a,b] by rewrite inE;apply: subset_itv_oo_cc.
-    move : (t).
-    near:f.
-    by apply lim_fun_cvg_uniform;rewrite // divr_gt0 //.
-  rewrite -(subrK (f t') (f t)).
-  rewrite -!(addrA _ (f t')).
-  rewrite (le_trans (ler_normD _ _))//.
-  rewrite (splitr (e/2)) lerD//.
+  near=>t'.
+  have   : t' \in `[a,b].
+    rewrite inE.
+    apply subset_itv_oo_cc.
     near:t'.
-    move /(continuous_within_itvP _ ab') : (@contFunSeg _ _ _ f ) => [+ _ _].
-    move /(_ t tab).
-    move /(cvgrPdist_le).
-    apply.
-    by do 2 rewrite // divr_gt0 //.
-  rewrite distrC.
-  move : (t') t'ab.
-  near:f.
-  apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
--  apply/cvgrPdist_le => /= e e0.
-Admitted.
+    apply /at_right_in_segment.
+    apply : open_itvcc_subset.
+    apply: itv_open.
+    by rewrite inE //.
+  near:t'.
+  apply: H => //.
+  by rewrite inE; apply subset_itv_oo_cc.
+- apply/cvgrPdist_le => /= e e0.
+  near=>t'.
+  have : t' \in `[a,b].
+    rewrite inE /= in_itv/=.
+    apply /andP;split;near:t'.
+    by apply: nbhs_right_ge.
+    by apply : nbhs_right_le.
+  near:t'.
+  apply : cvg_at_right_filter.
+  apply cvg_id.
+  apply: H => //.
+  rewrite inE /= in_itv/= lexx ltW //.
+apply/cvgrPdist_le => /= e e0.
+near=>t'.
+have : t' \in `[a,b].
+  rewrite inE /= in_itv/=.
+  apply /andP;split;near:t'.
+  by apply: nbhs_left_ge.
+  by apply : nbhs_left_le.
+  near:t'.
+  apply : cvg_at_left_filter.
+  apply cvg_id.
+  apply: H => //.
+  rewrite inE /= in_itv/= lexx ltW //.
+Unshelve. all: by end_near. Admitted.
 
 HB.instance Definition _ F FF Fc := isContFunSeg.Build R a b _ (@lim_fun_cont F FF Fc).
 
