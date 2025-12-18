@@ -920,15 +920,19 @@ have [pn|] := ltnP n (size p).
   - by have := Hx; rewrite in_itv/= => /andP[].
   - by have := Hy; rewrite in_itv/= => /andP[].
 move=> pn.
-have : x = b.
-  move: Hx; rewrite (nth_default _ pn).
+have eqb : forall z, z \in `[(nth b (a :: p) n), (nth b p n)] -> z = b.
+  rewrite (nth_default _ pn).
   move: pn.
-  rewrite leq_eqVlt => /predU1P[|].
-    admit.
-  admit.
-
-have := (@bigmax_sup _ {nonneg R}).
-
+  rewrite leq_eqVlt => /predU1P[|pn].
+    move=> <- z.
+    rewrite -last_nth.
+    have [_ /eqP ->] := pabp.
+    by rewrite in_itv/= -eq_le => /eqP ->.
+  rewrite nth_default//= => z.
+  by rewrite in_itv/= -eq_le => /eqP ->.
+have -> := eqb x Hx.
+have -> := eqb y Hy.
+by rewrite num_abs_le subrr.
 Admitted.
 
 Lemma lemma5 :
