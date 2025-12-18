@@ -891,52 +891,39 @@ rewrite /itv_partition_max/=.
 (* HB instance, {nonneg R} is Monoid *)
 rewrite lt_neqAle; apply/andP; split.
   admit.
-have : `|x' - y'|%:nng <= 
-  (\big[maxr/widen_itv 0%:itv]_(0 <= n0 < size p)
-      widen_itv `|nth b (a :: p) n0 - nth b p n0|%:itv).
-  rewrite big_mkord.
-  have [|] := leqP (size (a :: p)) n.
-    move=> /= apn.
-    move: Hx Hy.
-    rewrite nth_default//= nth_default//.
-    move/itvxxP=> xb.
-    move/itvxxP=> yb.
-    rewrite num_abs_le /x'/y' xb yb subrr//.
-    exact: ltnW.
-  rewrite /= ltnS (leq_eqVlt n) => /predU1P[np|np].
-    move: Hx Hy.
-    have -> := nth_default _ (eq_leq (esym np)).
-    have -> : (n = (size (a :: p)).-1)%N by [].
-    rewrite nth_last last_cons.
-    have [[_ /eqP ->] _] := pmaxd.
-    move/itvxxP=> xb.
-    move/itvxxP=> yb.
-    by rewrite num_abs_le /x'/y' xb yb subrr.
-  apply: (bigmax_sup (Ordinal np)) => //=.
-(* have [yx|] := ltP y x. *)
-  have xx' : x = x' by [].
-  have yy' : y = y' by [].
-  wlog  : x y x' y' Hx Hy xx' yy' / y < x. 
-    move=> H.
-    have [xy|] := ltP x y.
-      rewrite (_ : widen_itv `|x' - y'|%:itv = widen_itv `|y' - x'|%:itv); last first.
-        admit.
-      exact: (H y x).
-    rewrite le_eqVlt => /predU1P[xy|].
-      have <- : x' = y' by [].
-      by rewrite subrr num_abs_le.
-    exact: (H x y).
-  move=> xy.
-  rewrite -xx' -yy'.
-  rewrite num_abs_le; last first.
-    by rewrite subr_ge0 ltW.
-  rewrite nngE/=.
+have xx' : x = x' by [].
+have yy' : y = y' by [].
+wlog  : x y x' y' Hx Hy xx' yy' / y < x.
+  move=> H.
+  have [xy|] := ltP x y.
+    rewrite -normrN opprB.
+    exact: (H y x).
+  rewrite le_eqVlt => /predU1P[xy|].
+    have <- : x' = y' by [].
+    by rewrite subrr normr0.
+  move=> yx.
+  exact: (H x y).
+move=> yx.
+rewrite -xx' -yy' -normrN opprB.
+rewrite ltr0_norm ?opprB; last by rewrite subr_lt0.
+have xyge0 : 0 <= x - y by rewrite subr_ge0 ltW.
+rewrite -num_abs_le// big_mkord.
+have [pn|] := ltnP n (size p).
+  apply: (bigmax_sup (Ordinal pn)) => //=.
+  rewrite num_abs_le//=.
   rewrite ger0_norm; last first.
-    rewrite subr_ge0 ltW//.
-    case: n np Hx Hy => //=.
-      move=> p0 Hx Hy.
-      have := itv_partition_in_itv pabp.
-      admit.
+    rewrite subr_ge0.
+    apply/pathP => //.
+    apply: path_ltW.
+    by have [] := pabp.
+  apply: lerB.
+  - by have := Hx; rewrite in_itv/= => /andP[].
+  - by have := Hy; rewrite in_itv/= => /andP[].
+move=> pn.
+have : x = b.
+  move: Hx; rewrite (nth_default _ pn).
+  move: pn.
+  rewrite leq_eqVlt => /predU1P[|].
     admit.
   admit.
 
