@@ -1701,7 +1701,7 @@ apply: subset_itvl.
 by rewrite bnd_simp /Delta -lerBrDl ge_min lexx.
 Qed.
 
-Let cont1_Delta : {in B, forall y, {within `[a, a + Delta], continuous f ^~ y}}.
+Lemma cont1_Delta : {in B, forall y, {within `[a, a + Delta], continuous f ^~ y}}.
 Proof.
 move=> /= x xB.
 apply: continuous_subspaceW; last exact: cont1.
@@ -2830,12 +2830,6 @@ rewrite {}/phioo.
 by case: cid2.
 Qed.
 
-Check (@banach_fixed_point R V Vr
-  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho)
-  (@is_contraction_picard_to_cont _ f _ _ ab _ k0 u0 r lip2 cont1 rho rho1)
-  closed_Vr
-  Vr0).
-
 Lemma contrac_simpl g t : Vr g ->  t \in `[a, (a + Delta f a b k u0 r rho)%E] ->  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho) g t = u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
 Proof.
     move => Vrg taad.
@@ -2845,10 +2839,25 @@ Proof.
 Qed.
 
 
+Lemma eq_on_itv_deriv  c d (g h : R -> R) :
+  {in `]c,d[, g =1 h} -> {in `]c,d[, g^`() =1 h^`()}.
+Proof.
+  move => d1 x xcd.
+  rewrite !derive1E.
+  apply near_eq_derive => //.
+  near=>  x0.
+  apply d1.
+  rewrite inE.
+  near:x0.
+  apply /near_in_itvoo.
+  by rewrite -inE.
+ Unshelve. all: by end_near. Qed. 
+
 Theorem picard_lindelof_existence :
   phioo a = u0 /\
   {in `]a, a + Delta f a b k u0 r rho[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
+
   have Vrphioo : Vr phioo.
     by apply (svalP (cid2 (banach_fixed_point (is_contraction_picard_to_cont ab k0 lip2 cont1 rho1) closed_Vr Vr0))).
 
@@ -2859,24 +2868,39 @@ Proof.
     rewrite /picard_from_cont /= picard_to_cont_init //.
   move => t tad.
   rewrite {1}phiooE.
+  have altd:  a < (a + Delta f a b k u0 r rho)%E by rewrite ltrDl Delta_gt0.    
   suff -> :  (contrac ab k0 lip2 cont1 rho phioo)^`() t =  (fun x0 => (u0 + (\int[mu]_(x in `[a, x0]) f x (phioo x))%R))^`()  t.
-    admit.
-      rewrite /derive1.
-      rewrite contrac_simpl //;last by move: tad; rewrite !inE;apply: subset_itv_oo_cc.
-    (* suff : *)
-  (* \forall x0 \near (nbhs t), *)
-  (*   contrac ab k0 lip2 cont1 rho phioo x0 *)
-  (*   = (u0 + (\int[mu]_(x in `[a, x0]) f x (phioo x))%R). *)
-  (*     move => H0. *)
-      congr (lim _).
 
-      rewrite /fmap.
-      apply eq_set => /= x.
-      apply /propext;split => [[e e0 eh] | ].
-      rewrite /preimage/=.
-      near=>h.
-      simpl.
-Admitted.
+    move : (tad).
+    rewrite inE /= in_itv /= => /andP[ta taDelta].
+    
+    have Fint :  (mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E] (EFin \o (fun x : R => f x (phioo x)))).
+      apply integrable_comp => //.
+      by rewrite  inE /= in_itv /= lexx ltW.
+    have Fcont :  {for t, continuous (fun x0 : R => f x0 (phioo x0))}.
+      rewrite inE in tad.
+      apply: (within_continuous_continuous _ _ tad) => //.
+      apply: (within_continuous_tmp _ k0 _ (u0 := u0) (r := r)).
+      by rewrite ltW.
+      exact: lip2_Delta.
+      exact: cont1_Delta.
+      by apply contFunSeg.
+      exact: Vrphioo.
+    have [H1 H2] := @continuous_FTC1_closed _ (fun x => f x (phioo x)) a t _ taDelta Fint ta Fcont.
+    rewrite derive1E deriveD /=;last 2 first.
+    exact: derivable_cst.
+    exact: H1.
+    rewrite -!derive1E.
+    rewrite H2.
+    by rewrite derive1_cst add0r.
+    rewrite /contrac/picard_to_cont/picard_from_cont.
+    move : t tad.
+    apply : eq_on_itv_deriv.
+    move => t tad /=.
+    rewrite -(@picard_from_cont_simpl _ _ a  b k _ r lip2 cont1 rho) //=.
+    rewrite eval_mod_on_itv => //.
+    by rewrite inE;apply: subset_itv_oo_cc;rewrite -inE.
+Qed.
 
 End picard_sketch.
 
