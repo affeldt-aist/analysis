@@ -658,7 +658,7 @@ Implicit Types (s : seq R) (x : R).
 
 Arguments unif_continuous : clear implicits.
 
-Let variation_merge1 s :
+Let variation_merge1_tmp s :
   itv_partition a b s -> (* not necessary? *)
   forall x, x \in `]a, b[ -> x \notin s ->
     ((variation a b f (merge <%R s [:: x]))%:E <=
@@ -673,11 +673,35 @@ have : exists s0 s1 : R, [/\ s0 \in s, s1 \in s &
  admit.
 Admitted.
 
+Let variation_merge1 s :
+  path <=%R a s -> last a s == b ->
+  forall x, x \in `[a, b] ->
+    ((variation a b f (merge <%R s [:: x]))%:E <=
+          (variation a b f s)%:E + 2 * omega_max a b f s)%E.
+Proof.
+move=> pas lsb x.
+have [xs|xs] := boolP (x \in s).
+- admit.
+have [us|us] := boolP (uniq s); last first.
+- admit.
+have [hsa|hsa] := eqVneq (head b s) a.
+  admit.
+rewrite in_itv/= => /andP[].
+have {}pas : path <%R a s.
+  admit.
+rewrite le_eqVlt => /predU1P[]ax; rewrite le_eqVlt => /predU1P[]xb.
+- admit.
+- admit.
+- admit.
+- apply: variation_merge1_tmp => //.
+  by rewrite in_itv/=; apply/andP.
+Admitted.
+
 Lemma disj_seq_merge_ltW s t : disj_seq s t -> merge <%R s t = merge <=%R s t.
 Proof.
 Admitted.
 
-Let variation_merge l s t :
+Let variation_merge_tmp l s t :
   itv_partition a b s -> itv_partition_max a b s <= l ->
   itv_partition a b t ->
   disj_seq s t ->
@@ -704,7 +728,22 @@ have s0 : s != [::].
 rewrite merge_cons; last first.
   have [+ _] := pht.
   by rewrite /= => /andP[].
-apply: (le_trans (IH _ _ _ _ _ _)).
+move: t s maxoo ps sl s0 IH pht disjst; apply: last_ind.
+  move=> s maxoo ps sl s0 IH pht disjst.
+  rewrite merge0r/= mul1e.
+  apply: variation_merge1 => //.
+  - apply: path_ltW.
+    by have [] := ps.
+  - by have [] := ps.
+  - apply: subset_itv_oc_cc.
+    apply: (itv_partition_in_itv pht).
+    by rewrite mem_seq1.
+move=> t tt IH1 s maxoo ps sl s0 IH2 pht disjst.
+have ttb : tt = b.
+  move: pht => [_].
+  by rewrite last_cons last_rcons => /eqP.
+(*
+apply: (le_trans (IH1 _ _ _ _ _ _ _)).
 - have [] := ps.
   move/path_ltW => psle lasb.
   have ahb : a <= h <= b.
@@ -723,7 +762,9 @@ apply: (le_trans (IH _ _ _ _ _ _)).
   exact: itv_partition_max_merge1.
 - apply: (itv_partition_cons1 _ pht).
   have pt := itv_partition_cons pht.
-  apply: itv_partition_neq0 pt. (* ? *) admit.
+  apply: (itv_partition_neq0 _ pt).
+  
+ (* ? *) admit.
 - admit.
 have hab : h \in `]a, b[.
   admit.
@@ -751,8 +792,21 @@ apply: variation_merge1 => //.
 have /disj_seq_allP[/allP + _] := disjst.
 apply.
 exact: mem_head.
+*)
 Admitted.
 
+(* without disj_seq *)
+Lemma variation_merge l s t :
+  itv_partition a b s -> itv_partition_max a b s <= l ->
+  itv_partition a b t ->
+  ((variation a b f (merge <%R s t))%:E <= (variation a b f s)%:E +
+  (size t)%:R%:E * 2 * omega_max a b f s)%E.
+Proof.
+have [|] := boolP (disj_seq s t).
+  move=> ? ? ? ?.
+  exact: variation_merge_tmp.
+move=> ndsst.
+Admitted.
 Lemma variation_subseq' s t :
   subseq s t ->
   variation a b f s <= variation a b f t.
@@ -814,7 +868,7 @@ pose eps := ((V' - A) / (4 * m)%:R).
 have eps0 : 0 < eps.
   admit.
 move/(_ _ eps0) => [d d0 unifcf].
-exists d => p pmaxd.
+exists d => p pmaxd. (* p is (I) in the paper *)
 
 apply: (@lt_le_trans _ _ ((V' + A) / 2)).
   (* AV' *)
@@ -833,8 +887,7 @@ rewrite lerBlDr -lee_fin EFinD.
 have [pabp abpd] := pmaxd.
 have abp_led : itv_partition_max a b p <= d.
   by rewrite le_eqVlt; apply/predU1P; left.
-apply: (le_trans (@variation_merge _ p X' pabp abp_led partX' _)).
-  admit.
+apply: (le_trans (@variation_merge _ p X' pabp abp_led partX')).
 apply: leeD2l.
 (* unifcf *)
 rewrite -/m.
@@ -864,9 +917,10 @@ rewrite ereal_inf_EFin; last 2 first.
 - admit.
 - admit.
 rewrite -EFinB lee_fin.
-suff : forall x y, x \in `[(nth b (a :: p) n), (nth b p n)] ->
- y \in `[(nth b (a :: p) n), (nth b p n)] ->
-  `|f x - f y| <= eps.
+suff : forall x y, x \in `](nth b (a :: p) n), (nth b p n)[ ->
+ y \in `](nth b (a :: p) n), (nth b p n)[ ->
+  `|f x - f y| < eps.
+  
   admit.
 move=> x y Hx Hy.
 have @x' : subspace `[a, b].
@@ -876,19 +930,21 @@ have @y' : subspace `[a, b].
   red.
   exact: y.
 have := unifcf (x', y').
+
 rewrite /=/ball/=.
-move=> /(_ _ )/ltW.
+move=> /(_ _ ).
 apply.
 rewrite /subspace_ball.
 rewrite ifT; last first.
   rewrite inE/=.
+  apply: subset_itv_oo_cc.
+  
   admit.
 rewrite /=; split.
   admit.
 rewrite /ball/=.
 rewrite -abpd.
 rewrite /itv_partition_max/=.
-(* HB instance, {nonneg R} is Monoid *)
 rewrite lt_neqAle; apply/andP; split.
   admit.
 have xx' : x = x' by [].
@@ -917,22 +973,19 @@ have [pn|] := ltnP n (size p).
     apply: path_ltW.
     by have [] := pabp.
   apply: lerB.
-  - by have := Hx; rewrite in_itv/= => /andP[].
-  - by have := Hy; rewrite in_itv/= => /andP[].
+  - by apply/ltW; have := Hx; rewrite in_itv/= => /andP[].
+  - by apply/ltW; have := Hy; rewrite in_itv/= => /andP[].
 move=> pn.
-have eqb : forall z, z \in `[(nth b (a :: p) n), (nth b p n)] -> z = b.
-  rewrite (nth_default _ pn).
-  move: pn.
-  rewrite leq_eqVlt => /predU1P[|pn].
-    move=> <- z.
-    rewrite -last_nth.
-    have [_ /eqP ->] := pabp.
-    by rewrite in_itv/= -eq_le => /eqP ->.
-  rewrite nth_default//= => z.
-  by rewrite in_itv/= -eq_le => /eqP ->.
-have -> := eqb x Hx.
-have -> := eqb y Hy.
-by rewrite num_abs_le subrr.
+move: Hx.
+rewrite (nth_default _ pn).
+move: pn.
+rewrite leq_eqVlt => /predU1P[|pn].
+  move=> <-.
+  rewrite -last_nth.
+  have [_ /eqP ->] := pabp.
+  by rewrite in_itv/= => /andP[bx /(lt_trans bx)]; rewrite ltxx.
+rewrite nth_default//=.
+by rewrite in_itv/= => /andP[bx /(lt_trans bx)]; rewrite ltxx.
 Admitted.
 
 Lemma lemma5 :
