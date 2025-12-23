@@ -1573,7 +1573,7 @@ Proof.
 rewrite /picard_from_cont'.
 suff: {within `[a, b], continuous (fun t => \int[mu]_(x0 in `[a, t]) f x0 (g x0))}.
   move=> abf x.
-(*  apply: continuousD.
+  apply: cvgD.
     exact: cvg_cst.
   exact: abf.
 move=> /= x.
@@ -1581,7 +1581,7 @@ apply: parameterized_integral_continuous => //.
 apply: continuous_compact_integrable; first exact: segment_compact.
 move=> {x}.
 exact: (within_continuous_tmp ab k0 lip2 cont1).
-Qed.*) Admitted.
+Qed.
 
 HB.instance Definition _ := @isContFunSeg.Build R a b
   (picard_from_cont' f imageg)
