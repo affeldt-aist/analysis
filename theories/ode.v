@@ -22,6 +22,7 @@ Import numFieldNormedType.Exports.
 Local Open Scope ring_scope.
 Local Open Scope classical_set_scope.
 
+(* Not used here. PR? *)
 Section setInterval.
 Context {R : realType}.
 
@@ -84,8 +85,8 @@ Qed.
 
 End setInterval.
 
-(* NB: attempt by Ishiguro-san to rewrite FTC2 with a notation
-  for integral that can be swapped (int_a^b = - int_b^a) *)
+(* NB: attempt by Ishiguro-san to rewrite FTC2 with a notation *)
+(*   for integral that can be swapped (int_a^b = - int_b^a) *)
 (* TODO: maybe not needed right now *)
 
 Notation "`[| x , y |]" := (setInterval (Interval (BLeft x) (BRight y))).
@@ -99,8 +100,7 @@ Let mu := (@lebesgue_measure R).
 
 (*
 TODO restore
-
-Definition inteitv (a b : R) f :=
+tinteitv (a b : R) f :=
   if (a < b)%R then \int[mu]_(x in `[a, b]) f x
                else - \int[mu]_(x in `[b, a]) f x.
 
@@ -668,8 +668,8 @@ End ring_structure_on_quotient_classes.
 Section zmodule_normed.
 Context {R : realType} (a b : R) (ab : a <= b).
 
-Definition infty_norm0 (f : {fun `[a, b]%classic >-> [set: R]}) :=
-  sup ((Num.norm \o f) @` `[a, b]%classic).
+Definition infty_norm0 (f : {fun `[a, b] >-> [set: R]}) :=
+  sup ((Num.norm \o f) @` `[a, b]).
 
 Local Notation V := (quot_contFunSegType ab).
 
@@ -752,10 +752,11 @@ Proof.
    move => h. 
    rewrite /infty_norm0.
    rewrite sup_upper_bound //=.
-   apply normr_has_sup.
+   exact: normr_has_sup.
    exists x => //.
-   by rewrite -inE.
+   by rewrite inE in h.
 Qed.
+
 Lemma eqmod_on_itv f g :
   f = g %[mod V] -> {in `[a,b], f =1 g}.
 Proof.
@@ -1073,8 +1074,8 @@ have closet01 :  closed `[t0, t1] by exact: interval_closed.
 have h0 x0 : g x0 \in (interior B : set R) -> g x0 \in B.
   rewrite /B interior_closed_ballE//.
   rewrite closed_ball_itv//.
-  rewrite ball_itv 2!inE/=.
-  by rewrite !in_itv //= => /andP[? ?]; rewrite !ltW.
+  rewrite ball_itv 2!inE.
+  exact: subset_itv_oo_cc.
 case: ltgtP => [hyd|_|<-] // => _.
   case: ltgtP => [hyd'|_|->] // => _.
   apply/set_mem.
@@ -1142,9 +1143,9 @@ Hypothesis k1 : k > 0.
 Variables (u0 : R) (r : {posnum R}).
 Let B := closed_ball u0 r%:num.
 
-Hypothesis lip2 : {in `[t0, t1], forall x, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[t0, t1]%R, forall x, k.-lipschitz_B (f x)}.
 
-Lemma cont2 : {in `[t0, t1], forall x, {within B, continuous f x}}.
+Lemma cont2 : {in `[t0, t1]%R, forall x, {within B, continuous f x}}.
 Proof.
 move=> x xt01.
 rewrite [B]closed_ball_itv//.
@@ -1252,7 +1253,7 @@ Variable k : R.
 Hypothesis k0 : k > 0.
 (* properties of the function f defining the differential equation: *)
 (* k-lipschitz for all t *)
-Hypothesis lip2 : {in `[t0, t1], forall x, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[t0, t1]%R, forall x, k.-lipschitz_B (f x)}.
 (* within-continuous for all y *)
 Hypothesis cont1 : {in B, forall y, {within `[t0, t1], continuous f ^~ y}}.
 
@@ -1262,16 +1263,15 @@ Local Lemma picard_from_cont'_isContFunSegBuild_helper
   f x (g x) @[x --> t0^'+] --> f t0 (g t0).
 Proof.
 apply/cvgrPdist_le => /= e e0.
-have dd : t0 \in `[t0, t1].
-  by rewrite inE/= in_itv/= lexx /= ltW.
+have dd : t0 \in `[t0, t1]%R.
+  by rewrite  in_itv/= lexx /= ltW.
 have e20 : 0 < e / 2 by rewrite divr_gt0.
 (* use continuity in first variable *)
 have c1_ineq :  \forall t \near t0^'+,  `|f t0 (g t0) - f t (g t0)| <= (e/2).
   have : g t0 \in (B : set R).
    apply/mem_set.
    apply: imageg => /=.
-   exists t0 => //=.
-   by rewrite inE in dd.
+   by exists t0 => //=.
   move /(cont1)/continuous_within_itvP => /(_ t01).
   move=> [_ + _].
   rewrite cvgrPdist_le /=.
@@ -1293,17 +1293,15 @@ have cg_ineq :  \forall t \near (t0)^'+,  `|(g (t0)) - (g t)| <= k^-1 *(e/2).
 (* use Lipschitz continuity *)
 have c2_ineq :  \forall t \near (t0)^'+,  `|f t (g (t0)) - f t (g t)| <= (e/2).
   near=> t.
-  have td' : t \in `[(t0), t1].
-    rewrite inE /= in_itv /=;apply /andP;split=>//.
+  have td' : t \in `[(t0), t1]%R.
+    rewrite in_itv /=;apply /andP;split=>//.
     by rewrite ltW//.
   have gNdB: B (g (t0)).
     apply: imageg => //=.
-    exists (t0) => //=.
-    by rewrite inE in dd.
+    by exists (t0) => //=.
   have Bgt : B (g t).
     apply: imageg => //=.
-    exists (t) => //=.
-    by rewrite inE in td'.
+    by exists (t) => //=.
   move: lip2 => /(_ _ td').
   move /(_ (g t0, g t)) => /=.
   move=> /(_ (conj gNdB Bgt)).
@@ -1323,16 +1321,15 @@ Local Lemma picard_from_cont'_isContFunSegBuild_helper_left
   f x (g x) @[x --> t1^'-] --> f t1 (g t1).
 Proof.
 apply/cvgrPdist_le => /= e e0.
-have dd : t1 \in `[t0, t1].
-  by rewrite inE/= in_itv/= lexx /= andbT ltW.
+have dd : t1 \in `[t0, t1]%R.
+  by rewrite in_itv/= lexx /= andbT ltW.
 have e20 : 0 < e / 2 by rewrite divr_gt0.
 (* use continuity in first variable *)
 have c1_ineq :  \forall t \near t1^'-,  `|f t1 (g t1) - f t (g t1)| <= e / 2.
   have : g t1 \in (B : set R).
    apply/mem_set.
    apply: imageg => //=.
-   exists t1 => //.
-   by rewrite in_itv/= lexx /= ltW.
+   by exists t1 => //.
   move /(cont1)/continuous_within_itvP => /(_ t01).
   move=> [_ _ +].
   rewrite cvgrPdist_le /=.
@@ -1354,18 +1351,16 @@ have cg_ineq :  \forall t \near (t1)^'-,  `|(g (t1)) - (g t)| <= k^-1 *(e/2).
 (* use Lipschitz continuity *)
 have c2_ineq :  \forall t \near (t1)^'-,  `|f t (g (t1)) - f t (g t)| <= (e/2).
   near=> t.
-  have td' : t \in `[(t0), t1].
-    rewrite inE /= in_itv /=;apply /andP;split=>//.
+  have td' : t \in `[(t0), t1]%R.
+    rewrite in_itv /=;apply /andP;split=>//.
     by rewrite ltW//.
   have gNdB: B (g (t1)).
     apply: imageg => /=.
-    exists (t1) => //=.
-    by rewrite inE in dd.
+    by exists (t1) => //=.
   have Bgt : B (g t).
     apply: (imageg).
-    exists (t) => //=.
-    by rewrite inE in td'.
-  move: lip2 => /(_ _ td').
+    by exists (t) => //=.
+  move: lip2 => /(_ _  td').
   move /(_ (g t1, g t)) => /=.
   move=> /(_ (conj gNdB Bgt)).
   move/le_trans; apply.
@@ -1443,7 +1438,7 @@ Let B : set R := closed_ball u0 r%:num.
 
 Variable k : R.
 Hypothesis k0 : k > 0.
-Hypothesis lip2 : {in `[a, b], forall x, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[a, b]%R, forall x, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 
 Variable g : R -> U.
@@ -1467,12 +1462,9 @@ apply/continuous_within_itvP; [by [] | split].
     move: gxB.
     rewrite /B.
     rewrite !closed_ball_itv//.
-    rewrite !inE/=.
-    rewrite !in_itv/=/= => /andP[L1 L2].
-    rewrite subr_ge0 ler_norml.
-    rewrite -lerBlDr opprK addrC.
-    rewrite L1/=.
-    by rewrite lerBlDl.
+    rewrite inE /=.
+    rewrite in_itv/=/= => L.
+    by rewrite subr_ge0 ler_distl.
   near=> t.
   rewrite /f'.
   rewrite -(subrK (f t (g x)) (f x (g x))) -(addrA _ (f t (g x))).
@@ -1498,28 +1490,23 @@ apply/continuous_within_itvP; [by [] | split].
     near_simpl.
     exact: (near_ball x _ r0_gt0).
   + have := @lip2 t.
-    have t1dd : t \in `[a, b].
+    have t1dd : t \in `[a, b]%R.
       near: t.
       exists (Num.min (b - x) (x - a)) => /=.
         rewrite lt_min subr_gt0 dx/=.
         by rewrite subr_gt0.
       move=> z/=.
       rewrite lt_min => /andP[H1 H2].
-      rewrite inE/= in_itv/=; apply/andP; split.
+      rewrite in_itv/=; apply/andP; split.
         move: H2.
-        rewrite -ltrBlDr opprK addrC.
-        rewrite -ltrBrDr => /ltW/le_trans; apply.
-        rewrite -lerBrDr opprK -lerBlDl.
-        by rewrite ler_norm.
+        by rewrite ltr_distlC subKr => /andP[/ltW  ].
       move: H1.
-      rewrite ltrBrDr => /ltW; apply/le_trans.
-      by rewrite -lerBlDr distrC ler_norm.
-    move/(_ t1dd).
+      by rewrite ltr_distlC (addrC x (b-x)) subrK => /andP[_ /ltW].
+    move/(_  t1dd).
     move/set_mem in gxB.
     have Bgt : B (g t).
       apply: imageg => /=.
-      exists t => //.
-      by rewrite inE in t1dd.
+      by exists t => //.
     move/(_ (g x, g t)) => /=.
     move/(_ (conj gxB Bgt)).
     move=> /le_trans; apply.
@@ -1552,7 +1539,7 @@ Let B : set R := closed_ball u0 r%:num.
 Variable k : R.
 Hypothesis k0 : k > 0.
 (* properties of the function f defining the differential equation: *)
-Hypothesis lip2 : {in `[a, b], forall x, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[a, b]%R, forall x, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 
 Variable g : R -> U (*contFunBallType d0*).
@@ -1608,7 +1595,7 @@ Variables (u0 : U) (r : {posnum R}).
 Let B := closed_ball u0 r%:num.
 
 Definition picard_from_cont
-  (k : R) (lcf_x : {in `[a, b], forall x, k.-lipschitz_B (f x)})
+  (k : R) (lcf_x : {in `[a, b]%R, forall x, k.-lipschitz_B (f x)})
   (cf_y : {in B, forall y, {within `[a, b], continuous f ^~ y}})
   (g : R -> R) : R -> R :=
 match pselect (g @` `[a, b] `<=` (*interior*) B) with
@@ -1680,7 +1667,7 @@ Hypothesis ab : a < b.
 Variables (u0 : U) (r : {posnum R}).
 Let B := closed_ball u0 r%:num.
 Hypothesis k0 : 0 < k.
-Hypothesis lip2 : {in `[a, b], forall x, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[a, b]%R, forall x, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 
 Definition hmax : R := sup [set `|f t u0| | t in `[a, b]].
@@ -1693,10 +1680,21 @@ Variable rho : {posnum R}. (* rho < 1 *)
 
 Definition Delta := Num.min (b - a) (Num.min (r%:num / (k * r%:num + hmax)) (rho%:num / k)).
 
-Lemma lip2_Delta : {in `[a, a + Delta], forall x, k.-lipschitz_B (f x)}.
+(* Todo : rename *)
+
+Lemma in_switch  (I : interval R) P : {in [set` I],forall x, P x} <-> {in I,forall x, P x}.
+Proof.
+  split => [h x xI| h x xI];apply h.
+  by rewrite inE.
+  by rewrite inE in xI.
+Qed.
+
+Lemma lip2_Delta : {in `[a, a + Delta]%R, forall x, k.-lipschitz_B (f x)}.
 Proof.
 (* TODO: generalize to the subset relation *)
-apply: lipschitzW lip2.
+move /in_switch: lip2 => lip2'.
+apply /in_switch.
+apply: lipschitzW lip2'.
 apply: subset_itvl.
 by rewrite bnd_simp /Delta -lerBrDl ge_min lexx.
 Qed.
@@ -1766,15 +1764,17 @@ Check fun g : V => picard_from_cont_not g : contFunSegType _ _.
 Check fun g : V => (\pi_(V)%qT (picard_from_cont_not g )) : V.
 
 Definition picard_to_cont (x : V) : V := \pi_V%qT (picard_from_cont_not x).
-Lemma integrable_comp (F : V) y:  y \in `[a, (a + Delta)] ->   [set F x | x in `[a, y]] `<=` closed_ball u0 r%:num -> mu.-integrable `[a, y] (EFin \o (fun t : R => f t (F t))).
+Lemma integrable_comp (F : V) y:  y \in `[a, (a + Delta)]%R ->   [set F x | x in `[a, y]] `<=` closed_ball u0 r%:num -> mu.-integrable `[a, y] (EFin \o (fun t : R => f t (F t))).
 Proof.
   move => yaaDelta ab0r.
   apply: continuous_compact_integrable.
     by apply: segment_compact.
-   move: (yaaDelta); rewrite inE /= in_itv/= => /andP[]. 
+   move: (yaaDelta); rewrite  in_itv/= => /andP[]. 
    move=> ay yaDelta.
    apply: (within_continuous_tmp ay k0).
-   - apply: lipschitzW lip2_Delta. 
+  - apply/in_switch.
+    move /in_switch : lip2_Delta.
+    apply: lipschitzW.
     apply: subset_itvl.
     by rewrite bnd_simp.
   - rewrite -/B.
@@ -1804,10 +1804,9 @@ rewrite [X in _ <= X <= _](_ : _ = (picard_from_cont_not F) y); last first.
        picard_from_cont_not F %[mod V])%qT.
     by rewrite reprK.
   move=> <-//.
-  have aDeltab : (a + Delta)%E <= b.
+  have aDeltab : (a + Delta) <= b.
     by rewrite -lerBrDl ge_min lexx.
-  rewrite inE/=.
-  by move: yaaDelta; rewrite !in_itv/=.
+  by rewrite inE/=.
 rewrite /picard_from_cont/=.
 case: pselect => /= abu0r; last first.
   done.
@@ -1816,7 +1815,7 @@ rewrite -ler_distl.
 rewrite -addrA subrKC.
 rewrite (le_trans (le_normr_Rintegral _ _))//=.
   rewrite /=.
-  apply integrable_comp; first by rewrite inE.
+  apply integrable_comp; first by done.
   apply: subset_trans abu0r. 
   apply: image_subset.
   apply: subset_itvl.
@@ -1824,7 +1823,6 @@ rewrite (le_trans (le_normr_Rintegral _ _))//=.
   by move : yaaDelta;rewrite in_itv /= => /andP[].
 have integrable2 :   mu.-integrable `[a, y] (EFin \o (fun x  => f x (F x))).
     apply integrable_comp => //=.
-    by rewrite inE.
     apply: subset_trans abu0r.
     apply image_subset.
     apply: subset_itvl.
@@ -1890,19 +1888,21 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
     exact: bounded_cst.
   - move=> x xay.
     rewrite lerD//.
-      have xaaDelta : x \in `[a, (a + Delta)%E].
-      rewrite inE.
+      have xaaDelta : x \in `[a, (a + Delta)]%R.
       move : x xay.
       apply: subset_itvl.
       rewrite bnd_simp.
-      by move : yaaDelta;rewrite in_itv /= => /andP[].
-      move/lip2_Delta : (xaaDelta).
+      by rewrite (itvP yaaDelta).
+      move/lip2_Delta :  xaaDelta.
       move/(_ (F x, u0)).
       apply.
       split => /=.
         apply: invariant => /=.
         exists x => //.
-        by rewrite inE in xaaDelta.
+        move : xay.
+        apply: subset_itvl.
+        rewrite bnd_simp.
+        by rewrite (itvP yaaDelta).
       by apply: closed_ballxx.
     rewrite /hmax.
     apply: sup_le => /=.
@@ -2035,7 +2035,7 @@ End picard_to_cont_normedtype.
 Section picard_to_cont_normedtype2.
 Context {R : realType} {a b : R} (ab : a <= b).
 Variables (f : R -> R -> R) (k : R).
-Hypothesis lip2 : {in `[a, b], forall x, k.-lipschitz (f x)}.
+Hypothesis lip2 : {in `[a, b]%R, forall x, k.-lipschitz (f x)}.
 Hypothesis cont1 : {in `[a, b], forall y, {within `[a, b], continuous f ^~ y}}.
 
 Local Notation contFunBallType := (quot_contFunSegType ab).
@@ -2237,7 +2237,7 @@ Variable k : R.
 Hypothesis k0 : 0 < k.
 Variables (u0 : U) (r : {posnum R}).
 Let B := closed_ball u0 r%:num.
-Hypothesis lip2 : {in `[a, b], forall x, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[a, b]%R, forall x, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 
 
@@ -2264,7 +2264,7 @@ Proof.
     rewrite closed_ballE => //.
     apply.
     exists x => //.
-    by rewrite -inE.
+    by rewrite inE in adx.
  -  move => _ [x xad] <-.
     rewrite closed_ballE => //.
     rewrite /closed_ball_ /=.
@@ -2347,7 +2347,6 @@ rewrite (addrC u0).
 rewrite addrKA.
 have integrable1 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (x x0))).
   apply integrable_comp => //=.
-  by rewrite inE.
   move => _ [x0 h] <-.
   apply: Hg => /=.
   exists x0 => //.
@@ -2357,7 +2356,6 @@ have integrable1 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (x x0))).
 
 have integrable2 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (y x0))).
   apply integrable_comp => //=.
-  by rewrite inE.
   move => _ [x0 h] <-.
   apply: Hg2 => /=.
   exists x0 => //.
@@ -2394,9 +2392,7 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
       rewrite integrableMr //=.
       exact: bounded_cst.
     move=> x0 x0at.
-    have : x0 \in `[a, b].
-    rewrite inE.
-    by apply /subset_itvl/x0at.
+    have : x0 \in `[a, b]%R by apply /subset_itvl/x0at.
     move/lip2.
     rewrite /dominated_by/= => /(_ (x x0, y x0)) /=.
     apply; split.
@@ -2762,7 +2758,7 @@ Variables (f : R -> U -> R) (a b : R) (k : R) (u0 : U) (r : {posnum R}).
 Hypothesis ab : a < b.
 Hypothesis k0 : 0 < k.
 Let B := closed_ball u0 r%:num.
-Hypothesis lip2 : {in `[a, b], forall x : R, k.-lipschitz_B (f x)}.
+Hypothesis lip2 : {in `[a, b]%R, forall x : R, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 Variable rho : {posnum R}.
 Hypothesis rho1 : (rho%:num < 1).
@@ -2876,7 +2872,7 @@ Proof.
     
     have Fint :  (mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E] (EFin \o (fun x : R => f x (phioo x)))).
       apply integrable_comp => //.
-      by rewrite  inE /= in_itv /= lexx ltW.
+      by rewrite   in_itv /= lexx ltW.
     have Fcont :  {for t, continuous (fun x0 : R => f x0 (phioo x0))}.
       rewrite inE in tad.
       apply: (within_continuous_continuous _ _ tad) => //.
