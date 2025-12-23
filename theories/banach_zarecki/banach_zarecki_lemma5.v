@@ -469,6 +469,38 @@ Qed.
 
 End itv_partition_length.
 
+Section nonnegR_is_monoid.
+Context {R : realType}.
+
+Notation maxr := (@maxr {nonneg R}).
+
+Lemma maxrA : associative maxr.
+Proof. exact: maxA. Qed.
+
+Lemma maxr0 : left_id 0%:nng maxr.
+Proof.
+move=> x.
+apply/max_idPr.
+rewrite (_ : widen_itv 0%:itv = widen_itv `|@GRing.zero R|%:itv).
+  by rewrite num_abs_le.
+apply/esym/eqP.
+by rewrite num_abs_eq0.
+Qed.
+
+Lemma max0r : right_id 0%:nng maxr.
+Proof.
+move=> x.
+apply/max_idPl.
+rewrite (_ : widen_itv 0%:itv = widen_itv `|@GRing.zero R|%:itv).
+  by rewrite num_abs_le.
+apply/esym/eqP.
+by rewrite num_abs_eq0.
+Qed.
+
+HB.instance Definition _ := Monoid.isLaw.Build {nonneg R} 0%:nng maxr maxrA maxr0 max0r.
+
+End nonnegR_is_monoid.
+
 Section itv_partition_length_lemmas.
 Context {R : realType}.
 Implicit Types (a b : R) (f : R -> R).
@@ -478,15 +510,65 @@ Lemma itv_partition_max0 a b s :
   0 <= itv_partition_max a b s.
 Proof. by rewrite /itv_partition_max. Qed.
 
-Lemma itv_partition_max_merge1 a b l s x :
-  path <%R a s -> last a s == b ->
-  itv_partition_max a b s <= l ->
-  itv_partition_max a b (merge <%R s [:: x]) <= l.
+Lemma itv_partition_max_eq_merge_subseq a b s t :
+  path <=%R a s -> path <=%R a t ->
+  subseq t s ->
+  itv_partition_max a b (merge <=%R s t) = itv_partition_max a b s.
+Proof.
+elim: t s => //=.
+  move=> pas _ _.
+  by rewrite merge0r.
+move=> h t IH s pas /andP[ah pht] subhts.
+rewrite merge_cons_mergel; last 2 first.
+- exact: le_trans.
+- exact: le_path_min.
+rewrite IH; last 3 first.
+- apply: merge_path => //.
+  by rewrite /= ah.
+- apply: (path_le _ ah) => //; exact: le_trans.
+- apply: (@subseq_trans _ s); last exact: subseq_mergel.
+  apply: subseq_trans subhts.
+  exact: subseq_cons.
+rewrite /itv_partition_max => //.
+rewrite size_merge.
+have hs : h \in s.
+  have /mem_subseq/subsetP := subhts.
+  move/(_ h); rewrite 2!inE; apply.
+  exact: mem_head.
+set n := index h (s ++ [:: h]).
+have : (n <= size (s ++ [:: h]))%N.
+  by rewrite index_size.
+rewrite size_cat/= addn1 => ns.
+(* needs Monoid instance! *)
+(* have : (\big[@Num.max {nonneg R}/_]_(0 <= n0 < (size s).+1)
+      widen_itv `|nth b (merge <=%R s [:: h]) n0 - nth b (a :: merge <=%R s [:: h]) n0|%:itv)%:num = a.
+rewrite big_cat_nat.
+have := (@big_cat_nat {nonneg R} (0%:nng) (@maxr {nonneg R})). (leq0n n) ns).
+*)
+Admitted.
+
+Lemma path_merge_ltW a b (s t : seq R) :
+  path <=%R a s -> subseq t s ->
+itv_partition_max a b s = itv_partition_max a b (merge <=%R s t).
 Proof.
 Admitted.
 
+Lemma itv_partition_max_merge1_le a b s x :
+  path <%R a s -> a <= x <= b -> last a s == b ->
+  itv_partition_max a b (merge <%R s [:: x]) <= itv_partition_max a b s.
+Proof.
+move=> ps /eqP sb.
+have [xs|xs] := boolP (x \in s).
+  (* rewrite itv_partition_max_merge_subseq. *)
+  admit.
+(*
+apply: subseq_itv_partition_max.
+have itv_partition_max_merge : 
+*)
+Admitted.
+
 Lemma itv_partition_max_merge1' a b l s x :
-  path <%R a s -> last a s == b ->
+  path <=%R a s -> last a s == b ->
   itv_partition_max a b s <= l ->
   itv_partition_max a b (merge <=%R s [:: x]) <= l.
 Proof.
@@ -581,6 +663,11 @@ Qed.
 
 Lemma disj_seq_allP {T : eqType} (s t : seq T) :
   disj_seq s t <-> (all (fun x => x \notin s) t /\ all (fun x => x \notin t) s).
+Proof.
+Admitted.
+
+Lemma disj_seq_merge_ltW {R : realType} (s t : seq R) : disj_seq s t ->
+ merge <%R s t = merge <=%R s t.
 Proof.
 Admitted.
 
@@ -740,10 +827,6 @@ rewrite le_eqVlt => /predU1P[]ax; rewrite le_eqVlt => /predU1P[]xb.
   by rewrite in_itv/=; apply/andP.
 Admitted.
 
-Lemma disj_seq_merge_ltW s t : disj_seq s t -> merge <%R s t = merge <=%R s t.
-Proof.
-Admitted.
-
 Let variation_merge_tmp l s t :
   itv_partition a b s -> itv_partition_max a b s <= l ->
   itv_partition a b t ->
@@ -804,8 +887,9 @@ apply: (le_trans (IH2 _ _ _ _ _ _)).
 - apply: itv_partition_merge1 => //.
   + admit.
   + admit.
-- apply: itv_partition_max_merge1 => //.
+- apply: (le_trans (itv_partition_max_merge1_le _ _ _)) => //.
   + by have [] := ps.
+  + admit.
   + by have [] := ps.
 (*
 rewrite disj_seq_merge_ltW; last first.
@@ -873,6 +957,7 @@ have [|] := boolP (disj_seq s t).
   exact: variation_merge_tmp.
 move=> ndsst.
 Admitted.
+
 Lemma variation_subseq' s t :
   subseq s t ->
   variation a b f s <= variation a b f t.
