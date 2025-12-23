@@ -152,11 +152,14 @@ Implicit Types (s : seq R) (x : R).
 Definition itv_partition_max a b s : R := let pnth := nth b (a :: s) in
   (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
 
+(*
 Definition itv_partition_with_max a b l s :=
   itv_partition a b s /\ itv_partition_max a b s = l.
+*)
 
 Definition variations_with_max a b f l : set R :=
-   [set variation a b f s | s in itv_partition_with_max a b l].
+   [set r| exists s, [/\ r = variation a b f s,
+ itv_partition a b s & itv_partition_max a b = l]].
 
 Definition omega_max a b f s : \bar R :=
    \big[maxe/-oo%E]_(0 <= n < size s) oscillation f
@@ -285,6 +288,37 @@ apply: pwltas.
   move: xsb.
   rewrite mem_rcons in_cons.
   by move/predU1P; case.
+Qed.
+
+Lemma itv_partition_head_in_itv a b s t :
+  itv_partition a b (rcons s t) -> {in s, forall x, x \in `]a, b[}.
+Proof.
+move=> pst x xs.
+have in_ab := itv_partition_in_itv pst. 
+rewrite in_itv/=; apply/andP; split.
+  have := in_ab x.
+  rewrite mem_rcons in_cons.
+  have H : (x == t) || (x \in s) by apply/orP; right.
+  by move/(_ H); rewrite in_itv/= => /andP[ax xb].
+have [] := pst.
+rewrite lt_path_pairwise.
+move/pairwiseP => lt_ast.
+move/eqP <-; rewrite (last_nth a).
+have : x \in a :: (rcons s t).
+  rewrite in_cons; apply/orP; right.
+  by rewrite mem_rcons in_cons xs orbT.
+move/(nth_index a) <-.
+apply: lt_ast; last 2 first.
+- by rewrite inE.
+- rewrite /=.
+  rewrite ifF; last first.
+    rewrite lt_eqF => //.
+    have [/lt_path_min/allP + _] := pst.
+    by apply; rewrite mem_rcons in_cons xs orbT.
+  by rewrite size_rcons -cats1 index_cat xs ltnS index_mem.
+rewrite inE index_mem.
+rewrite in_cons; apply/orP; right.
+by rewrite mem_rcons in_cons xs orbT.
 Qed.
 
 Lemma omega_max_le_oscillation a b f s :
@@ -445,6 +479,14 @@ Lemma itv_partition_max0 a b s :
 Proof. by rewrite /itv_partition_max. Qed.
 
 Lemma itv_partition_max_merge1 a b l s x :
+  path <%R a s -> last a s == b ->
+  itv_partition_max a b s <= l ->
+  itv_partition_max a b (merge <%R s [:: x]) <= l.
+Proof.
+Admitted.
+
+Lemma itv_partition_max_merge1' a b l s x :
+  path <%R a s -> last a s == b ->
   itv_partition_max a b s <= l ->
   itv_partition_max a b (merge <=%R s [:: x]) <= l.
 Proof.
@@ -454,6 +496,7 @@ elim: s => //.
   rewrite big_nat_recl// big_nil/=.
   
 rewrite /itv_partition_max/=.
+
 Admitted.
 
 Lemma itv_partition_max_merge a b l s t :
@@ -731,43 +774,66 @@ rewrite merge_cons; last first.
 move: t s maxoo ps sl s0 IH pht disjst; apply: last_ind.
   move=> s maxoo ps sl s0 IH pht disjst.
   rewrite merge0r/= mul1e.
-  apply: variation_merge1 => //.
+  apply: variation_merge1_tmp => //.
+  - admit.
+  - admit.
+(* apply: variation_merge1 => //.
   - apply: path_ltW.
     by have [] := ps.
   - by have [] := ps.
   - apply: subset_itv_oc_cc.
     apply: (itv_partition_in_itv pht).
     by rewrite mem_seq1.
+*)
 move=> t tt IH1 s maxoo ps sl s0 IH2 pht disjst.
 have ttb : tt = b.
   move: pht => [_].
   by rewrite last_cons last_rcons => /eqP.
-(*
-apply: (le_trans (IH1 _ _ _ _ _ _ _)).
+apply: (le_trans (IH2 _ _ _ _ _ _)).
+- apply: le_lt_trans maxoo.
+  have [ps_lt lsb] := ps.
+  apply: omega_max_merge1 => //.
+  exact: path_ltW.
 - have [] := ps.
   move/path_ltW => psle lasb.
-  have ahb : a <= h <= b.
-    apply/andP; split.
-    + by have [/=/andP[/ltW+ _] _] := pht.
-    + rewrite -(@nth_index _ b h (h :: t)); last exact: mem_head.
-      apply: itv_partition_nth_le; first by rewrite /= eqxx//.
-      apply: itv_partition_cons pht.
-  have := @omega_max_merge1 _ a b f s h s0 psle lasb ahb.
-  by move/le_lt_trans; apply.
-  apply: itv_partition_merge1 => //=.
+  apply/andP; split.
+  + by have [/=/andP[/ltW+ _] _] := pht.
+  + rewrite -(@nth_index _ b h (h :: (rcons t tt))); last exact: mem_head.
+    apply: itv_partition_nth_le; first by rewrite /= eqxx//.
+    exact: itv_partition_cons pht.
+- apply: itv_partition_merge1 => //.
+  + admit.
+  + admit.
+- apply: itv_partition_max_merge1 => //.
+  + by have [] := ps.
+  + by have [] := ps.
+(*
+rewrite disj_seq_merge_ltW; last first.
+    apply/disj_seq_allP; split; apply/allP.
+      admit.
     admit.
-  admit.
-- rewrite disj_seq_merge_ltW; last first.
-    admit.
-  exact: itv_partition_max_merge1.
+  exact: itv_partition_max_merge1'.
+*)
 - apply: (itv_partition_cons1 _ pht).
   have pt := itv_partition_cons pht.
   apply: (itv_partition_neq0 _ pt).
-  
- (* ? *) admit.
+  rewrite lt_eqF//.
+  rewrite -rcons_cons in pht.
+  have [+ _] := pht.
+  rewrite -rev_path.
+  move/order_path_min.
+  have lt_trans_rev : transitive (fun x => <%R ^~ x).
+    admit.
+  move/(_ lt_trans_rev).
+  move/allP.
+  rewrite last_rcons ttb.
+  apply.
+  by rewrite mem_rev belast_rcons in_cons; apply/orP; right; exact: mem_head.
+  (* have := (itv_partition_head_in_itv pht). *)
 - admit.
 have hab : h \in `]a, b[.
   admit.
+(*
 rewrite -(natr1 (size t)) (EFinD (size t)%:R).
 rewrite 2?muleDl ?mul1e => //; last first.
   admit.
@@ -842,7 +908,8 @@ Lemma lemma5' :
   {within `[a, b], continuous f} ->
   bounded_variation a b f ->
   forall A : R, (0%:E < A%:E < total_variation a b f)%E ->
-    exists l, forall p, itv_partition_with_max a b l p ->
+    exists l, forall p, itv_partition a b p ->
+       itv_partition_max a b p = l ->
               A < variation a b f p.
 Proof.
 move=> cf.
@@ -868,7 +935,7 @@ pose eps := ((V' - A) / (4 * m)%:R).
 have eps0 : 0 < eps.
   admit.
 move/(_ _ eps0) => [d d0 unifcf].
-exists d => p pmaxd. (* p is (I) in the paper *)
+exists d => p pabp abpd. (* p is (I) in the paper *)
 
 apply: (@lt_le_trans _ _ ((V' + A) / 2)).
   (* AV' *)
@@ -884,7 +951,6 @@ apply: (@le_trans _ _ (V0 - (V' - A) / 2)).
       exact: lt_trans.
     exact: itv_partition_sorted partX'.
 rewrite lerBlDr -lee_fin EFinD.
-have [pabp abpd] := pmaxd.
 have abp_led : itv_partition_max a b p <= d.
   by rewrite le_eqVlt; apply/predU1P; left.
 apply: (le_trans (@variation_merge _ p X' pabp abp_led partX')).
@@ -988,6 +1054,7 @@ rewrite nth_default//=.
 by rewrite in_itv/= => /andP[bx /(lt_trans bx)]; rewrite ltxx.
 Admitted.
 
+(* 
 Lemma lemma5 :
   {within `[a, b], continuous f} ->
   ereal_inf
@@ -1000,5 +1067,6 @@ rewrite /variations.
 rewrite image_comp.
 
 Abort.
+*)
 
 End lemma5.
