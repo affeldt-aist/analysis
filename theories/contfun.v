@@ -169,7 +169,8 @@ Context (f : U -> V) (fP : f \in contfunseg A B).
 
 Definition contfunseg_Sub_subproof := unsquash (set_mem fP).
 #[local] HB.instance Definition _ := contfunseg_Sub_subproof.
- Definition contfunseg_Sub : continuousFunType A B :=  {| ContinuousFun.sort := f; ContinuousFun.class := contfunseg_Sub_subproof |}.
+Definition contfunseg_Sub : continuousFunType A B :=
+{| ContinuousFun.sort := f; ContinuousFun.class := contfunseg_Sub_subproof |}.
 
 End Sub.
 
@@ -213,6 +214,12 @@ HB.instance Definition _ := [Choice of continuousFunType A B by <:].
 
 End contfun.
 
+Lemma set_fun_cst T1 (T2 : Type) (A : set T1) c : set_fun A [set: T2] (cst c).
+Proof. by []. Qed.
+
+HB.instance Definition _ T1 (T2 : Type) (A : set T1) c :=
+ @isFun.Build T1 T2 _ _ (cst c) (@set_fun_cst _ _ A c).
+
 Section contfun_ring.
 (* can this be generalized to V normedModType with ring structure??*)
 Context {R : realType} (U : set R).
@@ -221,7 +228,9 @@ Lemma contfunseg_subring_closed : subring_closed (@contfunseg R R U setT ).
 Proof.
 split=> [|f g|f g]; rewrite !inE/=.
 - apply: squash.
-  split => //; split;exact: cst_continuous.
+  split => //.
+  apply: ContinuousFun.class => //.
+  exact: cst_continuous.
 - move=> /unsquash cf /unsquash cg.
   apply: squash.
   pose f' : continuousFunType U setT  := HB.pack f cf.
@@ -284,12 +293,13 @@ Context {R : realType} (K : set R).
 Hypothesis (nonemptyK : nonempty K) (compactK : compact K).
 
 Local Notation T := (@continuousFunType R R K setT).
-  
+
 Definition infty_norm0 (f : {fun K >-> [set: R]}) :=
   sup ((Num.norm \o f) @` K).
 
 (* todo *)
-Lemma cont_within_cont_comp (f: R ->R) (g : T) : {in  g @` K, continuous f} -> {within K, continuous (f \o g)}.
+Lemma cont_within_cont_comp (f : R -> R) (g : T) : {in  g @` K, continuous f} ->
+  {within K, continuous (f \o g)}.
 Proof.
 move => ctf.
 rewrite continuous_subspace_in.
@@ -393,7 +403,7 @@ Proof.
 Qed.
 
 End contFun_seminorm.
-
+(*
 Section ideal_definition.
 Context {R : realType} (K : set R).
 Hypothesis (nonemptyK : nonempty K).
@@ -431,8 +441,8 @@ HB.instance Definition _ := isIdealr.Build _ ideal_K idealr_closed_K.
 Check ideal_K : zmodClosed _.
 
 End ideal_definition.
-
-
+*)
+(*
 Section contFunSeg_quotient.
 Context {R : realType} (K : set R).
 Hypothesis (nonemptyK : nonempty K) (compactK : compact K).
@@ -471,8 +481,9 @@ Qed.
 (* exact: abfg. *)
 (* Qed. *)
 
-End contFunSeg_quotient.
+End contFunSeg_quotient.*)
 
+(*
 Section zmodule_normed.
 
 Context {R : realType} (K : set R).
@@ -622,3 +633,4 @@ Fail Check (pseudoMetric_normed V) : normedModType R.
 End zmodule_normed.
 
 HB.about Lmodule_isNormed.
+*)

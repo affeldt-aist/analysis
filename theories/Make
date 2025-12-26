@@ -97,4 +97,7 @@ kernel.v
 pi_irrational.v
 gauss_integral.v
 all_analysis.v
+
+ode.v
+
 showcase/summability.v
