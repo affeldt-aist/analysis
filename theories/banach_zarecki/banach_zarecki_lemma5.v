@@ -297,10 +297,10 @@ have [ns|ns] := ltnP n (size s).
 by rewrite nth_default.
 Qed.
 
-Lemma itv_partition_le_ub a b s : a < b ->
+Lemma itv_partition_le_ub a b s :
   itv_partition a b s -> forall n, nth b s n <= b.
 Proof.
-move=> ab ps n.
+move=> ps n.
 have [ns|ns] := ltnP n (size s).
   suff : nth b s n \in `]a, b].
     by rewrite in_itv/= => /andP[].
@@ -331,6 +331,7 @@ Definition variations_with_max a b f l : set R :=
 Definition omega_max a b f s : \bar R :=
    \big[maxe/-oo%E]_(0 <= n < size s) oscillation f
     `[(nth b (a :: s)) n, (nth b (a :: s)) n.+1].
+
 (*
 Lemma bigmaxE T Q FH :
 forall (F : T -> R) (HF : forall x, 0 <= F x),
@@ -350,22 +351,18 @@ by rewrite /omega_max/= big_nat_recl//= le_max oscillation_ge0.
 Qed.
 
 Lemma omega_max_le_oscillation a b f s :
-  a < b ->
   itv_partition a b s ->
   (omega_max a b f s <= oscillation f `[a, b])%E.
 Proof.
-move=> ab ps.
-have asn := itv_partition_gt_lb ab ps.
-have snb := itv_partition_le_ub ab ps.
-rewrite /omega_max.
-rewrite big_seq.
-apply: bigmax_le.
+move=> ps.
+rewrite /omega_max big_seq bigmax_le//.
   by rewrite leNye.
 move=> /= n.
 rewrite mem_iota add0n subn0 leq0n/= => ns.
 apply: oscillation_sub.
 apply: subset_itvScc; rewrite bnd_simp//.
-by case: n ns => //= n _; exact/ltW.
+  by apply: itv_partition_nth_ge => //; rewrite ltnS ltnW.
+exact: (itv_partition_le_ub ps).
 Qed.
 
 Lemma omega_max_cons a b f s x :
@@ -1045,7 +1042,7 @@ have : compact (f @` `[(nth b (a :: p) n), (nth b p n)]).
     apply: subset_itv; rewrite bnd_simp//.
       case: n => //= n.
       exact/ltW/itv_partition_gt_lb.
-    exact: (itv_partition_le_ub ab pabp).
+    exact: (itv_partition_le_ub pabp).
   exact: segment_compact.
 rewrite Rcompact_boundE/= => -[cimg ubimg lbimg].
 have nonempty_img : [set f x | x in `[(nth b (a :: p) n), (nth b p n)]] !=set0.
@@ -1088,12 +1085,12 @@ rewrite ifT; last first.
   apply: subset_itv Hx; rewrite bnd_simp.
     case: n cimg ubimg lbimg nonempty_img Hy => //=n _ _ _ _ _.
     exact/ltW/itv_partition_gt_lb.
-  exact: (itv_partition_le_ub ab pabp).
+  exact: (itv_partition_le_ub pabp).
 rewrite /=; split.
   apply: subset_itv Hy; rewrite bnd_simp.
     case: n cimg ubimg lbimg nonempty_img Hx => //=n _ _ _ _ _.
     exact/ltW/itv_partition_gt_lb.
-  exact: (itv_partition_le_ub ab pabp).
+  exact: (itv_partition_le_ub pabp).
 rewrite /ball/=.
 rewrite -abpd.
 rewrite /itv_partition_max/=.
