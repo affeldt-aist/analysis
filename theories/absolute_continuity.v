@@ -2,7 +2,7 @@ From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect ssralg ssrnum ssrint interval finmap.
 From mathcomp Require Import interval_inference archimedean.
-From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
+From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
 From mathcomp Require Import cardinality fsbigop interval set_interval.
 From mathcomp Require Import reals ereal topology normedtype sequences.
 From mathcomp Require Import real_interval esum measure.
@@ -20,7 +20,7 @@ From mathcomp Require Import realfun exp derive borel_hierarchy.
 (*           lusin N A f == the function f : R -> R satisfies the Lusin N     *)
 (*                          condition over A : set R                          *)
 (*       oscillation f A == oscillation of function f : R -> R on A : set R   *)
-(*                    This is an extended real number.                        *)
+(*                          This is an extended real number.                  *)
 (* ```                                                                        *)
 (* ref: An Elementary Proof of the Banach–Zarecki Theorem                     *)
 (******************************************************************************)
@@ -811,7 +811,7 @@ suff [p_idx [pUq Up]] : exists p_idx : nat,
     (forall q', ratr q' \in bigcup_ointsub U q -> (f p <= f q')%N).
   exists (g p_idx).
     rewrite /= => t Ut tp.
-    apply/notP.
+    apply/boolp.notP.
     move=> /eqP/set0P[s [ps ts]].
     have := Up t.
     have H : ratr t \in bigcup_ointsub U q.
@@ -2931,76 +2931,103 @@ Admitted.
 
 (* End image_interval. *)
 
-
 #[export, non_forgetful_inheritance]
 HB.instance Definition _ (R : realType) :=
   Order_isNbhs.Build _ R (@real_order_nbhsE R).
 
 Definition oscillation {R : realType} (f : R -> R) (A : set R) : \bar R :=
-  ereal_sup ((EFin \o f) @` A) - ereal_inf ((EFin \o f) @` A).
+  (if A == set0 then
+     0
+   else
+     ereal_sup ((EFin \o f) @` A) - ereal_inf ((EFin \o f) @` A))%E.
+
+(* TODO: PR? *)
+Lemma setNEFin {R : realType} (f : R -> R) (A : set R) :
+  [set (- x)%E | x in ((EFin \o f) @` A)] = (EFin \o (\- f)%R) @` A.
+Proof.
+apply/seteqP; split => [_ [_/= [r Ar] <- <-]|_/= [r Ar] <-].
+  by exists r.
+by exists (f r)%:E => //; exists r.
+Qed.
+
+(* TODO: PR? *)
+Lemma ereal_inf_sup {R : realType} (A : set (\bar R)) : A !=set0 ->
+  (ereal_inf A <= ereal_sup A)%E.
+Proof.
+move=> [a Aa].
+by rewrite (@le_trans _ _ a)//;
+  [exact: ereal_inf_lbound|exact: ereal_sup_ubound].
+Qed.
 
 Section oscillation_lemma.
 Context (R : realType).
 Local Open Scope ereal_scope.
-
 Implicit Types (f : R -> R) (A : set R).
 
-Lemma oscillation0 f : oscillation f set0 = -oo.
-Proof. by rewrite /oscillation image_set0 ereal_sup0 addNye. Qed.
+Lemma oscillation0 f : oscillation f set0 = 0.
+Proof. by rewrite /oscillation eqxx. Qed.
 
-Lemma ocsillation_hasNub f A :
-  ~ has_ubound (f @` A) -> A !=set0 -> oscillation f A = +oo.
+Lemma oscillationN f A : oscillation (\- f)%R A = oscillation f A.
 Proof.
-move=> hasNubA A0.
-rewrite /oscillation.
-rewrite -image_comp (@hasNub_ereal_sup _ (f @` A))//; last first.
-- have [x Ax] := A0.
-  by exists (f x).
-rewrite addye//.
-apply/eqP.
-rewrite eqe_oppLRP/=.
-move/ereal_inf_pinfty.
-move=> H.
-have [x Ax] := A0.
-have := ltry (f x).
-apply/negP.
-rewrite -leNgt.
-rewrite leye_eq.
-apply/eqP.
-apply: H.
-by exists (f x).
+rewrite /oscillation; case: ifPn => // A0.
+rewrite [X in _ = X - _]ereal_supEN [in X in _ = _ - X]ereal_infEN.
+by rewrite [RHS]addeC [in RHS]oppeK setNEFin.
 Qed.
 
-Lemma ocsillation_hasNlb f A :
-  ~ has_lbound (f @` A) -> A !=set0 -> oscillation f A = +oo.
+Lemma ocsillation_hasNub f A : ~ has_ubound (f @` A) -> oscillation f A = +oo.
 Proof.
-move=> hasNlbA A0.
-rewrite /oscillation.
-rewrite ereal_infEN oppeK.
-rewrite [X in _ + ereal_sup X = _](_: _ = (EFin \o (-%R f)) @` A); last first.
-  by rewrite image_comp eqEsubset; split => _ [x Ax <-]; exists x.
-rewrite -(image_comp (- f)%R).
-rewrite (@hasNub_ereal_sup _ ((- f)%R @` A))//; last 2 first.
-- rewrite -image_comp.
-  by move/has_lb_ubN.
-- have [x Ax] := A0.
-  exists (- f x)%R.
-  by exists x.
-rewrite addey//.
-apply/eqP.
-rewrite ereal_supEN.
-rewrite eqe_oppLRP/=.
-move/ereal_inf_pinfty.
-move=> H.
-have [x Ax] := A0.
-have := ltry (- f x).
-apply/negP.
-rewrite -leNgt.
-rewrite leye_eq.
-apply/eqP.
-apply: H.
-exists (f x)%:E => //.
-by exists x.
+move=> hasNubA.
+rewrite /oscillation; case: ifPn => [/eqP A0|A0].
+  absurd: hasNubA; rewrite A0 image_set0 /has_ubound ubound0.
+  by apply/set0P; exact: setT0.
+rewrite -image_comp (@hasNub_ereal_sup _ (f @` A))//; last first.
+  by apply/set0P; contra: A0; exact: image_set0_set0.
+rewrite addye//.
+apply/eqP; rewrite eqe_oppLRP/= => /ereal_inf_pinfty fA.
+move/set0P : A0 => [x Ax].
+have := ltry (f x).
+by apply/negP; rewrite -leNgt leye_eq; apply/eqP/fA; exists (f x).
+Qed.
+
+Lemma ocsillation_hasNlb f A : ~ has_lbound (f @` A) -> oscillation f A = +oo.
+Proof.
+move=> hasNlbA; have /ocsillation_hasNub : ~ has_ubound ((\- f)%R @` A).
+  move/has_ub_lbN.
+  rewrite [X in has_lbound X](_ : _ = f @` A)//.
+  rewrite image_comp//= (_ : _ \o _ = f)//=.
+  by apply/funext => r/=; rewrite opprK.
+by rewrite oscillationN.
+Qed.
+
+Lemma oscillation_ge0 f A : (0 <= oscillation f A)%E.
+Proof.
+rewrite /oscillation; case: ifPn => // /set0P[r Ar].
+set s : \bar R := ereal_sup _; set i : \bar R := ereal_inf _.
+have frsup : ((f r)%:E <= s)%E by rewrite ereal_sup_ubound//=; exists r.
+have inffr : (i <= (f r)%:E)%E by rewrite ereal_inf_lbound//=; exists r.
+have [sfin|] := boolP (s \is a fin_num).
+  have [ifin|] := boolP (i \is a fin_num).
+    by rewrite sube_ge0 ?sfin ?ifin// ereal_inf_sup//; exists (f r)%:E, r.
+  rewrite fin_numE negb_and !negbK => /predU1P[iy|/eqP iy].
+    by rewrite iy addey//; move: sfin; rewrite fin_numE => /andP[].
+  by move: inffr; rewrite iy.
+rewrite fin_numE negb_and !negbK => /predU1P[sy|/eqP sy].
+  by absurd; move/ereal_sup_ninfty : (sy) => /(_ _ (ex_intro2 _ _ _ Ar erefl)).
+have [iy|iy] := eqVneq i +oo%E.
+  by move: inffr; rewrite iy leye_eq.
+by rewrite sy addye// eqe_oppLR.
+Qed.
+
+Lemma oscillation_sub f i j :
+  i `<=` j -> (oscillation f i <= oscillation f j)%E.
+Proof.
+move=> ij; have [->|i0] := eqVneq i set0.
+  by rewrite oscillation0 oscillation_ge0.
+have [j0|j0] := eqVneq j set0.
+  by move: ij; rewrite j0 subset0 => /eqP; rewrite (negbTE i0).
+rewrite /oscillation (negbTE i0) (negbTE j0) leeB//.
+- by apply: ereal_sup_le; exact: image_subset.
+- by apply: ereal_inf_le_tmp; exact: image_subset.
 Qed.
 
 End oscillation_lemma.

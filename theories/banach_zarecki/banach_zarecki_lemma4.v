@@ -2,7 +2,7 @@ From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
-From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
+From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences measure lebesgue_measure realfun.
 From mathcomp Require Import absolute_continuity.
@@ -691,6 +691,13 @@ rewrite /=.
 apply: lee_nneseries; first by move=> i _ _; exact: outer_measure_ge0.
 move=> n _.
 rewrite /oscillation.
+case: ifPn => [/eqP ab0|ab0].
+  have anbn : (fine (a_ n) > fine (b_ n))%R.
+    rewrite ltNge; contra: ab0 => anbn.
+    apply/set0P; exists (fine (a_ n)).
+    by rewrite /= in_itv/= lexx anbn.
+  rewrite set_itv_ge ?bnd_simp -?leNgt//; last exact/ltW.
+  by rewrite image_set0 mu_ext0.
 rewrite [leRHS](_ : _ =
        mu^*%mu [set` Rhull (f @` `[(fine (a_ n)), (fine (b_ n))] )]).
   apply: le_outer_measure.
