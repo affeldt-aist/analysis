@@ -2,7 +2,7 @@ From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
-From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
+From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences measure lebesgue_measure realfun.
 From mathcomp Require Import absolute_continuity.
@@ -340,74 +340,13 @@ forall (F : T -> R) (HF : forall x, 0 <= F x),
    (\big[maxr/0%R]_(0 <= k < n) P k).
 *)
 
-(* TODO: PR *)
-Lemma ereal_inf_sup (A : set (\bar R)) : A !=set0 ->
-  (ereal_inf A <= ereal_sup A)%E.
-Proof.
-move=> [a Aa].
-by rewrite (@le_trans _ _ a)//; [exact: ereal_inf_lbound|exact: ereal_sup_ubound].
-Qed.
-
-Lemma oscillation_ge0 f a b : a <= b -> (0 <= oscillation f `[a, b])%E.
-Proof.
-move=> ab.
-rewrite /oscillation.
-have [fb fb0] : [set (EFin \o f) x | x in `[a, b]] !=set0.
-  by exists (f b)%:E; exists b => //=; rewrite boundr_in_itv bnd_simp ab.
-set s : \bar R := ereal_sup _.
-set i : \bar R := ereal_inf _.
-have fbsup : (fb <= s)%E by rewrite ereal_sup_ubound.
-have inffb : (i <= fb)%E by rewrite ereal_inf_lbound.
-have [sfin|] := boolP (s \is a fin_num); last first.
-  rewrite fin_numE negb_and !negbK => /predU1P[sy|/eqP sy].
-    move/ereal_sup_ninfty : (sy) => /(_ _ fb0)/=.
-    by case: fb0 => [x _ <-].
-  have [iy|iy] := eqVneq i +oo%E.
-    move: inffb.
-    case: fb0 => [x _ <-/=].
-    by rewrite iy leye_eq.
-  rewrite sy.
-  case: i iy {inffb} => // [r _|].
-    by rewrite addye.
-  by rewrite leey.
-have [ifin|] := boolP (i \is a fin_num); last first.
-  rewrite fin_numE negb_and !negbK => /predU1P[iy|/eqP iy].
-    rewrite iy addey//.
-    by move: sfin; rewrite fin_numE => /andP[].
-  move: inffb.
-  case: fb0 => [x _ <-/=].
-  by rewrite iy.
-rewrite sube_ge0 ?sfin ?ifin//.
-by apply: ereal_inf_sup; exists fb.
-Qed.
-
 Lemma omega_max_nil a b f : omega_max a b f [::] = -oo%E.
 Proof. by rewrite /omega_max /= big_nil. Qed.
 
-Lemma omega_max_ge0 a b f s : s != [::] -> a <= b -> path <=%R a s ->
-  (0 <= omega_max a b f s)%E.
+Lemma omega_max_ge0 a b f s : s != [::] -> (0 <= omega_max a b f s)%E.
 Proof.
-move=> s0 ab sa.
-rewrite /omega_max.
-rewrite (@le_trans _ _ ( oscillation f `[a, (nth b s 0)]))//.
-  apply: oscillation_ge0.
-  move/pathP : sa => /(_ b 0)/=.
-  by rewrite lt0n size_eq0 s0 => /(_ isT).
-rewrite (le_bigmax_seq -oo%E O xpredT
-  (fun i => oscillation f `[(nth b (a :: s) i), (nth b (a :: s) i.+1)]))//.
-by rewrite mem_index_iota leqnn lt0n size_eq0.
-Qed.
-
-Lemma oscillation_sub f i j :
-i `<=` j -> (oscillation f i <= oscillation f j)%E.
-Proof.
-move=> ij.
-rewrite /oscillation/=.
-apply: leeB.
-- apply: ereal_sup_le.
-  exact: image_subset.
-- apply: ereal_inf_le_tmp.
-  exact: image_subset.
+case: s => [//|h t s0].
+by rewrite /omega_max/= big_nat_recl//= le_max oscillation_ge0.
 Qed.
 
 Lemma omega_max_le_oscillation a b f s :
@@ -1121,7 +1060,10 @@ have nonempty_img : [set f x | x in `[(nth b (a :: p) n), (nth b p n)]] !=set0.
     by have [_ /eqP ->] := pabp.
   by rewrite !nth_default// ltnW.
 rewrite ereal_sup_EFin// ereal_inf_EFin//.
-
+rewrite ifF; last first.
+  apply/negbTE.
+  move/set0P : nonempty_img; apply: contra_neq => ->.
+  by rewrite image_set0.
 rewrite -EFinB lee_fin.
 suff : forall x y, x \in `](nth b (a :: p) n), (nth b p n)[ ->
  y \in `](nth b (a :: p) n), (nth b p n)[ ->
