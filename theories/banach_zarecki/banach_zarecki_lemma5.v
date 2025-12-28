@@ -165,45 +165,69 @@ split; first by rewrite /=; apply/and3P; split => //.
 by rewrite -sb.
 Qed.
 
+Lemma sorted_merge1 h s : h \notin s ->
+  sorted <%R s -> sorted <%R (merge <%R s [:: h]).
+Proof.
+elim: s h => // s0 s1 ih h hs /= s0s1.
+have [s0h|s0h]/= := ltP s0 h.
+  have s1h : sorted <%R (merge <%R s1 [:: h]).
+    apply: ih (path_sorted s0s1).
+    by apply: contra hs; rewrite inE orbC => ->.
+  rewrite path_min_sorted//; apply/allP => x.
+  rewrite mem_merge mem_cat => /orP[xs1|].
+    by move/order_path_min : s0s1 => /(_ lt_trans)/allP/(_ _ xs1).
+  by rewrite mem_seq1 => /eqP ->.
+rewrite lt_neqAle s0h andbT.
+by move: hs; rewrite !inE negb_or => /andP[->].
+Qed.
+
+Lemma notin_sorted_rcons s h :
+  h \notin s -> sorted <%R s ->
+  sorted <%R (rcons [seq x <- s | x < h] h).
+Proof.
+elim: s h => // s0 s1 ih h.
+rewrite in_cons negb_or => /andP[hs0 hs1]/= s0s1.
+have [s0h|] := ltP s0 h.
+  have : sorted <%R s1 by exact: path_sorted s0s1.
+  move/(ih _ hs1) => {}ih /=.
+  rewrite path_min_sorted//; apply/allP => x.
+  rewrite mem_rcons inE => /predU1P[->//|].
+  rewrite mem_filter => /andP[xh xs1].
+  move/order_path_min: s0s1 => /(_ lt_trans).
+  by move/allP; exact.
+rewrite le_eqVlt (negbTE hs0)/= => {}hs0.
+rewrite path_lt_filter0//.
+apply: path_le s0s1 => //.
+exact: lt_trans.
+Qed.
+
+Lemma merge1E s h : h \notin s -> sorted <%R s ->
+  merge <%R s [:: h] = itv_partitionL s h ++ itv_partitionR s h.
+Proof.
+move=> hs ss; apply: (@irr_sorted_eq _ <%R) => //.
+- exact: lt_trans.
+- exact: sorted_merge1.
+- have sE := notin_itv_partition ss hs.
+  rewrite /itv_partitionL -cats1 -catA/= sorted_cat_cons.
+  rewrite notin_sorted_rcons//= path_min_sorted//.
+    by apply: sorted_filter => //; exact: lt_trans.
+  by apply/allP => x; rewrite mem_filter => /andP[].
+- move=> i.
+  rewrite mem_merge [in RHS]mem_cat mem_filter mem_rcons in_cons mem_filter.
+  rewrite mem_cat mem_seq1.
+  by have [//||] := ltgtP i h; rewrite ?(orbF,orbT).
+Qed.
+
 Lemma itv_partition_merge1 a b h s :
-a < b ->
-a < h < b ->
-h \notin s ->
-itv_partition a b s ->
+  a < b -> a < h < b -> h \notin s ->
+  itv_partition a b s ->
   itv_partition a b (merge <%R s [:: h]).
 Proof.
-move: s a h.
-elim.
-  move=> a' h a'b /andP[a'h hb] _ /=.
-  move/itv_partition_nil.
-  move: a'b. rewrite -subr_gt0 lt0r.
-  by move/andP => [+ _]; rewrite subr_eq0 eq_sym; move/eqP.
-move=> s0 s1 IH a' h a'b /andP[a'h hb] hs.
-rewrite /=; case: ifPn => //.
-  move=> s0h H.
-  have : itv_partition s0 b (merge <%R s1 [:: h]).
-    apply: IH.
-    - have [] := H.
-      move => /=/andP[_ /lt_path_min/allP +] /eqP s0b; rewrite -s0b; apply.
-      rewrite s0b; apply: last_mem_itv_partition a'b.
-      apply: itv_partition_cons1 H.
-      case: s1 hs s0b => //.
-      move=> _ /= s0b.
-      have := lt_trans s0h hb.
-      by rewrite s0b ltxx.
-    - by apply/andP; split => //; exact: ltW.
-    - have/negP := hs.
-      by rewrite in_cons; move/negP/norP => [].
-    - have [/=/andP[a's0 ps lsb]] := H.
-      by split.
-  move=> []; split => //=; apply/andP; split => //.
-  by have [/andP[]] := H.
-rewrite -leNgt.
-rewrite le_eqVlt => /predU1P[|].
-  by move=> hs0; move: hs; rewrite hs0 mem_head.
-move=> hss0.
-apply: itv_partition_head => //.
-by rewrite /= a'h hss0.
+move=> ab /andP[ah hb] hs abs; rewrite merge1E//.
+- apply: itv_partition_cat.
+    exact: itv_partitionLP abs.
+  exact: itv_partitionRP abs.
+- exact: itv_partition_sorted abs.
 Qed.
 
 Let itv_partition_in_itv a b s :
