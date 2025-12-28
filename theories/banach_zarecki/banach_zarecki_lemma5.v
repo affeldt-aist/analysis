@@ -22,6 +22,29 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Lemma path_merge {R : realType} (a : R) s h :
+  a < h ->
+  path <%R a s -> path <=%R a (merge <%R s [:: h]).
+Proof.
+elim: s a h => [a h ah _/=|s0 s1 ih a h ah].
+  by rewrite ltW// andbT.
+rewrite /= => /andP[as0 s0s1].
+case: ifPn => s0h /=.
+  by rewrite (ltW as0)/= ih.
+rewrite (ltW ah)/=.
+rewrite leNgt/= s0h/=.
+by apply: sub_path s0s1 => x y /ltW.
+Qed.
+
+(* *)
+Lemma path_ltW {R : realType} (a : R) s : path <%R a s -> path <=%R a s.
+Proof.
+rewrite le_path_pairwise lt_path_pairwise => H.
+apply: (@sub_in_pairwise _ (fun x => x \in [set: R]) _ _ _ _ _ H).
+  move=> x y _ _; exact: ltW.
+apply/allP => x _; exact: in_setT.
+Qed.
+
 Section merge_lemmas.
 Context {T : Type} {r : rel T}.
 Implicit Type (s t : seq T).
@@ -114,6 +137,182 @@ Qed.
 
 End merge_lemmas_eqType.
 
+Definition disj_seq {T : eqType} (s t : seq T) :=
+[disjoint [set` s] & [set` t]].
+
+(* unlike subseq, disj_seq s t is true when s and t is disjoint as sets,
+   not that each one be not a subseq of the other.
+   i.e. disj_seq [:: a; a; b] [:: a; b; b] is false although
+~ (subseq [:: a; a; b] [:: a; b; b] \/ subseq [:: a; b; b] [:: a; a; b]) is true *)
+Example subseqNdisj_seq {T : eqType} :
+let disj_seq' s t := ~~ (subseq s t || subseq t s) in
+  forall a b : T, a == b = false ->
+   let s := [:: a; a; b] in
+   let t := [:: a; b; b] in
+  disj_seq' s t /\ ~ disj_seq s t.
+Proof.
+move=> disj_seq' a b ab s t.
+split.
+- apply/norP; split.
+  + by rewrite /= eqxx ?ifF ?ifF.
+  + rewrite /= eqxx ifF; last by rewrite eq_sym.
+    by rewrite eqxx.
+- rewrite /disj_seq disj_set2E; apply/negP.
+  apply/set0P.
+  exists a => /=; split; exact: mem_head.
+Qed.
+
+Section disj_seq_lemmas.
+Implicit Types (T : eqType) (R : realType).
+
+Lemma disj_seq_sym {T} (s t : seq T) :
+  disj_seq s t = disj_seq t s.
+Proof.
+apply: eq_true_iff_eq.
+suff tmp (p q : seq T) : disj_seq p q -> disj_seq q p by split; exact: tmp.
+by move=> ?; rewrite /disj_seq disj_set_sym.
+Qed.
+
+Lemma disj_seq_allP {T} (s t : seq T) :
+  disj_seq s t <-> (all (fun x => x \notin s) t /\ all (fun x => x \notin t) s).
+Proof.
+split.
+
+Admitted.
+
+Lemma disj_seq_filterr {T} (s t : seq T) (P : T -> bool) :
+  disj_seq s t -> disj_seq s [seq x <- t | P x].
+Proof.
+move/disj_seq_allP => [/allP st /allP ts].
+apply/disj_seq_allP; split; apply/allP => x; rewrite mem_filter.
+- by move=> /andP[_ xt]; exact: st.
+- by move=> xs; apply/nandP; right; exact: ts.
+Qed.
+
+Lemma disj_seq_filterl {T} (s t : seq T) (P : T -> bool) :
+  disj_seq s t -> disj_seq [seq x <- s | P x] t.
+Proof.
+by rewrite disj_seq_sym => ?; rewrite disj_seq_sym; exact: disj_seq_filterr.
+Qed.
+
+Lemma disj_seq_consr {T} (s t : seq T) (a : T) :
+  disj_seq s (a :: t) -> disj_seq s t.
+Proof.
+move/disj_seq_allP => [/allP st /allP ts].
+apply/disj_seq_allP; split; apply/allP => x memx.
+- by apply: st; rewrite in_cons memx orbT.
+- by have := ts x memx; rewrite in_cons => /predU1P/not_orP[_ /negP].
+Qed.
+
+Lemma disj_seq_consl {T} (s t : seq T) (a : T) :
+  disj_seq (a :: s) t -> disj_seq s t.
+Proof.
+by rewrite disj_seq_sym => H; rewrite disj_seq_sym; exact: disj_seq_consr H.
+Qed.
+
+End disj_seq_lemmas.
+
+Fixpoint merge_lt_seq {R : realType} (l s : seq R) :=
+  match s with
+  | [::] => l
+  | h :: s' =>
+     [seq x <- l | x < h] ++ [:: h] ++ merge_lt_seq [seq x <- l | h < x] s'
+  end.
+(*
+  transitive leT -> irreflexive leT -> forall [s : seq T], sorted leT s -> uniq s
+lt_sorted_uniq_le:
+  forall {disp : Order.disp_t} {T : porderType disp} (s : seq T),
+  uniq s -> sorted <%O s = sorted <=%O s
+*)
+Section merge_lt_seq_lemmas.
+Context {R : realType}.
+Implicit Types (l s : seq R).
+
+Lemma merge_lt_seq0r s : merge_lt_seq [::] s = s.
+Proof.
+elim: s => //= a s IH; by rewrite IH.
+Qed.
+
+Lemma merge_lt_seq_merge t s : sorted <%R t -> sorted <%R s ->
+  disj_seq s t ->
+  merge <%R t s = merge_lt_seq t s.
+Proof.
+elim: s t => //= a s.
+- move=> _ _.
+  by rewrite merge0r.
+move=> IH t st pas dast.
+rewrite -IH; last 3 first.
+- exact: lt_sorted_filter.
+- exact: path_sorted pas.
+- apply: disj_seq_filterr.
+  exact: disj_seq_consl dast.
+elim: t st dast; first by [].
+move=> b t IH' pbt dasbt /=.
+case: ifPn => [ba|]; last rewrite -leNgt le_eqVlt => /predU1P[ab|ab].
+- rewrite cat_cons; congr cons.
+  rewrite ifF; last first.
+    by apply/negP/negP; rewrite -leNgt ltW.
+  apply: IH'.
+   exact: path_sorted pbt.
+  exact: disj_seq_consr dasbt.
+- have /disj_seq_allP[/allP] := dasbt.
+  move/(_ b (mem_head b t)).
+  rewrite in_cons; move/norP => [/negP].
+  by rewrite ab.
+- rewrite ab. 
+    have ->/= : [seq x <- t | x < a] = [::].
+      apply: path_lt_filter0.
+      apply: path_le ab pbt.
+      exact: lt_trans.
+    congr cons.
+    rewrite path_lt_filterT; last first.
+      apply: path_le ab pbt.
+      exact: lt_trans.
+  by elim: s IH pas IH' dasbt.
+Qed.
+
+Lemma sorted_filter_rcons y l : sorted <%R l ->
+sorted <%R (rcons [seq x <- l | x < y] y).
+Proof.
+move=> sl; apply/(sortedP y)=> i; rewrite size_rcons ltnS => ily.
+rewrite lt_sorted_ltn_nth ?inE ?size_rcons ?ltnS//; last by rewrite ltnW.
+rewrite lt_sorted_pairwise pairwise_rcons.
+apply/andP; split; first exact: filter_all.
+by rewrite -lt_sorted_pairwise lt_sorted_filter.
+Qed.
+
+Lemma sorted_filter_path y l :
+  sorted <%R l -> path <%R y [seq x <- l | y < x].
+Proof.
+move=> sl; rewrite lt_path_sortedE.
+by apply/andP; split; last exact: lt_sorted_filter; exact: filter_all.
+Qed.
+
+Lemma sorted_merge_lt_seq l s :
+  sorted <%R l -> sorted <%R s ->
+  sorted <%R (merge_lt_seq l s).
+Proof.
+case: s => //= hs s sl ps.
+rewrite sorted_cat_cons sorted_filter_rcons => //=.
+elim: s hs l sl ps => /=.
+  move=> ? ? ? ?; exact: sorted_filter_path.
+move=> hs s IH hhs l sl /andP[hhshs ps].
+rewrite cat_path; apply/andP; split.
+  rewrite -filter_predI/=.
+  under eq_filter do rewrite /= andbC.
+  rewrite filter_predI.
+  apply: sorted_filter_path.
+  exact: lt_sorted_filter.
+rewrite /=; apply/andP; split.
+  move: (mem_last hhs [seq x <- [seq x <- l | hhs < x] | x < hs]).
+  rewrite inE => /predU1P[->//|].
+  by rewrite mem_filter => /andP[].
+apply: IH => //.
+exact: lt_sorted_filter.
+Qed.
+
+End merge_lt_seq_lemmas.
+
 Section itv_partition_porder.
 Context {d} {T : porderType d}.
 Implicit Types (a b x : T) (s : seq T).
@@ -160,7 +359,7 @@ split; first by rewrite /=; apply/and3P; split => //.
 by rewrite -sb.
 Qed.*)
 
-Lemma itv_partition_in_itv a b s :
+Let itv_partition_in_itv a b s :
   itv_partition a b s -> {in s, forall x, x \in `]a, b]}.
 Proof.
 move=> /[dup]parts.
@@ -1436,6 +1635,7 @@ Qed.
 
 End lt_merge_lemmas.
 
+<<<<<<< HEAD
 Definition disj_seq {T : eqType}(s t : seq T) :=
 [disjoint [set` s] & [set` t]].
 
@@ -1466,6 +1666,8 @@ Lemma disj_seq_allP {T : eqType} (s t : seq T) :
 Proof.
 Abort.
 
+=======
+>>>>>>> f2400de7 (merge_lt_seq)
 Lemma disj_seq_merge_ltW {R : realType} (s t : seq R) : disj_seq s t ->
  merge <%R s t = merge <=%R s t.
 Proof.
@@ -1492,29 +1694,6 @@ Proof.
 Abort.
 
 End itv_partition_udmerge_disj_seq_lemmas.
-
-Lemma path_merge {R : realType} (a : R) s h :
-  a < h ->
-  path <%R a s -> path <=%R a (merge <%R s [:: h]).
-Proof.
-elim: s a h => [a h ah _/=|s0 s1 ih a h ah].
-  by rewrite ltW// andbT.
-rewrite /= => /andP[as0 s0s1].
-case: ifPn => s0h /=.
-  by rewrite (ltW as0)/= ih.
-rewrite (ltW ah)/=.
-rewrite leNgt/= s0h/=.
-by apply: sub_path s0s1 => x y /ltW.
-Qed.
-
-(* *)
-Lemma path_ltW {R : realType} (a : R) s : path <%R a s -> path <=%R a s.
-Proof.
-rewrite le_path_pairwise lt_path_pairwise => H.
-apply: (@sub_in_pairwise _ (fun x => x \in [set: R]) _ _ _ _ _ H).
-  move=> x y _ _; exact: ltW.
-apply/allP => x _; exact: in_setT.
-Qed.
 
 (* NB: available as PR https://github.com/math-comp/analysis/pull/1809 *)
 Lemma compact_unif_continuousP {R : realType} (a b : R) f :
