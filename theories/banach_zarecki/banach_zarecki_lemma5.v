@@ -3,7 +3,7 @@ From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
-From mathcomp Require Import reals ereal topology normedtype.
+From mathcomp Require Import reals ereal topology normedtype derive.
 From mathcomp Require Import sequences measure lebesgue_measure realfun.
 From mathcomp Require Import absolute_continuity.
 
@@ -281,7 +281,7 @@ Let itv_partition_head_in_itv a b s t :
   itv_partition a b (rcons s t) -> {in s, forall x, x \in `]a, b[}.
 Proof.
 move=> pst x xs.
-have in_ab := itv_partition_in_itv pst. 
+have in_ab := itv_partition_in_itv pst.
 rewrite in_itv/=; apply/andP; split.
   have := in_ab x.
   rewrite mem_rcons in_cons.
@@ -333,7 +333,522 @@ have [ns|ns] := ltnP n (size s).
 by rewrite nth_default.
 Qed.
 
+Lemma itv_partition_lt_ub a b s :
+  itv_partition a b s -> forall n, (n.+1 < size s)%N -> nth b s n < b.
+Proof.
+elim/last_ind : s => // s0 s1 _ ps n.
+rewrite size_rcons ltnS => ns0.
+pose s := rcons s0 s1.
+rewrite -/s.
+suff : nth b s n \in `]a, b[.
+  by rewrite in_itv/= => /andP[].
+apply: (@itv_partition_head_in_itv _ _ s0 s1) => //.
+apply/(nthP b).
+exists n => //.
+by rewrite nth_rcons ns0.
+Qed.
+
 End itv_partition_lemmas.
+
+Section twice.
+Context {R : realType}.
+Implicit Types (a b : R) (f : R -> R).
+Implicit Types (s : seq R) (x : R).
+
+Lemma itv_partition_no_inbtween a b s : itv_partition a b s ->
+  forall x k, (k < (size s))%N ->
+  x \in `]nth b (a :: s) k, nth b (a :: s) k.+1[ ->
+  x \notin s.
+Proof.
+elim: s a b => // s0 s1 ih a b abs0s1 x [_/=|k].
+  rewrite in_itv/= => /andP[ax xs0].
+  rewrite inE negb_or; apply/andP; split.
+    apply/negP => /eqP s0x.
+    by rewrite s0x ltxx in xs0.
+  apply/negP => xs1.
+  case: abs0s1 => /= /andP[as0].
+  move/lt_path_min => /allP/(_ x).
+  rewrite xs1 => /(_ isT).
+  by rewrite ltNge (ltW xs0).
+rewrite /= ltnS => ks1.
+rewrite in_itv/= => /andP[kx xk].
+rewrite inE negb_or; apply/andP; split.
+  apply/negP => /eqP s0x.
+  case: abs0s1 => /= /andP[as0].
+  destruct k as [|k].
+    simpl in *.
+    by rewrite s0x ltxx in kx.
+  move/lt_path_min => /allP/(_ (nth b (s0 :: s1) k.+1)).
+  have : nth b (s0 :: s1) k.+1 \in s1.
+    apply/(nthP b).
+    exists k => //=.
+    by rewrite (leq_trans _ ks1).
+  move=> /[swap] /[apply] /=.
+  rewrite -s0x.
+  by rewrite ltNge (ltW kx).
+have : itv_partition s0 b s1.
+  by case: abs0s1 => /= => /andP[as0 s0s1 s1b].
+move/ih => /(_ _ _ ks1); apply.
+by rewrite in_itv/= kx xk.
+Qed.
+
+Lemma variation_behead a b s f :
+  variation (nth b s 0) b f (behead s) <= variation a b f s.
+Proof.
+case: s => [|s0 s1]/=.
+  by rewrite !variation_nil.
+by rewrite /variation/= big_nat_recl//= lerDr.
+Qed.
+
+Lemma variation_nth a b f s : a < b ->
+  itv_partition a b s ->
+  forall k, (k.+2 <= size s)%N ->
+  variation a (nth b s k) f (itv_partitionL s (nth b s k)) <= variation a b f s.
+Proof.
+move=> ab abs k ks.
+rewrite [in leRHS](@in_itv_partition _ (nth b s k) s); last 2 first.
+  exact: itv_partition_sorted abs.
+  apply/(nthP b).
+  exists k => //.
+  by rewrite (leq_trans _ ks).
+rewrite (@variation_cat _ _ _ (nth b s k))//; last 4 first.
+  apply/ltW.
+  by apply: (itv_partition_gt_lb _ abs).
+  apply: (@itv_partition_nth_le _ a _ _ k.+1) => //.
+  by rewrite (leq_trans ks)//.
+  apply: itv_partitionLP (abs).
+  by apply: itv_partition_gt_lb => //.
+  by apply: (itv_partition_lt_ub abs) => //.
+  apply: itv_partitionRP (abs).
+  by apply: itv_partition_gt_lb => //.
+  by apply: (itv_partition_lt_ub abs) => //.
+by rewrite lerDl variation_ge0.
+Qed.
+
+Lemma filter_iota a b s : a < b ->
+  itv_partition a b s ->
+  forall k, (k < size s)%N ->
+  [seq x <- s | x < nth b s k] = take k s.
+Proof.
+elim: s a b => //= s0 s1 ih a b ab abs [_|k].
+  rewrite /= ltxx.
+  rewrite -(filter_pred0 s1).
+  apply: eq_in_filter => r s1r.
+  apply/negbTE/negP => rs0.
+  case: abs => /= /andP[as0] + _.
+  move/order_path_min => /(_ lt_trans)/allP => /(_ _ s1r).
+  rewrite ltNge.
+  by rewrite (ltW rs0).
+rewrite ltnS => ks1.
+rewrite /=.
+rewrite ifT; last first.
+  case: abs => /= /andP[as0].
+  move/order_path_min => /(_ lt_trans)/allP + _; apply.
+  apply/(nthP b).
+  by exists k.
+rewrite (ih s0)//=.
+have /= := @itv_partition_lt_ub _ _ _ _ abs O.
+apply.
+by rewrite ltnS (leq_trans _ ks1).
+by case: abs => /= /andP[as0 s0s1 s0s1b].
+Qed.
+
+Lemma variation_nth_nth a b f s : a < b ->
+  itv_partition a b s ->
+  forall k, (k.+2 < size s)%N ->
+  variation a (nth b s k) f (itv_partitionL s (nth b s k)) <=
+  variation a (nth b s k.+1) f (itv_partitionL s (nth b s k.+1)).
+Proof.
+move=> ab abs k ks.
+have H : nth b s k < nth b s k.+1.
+  case: abs => sa /eqP asb.
+  move/pathP : sa => /(_ b) /(_ k.+1) /=.
+  apply.
+  by rewrite (leq_trans _ ks).
+have H1 : itv_partitionL s (nth b s k.+1) =
+    rcons (itv_partitionL s (nth b s k)) (nth b s k.+1).
+  rewrite /itv_partitionL.
+  rewrite -!cats1.
+  congr cat.
+  rewrite (@filter_iota a)//; last first.
+    by rewrite (leq_trans _ ks).
+  rewrite (@filter_iota a)//; last first.
+    by rewrite (leq_trans _ ks)// ltnW.
+  rewrite (take_nth b) -?cats1//.
+  by rewrite (leq_trans _ ks)// ltnW.
+rewrite H1.
+rewrite -cats1.
+rewrite (@variation_cat _ _ _ (nth b s k))//; last 4 first.
+  apply/ltW.
+  by apply: (itv_partition_gt_lb _ abs).
+  by apply/ltW.
+  apply: itv_partitionLP (abs).
+  by apply: itv_partition_gt_lb => //.
+  apply: (itv_partition_lt_ub abs) => //.
+  by rewrite (leq_trans _ ks).
+  rewrite /itv_partition/=.
+  split => //.
+  by rewrite H.
+by rewrite lerDl// variation_ge0.
+Qed.
+
+Lemma variation_oscillation a b c1 c2 f :
+  {within `[a, b], continuous f} -> c1 \in `[a, b] -> c2 \in `[a, b] ->
+  (`|f c1 - f c2|%:E <=
+   ereal_sup [set (EFin \o f) x | x in `[a, b]] -
+   ereal_inf [set (EFin \o f) x | x in `[a, b]])%E.
+Proof.
+have [ab|] := ltP a b; last first.
+ rewrite le_eqVlt => /predU1P[-> cf|ba _].
+   rewrite !in_itv/= -!eq_le => /eqP <- /eqP <-.
+   rewrite subrr normr0 sube_ge0.
+     rewrite ereal_inf_sup//; exists (f a)%:E => /=.
+     exists a => //.
+     by rewrite !in_itv/= lexx.
+   apply/orP; left.
+   rewrite set_itv1.
+   rewrite image_set1.
+   by rewrite ereal_inf1.
+  rewrite in_itv/= => /andP[/le_trans] /[apply].
+  by rewrite leNgt ba.
+move=> cf c1ab c2ab.
+have [d dab maxd] := EVT_max (ltW ab) cf.
+have [e eab mine] := EVT_min (ltW ab) cf.
+rewrite (@le_trans _ _ (f d - f e)%:E)//.
+  have [fac|fca] := leP (f c2) (f c1).
+    rewrite ger0_norm ?subr_ge0// lee_fin.
+    by rewrite lerB// ?maxd ?mine// ?in_itv/= ?lexx ?(ltW ac) ?(ltW cb)// (ltW (lt_trans ac cb)).
+  rewrite ler0_norm ?subr_le0//; last first.
+    by rewrite ltW.
+  rewrite lee_fin opprB lerB//.
+    by rewrite maxd.
+    by rewrite mine.
+rewrite EFinB leeB//.
+  apply: le_ereal_sup_tmp.
+  exists (f d)%:E => //=.
+  by exists d.
+apply: ge_ereal_inf.
+exists (f e)%:E => //=.
+by exists e.
+Qed.
+
+Lemma variation_merge1_tmp_new a b f s : a < b ->
+  {within `[a, b], continuous f} ->
+  itv_partition a b s ->
+  forall x, x \in `]a, b[ -> x \notin s ->
+  forall k, (k < (size s))%N ->
+    x \in `]nth b (a :: s) k, nth b (a :: s) k.+1[ ->
+  ((variation a b f (merge <%R s [:: x]))%:E <=
+   (variation a b f s)%:E +
+   2 * oscillation f `[nth b (a :: s) k, nth b (a :: s) k.+1])%E.
+Proof.
+move=> ab cf abs x xab xs k ks xk.
+set s' := merge _ _ _.
+apply: (@le_trans _ _ (variation a b f
+    (itv_partitionL s' x ++ itv_partitionR s' x))%:E).
+  rewrite lee_fin.
+  apply: variation_itv_partitionLR.
+  by move: xab; rewrite in_itv/= => /andP[].
+  by move: xab; rewrite in_itv/= => /andP[].
+  exact: itv_partition_merge1.
+rewrite (@variation_cat _ _ _ x); last 4 first.
+  by move: xab; rewrite in_itv/= => /andP[/ltW].
+  by move: xab; rewrite in_itv/= => /andP[_ /ltW].
+  apply: (@itv_partitionLP _ _ b).
+  by move: xab; rewrite in_itv/= => /andP[].
+  by move: xab; rewrite in_itv/= => /andP[].
+  exact: itv_partition_merge1.
+  apply: (@itv_partitionRP _ a).
+  by move: xab; rewrite in_itv/= => /andP[].
+  by move: xab; rewrite in_itv/= => /andP[].
+  exact: itv_partition_merge1.
+have s'E : s' = itv_partitionL s x ++ itv_partitionR s x.
+  rewrite /s' merge1E//.
+  exact: itv_partition_sorted abs.
+set x_k := nth b (a :: s) k.
+set x_k1 := nth b (a :: s) k.+1.
+have axk : a <= x_k.
+  rewrite /x_k.
+  destruct k as [|k].
+    done.
+  rewrite /=.
+  apply/ltW.
+  by apply: itv_partition_gt_lb.
+have xkx : x_k <= x.
+  move: xk.
+  rewrite -/x_k.
+  by rewrite in_itv/= => /andP[/ltW].
+have sa : itv_partitionL s a = [:: a].
+  rewrite /itv_partitionL.
+  rewrite [X in rcons X _](_ : _ = [::])//.
+  rewrite -(filter_pred0 s).
+  apply: eq_in_filter => r rs.
+  apply/negbTE.
+  rewrite -leNgt.
+  move/(nthP b) : rs => -[m ms <-{r}].
+  apply/ltW.
+  by apply/itv_partition_gt_lb.
+have K1 : [seq x0 <- itv_partitionR s x | x0 < x] = [::].
+  rewrite /itv_partitionR.
+  rewrite -filter_predI.
+  rewrite -(filter_pred0 s).
+  apply: eq_in_filter => r rs/=.
+  apply/negbTE/negP => /andP[/lt_trans/[apply]].
+  by rewrite ltxx.
+move: xk; rewrite -/x_k -/x_k1 in_itv/= => /andP[{}xkx xxk1].
+have H1 : variation a x f (itv_partitionL s' x) =
+    variation a x_k f (itv_partitionL s x_k)
+    + variation x_k x f [:: x].
+  destruct k as [|k].
+    rewrite /x_k/=.
+    rewrite sa.
+    rewrite {2}/variation/= big_nat1/= subrr normr0 add0r.
+    rename xkx into xa.
+    rename xxk1 into xs0.
+    have s'x : itv_partitionL s' x = [:: x].
+      rewrite /itv_partitionL.
+      rewrite [X in rcons X](_ : _ = [::])//.
+      rewrite s'E.
+      rewrite filter_cat.
+    have H1 : [seq x0 <- itv_partitionL s x | x0 < x] = [::].
+      rewrite filter_rcons ltxx filter_id.
+      case: abs.
+      destruct s as [|s0 s1].
+        rewrite /= => _ /eqP.
+        move: ab => /[swap] ->.
+        by rewrite ltxx.
+      rewrite [X in X -> _ -> _]/= => /andP[as0].
+      move/order_path_min => /(_ lt_trans)/allP s1s0 /eqP ?.
+      rewrite -(filter_pred0 (s0 :: s1)).
+      rewrite /= in xs0.
+      apply: eq_in_filter => r/=.
+      rewrite inE => /predU1P[rs0|].
+        apply/negbTE/negP => rx.
+        rewrite rs0 in rx.
+        by rewrite ltNge (ltW xs0) in rx.
+      move/s1s0 => s0r.
+      apply/negbTE/negP => rx.
+      have := lt_trans s0r rx.
+      by rewrite ltNge (ltW xs0).
+    rewrite H1.
+    by rewrite K1.
+    by rewrite s'x.
+  rewrite -variation_cat; last 4 first.
+  by [].
+  exact/ltW.
+  apply: (@itv_partitionLP _ _ b) => //.
+    rewrite /x_k /=.
+    by apply/itv_partition_gt_lb.
+  move: xab; rewrite in_itv/= => /andP[_].
+  by apply: le_lt_trans; exact/ltW.
+  rewrite /itv_partition/=.
+  by rewrite xkx.
+  rewrite s'E.
+  congr variation.
+  rewrite /itv_partitionL.
+  rewrite filter_cat rcons_cat filter_rcons ltxx filter_id.
+  rewrite -cats1.
+  rewrite catA.
+  congr cat.
+  rewrite K1 cats0.
+  rewrite [in LHS](@in_itv_partition _ x_k _ (itv_partition_sorted abs)); last first.
+    apply/(nthP b).
+    rewrite /x_k.
+    exists k => //.
+    by rewrite (leq_trans _ ks).
+  rewrite filter_cat.
+  rewrite /itv_partitionL.
+  rewrite filter_rcons.
+  rewrite xkx.
+  have H1 : [seq x0 <- itv_partitionR s x_k | x0 < x] = [::].
+    rewrite /itv_partitionR.
+    rewrite -filter_predI.
+    rewrite -(filter_pred0 s).
+    apply: eq_in_filter => r rs/=.
+    apply/negbTE/negP => /andP[rx xkr].
+    move: rs.
+    apply/negP.
+    apply: (@itv_partition_no_inbtween _ _ _ abs _ k.+1) => //.
+    rewrite -/x_k -/x_k1.
+    rewrite in_itv/= xkr/=.
+    rewrite (lt_le_trans rx)//=.
+    by rewrite ltW.
+  rewrite H1 cats0.
+  rewrite -filter_predI.
+  congr rcons.
+  apply: eq_in_filter => r rs.
+  rewrite /=.
+  by rewrite andb_idl// => /lt_trans; apply.
+have K2 : [seq x0 <- itv_partitionL s x | x < x0] = [::].
+  rewrite /itv_partitionL.
+  rewrite filter_rcons ltxx -filter_predI.
+  rewrite -(filter_pred0 s).
+  apply: eq_in_filter => r sr/=.
+  apply/negbTE/negP => /andP[/lt_trans] /[apply].
+  by rewrite ltxx.
+have H2 : variation x b f (itv_partitionR s' x) =
+  variation x x_k1 f [:: x_k1]
+  + variation x_k1 b f (itv_partitionR s x_k1).
+  rewrite -variation_cat; last 4 first.
+    exact: ltW.
+    by apply: (itv_partition_le_ub abs).
+    rewrite /itv_partition/=.
+    by rewrite xxk1.
+    move: ks.
+    rewrite leq_eqVlt => /predU1P[k1s|k1s].
+      have xk1b : x_k1 = b.
+        rewrite /x_k1 k1s.
+        rewrite nth_last/=.
+        by case: abs => _ /eqP.
+      have sxk1 : itv_partitionR s x_k1 = [::].
+        rewrite -(filter_pred0 s) /itv_partitionR.
+        rewrite xk1b.
+        apply: eq_in_filter => r rs.
+        apply/negbTE.
+        rewrite -leNgt.
+        move/(nthP b) : rs => [m ms <-].
+        by apply: (itv_partition_le_ub abs).
+      by rewrite sxk1 /itv_partition xk1b/=.
+    apply: (@itv_partitionRP _ a) => //.
+      rewrite (le_lt_trans axk)//.
+      by rewrite (lt_trans xkx).
+    rewrite /x_k1.
+    destruct s as [|s0 s1] => //.
+    rewrite (@lt_le_trans _ _ (nth b [:: a, s0 & s1] k.+2))//.
+      case: abs => /pathP /[swap]/eqP asb.
+      by apply => //.
+    by move/itv_partition_le_ub : abs => /(_ k.+1)/=.
+  congr variation.
+  rewrite s'E.
+  rewrite [LHS]filter_cat.
+  rewrite K2/= /itv_partitionR filter_id.
+  rewrite [in LHS](@in_itv_partition _ x_k1 _ (itv_partition_sorted abs)); last first.
+    apply/(nthP b).
+    by exists k.
+  rewrite filter_cat.
+  have -> : [seq x0 <- itv_partitionL s x_k1 | x < x0] = [:: x_k1].
+    rewrite /itv_partitionL.
+    rewrite filter_rcons xxk1 -filter_predI.
+    rewrite -cats1.
+    have -> : [seq x0 <- s | predI [eta > x] (<%R^~ x_k1) x0] = [::].
+      rewrite -(filter_pred0 s).
+      apply: eq_in_filter => r sr/=.
+      apply/negbTE/negP => /andP[xr rxk1].
+      move: sr.
+      apply/negP.
+      apply: (@itv_partition_no_inbtween _ _ _ abs _ k) => //.
+      rewrite -/x_k -/x_k1.
+      by rewrite in_itv/= rxk1 (lt_trans xkx xr).
+    done.
+  rewrite /=.
+  congr cons.
+  rewrite /itv_partitionR.
+  rewrite -filter_predI.
+  apply: eq_in_filter => r sr/=.
+  rewrite andb_idl// => xk1r.
+  exact: (lt_trans _ xk1r).
+rewrite H1 H2.
+rewrite (addrC (variation x x_k1 _ _)).
+rewrite addrACA.
+rewrite EFinD.
+rewrite leeD//.
+  destruct k as [|k].
+    rewrite {1}/variation.
+    have -> : itv_partitionL s x_k = [:: a].
+      rewrite /itv_partitionL -cats1 /x_k/=.
+      rewrite [X in X ++ _](_ : _ = [::])//.
+      rewrite -(filter_pred0 s).
+      apply: eq_in_filter => r sr.
+      apply/negbTE; rewrite -leNgt.
+      move/(nthP b) : sr => [m ms mr].
+      rewrite -mr.
+      apply/ltW.
+      by apply/itv_partition_gt_lb.
+    rewrite big_nat1/= subrr normr0 add0r.
+    rewrite lee_fin.
+    have -> : itv_partitionR s x_k1 = behead s.
+      destruct s as [|s0 s1] => //=.
+      rewrite /x_k1/= ltxx.
+      rewrite /itv_partitionR.
+      rewrite -[RHS](filter_predT s1).
+      apply: eq_in_filter => r rs1.
+      case: abs => /= /andP[as0].
+      move=> /order_path_min => /(_ lt_trans) + _ => /allP.
+      by apply.
+    rewrite /x_k1 /=.
+    exact: variation_behead.
+  move: ks.
+  rewrite leq_eqVlt => /predU1P[k1s|k1s].
+    (* copipe *) have xk1b : x_k1 = b.
+      rewrite /x_k1 k1s.
+      rewrite nth_last/=.
+      by case: abs => _ /eqP.
+    (* copipe *) have sxk1 : itv_partitionR s x_k1 = [::].
+      rewrite -(filter_pred0 s) /itv_partitionR.
+      rewrite xk1b.
+      apply: eq_in_filter => r rs.
+      apply/negbTE.
+      rewrite -leNgt.
+      move/(nthP b) : rs => [m ms <-].
+      by apply: (itv_partition_le_ub abs).
+    rewrite sxk1.
+    rewrite variation_nil addr0.
+    rewrite lee_fin.
+    rewrite /x_k/=.
+    rewrite variation_nth//.
+    by rewrite -k1s.
+  rewrite lee_fin.
+  rewrite [in leRHS](@in_itv_partition _ x_k1 _ (itv_partition_sorted abs)); last first.
+    apply/(nthP b).
+    exists k.+1 => //.
+    by rewrite (leq_trans _ k1s).
+  rewrite (@variation_cat _ _ _ x_k1)//; last 4 first.
+    by rewrite (le_trans axk)// (le_trans (ltW xkx))// ltW.
+    rewrite /x_k1.
+    rewrite /=.
+    by apply: (@itv_partition_le_ub _ a) => /=.
+    apply: itv_partitionLP (abs) => //.
+    rewrite /x_k1/=.
+    by apply: itv_partition_gt_lb => //.
+    rewrite /x_k1/=.
+    by apply: (itv_partition_lt_ub abs).
+    apply: itv_partitionRP (abs) => //.
+    rewrite /x_k1/=.
+    by apply: itv_partition_gt_lb => //.
+    rewrite /x_k1/=.
+    by apply: (itv_partition_lt_ub abs).
+  rewrite lerD2r.
+  rewrite /x_k /x_k1/=.
+  by rewrite variation_nth_nth//.
+rewrite mule_natl.
+rewrite mule2n.
+rewrite EFinD.
+have xkxk10 : `[x_k, x_k1]%classic != set0.
+  apply/set0P; exists x => /=.
+  by rewrite in_itv/= (ltW xkx) (ltW xxk1).
+rewrite leeD//.
+  rewrite /variation/= big_nat_recr//= big_nil add0r.
+  rewrite /oscillation.
+  rewrite (negbTE xkxk10).
+  apply: (@variation_oscillation _ _ _ _ f).
+  apply: continuous_subspaceW cf.
+  apply: interval.subset_itv; rewrite bnd_simp//.
+  by apply: (itv_partition_le_ub abs).
+  by rewrite in_itv/= (ltW xkx) (ltW xxk1).
+  by rewrite in_itv/= lexx (ltW (lt_trans xkx _)).
+rewrite /variation/= big_nat_recr//= big_nil add0r.
+rewrite /oscillation.
+rewrite (negbTE xkxk10).
+apply: (@variation_oscillation _ _ _ _ f).
+apply: continuous_subspaceW cf.
+apply: interval.subset_itv; rewrite bnd_simp//.
+by apply: (itv_partition_le_ub abs).
+rewrite in_itv/= lexx ltW//.
+by rewrite (lt_trans xkx).
+by rewrite in_itv/= (ltW xkx) (ltW xxk1).
+Qed.
+
+End twice.
 
 Section itv_partition_length.
 Context {R : realType}.
