@@ -290,7 +290,7 @@ End cst_continuous_on_subspace.
 Section contfun.
 Context {U V : topologicalType}.
 Variables (A : set U) (B : set V) .
-Notation T := (continuousFunType A B).
+Notation T := (@continuousFunType U V A B).
 
 Section Sub.
 Context (f : U -> V) (fP : f \in contfunseg A B).
@@ -320,60 +320,85 @@ Lemma contfunseg_valP f (Pf : f \in contfunseg A B) :
 Proof. by []. Qed.
 
 HB.instance Definition _ := isSub.Build _ _ T contfunseg_rect contfunseg_valP.
-
 Lemma contfunseg_eqP (f g : continuousFunType A B) : f = g <-> f =1 g.
 Proof. by split=> [->//|fg]; exact/val_inj/funext. Qed.
 
-(* HB.instance Definition _ := [Choice of continuousFunType A B by <:]. *)
+ HB.instance Definition _ := [Choice of continuousFunType A B by <:]. 
 End contfun.
 
 
-Section contfun_ring.
+(* was ring before, but for general V there is no ring structure *)
+Section contfun_lmodtype.
 (* can this be generalized to V normedModType with ring structure??*)
-Context {R : realType} (U : set R).
-Lemma contfunseg_subring_closed : subring_closed (contfunseg U [set : R] ).
+Context {R : realType} {V : normedModType R} (U : set R) .
+Let contfunseg_zmod_closed : zmod_closed  (contfunseg U [set : V] ).
 Proof.
-split=> [|f g|f g]; rewrite !inE/=.
+ split=> [|f g]; rewrite !inE/=. 
 - apply: squash.
   split => //.
   split => //.
   exact: cst_continuous.
 - move=> /unsquash cf /unsquash cg.
   apply: squash.
-  pose f' : continuousFunType U setT  := HB.pack f cf.
-  pose g' : continuousFunType U setT  := HB.pack g cg.
+  pose f' : @continuousFunType _ _ U [set: V]  := HB.pack f cf.
+  pose g' : @continuousFunType _ _ U setT  := HB.pack g cg.
   rewrite [f]/(f' : _ -> _).
   rewrite [g]/(g' : _ -> _).
   move: {f g cf cg} f' g' => f g.
-  have isfun_fg : @isFun R R  U [set: R] (f \- g) by constructor.
-  have iscontfun_fg : @isContinuous (subspace U) R (f \- g).
+  have isfun_fg : @isFun _ V  U [set: V] (f \- g) by constructor.
+  have iscontfun_fg : @isContinuous _ V (f \- g).
     constructor.
     move=> x.
-    apply: continuousB; apply: cts_fun.
-  by split.
-- move=> /unsquash cf /unsquash cg.
-  apply: squash.
-  pose f' : continuousFunType U setT  := HB.pack f cf.
-  pose g' : continuousFunType U setT  := HB.pack g cg.
-  rewrite [f]/(f' : _ -> _).
-  rewrite [g]/(g' : _ -> _).
-  move: {f g cf cg} f' g' => f g.
-  have isfun_fg : @isFun R R  U [set: R] (f \- g) by constructor.
-  have iscontfun_fg : @isContinuous (subspace U) R (f \* g).
-    constructor.
-    move=> x.
-    by apply: (@continuousM _ (subspace U)); exact: cts_fun.
+    apply: continuousB;apply: cts_fun.
   by split.
 Qed.
+HB.instance Definition _ := GRing.isZmodClosed.Build _ _ contfunseg_zmod_closed.
 
-HB.instance Definition _ := GRing.isSubringClosed.Build _
-  (@contfunseg _ R U setT) contfunseg_subring_closed.
+HB.instance Definition _ :=
+  [SubChoice_isSubZmodule of continuousFunType U [set: V] by <:].
+(* Lemma contfunseg_subring_closed : subring_closed (contfunseg U [set : R] ). *)
+(* Proof. *)
+(* split=> [|f g|f g]; rewrite !inE/=. *)
+(* - apply: squash. *)
+(*   split => //. *)
+(*   split => //. *)
+(*   exact: cst_continuous. *)
+(* - move=> /unsquash cf /unsquash cg. *)
+(*   apply: squash. *)
+(*   pose f' : continuousFunType U setT  := HB.pack f cf. *)
+(*   pose g' : continuousFunType U setT  := HB.pack g cg. *)
+(*   rewrite [f]/(f' : _ -> _). *)
+(*   rewrite [g]/(g' : _ -> _). *)
+(*   move: {f g cf cg} f' g' => f g. *)
+(*   have isfun_fg : @isFun R R  U [set: R] (f \- g) by constructor. *)
+(*   have iscontfun_fg : @isContinuous (subspace U) R (f \- g). *)
+(*     constructor. *)
+(*     move=> x. *)
+(*     apply: continuousB; apply: cts_fun. *)
+(*   by split. *)
+(* - move=> /unsquash cf /unsquash cg. *)
+(*   apply: squash. *)
+(*   pose f' : continuousFunType U setT  := HB.pack f cf. *)
+(*   pose g' : continuousFunType U setT  := HB.pack g cg. *)
+(*   rewrite [f]/(f' : _ -> _). *)
+(*   rewrite [g]/(g' : _ -> _). *)
+(*   move: {f g cf cg} f' g' => f g. *)
+(*   have isfun_fg : @isFun R R  U [set: R] (f \- g) by constructor. *)
+(*   have iscontfun_fg : @isContinuous (subspace U) R (f \* g). *)
+(*     constructor. *)
+(*     move=> x. *)
+(*     by apply: (@continuousM _ (subspace U)); exact: cts_fun. *)
+(*   by split. *)
+(* Qed. *)
 
-HB.instance Definition _ := [SubChoice_isSubComNzRing of
-  continuousFunType U [set: R] by <:].
+(* HB.instance Definition _ := GRing.isSubringClosed.Build _ *)
+(*   (@contfunseg _ R U setT) contfunseg_subring_closed. *)
+
+(* HB.instance Definition _ := [SubChoice_isSubComNzRing of *)
+(*   continuousFunType U [set: R] by <:]. *)
 (* HB.instance Definition _ := [SubChoice_isSubComRing of @continuousFunType _ R U setT by <:]. *)
 
-Lemma contfun_scaler_closed : GRing.scaler_closed (contfunseg U [set: R]).
+Lemma contfun_scaler_closed : GRing.scaler_closed (contfunseg U [set: V]).
 Proof.
 move=> r f; rewrite 2!inE/=.
 move/unsquash => [[_ cf]].
@@ -387,15 +412,15 @@ by case: cf; exact.
 Qed.
 
 HB.instance Definition _ := GRing.isScaleClosed.Build _ _
-  (contfunseg  U [set: R]) contfun_scaler_closed.
+  (contfunseg  U [set: V]) contfun_scaler_closed.
 
 Fail Check continuousFunType U [set: R] : lmodType _.
 
 HB.instance Definition _ :=
-  [SubZmodule_isSubLmodule of continuousFunType U [set: R] by <:].
+  [SubZmodule_isSubLmodule of continuousFunType U [set: V] by <:].
 
-Check continuousFunType U [set : R] : lmodType _.
-End contfun_ring.
+Check continuousFunType U [set : V] : lmodType _.
+End contfun_lmodtype.
 
 Section contFun_seminorm.
 Context {R : realType} (K : set R).
@@ -510,29 +535,29 @@ Qed.
 
 End contFun_seminorm.
 
-Section ideal_definition.
-Context {R : realType} (K : set R).
+(* was ideal_definition *)
+(* since there is no ring structure on contFun anymore we do not get an ideal*)
+Section submod_definition.
+Context {R : realType} {V :normedModType R} (K : set R) .
+
 Hypothesis (nonemptyK : nonempty K) (compactK : compact K).
 
+
 Local Notation T := (continuousFunType K [set: R]).
-
 #[using="nonemptyK compactK"]
-Definition ideal_K : {pred T} := [pred f : T | f \_ K == cst 0].
 
-Lemma idealr_closed_K : idealr_closed ideal_K.
+
+(* point V does not need to be 0, so rewrite f\_K explicitly *)
+Definition submod_K : {pred T} := [pred f : T | f\_K == cst 0].
+Unset Printing Notations.
+Lemma submod_closed_K : submod_closed submod_K.
 Proof.
 split => /=.
 - rewrite inE/=.
   apply/funext => x.
-  rewrite patchE.
-  by case: ifPn.
-- rewrite inE/=.
-  have [x Kx] := nonemptyK.
-  apply/negP => /eqP /(congr1 (@^~ x))/=.
-  rewrite patchE ifT//=.
-    by apply/eqP; rewrite oner_eq0.
-  by rewrite inE/=.
-- move=> f u v.
+  rewrite /patch.
+  by case: ifPn => //.
+- move => f u v.
   rewrite !inE => u0 v0.
   rewrite restrictD/= v0.
   rewrite restrictM u0.
@@ -542,22 +567,26 @@ split => /=.
   by under eq_fun do rewrite add0r.
 Qed.
 
-HB.instance Definition _ := isIdealr.Build _ ideal_K idealr_closed_K.
+HB.instance Definition _ := GRing.isZmodClosed.Build _ _ submod_closed_K.
 
-Check ideal_K : zmodClosed _.
+Check submod_K : zmodClosed _.
 
-End ideal_definition.
+End submod_definition.
 
-Section contFunSeg_quotient.
-Context {R : realType} (K : set R).
+Section contFun_quotient.
+Context {R : realType} {V :normedModType R} (K : set R) .
 Hypothesis (nonemptyK : nonempty K) (compactK : compact K).
 
+Import Quotient.
 Local Open Scope quotient_scope.
-Definition quot_contFunType := {ideal_quot (ideal_K nonemptyK compactK)}.
 
-HB.instance Definition _ := NzRingQuotient.on quot_contFunType.
+Local Notation T := (continuousFunType K [set: R]).
 
-About contfun_quot_contFunType__canonical__ring_quotient_NzRingQuotient.
+Definition quot_contFunType := {quot (submod_K nonemptyK compactK)}.
+ (* Definition quot_contFunType := {ideal_quot (ideal_K nonemptyK compactK)}.  *)
+
+ HB.instance Definition _ := ZmodQuotient.on quot_contFunType. 
+(* About contfun_quot_contFunType__canonical__ring_quotient_NzRingQuotient. *)
 Definition quot_contFunType_to_fun (f : quot_contFunType) : subspace K -> R := repr f.
 Coercion quot_contFunType_to_fun : quot_contFunType >-> Funclass.
 
@@ -580,7 +609,7 @@ apply/eqP; rewrite subr_eq0; apply/eqP.
 exact: abfg.
 Qed.
 
-End contFunSeg_quotient.
+End contFun_quotient.
 
 
 Section zmodule_normed.
@@ -596,8 +625,6 @@ Local Notation norm := infty_norm.
 
 Local Open Scope quotient_scope.
 
-
-
 Let normr_repr_has_sup (x : V) :
   has_sup [set (normr \o repr x) x0 | x0 in K].
 Proof. by apply normr_has_sup. Qed.
@@ -607,7 +634,6 @@ Lemma eqmod_on_itv f g :
   f = g %[mod V] -> {in K, f =1 g}.
 Proof.
   move => /eqmodP + x xab.
-  rewrite /Quotient.equiv_equiv /Quotient.equiv /= /ideal_K /=.
   move/set_mem =>  H.
   apply subr0_eq.
   rewrite -[RHS]/(cst 0 x) -H patchE; case : ifPn => //. 
@@ -662,7 +688,6 @@ Proof.
   move => H.
   rewrite -(reprK x)  -(reprK 0).
   apply/eqquotP.
-  rewrite /Quotient.equiv_equiv/Quotient.equiv/=/ ideal_K/=.
   apply mem_set; rewrite /cst /=.
   apply funext => x0 /=.
   rewrite patchE.
@@ -1227,23 +1252,23 @@ HB.instance Definition _ (g : continuousFunType `[t0, t1] [set: R]) :=
 End cont_on_segN.
 
 
-Section vector_contseg.
+(* Section vector_contseg. *)
 
-Context {R : realType}.
-Variables  (a b : R).
-Hypothesis ab : a <= b.
+(* Context {R : realType}. *)
+(* Variables  (a b : R). *)
+(* Hypothesis ab : a <= b. *)
 
-Notation V := (quot_contFunType (seg_nonempty ab) (@segment_compact R _ _)).
+(* Notation V := (quot_contFunType (seg_nonempty ab) (@segment_compact R _ _)). *)
 
-Definition Vn n := 'rV[V]_n.
-Check V : normedZmodType R.
-Check (V : pseudoMetricType R).
-Check (V : normedModType R).
- Check (Vn 2 : completeType).
-Check (Vn 2 : pseudoMetricType R).
-Fail Check (Vn 2 : normedZmodType R).
-Fail Check (Vn 2 : normedModType R).
-End vector_contseg.
+(* Definition Vn n := {ffun 'I_n -> V}. *)
+(* Check V : normedZmodType R. *)
+(* Check (V : pseudoMetricType R). *)
+(* Check (V : normedModType R). *)
+(* Check (Vn 2 : normedZmodType R). *)
+(* Check (Vn 2 : pseudoMetricType R). *)
+(*  Check (Vn 2 : completeType). *)
+(* Fail Check (Vn 2 : normedModType R). *)
+(* End vector_contseg. *)
 (* (* not neeeded anymore *) *)
 (* NB: merged to MathComp *)
 (* Lemma gerN {R : numDomainType} (x : R) : 0 <= x -> - x <= x. *)
