@@ -8,6 +8,7 @@ From mathcomp Require Import functions reals interval_inference topology.
 From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
 From mathcomp Require Import ereal sequences derive numfun measure realfun.
 From mathcomp Require Import lebesgue_measure lebesgue_integral ftc.
+From mathcomp Require Import common contfun.
 (**md**************************************************************************)
 (* # ODE                                                                      *)
 (*   cont_on_seg a b := pred type for functions continuous on [a;b]           *)
@@ -162,33 +163,6 @@ HB.structure Definition ContFunSeg (R : realType) (a b : R) :=
 
 (* TODO: factory Lmodule is normed *)
 
-(* TODO: rewrite rmorphD should work declare patch as a morphism: erestrictD, erestrictM,  *)
-Lemma restrictD [T : pointedType] [R : realFieldType] (D : set T) (f g : T -> R) :
-  (f \+ g)%R \_ D = (f \_ D \+ g \_ D)%R.
-Proof.
-rewrite /patch.
-apply/funext => /= x.
-case: ifPn => xD.
-  by rewrite /GRing.add_fun xD.
-by rewrite /GRing.add_fun (negbTE xD)// addr0.
-Qed.
-
-Lemma restrictM [T : pointedType] [R : realFieldType] (D : set T) (f g : T -> R) :
-  (f \* g)%R \_ D = (f \_ D \* g \_ D)%R.
-Proof.
-rewrite /patch.
-apply/funext => /= x.
-case: ifPn => xD.
-  by rewrite /GRing.mul_fun xD.
-by rewrite /GRing.mul_fun (negbTE xD)// mulr0.
-Qed.
-
-(* TODO: PR to MathComp-Analysis *)
-Lemma cst_is_fun {T1 T2} (A : set T1) x : @isFun T1 T2 A [set: T2] (cst x).
-Proof. by constructor. Qed.
-
-HB.instance Definition _ {T1 T2} (A : set T1) x := @cst_is_fun T1 T2 A x.
-
 (* NB: should this be PRed or is a patch for our development? *)
 Section cst_continuous_on_subspace.
 Context {R : realType}.
@@ -202,73 +176,11 @@ HB.instance Definition _ x := isContinuous.Build (subspace A) R
 
 End cst_continuous_on_subspace.
 
-HB.instance Definition _ (R : realType) (A : set R) :=
-  gen_eqMixin (continuousFunType A [set: R]).
-HB.instance Definition _ (R : realType) (A : set R) :=
-  gen_choiceMixin (continuousFunType A [set: R]).
-
-Section cont_on_seg_pred.
-Context {R : realType}.
-Variables a b : R.
-
-Definition cont_on_seg : {pred R -> R} :=
-  mem [set f | squashed (@ContinuousFun R R `[a, b] [set: R] f)].
-Definition cont_on_seg_key : pred_key cont_on_seg. Proof. exact. Qed.
-Canonical cont_on_seg_keyed := KeyedPred cont_on_seg_key.
-
-End cont_on_seg_pred.
-
-(* NB(rei): was this just motivated by generic predicates such as rpredD?
-or more generally by stability of "cont. over [a,b]"?
-anyway, maybe not needed right now *)
-Section cont_on_seg_sub.
-Context {R : realType}.
-Variables a b : R.
-Notation T := (continuousFunType `[a, b] [set: R]).
-
-Section Sub.
-Context (f : R -> R) (fP : f \in cont_on_seg a b).
-
-Definition cont_on_seg_Sub_subproof := unsquash (set_mem fP).
-#[local] HB.instance Definition _ := cont_on_seg_Sub_subproof.
-Definition cont_on_seg_Sub : continuousFunType `[a, b] [set: R] :=
-  {| ContinuousFun.sort := f; ContinuousFun.class := cont_on_seg_Sub_subproof |}.
-
-End Sub.
-
-Lemma cont_on_seg_rect (K : T -> Type) :
-  (forall f (Pf : f \in cont_on_seg a b), K (cont_on_seg_Sub Pf)) ->
-  forall u : T, K u.
-Proof.
-move=> Ksub [f Pf].
-rewrite (_ : K _  = K (cont_on_seg_Sub (mem_set (squash Pf))))//.
-rewrite /cont_on_seg_Sub /cont_on_seg_Sub_subproof /= mem_setK.
-rewrite /unsquash; case : cid => // /= => x _.
-congr (K (ContinuousFun.Pack _)).
-move : Pf x => [[H1] [H2]] [[K1] [K2]].
-by rewrite (Prop_irrelevance H1 K1) (Prop_irrelevance H2 K2).
-Qed.
-
-Lemma cont_on_seg_valP f (Pf : f \in cont_on_seg a b) :
-  cont_on_seg_Sub Pf = f :> (_ -> _).
-Proof. by []. Qed.
-
-HB.instance Definition _ := isSub.Build _ _ T cont_on_seg_rect cont_on_seg_valP.
-
-Lemma cont_on_seg_eqP (f g : continuousFunType `[a, b] [set: R]) :
-  f = g <-> f =1 g.
-Proof. by split=> [->//|fg]; exact/val_inj/funext. Qed.
-
-(* commented out on [2025-12-26]
-HB.instance Definition _ := [Choice of continuousFunType `[a, b] [set: R] by <:].
-*)
-
-End cont_on_seg_sub.
-
-Section ring_lmodtype_instances.
+Module Rcont_on_seg.
+Section ring_instances.
 Context {R : realType} (a b : R).
 
-Lemma cont_on_seg_subring_closed : subring_closed (@cont_on_seg R a b).
+Lemma cont_on_seg_subring_closed : subring_closed (@cont_on_seg R R a b).
 Proof.
 split=> [|f g|f g]; rewrite !inE/=.
 - apply: squash.
@@ -303,13 +215,47 @@ split=> [|f g|f g]; rewrite !inE/=.
 Qed.
 
 HB.instance Definition _ := GRing.isSubringClosed.Build _
-  (@cont_on_seg R a b) cont_on_seg_subring_closed.
+  (@cont_on_seg _ R a b) cont_on_seg_subring_closed.
+
 HB.instance Definition _ := [SubChoice_isSubComNzRing of
   continuousFunType `[a, b] [set: R] by <:].
-(*HB.instance Definition _ := [SubChoice_isSubComRing of
-  continuousFunType `[a, b] [set: R] by <:].*)
 
-Lemma contfun_scaler_closed : GRing.scaler_closed (@cont_on_seg R a b).
+Check (continuousFunType `[a, b] [set: R]) : ringType.
+
+HB.instance Definition _ := [SubChoice_isSubComRing of
+  continuousFunType `[a, b] [set: R] by <:].
+
+End ring_instances.
+
+Section lmodtype_instances.
+Context {R : realType} (a b : R).
+
+Lemma cont_on_seg_zmod_closed : zmod_closed (@cont_on_seg _ R a b).
+Proof.
+ split=> [|f g]; rewrite !inE/=.
+- apply: squash.
+  split => //.
+  split => //.
+  exact: cst_continuous.
+- move=> /unsquash cf /unsquash cg.
+  apply: squash.
+  pose f' : @continuousFunType _ _ `[a, b] [set: R]  := HB.pack f cf.
+  pose g' : @continuousFunType _ _ `[a, b] setT  := HB.pack g cg.
+  rewrite [f]/(f' : _ -> _).
+  rewrite [g]/(g' : _ -> _).
+  move: {f g cf cg} f' g' => f g.
+  have isfun_fg : @isFun _ R `[a, b] [set: R] (f \- g) by constructor.
+  have iscontfun_fg : @isContinuous _ R (f \- g).
+    constructor.
+    move=> x.
+    apply: continuousB;apply: cts_fun.
+  by split.
+Qed.
+HB.instance Definition _ := GRing.isZmodClosed.Build _ (@cont_on_seg R R a b)
+  cont_on_seg_zmod_closed.
+
+
+Lemma contfun_scaler_closed : GRing.scaler_closed (@cont_on_seg R R a b).
 Proof.
 move=> r f; rewrite 2!inE/=.
 move/unsquash => [[_ cf]].
@@ -322,17 +268,16 @@ apply: continuousZ.
 by case: cf; exact.
 Qed.
 
-HB.instance Definition _ := GRing.isScaleClosed.Build _ _
-  (@cont_on_seg R a b) contfun_scaler_closed.
+Check @continuousFunType R R `[a, b] setT : zmodType.
 
-Fail Check @continuousFunType R a b : lmodType _.
+Fail Check @continuousFunType R R `[a, b] setT : lmodType _.
 
 HB.instance Definition _ :=
   [SubZmodule_isSubLmodule of continuousFunType `[a, b] [set: R] by <:].
 
-Check continuousFunType `[a, b] [set: R] : lmodType _.
+Check continuousFunType `[a, b] [set: V] : lmodType _.
 
-End ring_lmodtype_instances.
+End lmodtype_instances.
 
 Section ideal_definition.
 Context {R : realType} (a b : R) (ab : a <= b).
@@ -368,41 +313,16 @@ HB.instance Definition _ := isIdealr.Build _ ideal_itv idealr_closed_itv.
 
 Check ideal_itv : zmodClosed _.
 
-End ideal_definition.
-
-Section cont_on_seg_quotient.
-Context {R : realType} (a b : R).
-
-(*Definition eq_seg (f g : continuousFunType a b) := `[< {in `[a, b], f =1 g} >].
-
-Let eq_seg_refl : reflexive eq_seg.
-Proof. by move=> f; apply/asboolP => r. Qed.
-
-Let eq_seg_sym : symmetric eq_seg.
-Proof. by move=> f g; apply/idP/idP => /asboolP h; apply/asboolP => r /h. Qed.
-
-(* TODO: wait for quotient *)
-Let eq_seg_trans : transitive eq_seg.
-Proof.
-by move=> f g h /asboolP fg /asboolP gh; apply/asboolP => r rab; rewrite fg// gh.
-Qed.
-
-Canonical eq_seg_canonical :=
-  EquivRel eq_seg eq_seg_refl eq_seg_sym eq_seg_trans.*)
-
-Local Open Scope quotient_scope.
-Context (ab : a <= b).
-
-Definition quot_continuousFunType := {ideal_quot (ideal_itv ab)}.
+Definition quot_continuousFunType := {ideal_quot ideal_itv}.
 
 HB.instance Definition _ := NzRingQuotient.on quot_continuousFunType.
-
-About ode_quot_continuousFunType__canonical__ring_quotient_NzRingQuotient.
 
 Definition quot_continuousFunType_to_fun (f : quot_continuousFunType) :
   (* NB(rei): was R -> R before 2025-12-26 *)
   subspace `[a, b] -> R := repr f.
 Coercion quot_continuousFunType_to_fun : quot_continuousFunType >-> Funclass.
+
+Local Open Scope quotient_scope.
 
 Lemma eq_segP (f g : quot_continuousFunType) :
   reflect ({in `[a, b], f =1 g}) (f == g %[mod quot_continuousFunType]).
@@ -422,7 +342,8 @@ apply/eqP; rewrite subr_eq0; apply/eqP.
 exact: abfg.
 Qed.
 
-End cont_on_seg_quotient.
+End ideal_definition.
+End Rcont_on_seg.
 
 Section zmodule_normed.
 Context {R : realType} (a b : R) (ab : a <= b).
@@ -430,7 +351,9 @@ Context {R : realType} (a b : R) (ab : a <= b).
 Definition infty_norm0 (f : {fun `[a, b] >-> [set: R]}) :=
   sup ((Num.norm \o f) @` `[a, b]).
 
-Local Notation V := (quot_continuousFunType ab).
+Import Rcont_on_seg.
+
+Let V := (quot_continuousFunType ab).
 
 Definition infty_norm (f : V) := infty_norm0 (repr f).
 
@@ -514,33 +437,27 @@ Qed.
 Lemma eqmod_on_itv f g :
   f = g %[mod V] -> {in `[a,b], f =1 g}.
 Proof.
-  move => /eqmodP + x xab.
-  rewrite /Quotient.equiv_equiv /Quotient.equiv /= /ideal_itv /=.
-  move/set_mem =>  H.
-  apply subr0_eq.
-  rewrite -[RHS]/(cst 0 x) -H patchE; case : ifPn => //. 
-  by rewrite xab.
+move => /eqmodP + x xab.
+rewrite /Quotient.equiv_equiv /Quotient.equiv /=.
+rewrite /ideal_itv/=.
+move/set_mem =>  H.
+apply subr0_eq.
+rewrite -[RHS]/(cst 0 x) -H patchE; case : ifPn => //.
+by rewrite xab.
 Qed.
 
-
-Lemma eval_mod_on_itv f x : x \in `[a,b] -> (\pi_V f : V) x = f x.
+Lemma eval_mod_on_itv f x : x \in `[a,b] -> repr (\pi_V f : V) x = f x.
 Proof.
   move => xab.
   apply eqmod_on_itv => //.
   by rewrite reprK.
 Qed.
+
 Lemma infty_norm_itv_eq (f g : continuousFunType `[a, b] [set: R]) :
   {in `[a,b], f =1 g} -> infty_norm0 f = infty_norm0 g.
 Proof.
 move => abfg; rewrite /infty_norm0 /=; congr (sup _).
 by apply/seteqP; split; move => _ [ y ? <- ]; exists y => //=; rewrite abfg// inE.
-Qed.
-
-Local Lemma sup_le A (x : R) : has_sup A -> A x -> x <= sup A.
-Proof.
-  move=> supA Ax.
-  have /sup_upper_bound := supA.
-  by move/(_ x Ax).
 Qed.
 
 Lemma ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
@@ -571,93 +488,35 @@ Proof.
     + rewrite /has_ubound.
       exists (sup [set (normr \o repr x) x0 | x0 in `[a, b]] + sup [set (normr \o repr y) x0 | x0 in `[a, b]]).
       apply ubP => _ [x0 xs] [y0 ys] <-.
-      apply lerD;apply sup_le => //.
+      rewrite lerD// ub_le_sup//.
+        exact: (normr_repr_has_sup x).2.
+      exact: (normr_repr_has_sup y).2.
 Qed.
 
 Lemma infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
 Proof.
-  rewrite /norm/infty_norm0 /=.
-  move => H.
-  rewrite -(reprK x)  -(reprK 0).
-  apply/eqquotP.
-  rewrite /Quotient.equiv_equiv/Quotient.equiv/=/ ideal_itv/=.
-  apply mem_set; rewrite /cst /=.
-  apply funext => x0 /=.
-  rewrite patchE.
-  case : ifPn => // /set_mem in_itv.
-  rewrite /GRing.opp/GRing.add /=.
-  have -> : ( {in `[a,b], repr (0 : V) =1 (0 : continuousFunType `[a, b] [set: R])}) => //.
-  apply /eqmod_on_itv.
-  rewrite reprK /GRing.zero /= /Quotient.zero /= -lock /= //.
-  rewrite subr0.
-  apply /eqP;rewrite -normr_le0.
-  have := (sup_upper_bound (normr_repr_has_sup x)).
-  rewrite H /ubound /=.
-  move => H0.
-  apply H0.
-  exists x0 => //.
-  by rewrite inE.
-Qed.
-
-Local Lemma has_sup_Mn (A : set R) n: has_sup A -> has_sup [set x *+n | x in A ].
-Proof.
-  move => [-[] x Ax [y uby]].
-  split; first by exists (x *+ n);exists x.
-  exists (y *+ n).
-  move => _ [y0 Ay0 <-] .
-  rewrite lerMn2r.
-  by apply /orP;right;apply uby.
-Qed.
-
-Local Lemma sup_Mn (A : set R) n: has_sup A -> sup [set x *+n | x in A ] = sup A *+ n.
-Proof.
-move => ex_sup.
-elim: n.
-rewrite !mulr0n -(sup1 0);congr (sup _).
-apply eq_set => /= z ;apply propext; split => [[x _ <- ] | ->]; rewrite ?normr0 => //.
-case : ex_sup => -[] x Ax _;by exists x.
-move => n IH.
-rewrite !mulrS.
-rewrite -IH /infty_norm0.
-rewrite -sup_sumE => //; last by apply has_sup_Mn.
-apply /eqP.
-rewrite eq_le.
-apply /andP;split; last first.
-apply sup_le_ub.
-case : ex_sup => -[] x Ax _;exists (x+x *+ n); exists x => //.
-exists (x *+ n) => //.
-by exists x.
-move => _ /= [x Ax [_ [x0 Ax0] <-] <-].
-have /orP[ xx0| xx0] := le_total x x0.
-rewrite (@le_trans _ _ (x0 *+ n.+1)) //.
-by rewrite mulrS lerD2r.
-apply sup_le; first by apply has_sup_Mn.
-by exists x0.
-rewrite (@le_trans _ _ (x *+ n.+1)) //.
-rewrite mulrS lerD2l.
-by rewrite lerMn2r xx0 orbT.
-apply sup_le; first by apply has_sup_Mn.
-by exists x.
-apply le_sup.
-apply: subset_trans; last by apply: le_down.
-move => _ [x Ax <-] /=.
-exists x => //.
-exists (x *+ n)=> //.
-exists x => //.
-by rewrite mulrS.
-case : ex_sup => -[] x Ax _.
-exists (x *+ n.+1)=> //=.
-by exists x.
-case : ex_sup => -[] x Ax [y uby].
-split.
-exists (x + x *+ n).
-exists x => //.
-exists (x *+ n) => //.
-by exists x.
-exists (y + y *+ n) => _ [x0 Ax0 [_ [x1 Ax1] <-] <-].
-apply lerD;first by apply uby.
-rewrite lerMn2r; apply /orP.
-by right;apply uby.
+rewrite /norm/infty_norm0 /=.
+move => H.
+rewrite -(reprK x)  -(reprK 0).
+apply/eqquotP.
+rewrite /Quotient.equiv_equiv/Quotient.equiv/=.
+rewrite /ideal_itv/=.
+apply mem_set; rewrite /cst /=.
+apply funext => x0 /=.
+rewrite patchE.
+case : ifPn => // /set_mem in_itv.
+rewrite /GRing.opp/GRing.add /=.
+have -> : ( {in `[a,b], repr (0 : V) =1 (0 : continuousFunType `[a, b] [set: R])}) => //.
+apply /eqmod_on_itv.
+rewrite reprK /GRing.zero /= /Quotient.zero /= -lock /= //.
+rewrite subr0.
+apply /eqP;rewrite -normr_le0.
+have := (sup_upper_bound (normr_repr_has_sup x)).
+rewrite H /ubound /=.
+move => H0.
+apply H0.
+exists x0 => //.
+by rewrite inE.
 Qed.
 
 Local Lemma infty_norm0_eq0 : infty_norm0 (0 : continuousFunType `[a, b] [set: R]) = 0.
@@ -720,6 +579,9 @@ Qed.
 (* TODO: dev the theory of sup following the theory of ess_sup *)
 
 Fail Check V : normedZmodType R.
+
+Check V : nmodType.
+Check V : lmodType _.
 
 HB.instance Definition _ := @Num.Zmodule_isNormed.Build R V
   norm ler_infty_normD infty_normr0_eq0 infty_normrMn infty_normrN.
@@ -1902,36 +1764,6 @@ HB.instance Definition _ :=
   @GRing.Zmodule_isLmodule.Build R V cont_scale cont_scalerA cont_scale1r cont_scalerDr
   cont_scalerDl.
 
-Local Lemma sup_mult (A : set R) (a : R): has_sup A ->  sup [set normr a * x  | x in A ] = (normr a) * sup A  .
-Proof.
-move =>ex_sup.
-have []:= ex_sup => -[] x Ax ub.
-apply /eqP.
-rewrite eq_le.
-apply /andP;split.
-apply sup_le_ub; first by exists (normr a * x); exists x.
-move => _ [x0 Axo <-].
-apply ler_wpM2l => //.
-apply sup_le => //.
-have [/eqP ->| ha0] := boolP (a == 0).
-rewrite normr0 !mul0r .
-suff ->:  [set 0 * x0 | x0 in A] = [set 0] by rewrite sup1 lexx.
-apply/predeqP => x0 /=;split => [ [x1 _ <-] | -> ].
-  by rewrite mul0r.
-  by exists x => //=; rewrite  mul0r.
-rewrite -ler_pdivlMl; last by rewrite normr_gt0.
-apply sup_le_ub; first by apply ex_sup.
-move => x0 Ax0.
-rewrite ler_pdivlMl; last by rewrite normr_gt0.
-apply sup_le.
-split; first by exists (`|a| * x ); exists x.
-have [x1 ubx1] := ub.
-exists (`|a| * x1).
-move => _ [x2 Ax2 <-].
-apply ler_wpM2l => //.
-by apply ubx1.
-exists x0 => //.
-Qed.
 
 Local Lemma repr_mult l (x : V) a :   a \in `[r, s] -> repr (l *: x) a = l *: (repr x a). 
 Proof.

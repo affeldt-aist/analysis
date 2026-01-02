@@ -98,6 +98,9 @@ pi_irrational.v
 gauss_integral.v
 all_analysis.v
 
-ode.v
+ode/common.v
+ode/contfun.v
+ode/odeR.v
+ode/ode.v
 
 showcase/summability.v

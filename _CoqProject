@@ -132,7 +132,10 @@ theories/gauss_integral.v
 
 theories/all_analysis.v
 
-theories/ode.v
+theories/ode/common.v
+theories/ode/contfun.v
+theories/ode/odeR.v
+theories/ode/ode.v
 
 theories/showcase/summability.v
 theories/showcase/pnt.v
