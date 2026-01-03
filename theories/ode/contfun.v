@@ -173,50 +173,8 @@ Local Notation T := (continuousFunType K [set: W]).
 
 Import Cont_on_seg.
 
-Definition infty_norm0 (f : {fun K >-> [set: W]}) :=
-  sup ((Num.norm \o f) @` K).
-
-(* todo *)
-Lemma cont_within_cont_comp (f : W -> R) (g : T) : {in  g @` K, continuous f} ->
-  {within K, continuous (f \o g)}.
-Proof.
-move => ctf.
-rewrite continuous_subspace_in.
-move => /= x Kx.
-apply: continuous_comp; first by apply cts_fun.
-apply ctf.
-rewrite inE.
-rewrite inE in Kx.
-by exists x.
-Qed.
-
-Local Lemma compact_ubound  (A : set R) : compact A -> has_ubound A .
-Proof.
-move /compact_bounded => [u [U1 /= U2]].
-exists (u+1).
-move => x Ax.
-apply: (le_trans (ler_norm x)).
-apply U2 => //; by rewrite ltrDl.
-Qed.
-
-Lemma normr_has_sup (x : T ) :
-  has_sup [set (normr \o x) x0 | x0 in K].
-Proof.
-have [c Kc] := seg_nonempty ab.
-rewrite /has_sup; split.
-  exists (`|x c|)=> /=.
-  by exists c => //.
-pose abs_x := normr \o x.
-have cont_abs_x : {within K, continuous abs_x}.
-  apply cont_within_cont_comp.
-  move => z zK.
-  exact: norm_continuous.
-apply compact_ubound.
-apply continuous_compact => //.
-exact: segment_compact.
-Qed.
-
-Lemma infty_norm_le  (g : T)  (u : R) : {in K, forall x, `| g x | <= u} -> infty_norm0 g <= u.
+Lemma infty_norm_le (g : T)  (u : R) : {in K, forall x, `| g x | <= u} ->
+  infty_norm0 g <= u.
 Proof.
 have [c Kc] := seg_nonempty ab.
   move => h; rewrite /infty_norm0; apply: ge_sup.
@@ -226,11 +184,11 @@ Qed.
 
 Lemma infty_norm_ge (g : T) x: x \in K -> `|g x| <= infty_norm0 g.
 Proof.
-   move => h.
-   rewrite sup_upper_bound //=.
-   exact: normr_has_sup.
-   exists x => //.
-   by rewrite inE in h.
+move => h.
+rewrite sup_upper_bound //=.
+exact: normr_has_sup.
+exists x => //.
+by rewrite inE in h.
 Qed.
 
 Lemma infty_norm_itv_eq (f g :  T):  {in K, f =1 g} -> infty_norm0 f = infty_norm0 g.
@@ -242,12 +200,12 @@ Qed.
 
 Local Lemma infty_norm0_eq0 : infty_norm0 (0 : T) = 0.
 Proof.
-  rewrite /infty_norm0.
-  rewrite -(sup1 0).
-  f_equal.
-  apply eq_set => /= z ;apply propext; split => [[x _ <- ] | ->]; rewrite ?normr0 => //.
-  have [c Kc] := seg_nonempty ab.
-  exists c; by [ | rewrite normr0 ].
+rewrite /infty_norm0.
+rewrite -(sup1 0).
+f_equal.
+apply eq_set => /= z ;apply propext; split => [[x _ <- ] | ->]; rewrite ?normr0 => //.
+have [c Kc] := seg_nonempty ab.
+exists c; by [ | rewrite normr0 ].
 Qed.
 
 Local Lemma infty_norm0rMn (x : T) n : infty_norm0 (x *+ n) = infty_norm0 x *+ n.
@@ -270,12 +228,12 @@ Qed.
 
 Lemma infty_norm0N (x : T) : infty_norm0 (- x) = infty_norm0 x.
 Proof.
-  rewrite /infty_norm0.
-  f_equal.
-  apply eq_set => /= x0.
-  apply propext;split => [[x1 in_itv] | [x1 in_itv]] H;exists x1 =>//.
-  rewrite -normrN //.
-  rewrite normrN //.
+rewrite /infty_norm0.
+f_equal.
+apply eq_set => /= x0.
+apply propext;split => [[x1 in_itv] | [x1 in_itv]] H;exists x1 =>//.
+rewrite -normrN //.
+by rewrite normrN.
 Qed.
 
 End contFun_seminorm.
@@ -300,8 +258,7 @@ Let normr_repr_has_sup (x : V) :
   has_sup [set (normr \o repr x) x0 | x0 in K].
 Proof. by apply normr_has_sup. Qed.
 
-Lemma eqmod_on_itv f g :
-  f = g %[mod V] -> {in K, f =1 g}.
+Lemma eqmod_on_itv f g : f = g %[mod V] -> {in K, f =1 g}.
 Proof.
 move => /eqmodP + x xab.
 move/set_mem =>  H.
@@ -312,9 +269,9 @@ Qed.
 
 Lemma eval_mod_on_itv f x : x \in K -> (\pi_V f : V) x = f x.
 Proof.
-  move => xab.
-  apply: (@eqmod_on_itv (repr (\pi_V f)) f) => //.
-  by rewrite reprK.
+move => xab.
+apply: (@eqmod_on_itv (repr (\pi_V f)) f) => //.
+by rewrite reprK.
 Qed.
 
 Lemma ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
@@ -514,13 +471,14 @@ HB.instance Definition _ :=
   @GRing.Zmodule_isLmodule.Build R V cont_scale cont_scalerA cont_scale1r
   cont_scalerDr cont_scalerDl.
 
-Local Lemma repr_mult l (x : V) a :   a \in `[r, s] -> repr (l *: x) a = l *: (repr x a).
+Local Lemma repr_mult l (x : V) a : a \in `[r, s] ->
+  repr (l *: x) a = l *: (repr x a).
 Proof.
-    move =>ars.
-    have : repr (l *: x) = l *: repr x %[mod V].
-      by case: piP => //=.
-    move/(@eqmod_on_itv _ _ _ rs (repr (l *: x)) (l *: repr x)).
-    by move/(_ _ ars).
+move =>ars.
+have : repr (l *: x) = l *: repr x %[mod V].
+  by case: piP => //=.
+move/(@eqmod_on_itv _ _ _ rs (repr (l *: x)) (l *: repr x)).
+by move/(_ _ ars).
 Qed.
 
 Lemma is_pmnormedZmod_contFunBallType :

@@ -253,7 +253,7 @@ HB.instance Definition _ := GRing.isSubringClosed.Build _
 HB.instance Definition _ := [SubChoice_isSubComNzRing of
   continuousFunType `[a, b] [set: R] by <:].
 
-HB.instance Definition _ := [SubChoice_isSubComRing of
+HB.instance Definition _ := [SubChoice_isSubComNzRing of
   continuousFunType `[a, b] [set: R] by <:].
 
 End ring_instance.
@@ -361,14 +361,11 @@ End Rcont_on_seg.
 Section zmodule_normed.
 Context {R : realType} (a b : R) (ab : a <= b).
 
-Definition infty_norm0 (f : {fun `[a, b] >-> [set: R]}) :=
-  sup ((Num.norm \o f) @` `[a, b]).
-
 Import Rcont_on_seg.
 
 Local Notation V := (quot_continuousFunType ab).
 
-Definition infty_norm (f : V) := infty_norm0 (repr f).
+Definition infty_norm (f : V) := @infty_norm0 R R `[a, b] (repr f).
 
 Local Notation norm := infty_norm.
 
@@ -389,42 +386,9 @@ Proof.
 split=> [->//|fg].
 Abort.
 
-Local Lemma normr_has_sup (x : continuousFunType `[a, b] [set :R]) :
-  has_sup [set (normr \o x) x0 | x0 in `[a, b]].
-Proof.
-rewrite /has_sup; split.
-  exists (`|x a|)=> /=.
-  by exists a => //; rewrite in_itv/= lexx ab.
-pose abs_x := normr \o x.
-have [aeqb | aneqb] := eqVneq a b.
-  subst b.
-  exists (`| x a |) => z/= [r].
-  rewrite in_itv/=.
-  by rewrite -eq_le => /eqP <- <-.
-have ab' : a < b.
-  by rewrite lt_neqAle aneqb ab.
-have cont_abs_x : {within `[a, b], continuous abs_x}.
-  have /continuous_within_itvP : {within `[a, b], continuous x}.
-    exact: cts_fun.
-  move=> /(_ ab')[cx H2 H3].
-  rewrite /abs_x.
-  apply/continuous_within_itvP => //.
-  split => /=.
-  - move=> y yab.
-    apply: cvg_comp; first exact: cx.
-    exact: norm_continuous.
-  - apply: cvg_comp; first exact: H2.
-    exact: norm_continuous.
-  - apply: cvg_comp; first exact: H3.
-    exact: norm_continuous.
-have [c cab abc] := @EVT_max _ abs_x _ _ ab cont_abs_x.
-exists (`|x c|) => /= _ /= [z zab] <-.
-exact: abc.
-Qed.
-
 Let normr_repr_has_sup (x : V) :
   has_sup [set (normr \o repr x) x0 | x0 in `[a, b]].
-Proof. by apply normr_has_sup. Qed.
+Proof. by apply: normr_has_sup. Qed.
 
 Lemma infty_norm_le  (g : continuousFunType `[a, b] [set: R]) (u : R) :
   {in `[a, b], forall x, `| g x | <= u} -> infty_norm0 g <= u.
@@ -546,7 +510,7 @@ rewrite -sup_Mn.
   elim: n x => //=.
   move => n IH x.
   by rewrite !mulrS -IH.
-by apply normr_has_sup.
+exact: normr_has_sup.
 Qed.
 
 Lemma infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
@@ -1732,10 +1696,10 @@ apply/eqP; rewrite eq_le; apply/andP; split.
   rewrite repr_mult; last by rewrite inE.
   rewrite normrZ ler_wpM2l//.
   apply: ub_le_sup.
-    by apply normr_has_sup.
+    by apply @normr_has_sup.
   by exists a.
-- rewrite -sup_mult => //; last by apply normr_has_sup.
-  apply sup_le; [ | | by apply normr_has_sup].
+- rewrite -sup_mult => //; last by apply @normr_has_sup.
+  apply sup_le; [ | | by apply @normr_has_sup].
   + move => _  [_ [x0 x0rs] <- <-].
     exists (normr l * (normr \o repr x) x0);split => //=;exists x0.
       by rewrite inE.
@@ -2249,43 +2213,43 @@ Unshelve. all: by end_near. Qed.
 Lemma quot_cont_on_segType_cauchy_cvg :
   forall (F : set_system V), ProperFilter F -> cauchy F -> cvg F.
 Proof.
-  move=> F FF Fc.
-  have /(_ _ _) /cauchy_cvg /cvg_app_entourageP cvF :
-    forall t : R, t \in `[a,b] ->
-      cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
+move=> F FF Fc.
+have /(_ _ _) /cauchy_cvg /cvg_app_entourageP cvF :
+  forall t : R, t \in `[a,b] ->
+    cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
   move=> t tab A /= [e e0 ee]; rewrite near_simpl -near2E near_map2.
   apply : Fc.
   exists e => //.
   move => /= [f g].
   move /infty_norm_gt_V => h.
   apply ee => /=.
-  have <- : (f - g : V) t = (f : V) t - (g : V) t. 
+  have <- : (f - g : V) t = (f : V) t - (g : V) t.
     rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
     by rewrite !eval_mod_on_itv.
   by apply h.
-  apply /cvg_ex.
-  exists ( pi V (@lim_fun F FF Fc : continuousFunType `[a, b] [set: R])).
-  apply /cvg_V_entourageP => /=.
-   move=> A /= entA.
-   near=>f.
-   move => t tab.
-   near F => g.
-   apply : (entourage_split (g t)) => //.
+apply /cvg_ex.
+exists ( pi V (@lim_fun F FF Fc : continuousFunType `[a, b] [set: R])).
+apply /cvg_V_entourageP => /=.
+move=> A /= entA.
+near=>f.
+move => t tab.
+near F => g.
+apply : (entourage_split (g t)) => //.
 
-   rewrite eval_mod_on_itv => //; first by near:g;apply: cvF.
-   move: (t) (tab); near: g; near: f; apply: nearP_dep; apply: Fc.
-   rewrite /nbhs /=.
-   have [e e0 ee] := (entourage_split_ent entA).
-   exists e => //.
-   move => [/= x y].
-   rewrite /pseudoMetric_from_normedZmodType.ball/=.
-   move /infty_norm_gt_V => h t tab.
-   apply ee => /=.
-   rewrite distrC. 
-   have -> : ((x : V) t - (y : V) t = (x - y :V) t).
-      rewrite -(reprK y) -(reprK x)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
-      by rewrite !eval_mod_on_itv.
-   by apply: h.
+rewrite eval_mod_on_itv => //; first by near:g;apply: cvF.
+move: (t) (tab); near: g; near: f; apply: nearP_dep; apply: Fc.
+rewrite /nbhs /=.
+have [e e0 ee] := (entourage_split_ent entA).
+exists e => //.
+move => [/= x y].
+rewrite /pseudoMetric_from_normedZmodType.ball/=.
+move /infty_norm_gt_V => h t tab.
+apply ee => /=.
+rewrite distrC.
+have -> : ((x : V) t - (y : V) t = (x - y :V) t).
+   rewrite -(reprK y) -(reprK x)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+   by rewrite !eval_mod_on_itv.
+by apply: h.
 Unshelve. all: by end_near. Qed.
 
 HB.instance Definition _ := Uniform_isComplete.Build V quot_cont_on_segType_cauchy_cvg.
@@ -2319,12 +2283,12 @@ Let phi0 : quot_continuousFunType (ltW (aaDelta_subproof f ab u0 r k0 rho)) := 0
 
 Notation V := (quot_continuousFunType (ltW (aaDelta_subproof f ab u0 r k0 rho))).
 
-
 Lemma Vr0 : (@restrictedV _ f a _ k _ u0 r k0 rho : set V) !=set0.
 Proof.
 exists (pi V (cst u0)).
 move => _ [y x0] <-.
-suff -> : quot_continuousFunType_to_fun  (\pi_(V)%qT (cst u0)) y = u0 by apply closed_ballxx.
+suff -> : quot_continuousFunType_to_fun  (\pi_(V)%qT (cst u0)) y = u0.
+  by apply closed_ballxx.
 rewrite /quot_continuousFunType_to_fun/=.
 have /eqmod_on_itv : (repr (\pi_(V)%qT (cst u0)) = cst u0 %[mod V])%qT.
   by rewrite reprK.
@@ -2372,12 +2336,14 @@ rewrite {}/phioo.
 by case: cid2.
 Qed.
 
-Lemma contrac_simpl g t : Vr g ->  t \in `[a, (a + Delta f a b k u0 r rho)%E] ->  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho) g t = u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
+Lemma contrac_simpl g t : Vr g ->  t \in `[a, (a + Delta f a b k u0 r rho)%E] ->
+  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho) g t =
+  u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
 Proof.
-    move => Vrg taad.
-    rewrite /contrac.
-    rewrite eval_mod_on_itv //.
-    apply picard_from_cont_simpl =>//.
+move => Vrg taad.
+rewrite /contrac.
+rewrite eval_mod_on_itv //.
+by apply picard_from_cont_simpl.
 Qed.
 
 
@@ -2393,13 +2359,12 @@ Proof.
   near:x0.
   apply /near_in_itvoo.
   by rewrite -inE.
- Unshelve. all: by end_near. Qed. 
+Unshelve. all: by end_near. Qed.
 
 Theorem picard_lindelof_existence :
   phioo a = u0 /\
   {in `]a, a + Delta f a b k u0 r rho[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
-
   have Vrphioo : Vr phioo.
     by apply (svalP (cid2 (banach_fixed_point (is_contraction_picard_to_cont ab k0 lip2 cont1 rho1) closed_Vr Vr0))).
 
@@ -2410,12 +2375,11 @@ Proof.
     rewrite /picard_from_cont /= picard_to_cont_init //.
   move => t tad.
   rewrite {1}phiooE.
-  have altd:  a < (a + Delta f a b k u0 r rho)%E by rewrite ltrDl Delta_gt0.    
+  have altd : a < (a + Delta f a b k u0 r rho)%E by rewrite ltrDl Delta_gt0.
   suff -> :  (contrac ab k0 lip2 cont1 rho phioo)^`() t =  (fun x0 => (u0 + (\int[mu]_(x in `[a, x0]) f x (phioo x))%R))^`()  t.
 
     move : (tad).
     rewrite inE /= in_itv /= => /andP[ta taDelta].
-    
     have Fint :  (mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E] (EFin \o (fun x : R => f x (phioo x)))).
       apply integrable_comp => //.
       by rewrite   in_itv /= lexx ltW.
