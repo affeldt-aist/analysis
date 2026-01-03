@@ -25,22 +25,6 @@ Open Scope classical_set_scope.
 (* We define the type of functions that are continuous over a set *)
 (*continuousFunType *)
 
-HB.instance Definition _ (R : realType) (V : topologicalType) (A : set R) :=
-  gen_eqMixin (continuousFunType A [set: V]).
-HB.instance Definition _ (R : realType) (V : topologicalType) (A : set R) :=
-  gen_choiceMixin (continuousFunType A [set: V]).
-
-Section cont_on_seg_pred.
-Context {R : realType} {V : topologicalType}.
-Variables a b : R.
-
-Definition cont_on_seg : {pred R -> V} :=
-  mem [set f | squashed (@ContinuousFun R V `[a, b] [set: V] f)].
-Definition cont_on_seg_key : pred_key cont_on_seg. Proof. exact. Qed.
-Canonical cont_on_seg_keyed := KeyedPred cont_on_seg_key.
-
-End cont_on_seg_pred.
-
 (* Section cont_to_contfun. *)
 
 (* Context {U V : topologicalType} (A : set U) (f : U -> V). *)
@@ -60,105 +44,23 @@ End cont_on_seg_pred.
 (*   @isContinuous.Build (subspace A) _ (f : subspace A -> V) fcont. *)
 (* End cont_to_contfun. *)
 
-(* NB(rei): was this just motivated by generic predicates such as rpredD?
-or more generally by stability of "cont. over [a,b]"?
-anyway, maybe not needed right now *)
-Section cont_on_seg_sub.
-Context {R : realType} {V : topologicalType}.
-Variables a b : R.
-Notation T := (continuousFunType `[a, b] [set: V]).
-
-Section Sub.
-Context (f : R -> V) (fP : f \in cont_on_seg a b).
-
-Definition cont_on_seg_Sub_subproof := unsquash (set_mem fP).
-#[local] HB.instance Definition _ := cont_on_seg_Sub_subproof.
-Definition cont_on_seg_Sub : continuousFunType `[a, b] [set: V] :=
-  {| ContinuousFun.sort := f; ContinuousFun.class := cont_on_seg_Sub_subproof |}.
-
-End Sub.
-
-Lemma cont_on_seg_rect (K : T -> Type) :
-  (forall f (Pf : f \in cont_on_seg a b), K (cont_on_seg_Sub Pf)) ->
-  forall u : T, K u.
-Proof.
-move=> Ksub [f Pf].
-rewrite (_ : K _  = K (cont_on_seg_Sub (mem_set (squash Pf))))//.
-rewrite /cont_on_seg_Sub /cont_on_seg_Sub_subproof /= mem_setK.
-rewrite /unsquash; case : cid => // /= => x _.
-congr (K (ContinuousFun.Pack _)).
-move : Pf x => [[H1] [H2]] [[K1] [K2]].
-by rewrite (Prop_irrelevance H1 K1) (Prop_irrelevance H2 K2).
-Qed.
-
-Lemma cont_on_seg_valP f (Pf : f \in cont_on_seg a b) :
-  cont_on_seg_Sub Pf = f :> (_ -> _).
-Proof. by []. Qed.
-
-HB.instance Definition _ := isSub.Build _ _ T cont_on_seg_rect cont_on_seg_valP.
-
-Lemma cont_on_seg_eqP (f g : continuousFunType `[a, b] [set: V]) :
-  f = g <-> f =1 g.
-Proof. by split=> [->//|fg]; exact/val_inj/funext. Qed.
-
-(* commented out on [2025-12-26]
-HB.instance Definition _ := [Choice of continuousFunType `[a, b] [set: R] by <:].
-*)
-
-End cont_on_seg_sub.
-
-Module Cont_on_seg.
+Module Cont_on_seg_lmodtype.
 Section lmodtype_instances.
 Context {R : realType} {V : normedModType R} (a b : R).
 
 Check V : zmodType.
 Check V : topologicalType.
 
-Lemma cont_on_seg_zmod_closed : zmod_closed (@cont_on_seg _ V a b).
-Proof.
- split=> [|f g]; rewrite !inE/=.
-- apply: squash.
-  split => //.
-  split => //.
-  exact: cst_continuous.
-- move=> /unsquash cf /unsquash cg.
-  apply: squash.
-  pose f' : @continuousFunType _ _ `[a, b] [set: V]  := HB.pack f cf.
-  pose g' : @continuousFunType _ _ `[a, b] setT  := HB.pack g cg.
-  rewrite [f]/(f' : _ -> _).
-  rewrite [g]/(g' : _ -> _).
-  move: {f g cf cg} f' g' => f g.
-  have isfun_fg : @isFun _ V `[a, b] [set: V] (f \- g) by constructor.
-  have iscontfun_fg : @isContinuous _ V (f \- g).
-    constructor.
-    move=> x.
-    apply: continuousB;apply: cts_fun.
-  by split.
-Qed.
-
 HB.instance Definition _ := GRing.isZmodClosed.Build _ _
-  cont_on_seg_zmod_closed.
+  (@cont_on_seg_zmod_closed R V a b).
 
 HB.instance Definition _ :=
   [SubChoice_isSubZmodule of continuousFunType `[a, b] [set: V] by <:].
 
 Check continuousFunType `[a, b] [set: V] : zmodType.
 
-Lemma contfun_scaler_closed : GRing.scaler_closed (@cont_on_seg R V a b).
-Proof.
-move=> r f; rewrite 2!inE/=.
-move/unsquash => [[_ cf]].
-apply: squash.
-split => //.
-constructor.
-move=> x.
-apply: continuousZ.
-  exact: cst_continuous.
-by case: cf; exact.
-Qed.
-
 HB.instance Definition _ := GRing.isScaleClosed.Build _ _
-  (cont_on_seg a b) contfun_scaler_closed.
+  (cont_on_seg a b) (@contfun_scaler_closed R V a b).
 
 Fail Check @continuousFunType R V `[a, b] [set: V] : lmodType _.
 
@@ -168,7 +70,10 @@ HB.instance Definition _ :=
 Check continuousFunType `[a, b] [set: V] : lmodType _.
 
 End lmodtype_instances.
+End Cont_on_seg_lmodtype.
 
+Module Cont_on_seg.
+Export Cont_on_seg_lmodtype.
 Section submod_definition.
 Context {R : realType} {V : normedModType R}.
 Variables a b : R.
@@ -182,10 +87,8 @@ Definition submod_itv (ab : a <= b) : {pred T} :=
 Lemma submod_closed_itv (ab : a <= b) : submod_closed (submod_itv ab).
 Proof.
 split => /=.
-- rewrite inE/=.
-  apply/funext => x.
-  rewrite /patch.
-  by case: ifPn => //.
+- rewrite inE/=; apply/funext => x.
+  by rewrite /patch; case: ifPn.
 - move => f u v.
   rewrite !inE => u0 v0.
   apply/funext => u1.
@@ -400,107 +303,106 @@ Proof. by apply normr_has_sup. Qed.
 Lemma eqmod_on_itv f g :
   f = g %[mod V] -> {in K, f =1 g}.
 Proof.
-  move => /eqmodP + x xab.
-  move/set_mem =>  H.
-  apply subr0_eq.
-  move/(congr1 (fun z => z x)) : H.
-  by rewrite /patch xab.
+move => /eqmodP + x xab.
+move/set_mem =>  H.
+apply subr0_eq.
+move/(congr1 (fun z => z x)) : H.
+by rewrite /patch xab.
 Qed.
 
 Lemma eval_mod_on_itv f x : x \in K -> (\pi_V f : V) x = f x.
 Proof.
   move => xab.
-
   apply: (@eqmod_on_itv (repr (\pi_V f)) f) => //.
   by rewrite reprK.
 Qed.
 
 Lemma ler_infty_normD (x y : V) : norm (x + y) <= norm x + norm y :> R.
 Proof.
-  rewrite /norm/= -sup_sumE//; last 2 first.
-  exact: normr_repr_has_sup.
-  exact: normr_repr_has_sup.
-  apply: sup_le.
-  - move=> A -[s sab] <-{A}.
-    rewrite /down/=.
-    eexists.
-    split.
-    exists (`|repr x s|).
-    by exists s.
-    exists (`|repr y s|).
-    by exists s.
-     reflexivity.
-    suff  -> : (repr (x + y) s = repr x s + repr y s) by exact: ler_normD.
-    suff /eqmod_on_itv ->: (repr (x+y) = repr x + repr y %[mod V]) =>//.
-    by rewrite inE.
-    rewrite Quotient.pi_add !reprK //.
-   - by apply normr_repr_has_sup.
-   - rewrite /has_sup.
-     split.
-     + exists ((normr \o repr x) a + (normr \o repr y) a)=> /=.
-       exists ((normr \o repr x) a) => //; [exists a => //; rewrite in_itv/= lexx ab // | ].
-       exists ((normr \o repr y) a) => //; exists a => //; rewrite in_itv/= lexx ab //.
-    + rewrite /has_ubound.
-      exists (sup [set (normr \o repr x) x0 | x0 in K] + sup [set (normr \o repr y) x0 | x0 in K]).
-      apply ubP => _ [x0 xs] [y0 ys] <-.
-      rewrite lerD// ub_le_sup//.
-        exact: (normr_repr_has_sup x).2.
-      exact: (normr_repr_has_sup y).2.
+rewrite /norm/= -sup_sumE//; last 2 first.
+exact: normr_repr_has_sup.
+exact: normr_repr_has_sup.
+apply: sup_le.
+- move=> A -[s sab] <-{A}.
+  rewrite /down/=.
+  eexists.
+  split.
+  exists (`|repr x s|).
+  by exists s.
+  exists (`|repr y s|).
+  by exists s.
+   reflexivity.
+  suff  -> : (repr (x + y) s = repr x s + repr y s) by exact: ler_normD.
+  suff /eqmod_on_itv ->: (repr (x+y) = repr x + repr y %[mod V]) =>//.
+  by rewrite inE.
+  rewrite Quotient.pi_add !reprK //.
+ - by apply normr_repr_has_sup.
+ - rewrite /has_sup.
+   split.
+   + exists ((normr \o repr x) a + (normr \o repr y) a)=> /=.
+     exists ((normr \o repr x) a) => //; [exists a => //; rewrite in_itv/= lexx ab // | ].
+     exists ((normr \o repr y) a) => //; exists a => //; rewrite in_itv/= lexx ab //.
+  + rewrite /has_ubound.
+    exists (sup [set (normr \o repr x) x0 | x0 in K] + sup [set (normr \o repr y) x0 | x0 in K]).
+    apply ubP => _ [x0 xs] [y0 ys] <-.
+    rewrite lerD// ub_le_sup//.
+      exact: (normr_repr_has_sup x).2.
+    exact: (normr_repr_has_sup y).2.
 Qed.
 
 Lemma infty_normr0_eq0 (x : V) : norm x = 0 -> x = 0.
 Proof.
-  rewrite /norm/infty_norm0 /=.
-  move => H.
-  rewrite -(reprK x)  -(reprK 0).
-  apply/eqquotP.
-  apply mem_set; rewrite /cst /=.
-  apply funext => x0 /=.
-  rewrite patchE.
-  case : ifPn => // /set_mem in_itv.
-  rewrite /GRing.opp/GRing.add /=.
-  have -> : ( {in K, repr (0 : V) =1 (0 : @continuousFunType R R K setT)}) => //.
-  apply /eqmod_on_itv.
-  rewrite reprK /GRing.zero /= /Quotient.zero /= -lock /= //.
-  rewrite subr0.
-  apply /eqP;rewrite -normr_le0.
-  have := (sup_upper_bound (normr_repr_has_sup x)).
-  rewrite H /ubound /=.
-  move => H0.
-  apply H0.
-  exists x0 => //.
-  by rewrite inE.
+rewrite /norm/infty_norm0 /=.
+move => H.
+rewrite -(reprK x)  -(reprK 0).
+apply/eqquotP.
+apply mem_set; rewrite /cst /=.
+apply funext => x0 /=.
+rewrite patchE.
+case : ifPn => // /set_mem in_itv.
+rewrite /GRing.opp/GRing.add /=.
+have -> : ( {in K, repr (0 : V) =1 (0 : @continuousFunType R R K setT)}) => //.
+apply /eqmod_on_itv.
+rewrite reprK /GRing.zero /= /Quotient.zero /= -lock /= //.
+rewrite subr0.
+apply /eqP;rewrite -normr_le0.
+have := (sup_upper_bound (normr_repr_has_sup x)).
+rewrite H /ubound /=.
+move => H0.
+apply H0.
+exists x0 => //.
+by rewrite inE.
 Qed.
 
 Lemma infty_normrMn (x : V) n : norm (x *+ n) = norm x *+ n.
 Proof.
-  rewrite /norm.
-  rewrite -infty_norm0rMn => //.
-  apply infty_norm_itv_eq.
-  move => x0 in_itv.
-  suff /eqmod_on_itv ->: (repr (x *+ n) = repr x *+ n %[mod V]) =>//.
-  elim n; [rewrite !mulr0n // reprK /GRing.zero /= /Quotient.zero /= -lock // | ].
-  move => n' IHn'; rewrite reprK !mulrS.
-  rewrite reprK in IHn'.
-  rewrite Quotient.pi_add reprK.
-  by move : IHn' <-.
+rewrite /norm.
+rewrite -infty_norm0rMn => //.
+apply infty_norm_itv_eq.
+move => x0 in_itv.
+suff /eqmod_on_itv ->: (repr (x *+ n) = repr x *+ n %[mod V]) =>//.
+elim n; [rewrite !mulr0n // reprK /GRing.zero /= /Quotient.zero /= -lock // | ].
+move => n' IHn'; rewrite reprK !mulrS.
+rewrite reprK in IHn'.
+rewrite Quotient.pi_add reprK.
+by move : IHn' <-.
 Qed.
 
 Let qnorm_piE' x : norm (\pi_V x) = infty_norm0 x.
 Proof.
-  rewrite /norm /=.
-  have /eqmod_on_itv Heq : repr (\pi_V x) = x %[mod V] by rewrite reprK.
-  by apply infty_norm_itv_eq.
+rewrite /norm /=.
+have /eqmod_on_itv Heq : repr (\pi_V x) = x %[mod V] by rewrite reprK.
+by apply infty_norm_itv_eq.
 Qed.
 
 Lemma infty_normrN (x : V) : norm (- x) = norm x.
 Proof.
-  rewrite -(reprK x) /GRing.opp /= -Quotient.pi_opp !qnorm_piE' /norm /infty_norm0.
-  f_equal.
-  apply eq_set => /= x0.
-  apply propext;split => [[x1 in_itv] | [x1 in_itv]] H;exists x1 =>//.
-  rewrite -normrN //.
-  rewrite normrN //.
+rewrite -(reprK x) /GRing.opp /= -Quotient.pi_opp !qnorm_piE' /norm /infty_norm0.
+f_equal.
+apply eq_set => /= x0.
+apply propext;split => [[x1 in_itv] | [x1 in_itv]] H;exists x1 =>//.
+rewrite -normrN //.
+by rewrite normrN.
 Qed.
 (* TODO: dev the theory of sup following the theory of ess_sup *)
 
@@ -545,7 +447,6 @@ Check V : pseudoMetricNormedZmodType R.
 Import Quotient.
 Open Scope quotient_scope.
 Definition cont_scale (k : R) (v : V) : V := \pi_V (k *: repr v).
-
 
 Let cont_scalerA a b v : cont_scale a (cont_scale b v) = cont_scale (a * b) v.
 Proof.
@@ -599,20 +500,10 @@ rewrite pi_add//=.
 by rewrite !reprK.
 Qed.
 
-(* TODO: PR *)
-Lemma restrict0 [T : Type] (K : realFieldType) (D : set T) :
-  (cst 0 : T -> K) \_ D = cst 0.
+Let cont_scalerDl v : {morph cont_scale^~ v: a b / a + b}.
 Proof.
-apply/funext => x/=.
-rewrite patchE.
-by case: ifPn.
-Qed.
-
-Let cont_scalerDl : forall v, {morph cont_scale^~ v: a b / a + b}.
-Proof.
-move=> v a b.
-rewrite /cont_scale.
-rewrite piE/=.
+move=> a b.
+rewrite /cont_scale piE/=.
 apply/eqmodP; rewrite /equiv_equiv/= /equiv/=.
 rewrite -scalerDl subrr.
 rewrite inE/=.
@@ -620,8 +511,8 @@ by rewrite restrict0.
 Qed.
 
 HB.instance Definition _ :=
-  @GRing.Zmodule_isLmodule.Build R V cont_scale cont_scalerA cont_scale1r cont_scalerDr
-  cont_scalerDl.
+  @GRing.Zmodule_isLmodule.Build R V cont_scale cont_scalerA cont_scale1r
+  cont_scalerDr cont_scalerDl.
 
 Local Lemma repr_mult l (x : V) a :   a \in `[r, s] -> repr (l *: x) a = l *: (repr x a).
 Proof.
@@ -682,19 +573,15 @@ Check (V : normedModType R).
 
 Lemma infty_norm_gt_V (f : V) e: `| f | <  e -> {in `[a, b], forall x : R, `|f x| < e}.
 Proof.
-   rewrite -{1}(reprK f).
-   rewrite qnorm_piE => h.
-   move => x xab.
-   apply /le_lt_trans/h.
-   by apply: infty_norm_ge => //.
+rewrite -{1}(reprK f) qnorm_piE => h x xab.
+exact/le_lt_trans/h/infty_norm_ge.
 Qed.
 
 Lemma infty_norm_le_V (f : V) e:  {in `[a, b], forall x : R, `|f x| <= e} -> `| f | <=  e.
 Proof.
-   move => h.
-   rewrite -(reprK f).
-   rewrite qnorm_piE.
-   by apply infty_norm_le => //.
+move => h.
+rewrite -(reprK f) qnorm_piE.
+by apply infty_norm_le.
 Qed.
 
 Definition lim_fun (F : set_system V) (FF : ProperFilter F) (Fc : cauchy F) :
@@ -824,7 +711,7 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
     near:f.
     apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
 (* Todo: same as 1 *)
-  - near=> t' => t'ab.  
+  - near=> t' => t'ab.
     rewrite -(subrKA (f b) (lim_fun FF Fc b)).
     rewrite (le_trans (ler_normD _ _))//.
     rewrite (splitr e) lerD//.
@@ -893,7 +780,8 @@ have : t' \in `[a,b].
 Unshelve. all: by end_near. Qed.
 
 HB.instance Definition _ F FF Fc :=
-  isContinuous.Build (subspace `[a, b]) R (@lim_fun F FF Fc : subspace `[a, b] -> R) (@lim_fun_cont F FF Fc).
+  isContinuous.Build (subspace `[a, b]) R
+  (@lim_fun F FF Fc : subspace `[a, b] -> R) (@lim_fun_cont F FF Fc).
 
 Fail Check (V : completeType).
 
@@ -921,9 +809,10 @@ apply: sPA.
 apply /le_lt_trans/e2.
 apply infty_norm_le_V => /= .
 move => t tab.
-have -> : (f - g : V) t = f t - (g : V) t. 
-    rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
-    by rewrite !eval_mod_on_itv.
+have -> : (f - g : V) t = f t - (g : V) t.
+  rewrite -(reprK f) -(reprK g)  /GRing.opp /=.
+  rewrite -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+  by rewrite !eval_mod_on_itv.
 rewrite ltW //.
 move : t tab.
 near:g.
@@ -935,86 +824,51 @@ Unshelve. all: by end_near. Qed.
 Lemma quot_cont_on_segType_cauchy_cvg :
   forall (F : set_system V), ProperFilter F -> cauchy F -> cvg F.
 Proof.
-  move=> F FF Fc.
-  have /(_ _ _) /cauchy_cvg /cvg_app_entourageP cvF :   forall t : R, t \in `[a,b] -> cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
+move=> F FF Fc.
+have /(_ _ _)/cauchy_cvg /cvg_app_entourageP cvF :
+    forall t : R, t \in `[a,b] ->
+    cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
   move=> t tab A /= [e e0 ee]; rewrite near_simpl -near2E near_map2.
   apply : Fc.
   exists e => //.
   move => /= [f g].
   move /infty_norm_gt_V => h.
   apply ee => /=.
-  have <- : (f - g : V) t = (f : V) t - (g : V) t. 
-    rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+  have <- : (f - g : V) t = (f : V) t - (g : V) t.
+    rewrite -(reprK f) -(reprK g)  /GRing.opp /=.
+    rewrite -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
     by rewrite !eval_mod_on_itv.
   by apply h.
-  apply /cvg_ex.
-  exists ( pi V (@lim_fun F FF Fc : continuousFunType `[a, b] [set: R])).
-  apply /cvg_V_entourageP => /=.
-   move=> A /= entA.
-   near=>f.
-   move => t tab.
-   near F => g.
-   apply : (entourage_split (g t)) => //.
-
-   rewrite eval_mod_on_itv => //; first by near:g;apply: cvF.
-   move: (t) (tab); near: g; near: f; apply: nearP_dep; apply: Fc.
-   rewrite /nbhs /=.
-   have [e e0 ee] := (entourage_split_ent entA).
-   exists e => //.
-   move => [/= x y].
-   rewrite /pseudoMetric_from_normedZmodType.ball/=.
-   move /infty_norm_gt_V => h t tab.
-   apply ee => /=.
-   rewrite distrC. 
-   have -> : ((x : V) t - (y : V) t = (x - y :V) t).
-      rewrite -(reprK y) -(reprK x)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
-      by rewrite !eval_mod_on_itv.
-   by apply: h.
+apply /cvg_ex.
+exists ( pi V (@lim_fun F FF Fc : continuousFunType `[a, b] [set: R])).
+apply /cvg_V_entourageP => /=.
+move=> A /= entA.
+near=>f.
+move => t tab.
+near F => g.
+apply : (entourage_split (g t)) => //.
+  by rewrite eval_mod_on_itv => //; first by near:g;apply: cvF.
+move: (t) (tab); near: g; near: f; apply: nearP_dep; apply: Fc.
+rewrite /nbhs /=.
+have [e e0 ee] := (entourage_split_ent entA).
+exists e => //.
+move => [/= x y].
+rewrite /pseudoMetric_from_normedZmodType.ball/=.
+move /infty_norm_gt_V => h t tab.
+apply ee => /=.
+rewrite distrC.
+have -> : ((x : V) t - (y : V) t = (x - y :V) t).
+  rewrite -(reprK y) -(reprK x) /GRing.opp /=.
+  rewrite -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
+  by rewrite !eval_mod_on_itv.
+exact: h.
 Unshelve. all: by end_near. Qed.
 
-HB.instance Definition _ := Uniform_isComplete.Build V quot_cont_on_segType_cauchy_cvg.
+HB.instance Definition _ := Uniform_isComplete.Build V
+  quot_cont_on_segType_cauchy_cvg.
 
 Check (V : completeType).
 End completeness.
-
-Definition cont_on_segN {R : realType} (t0 t1 : R) (t01 : t0 < t1)
-  (g : R -> R) := g \o -%R.
-Arguments cont_on_segN {R} _ _.
-
-Section cont_on_segN.
-Context {R : realType}.
-Variables t0 t1 : R.
-Hypothesis t01 : t0 < t1.
-
-Let g'fun (g : continuousFunType `[t0, t1] [set: R]) :
-  set_fun `[-t1, -t0] setT (cont_on_segN t0 t1 t01 g).
-Proof. by constructor => x/=. Qed.
-
-HB.instance Definition _ (g : continuousFunType `[t0, t1] [set: R]) :=
-  @isFun.Build (subspace `[-t1, -t0]) R `[-t1, -t0] setT (cont_on_segN t0 t1 t01 g) (g'fun g).
-
-(* TODO: should this be a lemma? about balls? *)
-
-Let cg' (g : continuousFunType `[t0, t1] [set: R]) :
-  {within `[- t1, - t0], continuous (cont_on_segN t0 t1 t01 g)}.
-Proof.
-apply/continuous_within_itvP.
-  by rewrite ltrN2.
-have /continuous_within_itvP[] := @cts_fun _ _ g.
-  by [].
-move=> cg gR gL; split.
-- move=> x xdd; apply: continuous_comp; first exact: continuousN.
-  by apply: cg; rewrite oppr_itvoo.
-- by apply/cvg_at_leftNP; rewrite /cont_on_segN/= opprK.
-- move/cvg_at_rightNP : gR.
-  by rewrite /cont_on_segN/= opprK.
-Qed.
-
-HB.instance Definition _ (g : continuousFunType `[t0, t1] [set: R]) :=
-  isContinuous.Build _ _ (cont_on_segN t0 t1 t01 g : subspace `[-t1, -t0] -> R) (@cg' g).
-
-End cont_on_segN.
-
 
 (* Section vector_contseg. *)
 
@@ -1034,9 +888,6 @@ End cont_on_segN.
 (* Fail Check (Vn 2 : normedModType R). *)
 (* End vector_contseg. *)
 (* (* not neeeded anymore *) *)
-(* NB: merged to MathComp *)
-(* Lemma gerN {R : numDomainType} (x : R) : 0 <= x -> - x <= x. *)
-(* Proof. by move=> x0; rewrite ge0_cp. Qed. *)
 
 (* Section lip_implies_cont. *)
 (* Context {R : realType}. *)
