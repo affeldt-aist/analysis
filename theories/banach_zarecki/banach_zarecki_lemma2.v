@@ -5,7 +5,7 @@ From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import cardinality.
 From mathcomp Require Import reals ereal topology normedtype sequences.
-From mathcomp Require Import measure lebesgue_measure realfun.
+From mathcomp Require Import measure lebesgue_measure numfun realfun.
 From mathcomp Require Import borel_hierarchy absolute_continuity.
 From mathcomp Require Import banach_zarecki_lemma1.
 
