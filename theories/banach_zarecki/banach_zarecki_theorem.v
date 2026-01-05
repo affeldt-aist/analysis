@@ -4,7 +4,7 @@ From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import reals constructive_ereal topology normedtype.
-From mathcomp Require Import measure lebesgue_measure realfun.
+From mathcomp Require Import measure lebesgue_measure numfun realfun.
 From mathcomp Require Import absolute_continuity banach_zarecki_lemma6.
 From mathcomp Require Import banach_zarecki_lemma7 banach_zarecki_lemma8.
 
