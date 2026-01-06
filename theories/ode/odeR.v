@@ -462,7 +462,7 @@ Fail Check V : normedZmodType R.
 HB.instance Definition _ := @Num.Zmodule_isNormed.Build R V
   infty_norm ler_infty_normD infty_normr0_eq0 infty_normrMn infty_normrN.
 
-Lemma qnorm_piE x : `|\pi_V x| = infty_norm0 x.
+Lemma norm_piE x : `|\pi_V x| = infty_norm0 x.
 Proof. by rewrite /Num.norm /= infty_norm_pi. Qed.
 
 Check V : normedZmodType R.
@@ -1165,8 +1165,7 @@ rewrite /Vr.
 apply eq_set => /= f' ;apply propext;split => h.
 - rewrite -(@reprK _ V f').
   rewrite /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
-  rewrite qnorm_piE.
-  apply: infty_norm0_le => /=.
+  rewrite norm_piE infty_norm0_le //=.
   apply (ltW (aaDelta_subproof f ab u0 r k0 rho)).
   move => x adx.
   move /(_ (f' x)) : h.
@@ -1184,7 +1183,7 @@ apply eq_set => /= f' ;apply propext;split => h.
   rewrite eval_mod_on_itv; last by rewrite inE.
   rewrite -inE in xad.
   apply: (le_trans (infty_norm0_ge (ltW (aaDelta_subproof f ab u0 r k0 rho)) _ xad)).
-  rewrite -(qnorm_piE (ltW (aaDelta_subproof f ab u0 r k0 rho))).
+  rewrite -(norm_piE (ltW (aaDelta_subproof f ab u0 r k0 rho))).
   by rewrite Quotient.pi_add Quotient.pi_opp reprK.
 Qed.
 
@@ -1229,7 +1228,7 @@ exists (NngNum (ge0 rho)); split => //=.
 move=> /= [/= x y] [Vrx Vry].
 rewrite /picard_to_cont/=.
 rewrite !piE/=.
-rewrite qnorm_piE/=.
+rewrite norm_piE/=.
 rewrite /infty_norm0/=.
 have aad :   a <= (a + Delta f a b k u0 r rho) by rewrite lerDl ltW// Delta_gt0.
 apply: ge_sup => //=.
@@ -1352,13 +1351,13 @@ Check (V : normedModType R).
 Lemma infty_norm_gt_V (f : V) e :
   `| f | <  e -> {in `[a, b], forall x : R, `|f x| < e}.
 Proof.
-rewrite -{1}(reprK f) qnorm_piE => h x xab.
+rewrite -{1}(reprK f) norm_piE => h x xab.
 exact/le_lt_trans/h/infty_norm0_ge.
 Qed.
 
 Lemma infty_norm_le_V (f : V) e :
   {in `[a, b], forall x : R, `|f x| <= e} -> `| f | <=  e.
-Proof. by move => h; rewrite -(reprK f) qnorm_piE infty_norm0_le. Qed.
+Proof. by move => h; rewrite -(reprK f) norm_piE infty_norm0_le. Qed.
 
 Definition lim_fun (F : set_system V) (FF : ProperFilter F) (Fc : cauchy F) :
   subspace `[a, b] -> R :=
@@ -1515,18 +1514,17 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
     move : (t') t'ab.
     near:f.
     by apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
-apply continuous_within_itvP => //; split.
+apply/continuous_within_itvP => //; split.
 - move => t tab.
   apply/cvgrPdist_le => /= e e0.
   near=>t'.
   have   : t' \in `[a,b].
     rewrite inE.
-    apply subset_itv_oo_cc.
-    near:t'.
-    apply /at_right_in_segment.
-    apply : open_itvcc_subset.
-    apply: itv_open.
-    by rewrite inE //.
+    apply: subset_itv_oo_cc.
+    near: t'.
+    apply/at_right_in_segment/open_itvcc_subset.
+      exact: itv_open.
+    by rewrite inE.
   near:t'.
   apply: H => //.
   by rewrite inE; apply subset_itv_oo_cc.
@@ -1534,12 +1532,12 @@ apply continuous_within_itvP => //; split.
   near=>t'.
   have : t' \in `[a,b].
     rewrite inE /= in_itv/=.
-    apply /andP;split;near:t'.
-    by apply: nbhs_right_ge.
-    by apply : nbhs_right_le.
+    apply /andP; split; near:t'.
+    exact: nbhs_right_ge.
+    exact: nbhs_right_le.
   near:t'.
   apply: cvg_at_right_filter.
-    by apply cvg_id.
+    exact: cvg_id.
   apply: H => //.
   by rewrite inE/= bound_itvE.
 apply/cvgrPdist_le => /= e e0.

@@ -9,6 +9,7 @@ From mathcomp Require Import prodnormedzmodule tvs normedtype landau.
 From mathcomp Require Import ereal sequences derive numfun measure realfun.
 From mathcomp Require Import lebesgue_measure lebesgue_integral ftc common.
 From mathcomp Require Import contfun.
+
 (**md**************************************************************************)
 (* # ODE                                                                      *)
 (******************************************************************************)
@@ -61,7 +62,6 @@ Definition picard_from_cont' {R : realType} (U := R)
   fun t => u0 + (\int[lebesgue_measure]_(x in `[t0, t]) f x (g x))%R.
 
 Section vector_continuous.
-
 Context {R : realType}.
 
 Context {n : nat}.
@@ -568,7 +568,7 @@ rewrite /Vr.
 apply eq_set => /= f' ;apply propext;split => h.
 - rewrite -(@reprK _ V f').
   rewrite /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
-  rewrite qnorm_piE.
+  rewrite norm_piE.
   apply: infty_norm0_le => /=.
   apply (ltW (aaDelta_subproof f ab u0 r k0 rho)).
   move => x adx.
@@ -587,7 +587,7 @@ apply eq_set => /= f' ;apply propext;split => h.
   rewrite eval_mod_on_itv;last by rewrite inE.
   rewrite -inE in xad.
   apply: (le_trans (infty_norm0_ge (ltW (aaDelta_subproof f ab u0 r k0 rho)) _ xad)).
-  rewrite -(qnorm_piE (ltW (aaDelta_subproof f ab u0 r k0 rho))).
+  rewrite -(norm_piE (ltW (aaDelta_subproof f ab u0 r k0 rho))).
   by rewrite Quotient.pi_add Quotient.pi_opp reprK.
 Qed.
 
@@ -632,7 +632,7 @@ exists (NngNum (ge0 rho)); split => //=.
 move=> /= [/= x y] [Vrx Vry].
 rewrite /picard_to_cont/=.
 rewrite !piE/=.
-rewrite qnorm_piE/=.
+rewrite norm_piE/=.
 rewrite /infty_norm0/=.
 have aad :   a <= (a + Delta f a b k u0 r rho) by rewrite lerDl ltW// Delta_gt0.
 apply: ge_sup => //=.
@@ -731,7 +731,7 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `|x - y| ))//.
     move: tNdd.
     by rewrite in_itv/= => /andP[Ndt].
   have -> : x x0 - y x0 = (x - y : V) x0.
-    apply (@eqmod_on_itv _ _ _ (ltW (aaDelta_subproof f ab u0 r k0 rho)) (repr x - repr y)) => //.
+    apply (@eqmod_on_itv _ _ _ _ (ltW (aaDelta_subproof f ab u0 r k0 rho)) (repr x - repr y)) => //.
     by rewrite Quotient.pi_add Quotient.pi_opp !reprK //.
   exact: infty_norm0_ge.
 rewrite (@le_trans _ _ (k * `|x - y| * (t - a)))//.

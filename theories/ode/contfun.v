@@ -10,7 +10,7 @@ From mathcomp Require Import ereal sequences derive numfun measure realfun.
 From mathcomp Require Import lebesgue_measure lebesgue_integral ftc common.
 (**md**************************************************************************)
 (* # ODE                                                                      *)
-(*   infty_norm f := infty_norm0 (repr f)                                      *)
+(*   infty_norm f := infty_norm0 (repr f)                                     *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -138,7 +138,7 @@ End submod_definition.
 Import Quotient.
 
 Section cont_on_seg_quotient.
-Context {R : realType} (a b : R).
+Context {R : realType} {W : normedModType R} (a b : R).
 Hypothesis ab : a <= b.
 
 (*Definition eq_seg (f g : continuousFunType a b) := `[< {in `[a, b], f =1 g} >].
@@ -160,7 +160,7 @@ Canonical eq_seg_canonical :=
 
 Local Open Scope quotient_scope.
 
-Definition quot_continuousFunType := {quot (@submod_itv _ R _ _ ab)}.
+Definition quot_continuousFunType := {quot (@submod_itv _ W _ _ ab)}.
 Local Notation T := quot_continuousFunType.
 
 (* NB: ZmodQuotient is defined in ring_quotient.v *)
@@ -168,7 +168,7 @@ HB.instance Definition _ := ZmodQuotient.on T.
 
 Definition quot_continuousFunType_to_fun (f : T) :
   (* NB(rei): was R -> R before 2025-12-26 *)
-  subspace `[a, b] -> R := repr f.
+  subspace `[a, b] -> W := repr f.
 Coercion quot_continuousFunType_to_fun : T >-> Funclass.
 
 Lemma eq_segP (f g : T) : reflect ({in `[a, b], f =1 g}) (f == g %[mod T]).
@@ -179,7 +179,7 @@ apply/(iffP idP); rewrite eqmodE//=.
   by rewrite /patch xab => /subr0_eq.
 - move=> abfg.
   rewrite /equivE inE; apply/funext => x.
-  rewrite patchE; case: ifPn => //= xab.
+  rewrite /patch; case: ifPn => //= xab.
   rewrite !fctE.
   by apply/eqP; rewrite subr_eq0; exact/eqP/abfg.
 Qed.
@@ -211,7 +211,7 @@ Let K := `[a, b].
 
 Import Cont_on_seg_quot.
 
-Local Notation V := (quot_continuousFunType ab).
+Local Notation V := (@quot_continuousFunType R W a b ab).
 
 Definition infty_norm (f : V) := infty_norm0 (repr f).
 
@@ -255,12 +255,12 @@ rewrite /infty_norm /infty_norm0 /= => H.
 rewrite -(reprK x) -(reprK 0).
 apply/eqquotP.
 rewrite Quotient.equivE inE; apply: funext => x0 /=.
-rewrite patchE; case : ifPn => // /set_mem in_itv.
+rewrite /patch; case : ifPn => // /set_mem in_itv.
 rewrite 2!fctE.
-have -> : ( {in K, repr (0 : V) =1 (0 : @continuousFunType R R K setT)}).
+have -> : {in K, repr (0 : V) =1 (0 : @continuousFunType R W K setT)}.
 - apply/eqmod_on_itv.
   by rewrite reprK /GRing.zero /= /Quotient.zero /= -lock.
-- rewrite subr0.
+- rewrite [LHS]subr0.
   apply/eqP; rewrite -normr_le0.
   have := sup_upper_bound (normr_has_sup x ab).
   rewrite H /ubound /=.
@@ -281,7 +281,7 @@ rewrite Quotient.pi_add reprK.
 by move : IHn' <-.
 Qed.
 
-Let qnorm_piE' x : infty_norm (\pi_V x) = infty_norm0 x.
+Let infty_norm_pi x : infty_norm (\pi_V x) = infty_norm0 x.
 Proof.
 rewrite /infty_norm /=.
 have /eqmod_on_itv Heq : repr (\pi_V x) = x %[mod V] by rewrite reprK.
@@ -290,7 +290,7 @@ Qed.
 
 Lemma infty_normrN (x : V) : infty_norm (- x) = infty_norm x.
 Proof.
-rewrite -(reprK x) /GRing.opp /= -Quotient.pi_opp !qnorm_piE' /infty_norm /infty_norm0.
+rewrite -(reprK x) /GRing.opp /= -Quotient.pi_opp !infty_norm_pi /infty_norm /infty_norm0.
 congr sup.
 apply eq_set => /= x0.
 apply propext; split => [[x1 in_itv] | [x1 in_itv]] H; exists x1 =>//.
@@ -304,8 +304,8 @@ Fail Check V : normedZmodType R.
 HB.instance Definition _ := @Num.Zmodule_isNormed.Build R V
   infty_norm ler_infty_normD infty_normr0_eq0 infty_normrMn infty_normrN.
 
-Lemma qnorm_piE x : `|\pi_V x| = infty_norm0 x.
-Proof. by rewrite /Num.norm /= qnorm_piE'. Qed.
+Lemma norm_piE x : `|\pi_V x| = infty_norm0 x.
+Proof. by rewrite /Num.norm /= infty_norm_pi. Qed.
 
 Check V : normedZmodType R.
 
@@ -317,11 +317,11 @@ Fail Check (pseudoMetric_normed V) : normedModType R.
 End zmodule_normed.
 
 Section V_normedtype.
-Context {R : realType} {r s : R} (rs : r <= s).
+Context {R : realType} {W : normedModType R} {r s : R} (rs : r <= s).
 
 Import Cont_on_seg_quot.
 
-Local Notation V := (quot_continuousFunType rs).
+Local Notation V := (@quot_continuousFunType R W r s rs).
 
 Fail Check (pseudoMetric_normed V) : normedModType R.
 HB.instance Definition _ := PseudoMetric.copy V (pseudoMetric_normed V).
@@ -347,7 +347,7 @@ apply/eqmodP; rewrite /equiv_equiv/= /equiv/=.
 rewrite -scalerA -scalerBr.
 rewrite inE.
 apply/funext => x/=.
-rewrite patchE; case: ifPn => // xrs.
+rewrite /patch; case: ifPn => // xrs.
 rewrite !fctE.
 apply/eqP; rewrite scaler_eq0.
 rewrite (negPf a0)/= subr_eq0.
@@ -379,12 +379,12 @@ rewrite -scalerDr.
 rewrite -scalerBr.
 rewrite inE.
 apply/funext => x/=.
-rewrite patchE; case: ifPn => // xrs.
+rewrite /patch; case: ifPn => // xrs.
 rewrite !fctE.
 apply/eqP; rewrite scaler_eq0 (negPf k0)/=.
 rewrite subr_eq0.
 apply/eqP.
-have := @eqmod_on_itv _ _ _ rs (repr (b + c)) (repr b + repr c).
+have := @eqmod_on_itv _ _ _ _ rs (repr (b + c)) (repr b + repr c).
 move=> ->//.
 rewrite pi_add//=.
 by rewrite !reprK.
@@ -397,7 +397,7 @@ rewrite /cont_scale piE/=.
 apply/eqmodP; rewrite /equiv_equiv/= /equiv/=.
 rewrite -scalerDl subrr.
 rewrite inE/=.
-by rewrite restrict0.
+by apply/funext => x; rewrite /patch; case: ifP.
 Qed.
 
 HB.instance Definition _ :=
@@ -410,7 +410,7 @@ Proof.
 move =>ars.
 have : repr (l *: x) = l *: repr x %[mod V].
   by case: piP.
-move/(@eqmod_on_itv _ _ _ rs (repr (l *: x)) (l *: repr x)).
+move/(@eqmod_on_itv _ _ _ _ rs (repr (l *: x)) (l *: repr x)).
 by move/(_ _ ars).
 Qed.
 
@@ -435,7 +435,7 @@ apply sup_le; [ | | by apply normr_has_sup].
     by rewrite inE.
   rewrite repr_mult; last by rewrite inE.
   by rewrite normrZ.
-exists `|l * x r|, `|repr x r|.
+exists `|l *: x r|, `|repr x r|.
   by exists r => //=; rewrite bound_itvE.
 by rewrite normrZ.
 Qed.
@@ -443,37 +443,39 @@ Qed.
 HB.instance Definition _ := is_pmnormedZmod_contFunBallType.
 End V_normedtype.
 
+From mathcomp Require Import all_algebra.
+From mathcomp Require Import matrix_topology.
+
 Section completeness.
-Context {R : realType}.
+Context {R : realType} (*{n : nat}*) {W : completeNormedModType R}.
+(*Let W := 'rV[R]_n.*)
 Variables a b : R.
 Hypothesis ab : a <= b.
 
 Import Cont_on_seg_quot.
 
-Notation V := (quot_continuousFunType ab).
+Notation V := (@quot_continuousFunType R W _ _ ab).
 
 Check (V : pseudoMetricType R).
 Check (V : normedModType R).
 
-Lemma infty_norm_gt_V (f : V) e: `| f | <  e -> {in `[a, b], forall x : R, `|f x| < e}.
+Lemma infty_norm_gt_V (f : V) e :
+  `| f | <  e -> {in `[a, b], forall x : R, `|f x| < e}.
 Proof.
-rewrite -{1}(reprK f) qnorm_piE => h x xab.
+rewrite -{1}(reprK f) norm_piE => h x xab.
 exact/le_lt_trans/h/infty_norm0_ge.
 Qed.
 
-Lemma infty_norm_le_V (f : V) e:  {in `[a, b], forall x : R, `|f x| <= e} -> `| f | <=  e.
-Proof.
-move => h.
-rewrite -(reprK f) qnorm_piE.
-exact: infty_norm0_le.
-Qed.
+Lemma infty_norm_le_V (f : V) e :
+  {in `[a, b], forall x : R, `|f x| <= e} -> `| f | <=  e.
+Proof. by move => h; by rewrite -(reprK f) norm_piE infty_norm0_le. Qed.
 
 Definition lim_fun (F : set_system V) (FF : ProperFilter F) (Fc : cauchy F) :
-  subspace `[a, b] -> R :=
+  subspace `[a, b] -> W :=
   fun t => lim (@^~t @ F).
 
 Lemma lim_fun_is_fun (F : set_system V) (FF : ProperFilter F) (Fc : cauchy F) :
-  @isFun (subspace `[a, b]) R `[a, b] [set: R] (@lim_fun F FF Fc).
+  @isFun (subspace `[a, b]) W `[a, b] [set: W] (@lim_fun F FF Fc).
 Proof. by constructor. Qed.
 
 HB.instance Definition _ F FF Fc := (@lim_fun_is_fun F FF Fc).
@@ -485,12 +487,18 @@ Proof.
 have /(_ _ _) /cauchy_cvg /cvg_app_entourageP cvF :
     forall t : R, t \in `[a,b] ->
       cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
-  move=> t tab A /= [e e0 ee]; rewrite near_simpl -near2E near_map2.
+  move=> t tab A /=.
+  rewrite -entourage_ballE.
+  move=> [e /= e0 eA].
+  rewrite near_simpl -near2E near_map2.
   apply : Fc.
+  rewrite -entourage_ballE.
+  rewrite /nbhs/=.
   exists e => //.
-  move => /= [f g].
+  move => /= [f g] /=.
   move /infty_norm_gt_V => h.
-  apply ee => /=.
+  apply eA => /=.
+  rewrite -ball_normE /ball/=.
   have <- : (f - g : V) t = (f : V) t - (g : V) t.
     rewrite -(reprK f) -(reprK g)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
     by rewrite !eval_mod_on_itv.
@@ -619,7 +627,7 @@ have H : forall (e : R), e > 0 ->forall t, t \in `[a,b] -> \forall t' \near t, t
     move : (t') t'ab.
     near:f.
     by apply lim_fun_cvg_uniform; do 2 rewrite divr_gt0 //.
-apply continuous_within_itvP => //; split.
+apply/continuous_within_itvP => //; split.
 - move => t tab.
   apply/cvgrPdist_le => /= e e0.
   near=>t'.
@@ -658,8 +666,8 @@ by rewrite inE /= bound_itvE/= ltW.
 Unshelve. all: by end_near. Qed.
 
 HB.instance Definition _ F FF Fc :=
-  isContinuous.Build (subspace `[a, b]) R
-  (@lim_fun F FF Fc : subspace `[a, b] -> R) (@lim_fun_cont F FF Fc).
+  isContinuous.Build (subspace `[a, b]) W
+  (@lim_fun F FF Fc : subspace `[a, b] -> W) (@lim_fun_cont F FF Fc).
 
 Fail Check (V : completeType).
 
@@ -668,12 +676,14 @@ Lemma cvg_V_entourageP  (F : set_system V) (FF : Filter F)
   F --> f <-> forall A, entourage A ->
               \forall g \near F, {in `[a, b], forall t : R, A (f t, (g : V) t)}.
 Proof.
-split => [/cvg_entourageP /= Ff A [eps eps0 /= H]|/=Ff].
-  apply: (Ff [set fg : V*V| {in `[a, b], forall t : R, A (fg.1 t, fg.2 t)}]).
+split => [/cvg_entourageP /= Ff A|/=Ff].
+  rewrite -entourage_ballE => -[eps eps0 /= H].
+  apply: (Ff [set fg : V * V| {in `[a, b], forall t : R, A (fg.1 t, fg.2 t)}]).
   exists eps => //.
   rewrite /pseudoMetric_from_normedZmodType.ball /=.
   move => /= x bx t tab.
   apply H => /=.
+  rewrite -ball_normE /ball/=.
   have -> : (x.1 : V) t - (x.2 : V) t = (x.1 - x.2 :V) t.
     rewrite -(reprK x.1) -(reprK x.2)  /GRing.opp /= -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
     by rewrite !eval_mod_on_itv.
@@ -689,10 +699,11 @@ have -> : (f - g : V) t = f t - (g : V) t.
   rewrite -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
   by rewrite !eval_mod_on_itv.
 rewrite ltW //.
-move : t tab.
+suff: ball (f t) (e / 2) (g t).
+  by rewrite -ball_normE /ball/=.
+move: t tab.
 near: g.
-apply: (Ff [set xy : R *R | ball xy.1 (PosNum e20)%:num xy.2]).
-exact: entourage_ball.
+exact: (Ff [set xy : W * W | ball xy.1 (PosNum e20)%:num xy.2] (entourage_ball _ _)).
 Unshelve. all: by end_near. Qed.
 
 Lemma quot_cont_on_segType_cauchy_cvg (F : set_system V) :
@@ -702,19 +713,20 @@ move=> FF Fc.
 have /(_ _ _)/cauchy_cvg /cvg_app_entourageP cvF :
     forall t : R, t \in `[a,b] ->
     cauchy (fmap (fun (h : V) => h t) (fun x : set V => nbhs F (fun x0 : V => x x0))).
-  move=> t tab A /= [e e0 ee]; rewrite near_simpl -near2E near_map2.
+  move=> t tab A /=.
+  rewrite -entourage_ballE => -[e e0 ee]; rewrite near_simpl -near2E near_map2.
   apply : Fc.
   exists e => //.
   move => /= [f g].
   move /infty_norm_gt_V => h.
   apply ee => /=.
+  rewrite -ball_normE /ball_/=.
   have <- : (f - g : V) t = (f : V) t - (g : V) t.
     rewrite -(reprK f) -(reprK g)  /GRing.opp /=.
     rewrite -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
     by rewrite !eval_mod_on_itv.
-  by apply h.
-apply /cvg_ex.
-exists ( pi V (@lim_fun F FF Fc : continuousFunType `[a, b] [set: R])).
+  exact: h.
+apply/cvg_ex; exists (pi V (@lim_fun F FF Fc : continuousFunType `[a, b] [set: W])).
 apply /cvg_V_entourageP => /=.
 move=> A /= entA.
 near=>f.
@@ -724,14 +736,17 @@ apply : (entourage_split (g t)) => //.
   by rewrite eval_mod_on_itv => //; first by near:g;apply: cvF.
 move: (t) (tab); near: g; near: f; apply: nearP_dep; apply: Fc.
 rewrite /nbhs /=.
-have [e e0 ee] := (entourage_split_ent entA).
+have := entourage_split_ent entA.
+rewrite -entourage_ballE => -[e e0 ee].
+rewrite -entourage_ballE.
 exists e => //.
 move => [/= x y].
 rewrite /pseudoMetric_from_normedZmodType.ball/=.
 move /infty_norm_gt_V => h t tab.
 apply ee => /=.
+rewrite -ball_normE /ball_ /=.
 rewrite distrC.
-have -> : ((x : V) t - (y : V) t = (x - y :V) t).
+have -> : (x : V) t - (y : V) t = (x - y :V) t.
   rewrite -(reprK y) -(reprK x) /GRing.opp /=.
   rewrite -Quotient.pi_opp /GRing.add /= -Quotient.pi_add.
   by rewrite !eval_mod_on_itv.
