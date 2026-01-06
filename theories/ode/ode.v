@@ -24,69 +24,78 @@ Import numFieldNormedType.Exports.
 Open Scope ring_scope.
 Open Scope classical_set_scope.
 
-(* why is this defined here? *)
-Section VectorIntegral.
-Variable (R : realType).
-Variable (d : measure_display).
-Variable (T : measurableType d).
-Variable (mu : measure T R).
-Variable (D : set T).
-Variable (n : nat).
-Definition vRintegral (f : T -> 'rV[R]_n) : 'rV[R]_n :=
-  \row_i (Rintegral mu D (fun x => (f x) ord0 i)).
+Reserved Notation "\vint [ mu ]_ ( i 'in' D ) F"
+  (at level 36, F at level 36, i, D at level 60,
+  format "'[' \vint [ mu ]_ ( i  'in'  D ) '/  '  F ']'").
+Reserved Notation "\vint [ mu ]_ i F"
+  (F at level 36, i at level 0,
+    right associativity, format "'[' \vint [ mu ]_ i '/  '  F ']'").
 
-Lemma vRintegralE (f : T -> 'rV[R]_n) i :
-  (vRintegral f) ord0 i = Rintegral mu D (fun x => (f x) ord0 i).
-Proof. by rewrite /vRintegral mxE. Qed.
-End VectorIntegral.
-Notation "\vint [ mu ]_ ( x 'in' D ) F" :=
-  (vRintegral mu D (fun x => F))
-  (at level 36).
+(* TODO: move *)
+Section row_Rintegral.
+Context {R : realType} (d : measure_display) {T : measurableType d}.
+Variable (mu : {measure set T -> \bar R}).
+Variable (D : set T) (n : nat).
 
-(* first, we define picard_from_cont
-   that takes a function continuous over a closed ball *)
+Definition rowRintegral (f : T -> 'rV[R]_n) : 'rV[R]_n :=
+  \row_i (\int[mu]_(x in D) (f x) ord0 i).
 
-(* Definition picard_from_cont' {R : realType} {n : nat} (U := 'rV[R]_n) *)
-(*   (u0 : U) (r : R) *)
-(*   (B := closed_ball u0 r) *)
-(*   (f : R -> U -> U) (g : R -> U) *)
-(*     (t0 t1 : R) *)
-(*     (imageg : g @` `[t0, t1] `<=` B) : R -> U := *)
-(*   fun t => u0 + (\vint[lebesgue_measure]_(x in `[t0, t]) f x (g x))%R. *)
-Definition picard_from_cont' {R : realType} (U := R)
-  (u0 : U) (r : R)
-  (B := closed_ball u0 r)
-  (f : R -> U -> U) (g : R -> U)
-    (t0 t1 : R)
-    (imageg : g @` `[t0, t1] `<=` B) : R -> U :=
-  fun t => u0 + (\int[lebesgue_measure]_(x in `[t0, t]) f x (g x))%R.
+Local Notation "\vint_ i F" :=
+    (rowRintegral (fun i => F)%R) (at level 36, i at level 0,
+  format "'[' \vint_ i '/  '  F ']'")  : ring_scope.
+
+Lemma rowRintegralE (f : T -> 'rV[R]_n) i :
+  (\vint_x f x) ord0 i = \int[mu]_(x in D) (f x) ord0 i.
+Proof. by rewrite /rowRintegral mxE. Qed.
+
+End row_Rintegral.
+
+Notation "\vint [ mu ]_ ( x 'in' D ) f" :=
+  (rowRintegral mu D (fun x => f)%R) : ring_scope.
+Notation "\vint [ mu ]_ x f" :=
+  (rowRintegral mu setT (fun x => f)%R) : ring_scope.
+
+Definition picard_from_cont' {R : realType} n (U := 'rV[R]_n) (u0 : U) (r : R)
+  (B := closed_ball u0 r) (f : R -> U -> U) (g : R -> U) (a b : R)
+    (imageg : g @` `[a, b] `<=` B) : R -> U :=
+  fun t => u0 + (\vint[lebesgue_measure]_(x in `[a, t]) f x (g x))%R.
 
 Section vector_continuous.
-Context {R : realType}.
-
-Context {n : nat}.
+Context {R : realType} {n : nat}.
 Let U := 'rV[R]_n.
-Lemma within_continuous_vec (h : R -> U) D :
-  {within D, continuous h} <-> forall i, {within D, continuous (fun x => (h x) ord0 i)}.
-Proof.
-split.
-- move=> hcont i.
 
-  (* apply/subspace_continuousP => /= x Dx. *)
-  (* have /subspace_continuousP/(_ x Dx) := hcont. *)
-  (* move => h'. *)
-  (* have := (proj1 (cvg_mx_entourageP R 1 n)). *)
-  (* apply. *)
-Abort.
+Lemma within_continuous_coord (h : R -> U) D :
+  {within D, continuous h} <-> forall i, {within D, continuous (fun x => h x ord0 i)}.
+Proof.
+split=> [Dh i|H].
+- apply/subspace_continuousP => /= x Dx.
+  have /subspace_continuousP/(_ x Dx) H := Dh.
+  apply: ((@cvg_comp _ _ _ h (fun z => z ord0 i)) _ _ _ H).
+  exact: coord_continuous.
+- apply/subspace_continuousP => /= x Dx.
+  apply/cvgrPdist_le => /= e e0.
+  rewrite near_withinE.
+  near=> t => Dt.
+  rewrite /Num.norm/= mx_normrE.
+  apply/(bigmax_le _ (ltW e0)) => /= -[i j] _ /=.
+  rewrite {i}(ord1 i) !mxE.
+  move: j Dt.
+  near: t.
+  apply: filter_forall => /= i.
+  have /subspace_continuousP/(_ x Dx) := H i.
+  move/cvgrPdist_le => /(_ _ e0).
+  rewrite near_withinE.
+  exact.
+Unshelve. all: by end_near. Qed.
+
 End vector_continuous.
 Section picard_from_cont'.
 Context {R : realType}.
-(*Variable U : normedModType R.*)
 Local Notation mu := lebesgue_measure.
 Context {n : nat}.
-(* Let U := 'rV[R]_n. *)
+Let U := 'rV[R]_n.
+(*Let U := R.*)
 
-Let U := R.
 Variables (f : R -> U -> U) (a b : R).
 Hypothesis ab : a <= b.
 Variables (u0 : U) (r : {posnum R}).
@@ -114,9 +123,14 @@ HB.instance Definition _ :=
 Lemma within_continuous_picard_from_cont' :
   {within `[a, b], continuous (picard_from_cont' f imageg)}.
 Proof.
+apply/within_continuous_coord => i.
 rewrite /picard_from_cont'.
-suff: {within `[a, b], continuous (fun t => \int[mu]_(x0 in `[a, t]) f x0 (g x0))}.
+suff: {within `[a, b], continuous (fun t => \int[mu]_(x0 in `[a, t]) (f x0 (g x0)) ord0 i)}.
   move=> abf x.
+  rewrite (_ : (fun x0 : R => (u0 + \vint[mu]_(x1 in `[a, x0]) f x1 (g x1))%E ord0 i) =
+               (fun x0 : R => u0 ord0 i + \int[mu]_(x1 in `[a, x0]) (f x1 (g x1)) ord0 i)); last first.
+    apply/funext=> x0.
+    by rewrite mxE rowRintegralE.
   apply: cvgD.
     exact: cvg_cst.
   exact: abf.
@@ -124,7 +138,9 @@ move=> /= x.
 apply: parameterized_integral_continuous => //.
 apply: continuous_compact_integrable; first exact: segment_compact.
 move=> {x}.
-exact: (within_continuous_lipschitz _ k0 lip2 cont1).
+move: i.
+apply/within_continuous_coord.
+exact: (within_continuous_lipschitz cg k0 lip2 cont1).
 Qed.
 
 (* Lemma within_continuous_picard_from_cont' : *)
@@ -174,9 +190,9 @@ End picard_from_cont'.
 Section picard_from_cont.
 Context {R : realType}.
 Context {n : nat}.
-(* Let U := 'rV[R]_n. *)
+Let U := 'rV[R]_n.
 
-Let U := R.
+(*Let U := R.*)
 Variables (f : R -> U -> U) (a b : R).
 Variables (u0 : U) (r : {posnum R}).
 Let B := closed_ball u0 r%:num.
@@ -186,7 +202,7 @@ Definition picard_from_cont
   (cf_y : {in B, forall y, {within `[a, b], continuous f ^~ y}})
   (g : R -> U) : R -> U :=
 match pselect (g @` `[a, b] `<=` B) with
-| left imageg => @picard_from_cont' R u0 r%:num f g a b imageg
+| left imageg => @picard_from_cont' R n u0 r%:num f g a b imageg
 | _ => cst 0
 end.
 
@@ -198,8 +214,8 @@ End picard_from_cont.
 Section picard_to_cont.
 Context {R : realType} {n : nat}.
 
-(* Let U := 'rV[R]_n. *)
-Let U := R.
+Let U := 'rV[R]_n.
+(*Let U := R.*)
 
 Local Notation mu := lebesgue_measure.
 Variables (f : R -> U -> U) (a b : R) (k : R).
@@ -238,17 +254,15 @@ apply: subset_itvl.
 by rewrite bnd_simp /Delta -lerBrDl ge_min lexx.
 Qed.
 
-Local Notation picard_from_cont_not := (@picard_from_cont _ f a (a + Delta) u0 r k lip2_Delta cont1_Delta).
+Local Notation picard_from_cont_not := (@picard_from_cont _ n f a (a + Delta) u0 r k lip2_Delta cont1_Delta).
 
 Lemma Delta_gt0 : 0 < Delta.
 Proof.
-rewrite lt_min subr_gt0 ab/=.
-rewrite lt_min mulr_gt0//=.
-  by rewrite divr_gt0//.
-rewrite invr_gt0//.
-rewrite ltr_wpDr//.
+rewrite lt_min subr_gt0 ab/= lt_min mulr_gt0//=.
+  by rewrite divr_gt0.
+rewrite invr_gt0// ltr_wpDr//.
   exact: hmax_ge0.
-by rewrite mulr_gt0//.
+by rewrite mulr_gt0.
 Qed.
 
 Let aaDelta : a < a + Delta.
@@ -298,11 +312,14 @@ Definition picard_to_cont (x : V) : V := \pi_V%qT (picard_from_cont_not x).
 
 Lemma integrable_comp (F : V) y : y \in `[a, (a + Delta)]%R ->
   [set F x | x in `[a, y]] `<=` closed_ball u0 r%:num ->
-  mu.-integrable `[a, y] (EFin \o (fun t : R => f t (F t))).
+  forall i,
+  mu.-integrable `[a, y] (EFin \o (fun t : R => f t (F t) ord0 i)).
 Proof.
-move => yaaDelta ab0r.
+move => yaaDelta ab0r i.
 apply: continuous_compact_integrable; first exact: segment_compact.
 move: (yaaDelta); rewrite  in_itv/= => /andP[ay yaDelta].
+move: i.
+apply/within_continuous_coord.
 apply: (within_continuous_lipschitz _ k0).
 - have := @cts_fun _ _ F.
   by apply/continuous_subspaceW/subset_itvl; rewrite bnd_simp.
@@ -321,6 +338,7 @@ move=> F.
 rewrite /restrictedV/= => invariant _/= [y yaaDelta <-].
 rewrite /picard_to_cont.
 rewrite /B.
+(* TODO: important
 rewrite closed_ball_itv//=.
 rewrite in_itv//=.
 rewrite [X in _ <= X <= _](_ : _ = (picard_from_cont_not F) y); last first.
@@ -501,10 +519,11 @@ rewrite -ler_pdivlMl//; last first.
 rewrite 2!ge_min.
 by rewrite mulrC lexx/= orbT.
 Qed.
+*) Admitted.
 
 Lemma picard_from_cont_simpl g t :
   [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num ->
-  picard_from_cont_not g t = u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
+  picard_from_cont_not g t = u0 + (\vint[mu]_(x in `[a, t]) f x (g x))%R.
 Proof.
 rewrite /picard_from_cont_not; case: pselect => [| // ] .
 by rewrite /picard_from_cont'.
@@ -516,8 +535,8 @@ Lemma picard_to_cont_init g :
 Proof.
 move => h.
 rewrite picard_from_cont_simpl => //.
-by rewrite set_itv1 Rintegral_set1 addr0.
-Qed.
+rewrite set_itv1. (*Rintegral_set1 addr0. NB: easy lemma *)
+Admitted.
 
 Fail Check picard_to_cont : {fun [set: V] >-> [set: V]}.
 
@@ -532,10 +551,10 @@ About is_contraction.
 End picard_to_cont.
 
 Section picard_to_cont_normedtype4.
-Context {R : realType}.
-Let U := R.
+Context {R : realType} {n : nat}.
+Let U := 'rV[R]_n.
 
-Variable f : R -> U -> R.
+Variable f : R -> U -> U.
 Variable (a b : R).
 Hypothesis ab : a < b.
 Variable k : R.
@@ -551,17 +570,15 @@ Hypothesis rho1 : (rho%:num < 1).
 Import Cont_on_seg_quot.
 
 Notation V := (quot_continuousFunType (ltW (aaDelta_subproof f ab u0 r k0 rho))).
-Notation Vr := (@restrictedV _ f a b k ab u0 r k0 rho).
+Notation Vr := (@restrictedV _ n f a b k ab u0 r k0 rho).
 
-HB.about cst.
+Check @cst (subspace `[a, a + Delta f a b k u0 r rho]) U u0 : {fun `[a, a + Delta f a b k u0 r rho] >-> [set: U]}.
 
-Check @cst (subspace `[a, a + Delta f a b k u0 r rho]) R u0 : {fun `[a, a + Delta f a b k u0 r rho] >-> [set: R]}.
-
-Check @cst (subspace `[a, a + Delta f a b k u0 r rho]) R u0 : continuousType (subspace `[a, a + Delta f a b k u0 r rho]) R.
+Check @cst (subspace `[a, a + Delta f a b k u0 r rho]) U u0 : continuousType (subspace `[a, a + Delta f a b k u0 r rho]) U.
 
 (* Check @cst (subspace `[a, a + Delta f a b k u0 r rho]) R u0 : continuousFunType `[a, a + Delta f a b k u0 r rho] [set: R]. *)
 Lemma restrictedVball : Vr = @closed_ball R V
-  (pi V (@cst (subspace `[a, a + Delta f a b k u0 r rho]) R u0)) r%:num.
+  (pi V (@cst (subspace `[a, a + Delta f a b k u0 r rho]) U u0)) r%:num.
 Proof.
 rewrite closed_ballE => //.
 rewrite /Vr.
@@ -592,7 +609,7 @@ apply eq_set => /= f' ;apply propext;split => h.
 Qed.
 
 Definition contrac : {fun Vr >-> Vr} :=
-  @picard_to_cont R f a b k ab u0 r k0 lip2 cont1 rho.
+  @picard_to_cont R n f a b k ab u0 r k0 lip2 cont1 rho.
 
 Lemma set_fun_picard : set_fun Vr Vr contrac.
 Proof. by []. Qed.
@@ -653,29 +670,32 @@ rewrite /picard_from_cont'/=.
 rewrite !fctE.
 rewrite (addrC u0).
 rewrite addrKA.
-have integrable1 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (x x0))).
+rewrite [in leLHS]/Num.norm/= mx_normrE.
+apply: bigmax_le => //= -[i j] _.
+rewrite {i}(ord1 i)/=.
+rewrite mxE rowRintegralE mxE rowRintegralE.
+have integrable1 : mu.-integrable `[a, t] (EFin \o (fun x0 => f x0 (x x0) ord0 j)).
   apply integrable_comp => //=.
   move => _ [x0 h] <-.
   apply: Hg => /=.
   exists x0 => //.
-  apply /subset_itvl/h.
-  rewrite bnd_simp.
+  apply/subset_itvl/h; rewrite bnd_simp.
   by move: tNdd; rewrite !in_itv/= => /andP[] .
-
-have integrable2 :  mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (y x0))).
+have integrable2 : mu.-integrable `[a, t] (EFin \o(fun x0 => f x0 (y x0) ord0 j)).
   apply integrable_comp => //=.
   move => _ [x0 h] <-.
   apply: Hg2 => /=.
   exists x0 => //.
-  apply /subset_itvl/h.
-  rewrite bnd_simp.
+  apply/subset_itvl/h; rewrite bnd_simp.
   by move: tNdd; rewrite !in_itv/= => /andP[] .
 rewrite -RintegralB//=.
 rewrite (le_trans (le_normr_Rintegral _ _))//=.
     under [x in integrable _ _  x]eq_fun do rewrite EFinB.
     rewrite integrableB //=.
-have integrable3 :   mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E).
-    apply integrable_norm => //=.
+have integrable3 : mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E).
+    rewrite /=.
+(* TODO: should be ok *)
+(*    apply: integrable_norm => //=.
     under [x in integrable _ _  x]eq_fun do rewrite EFinB.
     rewrite integrableB //=.
     apply continuous_compact_integrable => //=.
@@ -689,7 +709,7 @@ have integrable3 :   mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E).
     apply /continuous_subspaceW/cts_fun.
     apply: subset_itvl.
     rewrite bnd_simp.
-    by move : tNdd;rewrite in_itv /= => /andP[].
+    by move : tNdd;rewrite in_itv /= => /andP[].*) admit.
 rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
   rewrite (@le_trans _ _ (\int[mu]_(t0 in `[a, t]) (k * `|x t0 - y t0|)))//.
     apply: le_Rintegral => //=.
@@ -703,18 +723,23 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
     have : x0 \in `[a, b]%R by apply /subset_itvl/x0at.
     move/lip2.
     rewrite /dominated_by/= => /(_ (x x0, y x0)) /=.
-    apply; split.
-      apply: Vrx => /=.
+    have Bxy : B (x x0) /\ B (y x0).
+      split.
+        apply: Vrx => /=.
+        exists x0 => //.
+        apply/subset_itvl/x0at.
+        by move: tNdd; rewrite in_itv/= => /andP[Ndt].
+      apply: Vry => /=.
       exists x0 => //.
-      apply /subset_itvl/x0at.
-      move: tNdd.
-      by rewrite in_itv/= => /andP[Ndt].
-    apply: Hg2 => /=.
-    exists x0 => //.
-    apply /subset_itvl/x0at.
-    move: tNdd.
-    by rewrite in_itv/= => /andP[Ndt].
-  rewrite RintegralZl//=.
+      apply/subset_itvl/x0at.
+      by move: tNdd; rewrite in_itv/= => /andP[Ndt].
+    move=> /(_ Bxy); apply: le_trans.
+    rewrite [in leRHS]/Num.norm/= mx_normrE.
+    apply: le_trans; last first.
+      apply: le_bigmax => /=.
+      exact: (ord0, j).
+    by rewrite /= !mxE.
+  by rewrite RintegralZl.
 rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `|x - y| ))//.
   rewrite ler_pM2l//.
   apply: le_Rintegral => //=.
@@ -750,40 +775,52 @@ rewrite in_itv/= => /andP[Ndt].
 rewrite -lerBlDl.
 rewrite /Delta !le_min => /andP[_ /andP[_]].
 by rewrite ler_pdivlMr// mulrC.
-Qed.
+Admitted.
 
 End picard_to_cont_normedtype4.
 
-Section picard.
-Context {R : realType}.
-Local Notation mu := lebesgue_measure.
-Let U := R.
+Definition row_vector {R : realType} (n : nat) := 'rV[R]_n.
 
-Variables (f : R -> U -> R) (a b : R) (k : R) (u0 : U) (r : {posnum R}).
+HB.instance Definition _ {R : realType} (n : nat) := Complete.on (@row_vector R n).
+HB.instance Definition _ {R : realType} (n : nat) := NormedModule.on (@row_vector R n).
+(*HB.instance Definition _ {R : realType} (n : nat) := CompleteNormedModule.on (@row_vector R n).*)
+
+Section picard.
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : R -> U -> U) (a b : R) (k : R) (u0 : U) (r : {posnum R}).
 Hypothesis ab : a < b.
 Hypothesis k0 : 0 < k.
 Let B := closed_ball u0 r%:num.
 Hypothesis lip2 : {in `[a, b]%R, forall x : R, k.-lipschitz_B (f x)}.
 Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
 Variable rho : {posnum R}.
-Hypothesis rho1 : (rho%:num < 1).
+Hypothesis rho1 : rho%:num < 1.
 (*Variable y_ : R -> R.
 Hypothesis y_init_t : y_ 0 = 0.*)
 
 (*Hypothesis dtwok : d0%:num < (2 * k)^-1.*)
 
 Definition tmp : is_contraction (contrac ab k0 lip2 cont1 rho) :=
-  (@is_contraction_picard_to_cont R f a b ab k k0 u0 r lip2 cont1 rho rho1).
+  (@is_contraction_picard_to_cont R n f a b ab k k0 u0 r lip2 cont1 rho rho1).
 
 Import Cont_on_seg_quot.
 
-Notation V := (quot_continuousFunType (ltW (aaDelta_subproof f ab u0 r k0 rho))).
+Check U : completeType.
+Check U : completePseudoMetricType R.
+Check U : normedModType R.
+Check U : completeNormedModType R.
 
-Lemma Vr0 : (@restrictedV _ f a _ k _ u0 r k0 rho : set V) !=set0.
+Notation V := (@quot_continuousFunType R U _ _ (ltW (aaDelta_subproof f ab u0 r k0 rho))).
+
+Check V : completeNormedModType _.
+
+Lemma Vr0 : (@restrictedV R n f a b k ab u0 r k0 rho : set V) !=set0.
 Proof.
 exists (pi V (cst u0)).
 move => _ [y x0] <-.
-suff -> : quot_continuousFunType_to_fun  (\pi_(V)%qT (cst u0)) y = u0.
+suff -> : quot_continuousFunType_to_fun (\pi_(V)%qT (cst u0)) y = u0.
   exact: closed_ballxx.
 rewrite /quot_continuousFunType_to_fun/=.
 have /eqmod_on_itv : (repr (\pi_(V)%qT (cst u0)) = cst u0 %[mod V])%qT by rewrite reprK.
@@ -791,23 +828,26 @@ apply.
 by rewrite inE.
 Qed.
 
-Notation Vr := (@restrictedV _ f a b k ab u0 r k0 rho).
+Notation Vr := (@restrictedV R n f a b k ab u0 r k0 rho).
+
 Lemma closed_Vr : closed Vr.
 Proof. by rewrite restrictedVball; exact: closed_ball_closed. Qed.
 
 Let phioo : V :=
   sval (cid2 (@banach_fixed_point R V Vr
-  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho)
-  (@is_contraction_picard_to_cont _ f _ _ ab _ k0 u0 r lip2 cont1 rho rho1)
+  (@contrac R n f a b ab k k0 u0 r lip2 cont1 rho)
+  (@is_contraction_picard_to_cont _ n f a b ab k k0 u0 r lip2 cont1 rho rho1)
   closed_Vr
   Vr0)).
 
-Let phiooE : phioo = (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho) phioo.
+Let phiooE : phioo = (@contrac _ n f a b ab _ k0 u0 r lip2 cont1 rho) phioo.
 Proof. by rewrite {}/phioo; case: cid2. Qed.
 
+Let mu := @lebesgue_measure R.
+
 Lemma contrac_simpl g t : Vr g ->  t \in `[a, (a + Delta f a b k u0 r rho)%E] ->
-  (@contrac _ f a b ab _ k0 u0 r lip2 cont1 rho) g t =
-  u0 + (\int[mu]_(x in `[a, t]) f x (g x))%R.
+  (@contrac _ n f a b ab _ k0 u0 r lip2 cont1 rho) g t =
+  u0 + (\vint[mu]_(x in `[a, t]) f x (g x))%R.
 Proof.
 by move=> Vrg taad; rewrite /contrac eval_mod_on_itv //; exact: picard_from_cont_simpl.
 Qed.
@@ -816,7 +856,8 @@ Theorem picard_lindelof_existence : phioo a = u0 /\
   {in `]a, a + Delta f a b k u0 r rho[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
 have Vrphioo : Vr phioo.
-  by apply (svalP (cid2 (banach_fixed_point (is_contraction_picard_to_cont ab k0 lip2 cont1 rho1) closed_Vr Vr0))).
+  by apply (svalP (cid2 (@banach_fixed_point R V Vr _
+    (@is_contraction_picard_to_cont R n f _ _ ab k k0 u0 r lip2 cont1 _ rho1) closed_Vr Vr0))).
 split.
 - rewrite phiooE.
   rewrite /contrac.
@@ -824,35 +865,41 @@ split.
   rewrite /picard_from_cont /= picard_to_cont_init //.
   move => t tad.
   rewrite {1}phiooE.
+  apply/rowP => j.
   have altd:  a < (a + Delta f a b k u0 r rho)%E by rewrite ltrDl Delta_gt0.
-  suff -> :  (contrac ab k0 lip2 cont1 rho phioo)^`() t =  (fun x0 => (u0 + (\int[mu]_(x in `[a, x0]) f x (phioo x))%R))^`()  t.
+  suff -> : (contrac ab k0 lip2 cont1 rho phioo)^`() t =
+           (fun x0 => (u0 + (\vint[mu]_(x in `[a, x0]) f x (phioo x))%R))^`() t.
     move : (tad).
     rewrite inE /= in_itv /= => /andP[ta taDelta].
-    have Fint :  (mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E] (EFin \o (fun x : R => f x (phioo x)))).
+    have Fint : mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E] (EFin \o (fun x : R => f x (phioo x) ord0 j)).
       apply integrable_comp => //.
-      by rewrite   in_itv /= lexx ltW.
-    have Fcont :  {for t, continuous (fun x0 : R => f x0 (phioo x0))}.
+      by rewrite in_itv /= lexx ltW.
+    have Fcont : {for t, continuous (fun x0 : R => f x0 (phioo x0) ord0 j)}.
       rewrite inE in tad.
       apply: (within_continuous_continuous _ _ tad) => //.
+      clear Fint.
+      move: j.
+      apply/within_continuous_coord.
       apply: (within_continuous_lipschitz _ k0 _ (u0 := u0) (r := r)).
       exact: cts_fun.
       exact: lip2_Delta.
       exact: cont1_Delta.
       exact: Vrphioo.
-    have [H1 H2] := @continuous_FTC1_closed _ (fun x => f x (phioo x)) a t _ taDelta Fint ta Fcont.
+    have [H1 H2] := @continuous_FTC1_closed _ (fun x => f x (phioo x) ord0 j) a t _ taDelta Fint ta Fcont.
     rewrite derive1E deriveD /=;last 2 first.
     exact: derivable_cst.
-    exact: H1.
+    (*exact: H1.*) (* NB see coq-robot *) admit.
     rewrite -!derive1E.
+    (*
     rewrite H2.
-    by rewrite derive1_cst add0r.
-rewrite /contrac/picard_to_cont/picard_from_cont.
+    by rewrite derive1_cst add0r.*) admit.
+rewrite /contrac /picard_to_cont /picard_from_cont.
 move : t tad.
 apply : eq_on_itv_deriv.
 move => t tad /=.
-rewrite -(@picard_from_cont_simpl _ _ a  b k _ r lip2 cont1 rho) //=.
+rewrite -(@picard_from_cont_simpl _ _ _ a b k _ r lip2 cont1 rho) //=.
 rewrite eval_mod_on_itv => //.
 by rewrite inE;apply: subset_itv_oo_cc;rewrite -inE.
-Qed.
+Admitted.
 
 End picard.

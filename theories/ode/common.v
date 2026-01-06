@@ -38,18 +38,16 @@ split => [h x xI| h x xI];apply h.
 by rewrite inE in xI.
 Qed.
 
-Lemma eq_on_itv_deriv {R : realType} c d (g h : R -> R) :
+Lemma eq_on_itv_deriv {R : realType} {W : normedModType R} c d (g h : R -> W) :
   {in `]c,d[, g =1 h} -> {in `]c,d[, g^`() =1 h^`()}.
 Proof.
-  move => d1 x xcd.
-  rewrite !derive1E.
-  apply near_eq_derive => //.
-  near=>  x0.
-  apply d1.
-  rewrite inE.
-  near:x0.
-  apply /near_in_itvoo.
-  by rewrite -inE.
+move=> gh x xcd; rewrite !derive1E; apply: near_eq_derive => //.
+near=>  x0.
+apply gh.
+rewrite inE.
+near: x0.
+apply/near_in_itvoo.
+by rewrite -inE.
 Unshelve. all: by end_near. Qed.
 
 Section about_sup.
