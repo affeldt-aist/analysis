@@ -1296,91 +1296,80 @@ Context {R : realType}.
 Implicit Types (s r : R) (x y z : \bar R).
 
 Definition poweR x y :=
-  match (x, y) with
-  | (r%:E, s%:E) => (r `^ s)%:E
-  | (r%:E, +oo) =>
-    if (r > 1)%R then +oo 
-    else if (r == 1)%R then 1 else if (r >= 0)%R then 0 else 1
-  | (r%:E, -oo) =>
-    if (r > 1)%R then 0 
-    else if (r == 1)%R then 1 else if (r > 0)%R then +oo else 
-    if (r == 0)%R then 0 else 1
-  | (+oo, s%:E) => if (s > 0)%R then +oo else if (s < 0)%R then 0 else 1
-  | (+oo, +oo) => +oo 
-  | (+oo, -oo) => 0 
-  | (-oo, y) => 1
-  end.
+  if x == 0 then (y == 0)%:R%:E
+  else if x > 0 then expeR (y * lne x)
+  else 1.
 
-Definition poweR' x y := if x == 0 then (y == 0)%:R%:E else
-                        if x > 0 then expeR (y * lne x) else 1.
-
-Lemma poweR_is_poweR' x y : poweR x y = poweR' x y.
-Proof.
-case x, y=> //=.
-- rewrite /poweR /poweR'; repeat case: ifPn.
-  + by move=> /[!eqe] /eqP ->; rewrite /powR eq_refl.
-  + by rewrite lte_fin /powR; case: (ltgtP 0%R s)=>//?; rewrite lne_EFin.
-  + rewrite lte_fin; case: (ltgtP 0%R s)=>//[?|<-]; last by rewrite eq_refl.
-    by rewrite lt0_powR1.
-- rewrite /poweR /poweR' eqe; repeat case : ifPn; case : (ltgtP 0%R s)=>//.
-  + by move=> <-; rewrite ltr10.
-  1,2: by move=> s0 _ _ s1; rewrite gt0_mulye; rewrite ?lne_gt0 /expeR.
-  + by rewrite lte_fin=> ->.
-  + move=> s0 _ _ s1; exfalso; rewrite -falseE -(@ltxx _ R 0%R).
-    exact /(lt_trans ltr01) /(lt_trans s1 s0).
-  + by move=> <-_ /eqP; move: (@ltr01)=>/[swap] <-; rewrite ltxx.
-  1,2: by move=> _ _ _ /eqP ->; rewrite lne1 mule0 expeR0.
-  + case: (ltgtP 1%R s)=>//s1 s0; rewrite lt0_mulye; last by rewrite lne_lt0.
-    by rewrite /expeR.
-  1,2: by rewrite lte_fin; case: (ltgtP 0%R s).
-- rewrite /poweR /poweR' eqe; repeat case : ifPn; case : (ltgtP 0%R s)=>//.
-  1,2: by move=> _ _ _ s1; rewrite gt0_mulNye; rewrite ?lne_gt0 /expeR.
-  + by rewrite lte_fin; case: (ltgtP 0%R s).
-  + move=> s0 _ _ s1; exfalso; rewrite -falseE -(@ltxx _ R 0%R).
-    exact /(lt_trans ltr01) /(lt_trans s1 s0).
-  + by move=> <-_ /eqP; move: (@ltr01)=> /[swap] <-; rewrite ltxx.
-  1,2: by move=> _ _ _ /eqP ->; rewrite lne1 mule0 expeR0.
-  + case: (ltgtP 1%R s)=>//s1 s0; rewrite lt0_mulNye; last by rewrite lne_lt0.
-    by rewrite /expeR.
-  1,2: by rewrite lte_fin; case: (ltgtP 0%R s).
-- rewrite /poweR /poweR' eqe; repeat case : ifPn; case : (ltgtP 0%R s)=>//.
-  + by move=> ?; rewrite /lne gt0_muley.
-  + by rewrite ltry.
-  + by move=> s0; rewrite /lne lt0_muley.
-  + by rewrite ltry.
-  + by move=> <-; rewrite mul0e expeR0.
-  + by rewrite /poweR /poweR' ltry.
-  + by rewrite /poweR /poweR'/= ltry.
-Qed.
-      
 Local Notation "x `^ y" := (poweR x y).
 
+(* TODO: move *)
+Lemma powR0' r : (r `^ 0 = 1)%R.
+Proof.
+rewrite /powR; have [_|_] := eqVneq r 0%R.
+  by rewrite eqxx.
+by rewrite mul0r expR0.
+Qed.
+
+(* TODO: move *)
+Lemma expeRM x y : 0 <= y -> expeR (x * y) = (expeR x `^ y).
+Proof.
+move: x y => [x| |] [y| |] //=; rewrite ?lee_fin// => y0.
+- rewrite expRM.
+  rewrite /poweR eqe gt_eqF ?expR_gt0// lte_fin expR_gt0.
+  by rewrite lne_EFin ?expR_gt0// expRK -EFinM/= mulrC expRM.
+- rewrite /poweR eqe gt_eqF ?expR_gt0// lte_fin expR_gt0//.
+  by rewrite lne_EFin ?expR_gt0// expRK muleC.
+- by rewrite /poweR/= ltry muleC.
+- by rewrite /poweR/= ltry.
+- rewrite /poweR eqxx eqe.
+  move: y0; rewrite le_eqVlt => /predU1P[<-|y0].
+    by rewrite mule0 expeR0 eqxx.
+  by rewrite gt0_mulNye// gt_eqF.
+- by rewrite /poweR eqxx eq_sym lt_eqF.
+Qed.
+
+Lemma powe0R x : x != 0 -> 0 `^ x = 0.
+Proof. by move=> x0; rewrite /poweR eqxx (negbTE x0). Qed.
+
 Lemma poweR_EFin r s : r%:E `^ s%:E = (r `^ s)%:E.
-Proof. by []. Qed.
+Proof.
+rewrite /poweR !eqe; case: ifPn => [/eqP ->|].
+  have [->/=|s0] := eqVneq s 0%R.
+    by rewrite powR0'.
+  by rewrite powR0.
+rewrite neq_lt => /orP[r0|r0]; rewrite lte_fin.
+  by rewrite ltNge (ltW r0)/= /powR lt_eqF// expRM (ln0 (ltW r0)) powR0'.
+rewrite r0.
+have [r1|r1] := ltP r 1%R; last first.
+  rewrite expeRM ?lne_ge0 ?lee_fin//.
+  rewrite /poweR !eqe gt_eqF ?expR_gt0//.
+  rewrite expeR_gt0 ?ltNyr//.
+  rewrite expeRK lne_EFin// -EFinM//=.
+  by rewrite /powR gt_eqF// mulrC.
+rewrite lne_EFin// -EFinM//=.
+by rewrite /powR gt_eqF.
+Qed.
 
 Lemma gt0_poweRye y : 0 < y -> +oo `^ y = +oo.
-Proof.
-by case: y => //s; move=> /[!@lte_fin] s0; rewrite /poweR s0. 
-Qed.
+Proof. by rewrite /poweR/= ltry => y0; rewrite gt0_muley. Qed.
 
 Lemma lt0_poweRye y : y < 0 -> +oo `^ y = 0.
-Proof.
-case: y=> // s/[!@lte_fin]. 
-rewrite /poweR; repeat case: (ifPn); case: (ltgtP s 0%R)=> //.
-Qed.
+Proof. by rewrite /poweR/= ltry// => y0; rewrite lt0_muley. Qed.
 
 Lemma poweRe0 x : x `^ 0 = 1.
 Proof.
-by case: x=> //[r|]; rewrite /poweR/= ?ltxx ?powRr0.
+by rewrite /poweR eqxx/=; case: ifPn => // _; rewrite mul0e expeR0 if_same.
 Qed.
 
 Lemma poweRe1 x : 0 <= x -> x `^ 1 = x.
 Proof.
-by case: x=> [r||] x0; rewrite /poweR ?powRr1// ltr01.
+rewrite le_eqVlt => /predU1P[<-|x0].
+  by rewrite powe0R.
+by rewrite /poweR gt_eqF// x0 mul1e lneK// in_itv/= leey ltW.
 Qed.
 
 Lemma poweRN x y :
-  0 <= x -> x \is a fin_num -> y \is a fin_num -> 
+  0 <= x -> x \is a fin_num -> y \is a fin_num ->
   x `^ (- y) = (fine x `^ fine y)^-1%:E.
 Proof.
 case: x => // r x0; case : y => //s _/=; case : (ltgtP r 0%R) => r0;
@@ -1388,7 +1377,7 @@ try by rewrite ?r0 poweR_EFin// ?ltW// powRN//.
 Qed.
 
 Lemma poweRNye y : -oo `^ y = 1.
-Proof. by []. Qed. 
+Proof. by []. Qed.
 
 (*TODO: move*)
 (*
@@ -1405,48 +1394,128 @@ Proof. by case: (ltgtP -oo s%:E). Qed.
 Proof. by case: (ltgtP -oo s%:E). Qed.
 *)
 
+Lemma poweR_fine x y :
+  y != 0%R ->
+  0%R <= x ->
+  x != +oo ->
+  y != -oo ->
+  y != +oo  ->
+  x `^ y = (fine x `^ fine y)%:E.
+Proof.
+move: x y => [x| |] [y| |] //=.
+rewrite eqe lee_fin => y0 x0 _ _ _.
+rewrite /poweR/= !eqe (negbTE y0)/=.
+move: x0; rewrite le_eqVlt => /predU1P[<-|x0].
+  rewrite eqxx.
+  by rewrite powR0.
+rewrite gt_eqF// lte_fin x0 leNgt x0//=.
+by rewrite /powR gt_eqF.
+Qed.
+
+Lemma poweRey x :
+  0%R <= x ->
+  x != +oo ->
+  x < 1 ->
+  x `^ +oo = 0%R.
+Proof.
+move : x => [x | |]//.
+rewrite lee_fin lte_fin => x0 _ x1.
+rewrite /poweR/=.
+move: x0; rewrite le_eqVlt => /predU1P[<-|x0].
+  by rewrite eqxx.
+rewrite eqe gt_eqF// lte_fin x0 leNgt x0/=.
+by rewrite lt0_mulye// lte_fin ln_lt0// x0 x1.
+Qed.
+
+Lemma poweRey' x :
+  x != +oo ->
+  x > 1 ->
+  x `^ +oo = +oo.
+Proof.
+move : x => [x | |]//.
+rewrite /poweR/= !lte_fin => _ x1.
+have x0 : (0 < x)%R by rewrite (le_lt_trans _ x1).
+rewrite eqe gt_eqF// x0 leNgt x0/=.
+by rewrite gt0_mulye// lte_fin ln_gt0.
+Qed.
+
 Lemma poweRE x y :
-  poweR x y = 
-  if (y == 0) || (x < 0) || (x == 1) then 1 else 
+  x `^ y =
+  if (y == 0) || (x < 0) || (x == 1) then 1 else
   if x == +oo then (if y > 0 then +oo else 0) else
-  if y == -oo then (if x > 1 then 0 else if x > 0 then +oo else 0) else 
+  if y == -oo then (if x > 1 then 0 else if x > 0 then +oo else 0) else
   if y == +oo then (if x > 1 then +oo else 0) else (fine x `^ fine y)%:E.
 Proof.
-move: x y=> [r||] [s||] //=; last first.
-1,2: by rewrite ltNyr.
-- by rewrite /poweR ltNyr orbT.
-- by rewrite /poweR ltry.
-- by rewrite /poweR eqe lte_fin; case: (ltgtP s 0)%R.
-1-2:rewrite /poweR eqe !lte_fin; case: (ltgtP r 0)%R; case: (ltgtP r 1)%R=>//=.
-1-2:by move=> r1 r0; exfalso; rewrite -falseE -(@ltr10 R); apply /(lt_trans r1).
-- rewrite /poweR !eqe !lte_fin; case: ifPn=>// /orP [/orP [/eqP ->|r0]|/eqP ->].
-  + by rewrite powRr0.
-  + by rewrite lt0_powR1.
-  + by rewrite powR1.
-Qed. 
+have [->/=|/= y0] := eqVneq y 0.
+  by rewrite /poweR eqxx/= mul0e expeR0 !if_same.
+have [->/=|x1] := eqVneq x 1.
+  by rewrite orbT /poweR onee_eq0 lte01 lne1 mule0 expeR0.
+rewrite orbF.
+have [x0|x0] := ltP x 0.
+  by rewrite /poweR lt_eqF// ltNge (ltW x0)/=.
+case: ifPn => [/eqP ->|xoo].
+  rewrite /poweR/= ltry.
+  have [{}y0|] := ltP 0 y.
+    by rewrite gt0_muley.
+  rewrite le_eqVlt (negbTE y0)/= => {}y0.
+  by rewrite lt0_muley.
+case: ifPn => [/eqP ->|yoo].
+  move: x0; rewrite le_eqVlt => /predU1P[<-|x0].
+    by rewrite ltNge lee01/= ltxx /poweR eqxx.
+  rewrite x0.
+  rewrite /poweR/= gt_eqF// x0.
+  case: ifPn => [{}x1|].
+    by rewrite gt0_mulNye// lne_gt0.
+  rewrite -leNgt le_eqVlt (negbTE x1)/= => {}x1.
+  by rewrite lt0_mulNye// lne_lt0.
+have [{}x1|] := ltP 1 x.
+  case: ifPn => [|] yoo'.
+    by rewrite (eqP yoo') poweRey'.
+  by rewrite poweR_fine.
+rewrite le_eqVlt (negbTE x1)/= => {}x1.
+case: ifPn => [|] yoo'.
+  by rewrite (eqP yoo') poweRey.
+by rewrite poweR_fine.
+Qed.
 
 Lemma lt0_poweR1 x y : x < 0 -> x `^ y = 1.
 Proof.
-rewrite poweR_is_poweR' /poweR'; repeat case: ifPn.
-- by move=> /eqP ->; rewrite ltxx. 
-1,2: by case: (ltgtP x 0).
+move=> x0.
+by rewrite /poweR lt_eqF// ltNge (ltW x0).
 Qed.
 
-Lemma poweR_eqy x y : x `^ y = +oo -> 
+Lemma poweR_eqy x y : x `^ y = +oo ->
   if x < 1 then y < 0 else (x == +oo) || (y == +oo).
 Proof.
-case: x=>// r; case: y=>//; rewrite /poweR; repeat case: ifPn=>//.
-1,2: by rewrite lte_fin; case: (ltgtP r 1%R).
+rewrite poweRE.
+move: x y => [x| |] [y| |] //=; rewrite ?eqe ?lte_fin.
+- by case: ifPn.
+- case: ifPn => //.
+  rewrite negb_or -leNgt => /andP[x0 x1].
+  case: ifPn => // {}x1 _.
+  by rewrite ltNge (ltW x1).
+- case: ifPn => //.
+  rewrite negb_or -leNgt => /andP[x0 x1].
+  have [//|] := ltP 1%R x.
+  by rewrite le_eqVlt (negbTE x1)/= => ->.
+- by case: ifPn.
+- by case: ifPn.
+- by case: ifPn.
 Qed.
 
 Lemma eqy_poweR x y : 0 < y -> x = +oo -> x `^ y = +oo.
 Proof.
-by move: x y=> []//= [s||]//= s0 _;rewrite /poweR -lte_fin s0.
-Qed. 
+rewrite poweRE.
+move: x y => [x| |] [y| |] //=; rewrite ?eqe ?lte_fin.
+- move=> -y0 _.
+  by rewrite gt_eqF//= y0.
+- by rewrite ltry.
+Qed.
 
-Lemma poweR_lty x y : (if x < 1 then 0 <= y else (x < +oo) && (y < +oo)) -> 
+Lemma poweR_lty x y : (if x < 1 then 0 <= y else (x < +oo) && (y < +oo)) ->
   x `^ y < +oo.
 Proof.
+xxx
 case: x=>// [r|]; case: y=>//[s||]; rewrite /poweR; repeat case: ifPn=> //.
 all: try by rewrite !ltry.
 - by rewrite lte_fin; case: (ltgtP r 1%R).
@@ -1462,17 +1531,6 @@ move: x y=> [r||] [s||]//=; rewrite ?ltry//.
 by rewrite /poweR lte_fin=> ->.
 Qed.
 
-Lemma poweR0e y : y != 0 -> 0 `^ y = 0.
-Proof.
-case: y=> [r||]; rewrite /poweR/=; repeat case: ifPn=> //.
-- by move=> ?; rewrite powR0.
-- by rewrite ltr10.
-- by move=> /eqP <-.
-- by rewrite lexx.
-- by move=> /eqP <-.
-- by rewrite ltxx.
-- by rewrite eq_refl.
-Qed.
 
 Lemma poweR1 : poweR 1 = (fun => 1).
 Proof.
