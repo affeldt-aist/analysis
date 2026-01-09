@@ -55,6 +55,16 @@ Notation "\vint [ mu ]_ ( x 'in' D ) f" :=
 Notation "\vint [ mu ]_ x f" :=
   (rowRintegral mu setT (fun x => f)%R) : ring_scope.
 
+Section rowRintegral.
+Context {R : realType}.
+Let mu := @lebesgue_measure R.
+
+Lemma rowRintegral_set1 n (f : R -> 'rV[R]_n) (r : R) :
+  \vint[mu]_(x in [set r]) f x = 0.
+Proof. by apply/rowP => i; rewrite !mxE Rintegral_set1. Qed.
+
+End rowRintegral.
+
 Definition picard_from_cont' {R : realType} n (U := 'rV[R]_n) (u0 : U) (r : R)
   (B := closed_ball u0 r) (f : R -> U -> U) (g : R -> U) (a b : R)
     (imageg : g @` `[a, b] `<=` B) : R -> U :=
@@ -534,9 +544,8 @@ Lemma picard_to_cont_init g :
   picard_from_cont_not g a = u0.
 Proof.
 move => h.
-rewrite picard_from_cont_simpl => //.
-rewrite set_itv1. (*Rintegral_set1 addr0. NB: easy lemma *)
-Admitted.
+by rewrite picard_from_cont_simpl// set_itv1 rowRintegral_set1 addr0.
+Qed.
 
 Fail Check picard_to_cont : {fun [set: V] >-> [set: V]}.
 
@@ -549,6 +558,76 @@ Fail Lemma tmp : is_contraction (picard_to_cont
   : {fun [set: W] >-> [set: W]}).
 About is_contraction.
 End picard_to_cont.
+
+Definition measure_rV_display : measure_display -> measure_display.
+Proof. exact. Qed.
+
+Section measurable_rV.
+Context {d} {T : sigmaRingType d}.
+Variable n : nat.
+
+Let coors : 'I_n -> 'rV[T]_n -> T := fun i x => x ord0 i.
+
+Let rV_set0 : g_sigma_preimage coors set0.
+Proof. exact: sigma_algebra0. Qed.
+
+Let rV_setC A : g_sigma_preimage coors A -> g_sigma_preimage coors (~` A).
+Proof. exact: sigma_algebraC. Qed.
+
+Let rV_bigcup (F : _^nat) : (forall i, g_sigma_preimage coors (F i)) ->
+  g_sigma_preimage coors (\bigcup_i (F i)).
+Proof. exact: sigma_algebra_bigcup. Qed.
+
+HB.instance Definition _ := @isMeasurable.Build (measure_rV_display d)
+  'rV[T]_n (g_sigma_preimage coors) rV_set0 rV_setC rV_bigcup.
+
+End measurable_rV.
+
+(* see measurable_fun_tnthP *)
+Lemma rV_measurable_fun {d} {T : measurableType d} {R : realType}
+  (D : set T) n (f : T -> 'rV[R]_n) :
+  measurable_fun D f <-> forall i, measurable_fun D (fun t => f t ord0 i).
+Proof.
+split => [mf i mD /= Y mY|mf mD /= Y mY].
+  admit.
+admit.
+Admitted.
+
+Definition proj (T : Type) n (A : set (n.-tuple T)) (i : 'I_n) : set T :=
+  [set t | exists x, A x /\ t = tnth x i].
+
+Lemma vnormr_measurable {R : realType} n (D : set 'rV[R]_n) :
+  measurable_fun D (@Num.norm R 'rV[R]_n).
+Proof.
+move=> mD /= Y mY.
+rewrite /normr/=.
+Admitted.
+
+Lemma vintegrable_norm {d} {T : measurableType d} {R : realType}
+  (mu : {measure set T -> \bar R}) (D : set T) n (f : T -> 'rV[R]_n) :
+  (forall i, mu.-integrable D (EFin \o (fun t => f t ord0 i))) ->
+  mu.-integrable D (EFin \o (Num.norm \o f)).
+Proof.
+move=> intf.
+apply/integrableP; split.
+  apply/measurable_EFinP.
+  apply/measurableT_comp.
+    exact: vnormr_measurable.
+  apply/rV_measurable_fun => i.
+  have /integrableP[+ _]/= := intf i.
+  by move/measurable_EFinP.
+rewrite (@le_lt_trans _ _
+    (\big[maxe/-oo]_(i < n) \int[mu]_(x in D) `|f x ord0 i|%:E )%E)//.
+  rewrite /=.
+  under eq_integral do rewrite normr_id.
+  rewrite [in leLHS]/Num.norm/=.
+  under eq_integral do rewrite mx_normrE.
+  admit.
+apply: bigmax_lt => //= i _.
+have /integrableP[_]/= := intf i.
+exact.
+
+
 
 Section picard_to_cont_normedtype4.
 Context {R : realType} {n : nat}.
@@ -637,6 +716,7 @@ Local Notation mu := (@lebesgue_measure _).
 (*   rewrite -setU1itv/=; last by rewrite bnd_simp . *)
 (*   rewrite inE/= in_itv/= => -[[?|?]|?]. *)
 (* Qed. *)
+
 Lemma is_contraction_picard_to_cont : is_contraction contrac.
 Proof.
 rewrite /is_contraction.
@@ -694,8 +774,15 @@ rewrite (le_trans (le_normr_Rintegral _ _))//=.
     rewrite integrableB //=.
 have integrable3 : mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E).
     rewrite /=.
-(* TODO: should be ok *)
-(*    apply: integrable_norm => //=.
+    rewrite /Num.norm/=.
+
+
+
+
+
+
+    Check (fun x0 : g_sigma_algebraType (R.-ocitv).-measurable => x x0 - y x0).
+    apply: integrable_norm => //=.
     under [x in integrable _ _  x]eq_fun do rewrite EFinB.
     rewrite integrableB //=.
     apply continuous_compact_integrable => //=.

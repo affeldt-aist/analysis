@@ -415,6 +415,36 @@ Arguments measurable_snd {d1 d2 T1 T2}.
 #[global] Hint Extern 0 (measurable_fun _ snd) =>
   solve [apply: measurable_snd] : core.
 
+Definition proj (T : Type) n (A : set (n.-tuple T)) (i : 'I_n) : set T :=
+  [set t | exists x, A x /\ t = tnth x i].
+
+Lemma measurable_tnth d (T : sigmaRingType d) n D (i : 'I_n) :
+  measurable_fun D (@tnth n T ^~ i).
+Proof.
+move=> mD Y mY.
+apply: sub_sigma_algebra => /=.
+rewrite -bigcup_seq/=.
+suff: (\bigcup_(t in [set` index_enum (fintype_ordinal__canonical__fintype_Finite n)])
+      preimage_set_system D ((tnth (T:=T))^~ t) d.-measurable)
+    (D `&` (tnth (T:=T))^~ i @^-1` Y).
+  move=> [k Hk [A mA] H].
+xxx
+  exists k => //=.
+  exists A.
+
+
+suff: (\bigcup_(t in D)
+      preimage_set_system D ((tnth (T:=T))^~ t) d.-measurable)
+    ((tnth (T:=T))^~ i @^-1` Y).
+
+exists i => /=; first by rewrite mem_index_enum.
+red.
+exists Y => //.
+
+
+Qed.
+
+
 Lemma measurable_tnth d (T : sigmaRingType d) n (i : 'I_n) :
   measurable_fun [set: n.-tuple T] (@tnth _ T ^~ i).
 Proof.

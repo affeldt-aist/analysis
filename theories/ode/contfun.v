@@ -129,7 +129,7 @@ Qed.
 Fail Check (submod_itv V ab) : zmodClosed _.
 
 HB.instance Definition _ :=
-  GRing.isZmodClosed.Build _ _ submod_closed_itv.
+  GRing.isZmodClosed.Build _ _ (GRing.submod_closedB submod_closed_itv).
 
 Check (submod_itv V ab) : zmodClosed _.
 
