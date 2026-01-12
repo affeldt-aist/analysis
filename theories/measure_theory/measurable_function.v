@@ -418,37 +418,10 @@ Arguments measurable_snd {d1 d2 T1 T2}.
 Definition proj (T : Type) n (A : set (n.-tuple T)) (i : 'I_n) : set T :=
   [set t | exists x, A x /\ t = tnth x i].
 
-Lemma measurable_tnth d (T : sigmaRingType d) n D (i : 'I_n) :
+Lemma measurable_tnth d (T : sigmaRingType d) n (D : set (n.-tuple T)) (i : 'I_n) :
   measurable_fun D (@tnth n T ^~ i).
 Proof.
-move=> mD Y mY.
-apply: sub_sigma_algebra => /=.
-rewrite -bigcup_seq/=.
-suff: (\bigcup_(t in [set` index_enum (fintype_ordinal__canonical__fintype_Finite n)])
-      preimage_set_system D ((tnth (T:=T))^~ t) d.-measurable)
-    (D `&` (tnth (T:=T))^~ i @^-1` Y).
-  move=> [k Hk [A mA] H].
-xxx
-  exists k => //=.
-  exists A.
-
-
-suff: (\bigcup_(t in D)
-      preimage_set_system D ((tnth (T:=T))^~ t) d.-measurable)
-    ((tnth (T:=T))^~ i @^-1` Y).
-
-exists i => /=; first by rewrite mem_index_enum.
-red.
-exists Y => //.
-
-
-Qed.
-
-
-Lemma measurable_tnth d (T : sigmaRingType d) n (i : 'I_n) :
-  measurable_fun [set: n.-tuple T] (@tnth _ T ^~ i).
-Proof.
-move=> _ Y mY; rewrite setTI; apply: sub_sigma_algebra => /=.
+move=> mD Y mY; apply: measurableI => //; apply: sub_sigma_algebra => /=.
 rewrite -bigcup_seq/=; exists i => /=; first by rewrite mem_index_enum.
 by exists Y => //; rewrite setTI.
 Qed.
@@ -456,7 +429,62 @@ Qed.
 Section measurable_cons.
 Context d1 d2 (T1 : measurableType d1) (T2 : measurableType d2).
 
-Lemma measurable_fun_tnthP n (f : T1 -> n.-tuple T2) :
+Lemma measurable_fun_tnthP n D (f : T1 -> n.-tuple T2) :
+  measurable D ->
+  measurable_fun D f <->
+  forall i, measurable_fun D (@tnth n T2 ^~ i \o f).
+Proof.
+move=> mD.
+apply: (@iff_trans _ ((strace (g_sigma_preimage
+    (fun i => @tnth n T2 ^~ i \o f)) D) `<=` measurable)).
+  rewrite g_sigma_preimage_comp; split=> [mf AD [/= A [C preC <- <-]]|].
+    rewrite setTI setIC.
+    red in mf.
+    by apply: mf => //.
+  move=> prefS mD' A mA.
+  apply: prefS.
+  rewrite /strace/=.
+  exists (f @^-1` A) => //.
+    exists A => //.
+    by rewrite setTI.
+  by rewrite setIC.
+split=> [tnthfS i|mf].
+- move=> mD' A mA.
+  apply: tnthfS.
+  rewrite /strace/=.
+  exists (((tnth (T:=T2))^~ i \o f) @^-1` A); last by rewrite setIC.
+  apply: sub_sigma_algebra.
+  case: n i => [[] []//|n i] in f *.
+  rewrite -bigcup_mkord_ord.
+  exists i; first exact: ltn_ord.
+  exists A => //; rewrite inord_val.
+  by rewrite setTI.
+- destruct n as [|n].
+    move=> A [A' HA'] <-{A}.
+    apply: measurableI => //.
+    apply: HA' => //=.
+    split.
+      exact: sigma_algebra_measurable.
+    by rewrite big_ord0.
+  move=> X.
+  case=> Y H <-{X}.
+
+  have:  g_sigma_preimage (fun i : 'I_n.+1 => (tnth (T:=T2))^~ i \o f) (Y `&` D).
+    admit.
+  apply => /=.
+  split.
+    exact: sigma_algebra_measurable.
+  rewrite -bigcup_mkord_ord.
+  apply: bigcup_sub => i Ii.
+  move=> A [B mB <-].
+
+  apply: mf.
+
+
+Qed.
+
+
+Lemma measurable_fun_tnthP n D (f : T1 -> n.-tuple T2) :
   measurable_fun [set: T1] f <->
   forall i, measurable_fun [set: T1] (@tnth n T2 ^~ i \o f).
 Proof.
