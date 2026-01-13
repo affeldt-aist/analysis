@@ -174,19 +174,28 @@ by move=> ?; rewrite /disj_seq disj_set_sym.
 Qed.
 
 Lemma disj_seq_allP {T} (s t : seq T) :
-  disj_seq s t <-> (all (fun x => x \notin s) t /\ all (fun x => x \notin t) s).
+  disj_seq s t <-> all (fun x => x \notin s) t.
 Proof.
 split.
-
-Admitted.
+- move=> dsst.
+  + apply/allP => x xt; apply/negP => xs.
+    have := dsst.
+    move/disj_set2P/eqP.
+    apply/negP.
+    apply/set0P.
+    by exists x.
+- move/allP=> ts.
+  apply/disj_setPRL => x/= xt.
+  apply/negP.
+  exact: ts.
+Qed.
 
 Lemma disj_seq_filterr {T} (s t : seq T) (P : T -> bool) :
   disj_seq s t -> disj_seq s [seq x <- t | P x].
 Proof.
-move/disj_seq_allP => [/allP st /allP ts].
-apply/disj_seq_allP; split; apply/allP => x; rewrite mem_filter.
-- by move=> /andP[_ xt]; exact: st.
-- by move=> xs; apply/nandP; right; exact: ts.
+move/disj_seq_allP => /allP st.
+apply/disj_seq_allP; apply/allP => x; rewrite mem_filter.
+by move=> /andP[_ xt]; exact: st.
 Qed.
 
 Lemma disj_seq_filterl {T} (s t : seq T) (P : T -> bool) :
@@ -198,10 +207,9 @@ Qed.
 Lemma disj_seq_consr {T} (s t : seq T) (a : T) :
   disj_seq s (a :: t) -> disj_seq s t.
 Proof.
-move/disj_seq_allP => [/allP st /allP ts].
-apply/disj_seq_allP; split; apply/allP => x memx.
-- by apply: st; rewrite in_cons memx orbT.
-- by have := ts x memx; rewrite in_cons => /predU1P/not_orP[_ /negP].
+move/disj_seq_allP => /allP st.
+apply/disj_seq_allP; apply/allP => x memx.
+by apply: st; rewrite in_cons memx orbT.
 Qed.
 
 Lemma disj_seq_consl {T} (s t : seq T) (a : T) :
@@ -1269,7 +1277,7 @@ rewrite leeD//.
   rewrite (negbTE xkxk10).
   apply: (@variation_oscillation _ _ _ _ f).
   apply: continuous_subspaceW cf.
-  apply: interval.subset_itv; rewrite bnd_simp//.
+  apply: subset_itv; rewrite bnd_simp//.
   by apply: (itv_partition_le_ub abs).
   by rewrite in_itv/= (ltW xkx) (ltW xxk1).
   by rewrite in_itv/= lexx (ltW (lt_trans xkx _)).
@@ -1278,7 +1286,7 @@ rewrite /oscillation.
 rewrite (negbTE xkxk10).
 apply: (@variation_oscillation _ _ _ _ f).
 apply: continuous_subspaceW cf.
-apply: interval.subset_itv; rewrite bnd_simp//.
+apply: subset_itv; rewrite bnd_simp//.
 by apply: (itv_partition_le_ub abs).
 rewrite in_itv/= lexx ltW//.
 by rewrite (lt_trans xkx).
