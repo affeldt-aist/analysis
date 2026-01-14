@@ -337,6 +337,7 @@ Proof.
 move: s; apply: last_ind => //.
 - by move/itv_partition_nil ->; rewrite ltxx.
 - move=> s' x' _ [_].
+rewrite [a]lock.
   rewrite last_rcons => /eqP -> _.
   by rewrite mem_rcons mem_head.
 Qed.
@@ -947,6 +948,46 @@ case: abs => /= /andP[as0 s0s1 _].
 move/order_path_min : s0s1 => /(_ lt_trans)/allP/(_ _ xs1).
 by rewrite ltNge s0x.
 Qed.
+
+Lemma cat_seq_filter_merge (s t : seq R) :
+  sorted <%R s ->
+  s = merge <%R [seq x <- s | x \in t] [seq x <- s | x \notin t].
+Proof.
+move=> sorted_s.
+Admitted.
+
+Lemma undup_merge_subseq (s t : seq R) :
+  sorted <%R s -> sorted <%R t ->
+  subseq s t -> undup (merge <%R t s) = t.
+Proof.
+
+Admitted.
+
+Lemma merge_sym {T} (s t : seq T) (r : rel T) :
+  sorted r s -> sorted r t -> merge r s t = merge r t s.
+Proof.
+Admitted.
+
+Lemma merge_filter_undup (s t : seq R) :
+sorted <%R s -> sorted <%R t ->
+let t' := [seq x <- t | x \notin s] in
+merge <%R s t' = undup (merge <%R s t).
+Proof.
+move=> sorted_s sorted_t t'.
+set t0 := [seq x <- t | x \in s].
+have -> : merge <%R s t = merge <%R (merge <%R s t') t0.
+  rewrite (cat_seq_filter_merge s sorted_t).
+  rewrite [X in merge _ _ X]merge_sym; last 2 first.
+  - exact: lt_sorted_filter.
+  - exact: lt_sorted_filter.
+  (* mergeA? *)
+  admit.
+rewrite undup_merge_subseq//.
+- exact: lt_sorted_filter.
+- (* *) admit.
+- apply: (@subseq_trans _ s); last exact: subseq_mergel.
+  admit.
+Admitted.
 
 End variation_lemmas.
 
