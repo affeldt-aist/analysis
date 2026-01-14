@@ -1704,7 +1704,17 @@ Local Open Scope ereal_scope.
 Lemma le_bigmax_seq2 (r s : seq nat) (F F' : nat -> \bar R) :
   (forall i, i \in r -> exists2 j, j \in s & F i <= F' j) ->
   \big[maxe/-oo]_(i <- r) F i <= \big[maxe/-oo]_(i <- s) F' i.
-Admitted.
+Proof.
+elim: r s F F' => [s F F' _|/= r0 r1 ih s F F' h].
+  by rewrite big_nil// leNye.
+rewrite big_cons ge_max; apply/andP; split.
+  have := h r0.
+  rewrite mem_head => /(_ isT)[j js] /le_trans; apply.
+  by apply: le_bigmax_seq.
+apply: ih => i ir1.
+have := h i.
+by rewrite inE ir1 orbT => /(_ isT).
+Qed.
 
 End bigmax.
 
@@ -2076,26 +2086,116 @@ elim: t s => //=.
   exact: ltxx.
 move=> t0 t1 ih s.
 elim: s t0 t1 ih => [t0 t1 ih t0t1 /= _|].
-  rewrite ifF//; last admit.
+  rewrite ifF//; last first.
+    apply/negbTE.
+    move/order_path_min : t0t1 => /(_ lt_trans)/allP t0t1.
+    apply/negP => /t0t1.
+    by rewrite ltxx.
   rewrite filter_predT undup_id//.
-  admit.
+  move/path_sorted : t0t1 => /sorted_uniq; apply.
+  exact: lt_trans.
+  exact: ltxx.
 move=> s0 s1 ih' t0 t1 ih t0t1 sorted_s.
 rewrite inE negb_or.
 case: ifPn.
   move=> /andP[t0s0 t0s1].
   rewrite /= -!/(merge <%R (s0 :: s1) _).
-  case: ifPn => [{}s0t0|].
-    admit.
-  admit.
-  rewrite negb_and !negbK => /predU1P[?|].
+  have [{}t0s0|] := ltP s0 t0.
+    rewrite /=.
+    rewrite ifF; last first.
+      apply/negbTE.
+      rewrite mem_merge mem_cat negb_or inE negb_or lt_eqF//=.
+      apply/andP; split.
+        move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP H.
+        apply/negP => /H.
+        by rewrite ltxx.
+      move: t0t1 => /= => /order_path_min => /(_ lt_trans)/allP H.
+      apply/negP => /H.
+      by rewrite ltNge (ltW t0s0).
+    congr cons.
+    rewrite -ih'//.
+    rewrite t0s1//.
+    congr merge.
+    congr cons.
+    apply: eq_in_filter => y yt1.
+    rewrite inE negb_or.
+    rewrite andb_idl// => ys1.
+    move: t0t1 => /= /order_path_min => /(_ lt_trans)/allP => /(_ _ yt1).
+    move=> /(lt_trans t0s0) ?.
+    by rewrite gt_eqF//.
+    move: sorted_s => /=.
+    exact: path_sorted.
+    rewrite le_eqVlt (negbTE t0s0)/= => {}t0s0.
+    rewrite ifF; last first.
+      apply/negbTE.
+      rewrite mem_merge mem_cat !inE !negb_or lt_eqF//=.
+    apply/andP; split.
+      move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP H.
+      apply/negP => /H.
+      by rewrite ltNge (ltW t0s0).
+    move: t0t1 => /= => /order_path_min => /(_ lt_trans)/allP H.
+    apply/negP => /H.
+    by rewrite ltxx.
+    congr cons.
+    apply: ih => //.
+    move: t0t1 => /=.
+    by move/path_sorted.
+rewrite negb_and !negbK => /predU1P[?|].
   subst t0.
+  rewrite /=.
   rewrite /= -!/(merge <%R (s0 :: s1) _).
-  rewrite ltxx.
-  admit.
+  rewrite ltxx/= ifT; last first.
+    by rewrite mem_merge !inE eqxx.
+  rewrite ih//.
+  move: t0t1 => /=.
+  by apply: path_sorted.
 move=> t0s1.
 rewrite /= -!/(merge <%R (s0 :: s1) _).
-rewrite ifT; last admit.
-Admitted.
+rewrite ifT; last first.
+  move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP.
+  by apply.
+rewrite /=.
+rewrite ifF; last first.
+  apply/negbTE.
+  rewrite mem_merge mem_cat negb_or !inE negb_or.
+  apply/and3P; split.
+  move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP H.
+  apply/negP => /H.
+  by rewrite ltxx.
+  rewrite lt_eqF//.
+  move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP.
+  exact.
+  apply/negP => H.
+  move: t0t1 => /order_path_min => /(_ lt_trans)/allP => /(_ _ H) t0s0.
+  move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP => /(_ _ t0s1).
+  by rewrite ltNge (ltW t0s0).
+rewrite ih//; last first.
+  by move: t0t1 => /=; exact: path_sorted.
+  transitivity (s0 :: undup (merge <%R s1 t1)).
+    rewrite merger_cons//=.
+      rewrite mem_merge mem_cat ifF//.
+      apply/negbTE; rewrite negb_or; apply/andP; split.
+        move: sorted_s => /= /order_path_min => /(_ lt_trans)/allP H.
+        apply/negP => /H.
+        by rewrite ltxx.
+      move: t0t1 => /= /order_path_min => /(_ lt_trans)/allP H.
+      apply/negP => /H => t0s0.
+      move: sorted_s => /= /order_path_min => /(_ lt_trans)/allP.
+      move/(_ _ t0s1).
+      by rewrite ltNge (ltW t0s0).
+    apply/allP => x xt1.
+    move: sorted_s => /= /order_path_min => /(_ lt_trans)/allP.
+    move/(_ _ t0s1) => /lt_le_trans; apply.
+    move: t0t1 => /= /order_path_min => /(_ lt_trans)/allP /(_ _ xt1).
+    by move/ltW.
+congr cons.
+rewrite -ih//.
+rewrite -ih'//.
+rewrite t0s1//=.
+by move: sorted_s => /=; apply: path_sorted.
+by move: t0t1 => /=; apply: path_sorted.
+by move: sorted_s => /=; apply: path_sorted.
+Qed.
 
 Lemma variation_merge a b (ab : a < b) s t :
   {within `[a, b], continuous f} ->
@@ -2110,21 +2210,26 @@ pose t' := seq.filter [pred x | x \notin s] t.
 have : ((variation a b f (merge <%R s t'))%:E <=
   (variation a b f s)%:E + ((size t')%:R)%:E * 2 * omega_max a b f s)%E.
   apply: variation_merge_notin => //.
-  admit.
-  admit.
+  apply: sorted_filter => //.
+  exact: lt_trans.
+  move=> x.
+  rewrite mem_filter => /= /andP[-> xt].
+  by rewrite tab.
 have -> : variation a b f (merge <%R s t') = (variation a b f (merge <%R s t)).
   rewrite [RHS]variation_undup//.
     congr variation.
       apply: merge_filter_undup => //.
-      admit.
+      by apply: (itv_partition_sorted abs).
     admit.
-    admit.
+  admit.
 move/le_trans; apply.
 rewrite leeD2l//.
 rewrite lee_pmul//.
   apply: omega_max_ge0.
-  admit.
+  apply: itv_partition_neq0 abs.
+  by rewrite lt_eqF//.
 rewrite lee_pmul// lee_fin ler_nat.
+by rewrite size_filter count_size.
 Admitted.
 
 End variation_merge.
