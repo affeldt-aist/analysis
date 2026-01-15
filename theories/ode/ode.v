@@ -218,15 +218,118 @@ end.
 
 End picard_from_cont.
 
+Lemma closed_ball_vecE {R : realType}  {n} (x0 : 'rV[R]_n) (r : {posnum R}) x : closed_ball x0 r%:num x <-> forall i, closed_ball (x0 ord0 i) r%:num (x ord0 i). 
+Proof.
+split.
+- rewrite closed_ballE /closed_ball_ //=.
+  rewrite /Num.norm/=.
+  rewrite mx_normrE.
+  move => h i.
+  rewrite closed_ballE /closed_ball_ //=.
+  apply /le_trans/h.
+  have -> : (x0 ord0 i - x ord0 i = (x0 - x) ord0 i) by rewrite !mxE.
+  exact: (le_bigmax _ _ (ord0,i)).
+move => h.
+rewrite closed_ballE /closed_ball_ //=.
+rewrite [in leLHS]/Num.norm/= mx_normrE.
+apply: bigmax_le => //= -[i j] _.
+simpl.
+rewrite {i}(ord1 i)/=.
+move /(_ j) :h.
+rewrite closed_ballE /closed_ball_ //=.
+by rewrite !mxE.
+Qed.
+
 (* second, we define picard_to_cont
    that takes a function continuous over a closed ball
    and returns a function continuous over a closed ball *)
+Section vector_measure.
+
+Local Notation mu := lebesgue_measure.
+Lemma measurable_fun_bigmaxr
+  (d : measure_display) (T : measurableType d) (R : realType)
+   (D : set T) (n : nat)
+  (f : 'I_n -> T -> R) :
+  d.-measurable D ->
+  (forall i, measurable_fun D (f i)) ->
+  measurable_fun D (fun x => \big[maxr/0]_(i < n) f i x).
+Proof.
+move=> mD mf.
+elim: n f mf => [|n IH] f mf.
+- have  ->: (fun x : T => \big[maxr/0]_(i < 0) f i x) = 0.
+    apply funext => x.
+    by rewrite big_ord0.
+  exact: measurable_cst.
+
+have ->:  (fun x : T => \big[maxr/0]_(i < n.+1) f i x) = fun x => maxr (f ord0 x) (\big[maxr/0]_(i < n) (f (lift ord0 i) x)).
+  by apply funext => x;apply big_ord_recl.
+  apply measurable_maxr.
+  apply mf.
+  apply IH.
+  move => i.
+  apply mf.
+Qed.
+
+Lemma vec_norm_le_sum {R : realType} {n : nat} (x : 'rV[R]_n) : `| x | <=  \sum_(i < n) `|x ord0 i|.
+Proof.                                                 
+  rewrite  {1}/Num.norm/= mx_normrE.
+   apply bigmax_le => /=;first by apply sumr_ge0 => i _; exact: normr_ge0.
+   move =>  [i0 i] _ /=.
+   rewrite {i0}(ord1 i0)/=.
+   rewrite (bigD1 i) //= lerDl.
+  apply sumr_ge0 => j _; exact: normr_ge0.
+Qed.
+
+Lemma vmeasurable_norm {R: realType} {n : nat} (D : set R) (F : R -> 'rV[R]_n):
+   measurable D -> (forall i, measurable_fun D (fun t => F t ord0 i)) ->
+  measurable_fun D (Num.norm \o F).
+Proof.
+move=> mD h.
+have -> : normr \o F = (fun x => \big[maxr/0]_(i < n) `| F x ord0 i |).
+  apply funext => x.
+  rewrite  {1}/Num.norm/= mx_normrE.
+  rewrite (reindex (fun i : 'I_n => (ord0, i))) => //=.
+  exists (@snd 'I_1 'I_n) => /=.
+  + by move => i.
+  + move => [i j] /= _.
+    by rewrite {i}(ord1 i)/=.
+ apply (measurable_fun_bigmaxr   ) => //= i.
+ apply measurableT_comp => //=.
+ apply normr_measurable.
+Qed.
+
+Lemma vintegrable_norm {R: realType} {n : nat} (D : set R) (F : R -> 'rV[R]_n):
+  measurable D -> (forall i, mu.-integrable D (EFin \o (fun t => F t ord0 i))) ->
+  mu.-integrable D (EFin \o (Num.norm \o F)).
+Proof.
+
+move => mD intf.
+apply (le_integrable (mu:=lebesgue_measure) mD (f := EFin \o (normr \o F)) (g := EFin \o fun x => (\sum_(i < n) `| F x ord0 i|))).
+  apply/measurable_EFinP.
+  apply vmeasurable_norm => // i.
+  have /integrableP[+ _]/= := intf i.
+  by move/measurable_EFinP.
+  move => /= x0 Dx0.
+  rewrite normr_id.
+  rewrite lee_fin.
+  rewrite ger0_norm.
+  apply vec_norm_le_sum.
+  apply sumr_ge0 => i _; exact: normr_ge0.
+have -> :
+(EFin \o (fun x => \sum_(i < n) `|F x ord0 i|)) = (fun x => (\sum_(i < n) `|F x ord0 i|%:E)).
+   by apply funext => x;rewrite sumEFin.
+apply integrable_sum => //=.
+move => i _.
+apply integrable_norm => /=.
+apply intf.
+Qed.
+
+End vector_measure.
+
 Section picard_to_cont.
 Context {R : realType} {n : nat}.
 
 Let U := 'rV[R]_n.
-(*Let U := R.*)
-
 Local Notation mu := lebesgue_measure.
 Variables (f : R -> U -> U) (a b : R) (k : R).
 Hypothesis ab : a < b.
@@ -341,6 +444,35 @@ apply: (within_continuous_lipschitz _ k0).
   by apply/continuous_subspaceW/subset_itvl; rewrite bnd_simp.
 - exact: ab0r.
 Qed.
+Lemma picard_from_cont_simpl g t :
+  [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num ->
+  picard_from_cont_not g t = u0 + (\vint[mu]_(x in `[a, t]) f x (g x))%R.
+Proof.
+rewrite /picard_from_cont_not; case: pselect => [| // ] .
+by rewrite /picard_from_cont'.
+Qed.
+
+Lemma lipschitz_componentE x :   k.-lipschitz_B (f x) <-> forall i, k.-lipschitz_B (fun y => f x y ord0 i).
+Proof.
+split.
+- move => lip i /= [x1 x2] /= Bx12.
+  move /(_ (x1,x2) Bx12) : lip.
+  apply le_trans => /=.
+  rewrite /Num.norm/= mx_normrE.
+  have -> : (f x x1 ord0 i - f x x2 ord0 i = (f x x1 - f x x2) ord0 i) by rewrite !mxE.
+  exact: (le_bigmax _ _ (ord0,i)).
+move => h /= [x1 x2] Bx12 /=.
+rewrite [in leLHS]/Num.norm/= mx_normrE.
+apply/bigmax_le.
+by rewrite mulr_ge0 //= ltW.
+move => //= -[i j] _ /=.
+rewrite {i}(ord1 i)/=.
+move /(_ j (x1,x2) Bx12) : h.
+by rewrite !mxE /=.
+Qed.
+
+
+
 
 Lemma set_fun_picard_to_cont : set_fun restrictedV restrictedV picard_to_cont.
 Proof.
@@ -348,10 +480,10 @@ move=> F.
 rewrite /restrictedV/= => invariant _/= [y yaaDelta <-].
 rewrite /picard_to_cont.
 rewrite /B.
-(* TODO: important
+apply closed_ball_vecE => i.
 rewrite closed_ball_itv//=.
 rewrite in_itv//=.
-rewrite [X in _ <= X <= _](_ : _ = (picard_from_cont_not F) y); last first.
+rewrite [X in _ <= X <= _](_ : _ = (picard_from_cont_not F) y ord0 i); last first.
   have /eqmod_on_itv : (repr (\pi_(V)%qT (picard_from_cont_not F)) =
        picard_from_cont_not F %[mod V])%qT.
     by rewrite reprK.
@@ -359,25 +491,27 @@ rewrite [X in _ <= X <= _](_ : _ = (picard_from_cont_not F) y); last first.
   have aDeltab : (a + Delta) <= b.
     by rewrite -lerBrDl ge_min lexx.
   by rewrite inE/=.
-rewrite /picard_from_cont/=.
+rewrite /picard_from_cont_not.
 case: pselect => /= abu0r; last first.
   done.
-rewrite /picard_from_cont'.
+rewrite /picard_from_cont' //=.
+rewrite mxE/=.
 rewrite -ler_distl.
 rewrite -addrA subrKC.
+rewrite rowRintegralE.
 rewrite (le_trans (le_normr_Rintegral _ _))//=.
   apply integrable_comp; first by [].
   apply: subset_trans abu0r.
   apply/image_subset/subset_itvl; rewrite bnd_simp.
   by move : yaaDelta; rewrite in_itv /= => /andP[].
-have integrable2 : mu.-integrable `[a, y] (EFin \o (fun x => f x (F x))).
+have integrable2 : mu.-integrable `[a, y] (EFin \o (fun x => f x (F x) ord0 i)).
   apply integrable_comp => //=.
   apply: subset_trans abu0r.
   apply/image_subset/subset_itvl; rewrite bnd_simp.
   by move : yaaDelta;rewrite in_itv /= => /andP[].
 have integrable1 : mu.-integrable `[a, y]
     (fun x : g_sigma_algebraType (R.-ocitv).-measurable =>
-     (`|f x (F x) - f x u0|%:E + `|f x u0|%:E)).
+     (`|f x (F x) ord0 i - f x u0 ord0 i|%:E + `|f x u0 ord0 i|%:E)).
   rewrite integrableD//=.
     apply integrable_norm => /=.
     under [x in integrable _ _  x]eq_fun do rewrite EFinD.
@@ -385,6 +519,7 @@ have integrable1 : mu.-integrable `[a, y]
     under [x in integrable _ _  x]eq_fun do rewrite EFinN.
     rewrite integrableN //=.
     apply continuous_compact_integrable => //=; first exact: segment_compact.
+    apply within_continuous_coord.
     apply /continuous_subspaceW/cont1_Delta.
       apply: subset_itvl; rewrite bnd_simp.
       by move : yaaDelta;rewrite in_itv /= => /andP[].
@@ -392,27 +527,31 @@ have integrable1 : mu.-integrable `[a, y]
     exact: closed_ballxx.
   apply integrable_norm => /=.
   apply continuous_compact_integrable => //=; first exact: segment_compact.
+  apply within_continuous_coord.
   apply/continuous_subspaceW/cont1_Delta.
     apply: subset_itvl; rewrite bnd_simp.
     by move : yaaDelta;rewrite in_itv /= => /andP[].
   rewrite /B inE.
   exact: closed_ballxx.
-rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (`|f x (F x) - f x u0| + `|f x u0|)))//.
+rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (`|f x (F x) ord0 i - f x u0 ord0 i| + `|f x u0 ord0 i|)))//.
   apply: le_Rintegral => //=.
   - exact: integrable_norm.
   - move=> x xay.
     by rewrite (le_trans _ (ler_normD _ _))// subrK.
-rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
+rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x   - u0  | + hmax)))//.
   apply: le_Rintegral => //=.
   - under [x in integrable _ _  x]eq_fun do rewrite EFinD.
     rewrite integrableD //=.
     under [x in integrable _ _  x]eq_fun do rewrite EFinM.
     rewrite integrableMr //=.
     exact: bounded_cst.
-    apply integrable_norm => //=.
-    under [x in integrable _ _  x]eq_fun do rewrite EFinB.
+    apply: vintegrable_norm.
+    apply measurable_itv.
+    move => j //=.
+    under [x in integrable _ _  x]eq_fun do rewrite !mxE EFinB.
     rewrite integrableB //=.
     apply continuous_compact_integrable => //; first exact: segment_compact.
+    apply within_continuous_coord.
     apply /continuous_subspaceW/cts_fun.
     apply: subset_itvl;  rewrite bnd_simp.
     by move : yaaDelta; rewrite in_itv /= => /andP[].
@@ -434,7 +573,9 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
       rewrite bnd_simp.
       by rewrite (itvP yaaDelta).
       move/lip2_Delta :  xaaDelta.
-      move/(_ (F x, u0)).
+      rewrite lipschitz_componentE.
+      move/(_ i (F x, u0)).
+      simpl.
       apply.
       split => /=.
         apply: invariant => /=.
@@ -444,11 +585,14 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
         rewrite bnd_simp.
         by rewrite (itvP yaaDelta).
       by apply: closed_ballxx.
+    apply (@le_trans  _ _ `| f x u0 |).
+    rewrite {2}/Num.norm/= mx_normrE /=.
+    apply: (le_bigmax _ _ (ord0,i)).
     rewrite /hmax.
     rewrite ub_le_sup//.
       have [M [Mb1 Mb2]] : bounded_set [set `|f t u0| | t in `[a,b]].
         apply/compact_bounded/continuous_compact; last exact: segment_compact.
-        apply within_continuous_comp_norm.
+        apply: within_continuous_comp_norm.
           by rewrite ltW.
         by apply cont1;rewrite inE;apply: closed_ballxx.
       exists (M + 1) => _ [x0 x0ab] <- /=.
@@ -469,11 +613,14 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) ((k * r%:num + hmax))))//.
     under [x in integrable _ _  x]eq_fun do rewrite EFinM.
     rewrite integrableMr //=.
     exact: bounded_cst.
-    apply integrable_norm => //=.
-    under [x in integrable _ _  x]eq_fun do rewrite EFinB.
+    apply: vintegrable_norm.
+    apply measurable_itv.
+    move => j /=.
+    under [x in integrable _ _  x]eq_fun do rewrite !mxE EFinB.
     rewrite integrableB //=.
     apply continuous_compact_integrable => //.
     exact: segment_compact.
+    apply within_continuous_coord.
     apply /continuous_subspaceW/cts_fun.
     apply: subset_itvl; rewrite bnd_simp.
     by move : yaaDelta; rewrite in_itv /= => /andP[].
@@ -505,8 +652,8 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) ((k * r%:num + hmax))))//.
       rewrite in_itv /= => /andP[].
       by move => _ /le_trans;apply.
       rewrite /B.
-      rewrite closed_ball_itv//= in_itv/=.
-      by rewrite ler_distl.
+      rewrite closed_ballE /closed_ball_ //=.
+      by rewrite distrC.
 rewrite Rintegral_cst//.
 rewrite /= (* to remove a reverse_coercion *).
 rewrite lebesgue_measure_itv/=.
@@ -529,15 +676,7 @@ rewrite -ler_pdivlMl//; last first.
 rewrite 2!ge_min.
 by rewrite mulrC lexx/= orbT.
 Qed.
-*) Admitted.
 
-Lemma picard_from_cont_simpl g t :
-  [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num ->
-  picard_from_cont_not g t = u0 + (\vint[mu]_(x in `[a, t]) f x (g x))%R.
-Proof.
-rewrite /picard_from_cont_not; case: pselect => [| // ] .
-by rewrite /picard_from_cont'.
-Qed.
 
 Lemma picard_to_cont_init g :
   [set g x | x in `[a, (a + Delta)%E]] `<=` closed_ball u0 r%:num ->
@@ -583,49 +722,49 @@ HB.instance Definition _ := @isMeasurable.Build (measure_rV_display d)
 
 End measurable_rV.
 
-(* see measurable_fun_tnthP *)
-Lemma rV_measurable_fun {d} {T : measurableType d} {R : realType}
-  (D : set T) n (f : T -> 'rV[R]_n) :
-  measurable_fun D f <-> forall i, measurable_fun D (fun t => f t ord0 i).
-Proof.
-split => [mf i mD /= Y mY|mf mD /= Y mY].
-  admit.
-admit.
-Admitted.
+(* (* see measurable_fun_tnthP *) *)
+(* Lemma rV_measurable_fun {d} {T : measurableType d} {R : realType} *)
+(*   (D : set T) n (f : T -> 'rV[R]_n) : *)
+(*   measurable_fun D f <-> forall i, measurable_fun D (fun t => f t ord0 i). *)
+(* Proof. *)
+(* split => [mf i mD /= Y mY|mf mD /= Y mY]. *)
+(*   admit. *)
+(* admit. *)
+(* Admitted. *)
 
-Definition proj (T : Type) n (A : set (n.-tuple T)) (i : 'I_n) : set T :=
-  [set t | exists x, A x /\ t = tnth x i].
+(* Definition proj (T : Type) n (A : set (n.-tuple T)) (i : 'I_n) : set T := *)
+(*   [set t | exists x, A x /\ t = tnth x i]. *)
 
-Lemma vnormr_measurable {R : realType} n (D : set 'rV[R]_n) :
-  measurable_fun D (@Num.norm R 'rV[R]_n).
-Proof.
-move=> mD /= Y mY.
-rewrite /normr/=.
-Admitted.
+(* Lemma vnormr_measurable {R : realType} n (D : set 'rV[R]_n) : *)
+(*   measurable_fun D (@Num.norm R 'rV[R]_n). *)
+(* Proof. *)
+(* move=> mD /= Y mY. *)
+(* rewrite /normr/=. *)
+(* Admitted. *)
 
-Lemma vintegrable_norm {d} {T : measurableType d} {R : realType}
-  (mu : {measure set T -> \bar R}) (D : set T) n (f : T -> 'rV[R]_n) :
-  (forall i, mu.-integrable D (EFin \o (fun t => f t ord0 i))) ->
-  mu.-integrable D (EFin \o (Num.norm \o f)).
-Proof.
-move=> intf.
-apply/integrableP; split.
-  apply/measurable_EFinP.
-  apply/measurableT_comp.
-    exact: vnormr_measurable.
-  apply/rV_measurable_fun => i.
-  have /integrableP[+ _]/= := intf i.
-  by move/measurable_EFinP.
-rewrite (@le_lt_trans _ _
-    (\big[maxe/-oo]_(i < n) \int[mu]_(x in D) `|f x ord0 i|%:E )%E)//.
-  rewrite /=.
-  under eq_integral do rewrite normr_id.
-  rewrite [in leLHS]/Num.norm/=.
-  under eq_integral do rewrite mx_normrE.
-  admit.
-apply: bigmax_lt => //= i _.
-have /integrableP[_]/= := intf i.
-exact.
+(* Lemma vintegrable_norm {d} {T : measurableType d} {R : realType} *)
+(*   (mu : {measure set T -> \bar R}) (D : set T) n (f : T -> 'rV[R]_n) : *)
+(*   (forall i, mu.-integrable D (EFin \o (fun t => f t ord0 i))) -> *)
+(*   mu.-integrable D (EFin \o (Num.norm \o f)). *)
+(* Proof. *)
+(* move=> intf. *)
+(* apply/integrableP; split. *)
+(*   apply/measurable_EFinP. *)
+(*   apply/measurableT_comp. *)
+(*     exact: vnormr_measurable. *)
+(*   apply/rV_measurable_fun => i. *)
+(*   have /integrableP[+ _]/= := intf i. *)
+(*   by move/measurable_EFinP. *)
+(* rewrite (@le_lt_trans _ _ *)
+(*     (\big[maxe/-oo]_(i < n) \int[mu]_(x in D) `|f x ord0 i|%:E )%E)//. *)
+(*   rewrite /=. *)
+(*   under eq_integral do rewrite normr_id. *)
+(*   rewrite [in leLHS]/Num.norm/=. *)
+(*   under eq_integral do rewrite mx_normrE. *)
+(*   admit. *)
+(* apply: bigmax_lt => //= i _. *)
+(* have /integrableP[_]/= := intf i. *)
+(* exact. *)
 
 
 
@@ -772,31 +911,27 @@ rewrite -RintegralB//=.
 rewrite (le_trans (le_normr_Rintegral _ _))//=.
     under [x in integrable _ _  x]eq_fun do rewrite EFinB.
     rewrite integrableB //=.
-have integrable3 : mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E).
-    rewrite /=.
-    rewrite /Num.norm/=.
-
-
-
-
-
-
-    Check (fun x0 : g_sigma_algebraType (R.-ocitv).-measurable => x x0 - y x0).
-    apply: integrable_norm => //=.
-    under [x in integrable _ _  x]eq_fun do rewrite EFinB.
-    rewrite integrableB //=.
-    apply continuous_compact_integrable => //=.
+ have integrable3 : mu.-integrable `[a, t] (fun x0 => `|x x0 - y x0|%:E). 
+ rewrite /=.
+ apply : vintegrable_norm.
+   apply measurable_itv.
+   move => i.
+   under [x in integrable _ _  x]eq_fun do rewrite !mxE EFinB. 
+   rewrite integrableB //=.
+   apply continuous_compact_integrable => //=.
     exact: segment_compact.
-    apply /continuous_subspaceW/cts_fun.
-    apply: subset_itvl.
-    rewrite bnd_simp.
-    by move : tNdd;rewrite in_itv /= => /andP[].
-    apply continuous_compact_integrable => //=.
-    exact: segment_compact.
-    apply /continuous_subspaceW/cts_fun.
-    apply: subset_itvl.
-    rewrite bnd_simp.
-    by move : tNdd;rewrite in_itv /= => /andP[].*) admit.
+   apply within_continuous_coord.
+   apply /continuous_subspaceW/cts_fun.
+   apply: subset_itvl.
+   rewrite bnd_simp.
+   by move : tNdd;rewrite in_itv /= => /andP[].
+   apply continuous_compact_integrable => //=.
+   exact: segment_compact.
+   apply within_continuous_coord.
+   apply /continuous_subspaceW/cts_fun.
+   apply: subset_itvl.
+   rewrite bnd_simp.
+   by move : tNdd;rewrite in_itv /= => /andP[]. 
 rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
   rewrite (@le_trans _ _ (\int[mu]_(t0 in `[a, t]) (k * `|x t0 - y t0|)))//.
     apply: le_Rintegral => //=.
@@ -806,6 +941,7 @@ rewrite (@le_trans _ _ (k * \int[mu]_(t0 in `[a, t]) `| x t0 - y t0|))//.
       under [x in integrable _ _  x]eq_fun do rewrite EFinM.
       rewrite integrableMr //=.
       exact: bounded_cst.
+      
     move=> x0 x0at.
     have : x0 \in `[a, b]%R by apply /subset_itvl/x0at.
     move/lip2.
@@ -862,7 +998,7 @@ rewrite in_itv/= => /andP[Ndt].
 rewrite -lerBlDl.
 rewrite /Delta !le_min => /andP[_ /andP[_]].
 by rewrite ler_pdivlMr// mulrC.
-Admitted.
+Qed.
 
 End picard_to_cont_normedtype4.
 

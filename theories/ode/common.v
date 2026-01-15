@@ -284,7 +284,7 @@ Lemma proveme {R : realType} (a b : R) (g : R -> R) :
   {within `[a, b], continuous (g \o -%R)}.
 Abort.
 
-Lemma within_continuous_comp_norm {R : realType} a y (f : R -> R) :
+Lemma within_continuous_comp_norm {R : realType} {U : normedModType R}  a y (f : R -> U) :
   a <= y ->
   {within `[a, y], continuous fun x => f x} ->
   {within `[a, y], continuous fun x => `|f x|}.
