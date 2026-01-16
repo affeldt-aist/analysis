@@ -273,7 +273,7 @@ Qed.
 Lemma vec_norm_le_sum {R : realType} {n : nat} (x : 'rV[R]_n) : `| x | <=  \sum_(i < n) `|x ord0 i|.
 Proof.                                                 
   rewrite  {1}/Num.norm/= mx_normrE.
-   apply bigmax_le => /=;first by apply sumr_ge0 => i _; exact: normr_ge0.
+   apply: bigmax_le => /=;first by apply sumr_ge0 => i _; exact: normr_ge0.
    move =>  [i0 i] _ /=.
    rewrite {i0}(ord1 i0)/=.
    rewrite (bigD1 i) //= lerDl.
@@ -1008,6 +1008,95 @@ HB.instance Definition _ {R : realType} (n : nat) := Complete.on (@row_vector R 
 HB.instance Definition _ {R : realType} (n : nat) := NormedModule.on (@row_vector R n).
 (*HB.instance Definition _ {R : realType} (n : nat) := CompleteNormedModule.on (@row_vector R n).*)
 
+Section pointwise_derivable.
+Context {R : realFieldType} {V W : normedModType R} {m n : nat}.
+Implicit Types M : V -> 'M[R]_(m, n).
+
+Definition derivable_mx M t v :=
+  forall i j, derivable (fun x => M x i j) t v.
+
+(* NB: from robot-rocq *)
+Lemma derivable_mxP M t v : derivable_mx M t v <-> derivable M t v.
+Proof.
+split; rewrite /derivable_mx /derivable.
+- move=> H.
+  apply/cvg_ex => /=.
+  pose l := \matrix_(i < m, j < n) sval (cid ((cvg_ex _).1 (H i j))).
+  exists l.
+  apply/cvgrPdist_le => /= e e0.
+  near=> x.
+  rewrite /Num.Def.normr/= mx_normrE.
+    apply: (bigmax_le _ (ltW e0)) => /= i _.
+  rewrite !mxE/=.
+  move: i.
+  near: x.
+  apply: filter_forall => /= i.
+  exact: ((@cvgrPdist_le _ _ _ _ (dnbhs_filter 0) _ _).1
+    (svalP (cid ((cvg_ex _).1 (H i.1 i.2)))) _ e0).
+- move=> /cvg_ex[/= l Hl] i j.
+  apply/cvg_ex; exists (l i j).
+  apply/cvgrPdist_le => /= e e0.
+  move/cvgrPdist_le : Hl => /(_ _ e0)[/= r r0] H.
+  near=> x.
+  apply: le_trans; last first.
+    apply: (H x).
+    rewrite /ball_/=.
+    rewrite sub0r normrN.
+    near: x.
+    exact: dnbhs0_lt.
+    near: x.
+    exact: nbhs_dnbhs_neq.
+  rewrite [leRHS]/Num.Def.normr/= mx_normrE.
+  apply: le_trans; last exact: le_bigmax.
+  by rewrite /= !mxE.
+Unshelve. all: by end_near. Qed.
+
+End pointwise_derivable.
+
+Section pointwise_derive.
+Local Open Scope classical_set_scope.
+Context {R : realFieldType} {V W : normedModType R} .
+
+(* NB: from robot-rocq *)
+Lemma derive_mx {m n : nat} (M : V -> 'M[R]_(m, n)) t v :
+  derivable M t v ->
+  'D_v M t = \matrix_(i < m, j < n) 'D_v (fun t => M t i j) t.
+Proof.
+move=> /cvg_ex[/= l Hl]; apply/cvg_lim => //=.
+apply/cvgrPdist_le => /= e e0.
+move/cvgrPdist_le : (Hl) => /(_ (e / 2)).
+rewrite divr_gt0// => /(_ isT)[d /= d0 dle].
+near=> x.
+rewrite [in leLHS]/Num.Def.normr/= mx_normrE.
+apply/(bigmax_le _ (ltW e0)) => -[/= i j] _.
+rewrite [in leLHS]mxE/= [X in _ + X]mxE -[X in X - _](subrK (l i j)).
+rewrite -(addrA (_ - _)) (le_trans (ler_normD _ _))// (splitr e) lerD//.
+- rewrite mxE.
+  suff : (h^-1 *: (M (h *: v + t) i j - M t i j)) @[h --> 0^'] --> l i j.
+    move/cvg_lim => /=; rewrite /derive /= => ->//.
+    by rewrite subrr normr0 divr_ge0// ltW.
+  apply/cvgrPdist_le => /= r r0.
+  move/cvgrPdist_le : Hl => /(_ r r0)[/= s s0] sr.
+  near=> y.
+  have : `|l - y^-1 *: (M (y *: v + t) - M t)| <= r.
+    rewrite sr//=; last by near: y; exact: nbhs_dnbhs_neq.
+    by rewrite sub0r normrN; near: y; exact: dnbhs0_lt.
+  apply: le_trans.
+  rewrite [in leRHS]/Num.Def.normr/= mx_normrE.
+  by under eq_bigr do rewrite !mxE; exact: (le_bigmax _ _ (i, j)).
+- rewrite mxE.
+  have : `|l - x^-1 *: (M (x *: v + t) - M t)| <= e / 2.
+    apply: dle => //=; last by near: x; exact: nbhs_dnbhs_neq.
+    by rewrite sub0r normrN; near: x; exact: dnbhs0_lt.
+  apply: le_trans.
+  rewrite [in leRHS]/Num.Def.normr/= mx_normrE/=.
+  under eq_bigr do rewrite !mxE.
+  apply: le_trans; last exact: le_bigmax.
+  by rewrite !mxE.
+Unshelve. all: by end_near. Qed.
+
+End pointwise_derive.
+
 Section picard.
 Context {R : realType} {n : nat}.
 Notation U := (@row_vector R n).
@@ -1084,9 +1173,10 @@ have Vrphioo : Vr phioo.
 split.
 - rewrite phiooE.
   rewrite /contrac.
-  rewrite eval_mod_on_itv; last by rewrite inE/= in_itv/= lexx (ltW (aaDelta_subproof f ab u0 r k0 rho)).
-  rewrite /picard_from_cont /= picard_to_cont_init //.
-  move => t tad.
+  rewrite eval_mod_on_itv; last first.
+    by rewrite inE/= in_itv/= lexx (ltW (aaDelta_subproof f ab u0 r k0 rho)).
+  by rewrite /picard_from_cont /= picard_to_cont_init.
+- move => t tad.
   rewrite {1}phiooE.
   apply/rowP => j.
   have altd:  a < (a + Delta f a b k u0 r rho)%E by rewrite ltrDl Delta_gt0.
@@ -1094,28 +1184,41 @@ split.
            (fun x0 => (u0 + (\vint[mu]_(x in `[a, x0]) f x (phioo x))%R))^`() t.
     move : (tad).
     rewrite inE /= in_itv /= => /andP[ta taDelta].
-    have Fint : mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E] (EFin \o (fun x : R => f x (phioo x) ord0 j)).
+    have Fint i : mu.-integrable `[a, (a + Delta f a b k u0 r rho)%E]
+        (EFin \o (fun x : R => f x (phioo x) ord0 i)).
       apply integrable_comp => //.
       by rewrite in_itv /= lexx ltW.
-    have Fcont : {for t, continuous (fun x0 : R => f x0 (phioo x0) ord0 j)}.
+    have Fcont i : {for t, continuous (fun x0 : R => f x0 (phioo x0) ord0 i)}.
       rewrite inE in tad.
       apply: (within_continuous_continuous _ _ tad) => //.
       clear Fint.
-      move: j.
+      move: i.
       apply/within_continuous_coord.
       apply: (within_continuous_lipschitz _ k0 _ (u0 := u0) (r := r)).
       exact: cts_fun.
       exact: lip2_Delta.
       exact: cont1_Delta.
       exact: Vrphioo.
-    have [H1 H2] := @continuous_FTC1_closed _ (fun x => f x (phioo x) ord0 j) a t _ taDelta Fint ta Fcont.
-    rewrite derive1E deriveD /=;last 2 first.
-    exact: derivable_cst.
-    (*exact: H1.*) (* NB see coq-robot *) admit.
-    rewrite -!derive1E.
-    (*
-    rewrite H2.
-    by rewrite derive1_cst add0r.*) admit.
+    have [H1 H2] := @continuous_FTC1_closed _ (fun x => f x (phioo x) ord0 j)
+                    a t _ taDelta (Fint j) ta (Fcont j).
+    have Hderivable : derivable (fun x : R => \vint[mu]_(x0 in `[a, x]) f x0 (phioo x0)) t 1.
+      apply/(@derivable_mxP R R) => i0 i; rewrite (ord1 i0){i0}/=.
+      have [?] := @continuous_FTC1_closed _ (fun x => f x (phioo x) ord0 i)
+                  a t _ taDelta (Fint i) ta (Fcont i).
+      rewrite /rowRintegral.
+      rewrite [X in derivable X t 1](_ : _ =
+          (fun x : R => \int[mu]_(x0 in `[a, x]) f x0 (phioo x0) ord0 i)); last first.
+        by apply/funext => x; rewrite mxE.
+      by [].
+    rewrite derive1E deriveD /=; last 2 first.
+      exact: derivable_cst.
+      exact: Hderivable.
+    rewrite -!derive1E derive1_cst add0r -H2 -/mu.
+    rewrite !derive1E derive_mx//.
+    rewrite mxE/=.
+    congr ('D_1 _ t).
+    apply/funext => t0.
+    by rewrite mxE.
 rewrite /contrac /picard_to_cont /picard_from_cont.
 move : t tad.
 apply : eq_on_itv_deriv.
@@ -1123,6 +1226,6 @@ move => t tad /=.
 rewrite -(@picard_from_cont_simpl _ _ _ a b k _ r lip2 cont1 rho) //=.
 rewrite eval_mod_on_itv => //.
 by rewrite inE;apply: subset_itv_oo_cc;rewrite -inE.
-Admitted.
+Qed.
 
 End picard.
