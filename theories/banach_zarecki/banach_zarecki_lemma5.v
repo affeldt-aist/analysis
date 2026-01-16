@@ -244,6 +244,14 @@ lt_sorted_uniq_le:
   forall {disp : Order.disp_t} {T : porderType disp} (s : seq T),
   uniq s -> sorted <%O s = sorted <=%O s
 *)
+
+Lemma eq_mem_sub_mem {A} {a1 a2 : {pred A}} :
+  (a1 =i a2) <-> {subset a1 <= a2} /\ {subset a2 <= a1}.
+Proof.
+split => [H | [H1 H2] a]; first by split=> a; rewrite H.
+case/boolP: (a \in a2); [exact: H2 | apply: contraNF; exact: H1].
+Qed.
+
 Section merge_lt_seq_lemmas.
 Context {R : realDomainType}.
 Implicit Types (l s : seq R).
@@ -270,8 +278,8 @@ elim: t st dast; first by [].
 move=> b t IH' pbt dasbt /=.
 case: ifPn => [ba|]; last rewrite -leNgt le_eqVlt => /predU1P[ab|ab].
 - rewrite cat_cons; congr cons.
-  rewrite ifF; last first.
-    by apply/negP/negP; rewrite -leNgt ltW.
+  rewrite ifN; last first.
+    by rewrite -leNgt ltW.
   apply: IH'.
    exact: path_sorted pbt.
   exact: disj_seq_consl dasbt.
@@ -346,8 +354,8 @@ elim: s => // a s IH.
 rewrite merge_step/= => /andP[+ xs].
 rewrite le_eqVlt => /predU1P[xa|xa].
   subst a; rewrite lexx IH//.
-rewrite ifF//.
-by apply/negP/negP; rewrite -ltNge.
+rewrite ifN//.
+by rewrite -ltNge.
 Qed.
 
 Lemma merge_ltEle (s t : seq R) :
@@ -468,8 +476,7 @@ apply: pwltas.
     by rewrite in_cons; apply/orP; right.
     move/[swap] => _.
     rewrite -last_nth last_rcons => xb.
-  rewrite ifF; last first.
-    apply/negbTE.
+  rewrite ifN; last first.
     by rewrite lt_eqF// asb.
   rewrite (_ : index x (rcons s b) = index x s); last first.
     rewrite -cats1 index_cat.
@@ -1037,7 +1044,7 @@ case: ifPn => [|]; last rewrite -ltNge; first rewrite le_eqVlt => /predU1P[|].
     exact: path_sorted sas.
   exact: path_sorted sbt.
 - move=> ab.
-  rewrite ifF; last by (apply/negP/negP; rewrite -ltNge).
+  rewrite ifN; last by rewrite -ltNge.
   rewrite IHs//.
   exact: path_sorted sas.
 - move=> ba.
@@ -1597,7 +1604,7 @@ elim => // h s IH a _ pahs lsb.
 case: s IH pahs lsb => [_|].
   rewrite /= andbT => /[swap]/eqP -> ab.
   move=> /andP[ax xb].
-  rewrite ifF; last by apply/negP/negP; rewrite -leNgt.
+  rewrite ifN; last by rewrite -leNgt.
   rewrite /omega_max/=.
   rewrite !big_nat_recl//= !big_nil/=.
   rewrite 2!maxeNy.
@@ -2383,8 +2390,7 @@ elim: t s => //=.
   exact: ltxx.
 move=> t0 t1 ih s.
 elim: s t0 t1 ih => [t0 t1 ih t0t1 /= _|].
-  rewrite ifF//; last first.
-    apply/negbTE.
+  rewrite ifN//; last first.
     move/order_path_min : t0t1 => /(_ lt_trans)/allP t0t1.
     apply/negP => /t0t1.
     by rewrite ltxx.
@@ -2399,8 +2405,7 @@ case: ifPn.
   rewrite /= -!/(merge <%R (s0 :: s1) _).
   have [{}t0s0|] := ltP s0 t0.
     rewrite /=.
-    rewrite ifF; last first.
-      apply/negbTE.
+    rewrite ifN; last first.
       rewrite mem_merge mem_cat negb_or inE negb_or lt_eqF//=.
       apply/andP; split.
         move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP H.
@@ -2423,8 +2428,7 @@ case: ifPn.
     move: sorted_s => /=.
     exact: path_sorted.
     rewrite le_eqVlt (negbTE t0s0)/= => {}t0s0.
-    rewrite ifF; last first.
-      apply/negbTE.
+    rewrite ifN; last first.
       rewrite mem_merge mem_cat !inE !negb_or lt_eqF//=.
     apply/andP; split.
       move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP H.
@@ -2452,8 +2456,7 @@ rewrite ifT; last first.
   move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP.
   by apply.
 rewrite /=.
-rewrite ifF; last first.
-  apply/negbTE.
+rewrite ifN; last first.
   rewrite mem_merge mem_cat negb_or !inE negb_or.
   apply/and3P; split.
   move: sorted_s => /= => /order_path_min => /(_ lt_trans)/allP H.
@@ -2470,8 +2473,8 @@ rewrite ih//; last first.
   by move: t0t1 => /=; exact: path_sorted.
   transitivity (s0 :: undup (merge <%R s1 t1)).
     rewrite merger_cons//=.
-      rewrite mem_merge mem_cat ifF//.
-      apply/negbTE; rewrite negb_or; apply/andP; split.
+      rewrite mem_merge mem_cat ifN//.
+      rewrite negb_or; apply/andP; split.
         move: sorted_s => /= /order_path_min => /(_ lt_trans)/allP H.
         apply/negP => /H.
         by rewrite ltxx.
@@ -2492,6 +2495,19 @@ rewrite t0s1//=.
 by move: sorted_s => /=; apply: path_sorted.
 by move: t0t1 => /=; apply: path_sorted.
 by move: sorted_s => /=; apply: path_sorted.
+Qed.
+
+Lemma merger_rcons (s t : seq R) (b : R) :
+   all (<=%R ^~ b) t -> merge <%R (rcons s b) t = rcons (merge <%R s t) b.
+Proof.
+elim: t s b; first by move=> ? ?; rewrite 2!merge0r.
+move=> + + + s; elim: s => [t0 t1 IH b|s0 s1 IHs t0 t1 IHt b].
+  rewrite [all _ _]/= [rcons _ _]/= [merge _ [::] _]/= => /andP[t0b t1b].
+  rewrite merge_step ifN; last by rewrite -leNgt.
+  have -> : [:: b] = rcons [::] b by []; by rewrite IH.
+rewrite [all _ _]/= => /andP[t0b t1b].
+rewrite rcons_cons 2!merge_step.
+case: ifPn; by [rewrite IHs//= t0b t1b|rewrite -rcons_cons IHt].
 Qed.
 
 Lemma variation_merge a b (ab : a < b) s t :
@@ -2525,10 +2541,13 @@ have -> : variation a b f (merge <%R s t') = (variation a b f (merge <%R s t)).
         exact: le_total.
       by have [/path_ltW] := abs.
     rewrite path_min_sorted; first exact: sorted_ltW.
-    apply/allP => x xt; apply: ltW.
-    have := tab x xt.
-    by rewrite in_itv/= => /andP[].
-  admit.
+    apply/allP => x /tab.
+    by rewrite in_itv/= => /andP[/ltW].
+  elim/last_ind : s abs t'; first by move/(itv_partitionNnil ab).
+  move=> s0 s1 IHs + _.
+  move=> [pas /eqP]; rewrite last_rcons => ->.
+  rewrite merger_rcons ?last_rcons//.
+  by apply/allP => x /tab; rewrite in_itv/= => /andP[_ /ltW].
 move/le_trans; apply.
 rewrite leeD2l//.
 rewrite lee_pmul//.
@@ -2537,7 +2556,7 @@ rewrite lee_pmul//.
   by rewrite lt_eqF//.
 rewrite lee_pmul// lee_fin ler_nat.
 by rewrite size_filter count_size.
-Admitted.
+Qed.
 
 End variation_merge.
 
@@ -2679,8 +2698,7 @@ have nonempty_img : [set f x | x in `[(nth b (a :: p) n), (nth b p n)]] !=set0.
     by have [_ /eqP ->] := pabp.
   by rewrite !nth_default// ltnW.
 rewrite ereal_sup_EFin// ereal_inf_EFin//.
-rewrite ifF; last first.
-  apply/negbTE.
+rewrite ifN; last first.
   move/set0P : nonempty_img; apply: contra_neq => ->.
   by rewrite image_set0.
 rewrite -EFinB lee_fin.
