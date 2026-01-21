@@ -2814,6 +2814,29 @@ Qed.
 
 End variation_merge.
 
+Lemma mem_interval_le (R : realDomainType) (x y a b : R) :
+  x \in `[a, b] -> y \in `[a, b] -> `|x - y| <= `|a - b|.
+Proof.
+rewrite !in_itv/= => /andP[ax xb] /andP[ay yb].
+rewrite (@ler0_norm _ (a - b)); last by rewrite subr_le0 (le_trans ax).
+rewrite opprB.
+have [xy|yx] := leP x y.
+  by rewrite ler0_norm ?subr_le0// opprB lerB.
+by rewrite gtr0_norm ?subr_gt0// lerB.
+Qed.
+
+Lemma bigmaxr_morph {R : realType} n (f : nat -> R) :
+  \big[maxr/0]_(0 <= i < n) `|f i| =
+  (\big[maxr/0%:nng]_(0 <= i < n)
+      `|f i|%:nng)%:num.
+Proof.
+elim/big_ind2 : _ => //= x1 _ y1 _ -> ->.
+rewrite !/maxr.
+case: ifPn => x1y1; case: ifPn => // y1x1.
+  by apply/eqP; rewrite eq_le (ltW x1y1) andbT leNgt.
+by apply/eqP; rewrite eq_le andbC leNgt x1y1/= ltW.
+Qed.
+
 Section lemma5.
 Context {R : realType}.
 Variables (a b : R) (f : R -> R).
@@ -2920,7 +2943,7 @@ have epsE : eps = (V' - A) / (4 * m)%:R by [].
 
 elim/last_ind : X' partX' X'V' m mE eps epsE eps0 unifcf V0 sleX' V0E sorted_X'.
   by move/(itv_partitionNnil ab).
-move=> X'0 X'1 _; pose X' := rcons X'0 X'1.
+move=> X'0 X'1 _(* ih *); pose X' := rcons X'0 X'1.
 move=> partX' X'V' m mE eps epsE eps0 unifcf V0 sleX' V0E sorted_X'.
 have X'E : X' = rcons X'0 X'1 by [].
 have X'0ab : (forall x, x \in X'0 -> x \in `]a, b[).
@@ -3001,15 +3024,17 @@ rewrite (_ : ((V' - A) / 2) = (m%:R * 2)%R * eps)%R; last first.
     by rewrite -(mulr0n 1) ltr_nat mE.
   by rewrite mulrAC divff// mul1r.
 rewrite /omega_max.
+rewrite big_nat_cond.
 apply: bigmax_le; first by rewrite leNye.
-move=> n _.
+move=> n.
+rewrite leq0n/= andbT => np.
 rewrite /oscillation/=.
 rewrite -image_comp.
 have : compact (f @` `[(nth b (a :: p) n), (nth b p n)]).
   apply: continuous_compact.
     apply: continuous_subspaceW cf.
     apply: subset_itv; rewrite bnd_simp//.
-      case: n => //= n.
+      case: n => //= ? in np *.
       exact/ltW/itv_partition_gt_lb.
     exact: (itv_partition_le_ub pabp).
   exact: segment_compact.
@@ -3018,111 +3043,66 @@ have nonempty_img : [set f x | x in `[(nth b (a :: p) n), (nth b p n)]] !=set0.
   exists (f (nth b (a :: p) n)) => //.
   exists (nth b (a :: p) n) => //=.
   rewrite boundl_in_itv/= bnd_simp.
-  have [np|] := ltnP n (size p).
-    apply/ltW/pathP => //.
-    by have [] := pabp.
-  rewrite leq_eqVlt => /predU1P[<-|np].
-    rewrite nth_last nth_default// last_cons.
-    by have [_ /eqP ->] := pabp.
-  by rewrite !nth_default// ltnW.
+  apply/ltW/pathP => //.
+  by have [] := pabp.
 rewrite ereal_sup_EFin// ereal_inf_EFin//.
 rewrite ifN; last first.
   move/set0P : nonempty_img; apply: contra_neq => ->.
   by rewrite image_set0.
 rewrite -EFinB lee_fin.
-suff : forall x y, x \in `](nth b (a :: p) n), (nth b p n)[ ->
- y \in `](nth b (a :: p) n), (nth b p n)[ ->
-  `|f x - f y| < eps.
-  move=> H.
-  rewrite lerBlDl; apply: ge_sup => //.
-  move=> _/= [x px <-].
-  rewrite -lerBlDr.
-  apply: lb_le_inf => // _/=[x' px' <-].
-  rewrite lerBlDr -lerBlDl.
-  apply: (@le_trans _ _ `|f x - f x'|); first exact: ler_norm.
-  rewrite 2!mulrA -[leLHS]mul1r.
-    apply: ler_pM => //.
-    rewrite -mulrA mulrC.
-    rewrite -mulf_div divff// mulr1.
-    rewrite ler_pdivlMr// mul1r mE.
-    by rewrite ler_nat size_rcons.
-  move : px.
-  rewrite in_itv/= => /andP[].
-  rewrite 2!le_eqVlt => /predU1P[pnx _|pnx /predU1P[{}pnx|xpn]].
-  - admit.
-  - admit.
-  move: px'; rewrite in_itv/= => /andP[].
-  rewrite 2!le_eqVlt => /predU1P[pnx' _|pnx' /predU1P[{}pnx'|x'pn]].
-  - admit.
-  - admit.
-  by apply/ltW/H; rewrite in_itv/=; apply/andP; split.
-move=> x y Hx Hy.
-have @x' : subspace `[a, b].
-  red.
-  exact: x.
-have @y' : subspace `[a, b].
-  red.
-  exact: y.
-have := unifcf (x', y').
 
-rewrite /=/ball/=.
-move=> /(_ _ ).
-apply.
-rewrite /subspace_ball.
-rewrite ifT; last first.
-  rewrite inE/=.
-  apply: subset_itv Hx; rewrite bnd_simp.
-    case: n cimg ubimg lbimg nonempty_img Hy => //=n _ _ _ _ _.
-    exact/ltW/itv_partition_gt_lb.
-  exact: (itv_partition_le_ub pabp).
-rewrite /=; split.
-  apply: subset_itv Hy; rewrite bnd_simp.
-    case: n cimg ubimg lbimg nonempty_img Hx => //=n _ _ _ _ _.
-    exact/ltW/itv_partition_gt_lb.
-  exact: (itv_partition_le_ub pabp).
-rewrite /ball/=.
-apply: le_lt_trans abpd.
-rewrite /itv_partition_max/=.
-have xx' : x = x' by [].
-have yy' : y = y' by [].
-wlog  : x y x' y' Hx Hy xx' yy' / y < x.
-  move=> H.
-  have [xy|] := ltP x y.
-    rewrite -normrN opprB.
-    exact: (H y x).
-  rewrite le_eqVlt => /predU1P[xy|].
-    have <- : x' = y' by [].
-    by rewrite subrr normr0.
-  move=> yx.
-  exact: (H x y).
-move=> yx.
-rewrite -xx' -yy' -normrN opprB.
-rewrite ltr0_norm ?opprB; last by rewrite subr_lt0.
-have xyge0 : 0 <= x - y by rewrite subr_ge0 ltW.
-rewrite -num_abs_le// big_mkord.
-have [pn|] := ltnP n (size p).
-  apply: (bigmax_sup (Ordinal pn)) => //=.
-  rewrite num_abs_le//=.
-  rewrite ger0_norm; last first.
-    rewrite subr_ge0.
-    apply/pathP => //.
-    apply: path_ltW.
-    by have [] := pabp.
-  apply: lerB.
-  - by apply/ltW; have := Hx; rewrite in_itv/= => /andP[].
-  - by apply/ltW; have := Hy; rewrite in_itv/= => /andP[].
-move=> pn.
-move: Hx.
-rewrite (nth_default _ pn).
-move: pn.
-rewrite leq_eqVlt => /predU1P[|pn].
-  move=> <-.
-  rewrite -last_nth.
-  have [_ /eqP ->] := pabp.
-  by rewrite in_itv/= => /andP[bx /(lt_trans bx)]; rewrite ltxx.
-rewrite nth_default//=.
-by rewrite in_itv/= => /andP[bx /(lt_trans bx)]; rewrite ltxx.
-Admitted.
+have : forall x y, x \in `[(nth b (a :: p) n), (nth b p n)] ->
+ y \in `[(nth b (a :: p) n), (nth b p n)] ->
+  `|f x - f y| < eps.
+  move=> x y Hx Hy.
+  have @x' : subspace `[a, b].
+    red.
+    exact: x.
+  have @y' : subspace `[a, b].
+    red.
+    exact: y.
+  have := unifcf (x', y').
+  rewrite /=/ball/=.
+  move=> /(_ _).
+  apply.
+  rewrite /subspace_ball.
+  rewrite ifT; last first.
+    rewrite inE/=.
+    apply: subset_itv Hx; rewrite bnd_simp.
+      case: n cimg ubimg lbimg nonempty_img Hy => //=n _ _ _ _ _ in np *.
+      exact/ltW/itv_partition_gt_lb.
+    exact: (itv_partition_le_ub pabp).
+  rewrite /=; split.
+    apply: subset_itv Hy; rewrite bnd_simp.
+      case: n cimg ubimg lbimg nonempty_img Hx => //=n _ _ _ _ _ in np *.
+      exact/ltW/itv_partition_gt_lb.
+    exact: (itv_partition_le_ub pabp).
+  rewrite /ball/=.
+  apply: (@le_lt_trans _ _ `|nth b p n - nth b (a :: p) n|).
+    rewrite [in leRHS]distrC.
+    exact: mem_interval_le.
+  apply: le_lt_trans abpd.
+  apply: (@le_trans _ _ (\big[maxr/0]_(0 <= n0 < size p)
+      `|nth b p n0 - nth b (a :: p) n0|)); last first.
+    rewrite /itv_partition_max/=.
+    by rewrite -bigmaxr_morph.
+  apply: (le_bigmax_seq _ _ _ (fun=> _)(*TODO: wtf*)) => //=.
+  by rewrite mem_index_iota leq0n/=.
+move=> H.
+rewrite lerBlDl; apply: ge_sup => //.
+move=> _/= [x px <-].
+rewrite -lerBlDr.
+apply: lb_le_inf => // _/=[x' px' <-].
+rewrite lerBlDr -lerBlDl.
+apply: (@le_trans _ _ `|f x - f x'|); first exact: ler_norm.
+rewrite 2!mulrA -[leLHS]mul1r.
+  apply: ler_pM => //.
+  rewrite -mulrA mulrC.
+  rewrite -mulf_div divff// mulr1.
+  rewrite ler_pdivlMr// mul1r mE.
+  by rewrite ler_nat size_rcons.
+by apply/ltW/H => //.
+Qed.
 
 Definition variations_with_max a b f l : set R :=
    [set r| exists s, [/\ r = variation a b f s,
