@@ -62,6 +62,15 @@ Let mu := @lebesgue_measure R.
 Lemma rowRintegral_set1 n (f : R -> 'rV[R]_n) (r : R) :
   \vint[mu]_(x in [set r]) f x = 0.
 Proof. by apply/rowP => i; rewrite !mxE Rintegral_set1. Qed.
+Lemma eq_rowRintegral n (D : set R) (f : R -> 'rV[R]_n) (g : R -> 'rV[R]_n):
+ {in D, f =1 g} -> \vint[mu]_(x in D) f x = \vint[mu]_(x in D) g x.
+Proof.
+  move => h.
+  apply /rowP => i.
+  rewrite !rowRintegralE.
+  apply eq_Rintegral => /= x Dx.
+  by rewrite h.
+Qed.
 
 End rowRintegral.
 
@@ -1097,6 +1106,181 @@ Unshelve. all: by end_near. Qed.
 
 End pointwise_derive.
 
+Section integral_ode.
+
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : R -> U -> U) (t0 t1 : R)  (u0 : U) (phi : R-> U) (k : R) (r : {posnum R}).
+Hypothesis k0 : 0 < k.
+Hypothesis t01 : t0 < t1.
+
+Let B := closed_ball u0 r%:num.
+Hypothesis lip2 : {in `[t0, t1]%R, forall x : R, k.-lipschitz_B (f x)}.
+Hypothesis cont1 : {in B, forall y, {within `[t0, t1], continuous f ^~ y}}.
+Hypothesis cont_phi : {within `[t0, t1], continuous phi}.
+Hypothesis phi_bound : [set phi x | x in `[t0, t1]] `<=` closed_ball u0 r%:num.
+
+Let mu := @lebesgue_measure R.
+
+Definition is_integral_sol_on   :=
+  phi t0 = u0 /\
+  forall t, `[t0, t1] t ->
+    phi t = phi t0 + (\vint[mu]_(s in `[t0, t]) f s (phi s))%R.
+
+(* Definition is_integral_sol_on_open   := *)
+(*   phi t0 = u0 /\ *)
+(*   forall t, `]t0, t1[ t -> *)
+(*     phi t = phi t0 + (\vint[mu]_(s in `[t0, t]) f s (phi s))%R. *)
+
+(* Lemma integral_sol_open_closed : is_integral_sol_on_open -> is_integral_sol_on. *)
+(* Proof. *)
+(*  move => [h0 h1]. *)
+(* split => //. *)
+(* move => t. *)
+(* case: (eqVneq t t0) => [-> _|Ht0]. *)
+(*   by rewrite set_itv1 rowRintegral_set1 addr0. *)
+(* rewrite /=in_itv/= => /andP [ht0 ht1]. *)
+(* apply h1. *)
+(* by rewrite /=in_itv/=ht1//= lt_neqAle ht0/= eq_sym Ht0. *)
+(* Qed. *)
+
+Definition is_sol_on   :=
+  phi t0 = u0 /\
+  {in `]t0, t1[, forall x, derivable phi x 1 /\ phi^`() x = f x (phi x)}.
+
+
+Lemma picard_iterator_within_cont  i:  {within `[t0,t1], continuous (fun x0 : R => f x0 (phi x0) ord0 i)}.
+Proof.
+move: i.
+apply/within_continuous_coord.
+by apply: (within_continuous_lipschitz _ k0 _ (u0 := u0) (r := r)).
+Qed.
+
+Lemma picard_iterator_cont  i t :  t \in `]t0, t1[ ->  {for t, continuous (fun x0 : R => f x0 (phi x0) ord0 i)}.
+move => tad.
+rewrite inE in tad.
+apply: (within_continuous_continuous _ _ tad) => //.
+exact: picard_iterator_within_cont.
+Qed.
+
+(* Lemma Rintegral_itv_open_closed (a b : R) (g : R -> R) : *)
+(*   \int[mu]_(x in `]a, b[) g x *)
+(*   = \int[mu]_(x in `[a, b]) g x. *)
+(* Proof. *)
+(* rewrite Rintegral_itv_obnd_cbnd. *)
+(* rewrite Rintegral_itv_bndo_bndc //. *)
+(* Admitted. *)
+
+Lemma picard_iterator_integrable i :  mu.-integrable `[t0, t1]
+        (EFin \o (fun x : R => f x (phi x) ord0 i)).
+Proof.
+apply: continuous_compact_integrable; first exact: segment_compact.
+apply picard_iterator_within_cont.
+Qed.
+
+
+Lemma integral_sol_iff_sol : is_integral_sol_on  <-> is_sol_on.
+Proof.
+split.
+- 
+  move => [hinit h];split => // t tab.
+  move : (tab).
+  rewrite inE /= in_itv /= => /andP[ta tb].
+  have -> : phi^`() t  = (fun x => phi t0 + \vint[mu]_(s in `[t0, x]) f s (phi s))^`() t.
+    apply/eq_on_itv_deriv/tab => x xt01;apply h.
+    rewrite inE in xt01.
+    by apply: subset_itv_oo_cc.
+    (* move : xt01 . *)
+    (* Search "itv" "subs". *)
+    (* rewrite inE/=!in_itv/= => /andP [xt01 xt01']. *)
+    (* by rewrite ltW. *)
+  suff hi: forall i, derivable (fun x => phi x ord0 i) t 1 /\  (fun x : R => (phi t0 + \vint[mu]_(s in `[t0, x]) f s (phi s))%E)^`() t ord0 i = f t (phi t) ord0 i.
+    split.
+    apply /derivable_mxP.
+    rewrite /derivable_mx => i j.
+    have [? _] := (hi j).
+    by rewrite ord1.
+    apply/rowP => j.
+    have [_ ?] := (hi j).
+    by [].
+  move => j.
+  have [H1 H2] := @continuous_FTC1_closed _ (fun x => f x (phi x) ord0 j)
+                    t0 t t1 tb (picard_iterator_integrable j) ta (picard_iterator_cont tab).
+   have Hderivable : derivable (fun x : R => \vint[mu]_(x0 in `[t0, x]) f x0 (phi x0)) t 1.
+      apply/(@derivable_mxP R R) => i0 i; rewrite (ord1 i0){i0}/=.
+    have [?] := @continuous_FTC1_closed _ (fun x => f x (phi x) ord0 i)
+                    t0 t t1 tb (picard_iterator_integrable i) ta (picard_iterator_cont tab).
+      rewrite /rowRintegral.
+      rewrite [X in derivable X t 1](_ : _ =
+          (fun x : R => \int[mu]_(x0 in `[t0, x]) f x0 (phi x0) ord0 i)); last first.
+        by apply/funext => x; rewrite mxE.
+      by [].
+     rewrite derive1E deriveD /=; last 2 first. 
+      exact: derivable_cst.
+      exact: Hderivable.
+    split.
+    apply: (near_eq_derivable (f := (fun x =>  (phi t0 + \vint[mu]_(s in `[t0, x]) f s (phi s)) ord0 j))) => //=.
+    near=>t'.
+    rewrite  (h t') //.
+    rewrite /=in_itv/=.
+    apply /andP;split.
+    apply ltW.
+    near:t'.
+    by apply: lt_nbhsr.    
+    apply ltW.
+    near:t'.
+    by apply: lt_nbhsl.    
+    have -> :  (fun x : R => (phi t0 + \vint[mu]_(s in `[t0, x]) f s (phi s))%E ord0 j) = cst (phi t0 ord0 j)  +  (fun x : R =>  (\vint[mu]_(s in `[t0, x]) (f s (phi s))) ord0 j).
+      apply funext => x.
+      by rewrite mxE.
+    apply derivableD.
+    by apply derivable_cst.
+    move /derivable_mxP : Hderivable.
+    apply.
+    rewrite -!derive1E derive1_cst add0r -H2 -/mu.
+    rewrite !derive1E derive_mx//.
+    rewrite mxE/=.
+    congr ('D_1 _ t).
+    apply/funext => t'.
+    by rewrite mxE.
+move => [hinit h];split => // t tab.
+have := tab.
+rewrite /=in_itv/= => /andP [ta tb].
+apply/rowP => i.
+rewrite mxE rowRintegralE.
+move : ta.
+rewrite le_eqVlt => /orP [/eqP <- | ta].
+by rewrite set_itv1 Rintegral_set1 addr0.
+rewrite /Rintegral.
+have cont_phii :  {within `[t0, t1], continuous (fun x => phi x ord0 i)}.
+by move:i;apply /within_continuous_coord.
+rewrite (@continuous_FTC2 _ (fun x => f x (phi x) ord0 i) (fun x => phi x ord0 i) _ _ ta).
+by rewrite -EFinB subrKC.
+apply: continuous_subspaceW; last exact: picard_iterator_within_cont.
+by apply: subset_itvl.
+split.
+move => t' tx'.
+have xt' : t' \in `]t0, t1[.
+rewrite inE.
+by apply/ subset_itvl/tx'.
+by have [/derivable_mxP + _] := h _ xt'.
+by move /(continuous_within_itvP _ t01) : cont_phii => [_ + _].
+have cont_phii' :  {within `[t0, t], continuous fun x0 : R => phi x0 ord0 i}.
+apply:continuous_subspaceW;last apply cont_phii.
+by apply:subset_itvl. 
+by move /(continuous_within_itvP _ ta) : cont_phii' => [ _ _ +].
+move => x  xt.
+have xt' : x \in `]t0, t1[.
+rewrite inE.
+by apply/ subset_itvl/xt.
+have [_ +] := h _ xt'.
+rewrite !derive1E derive_mx/=;last by apply h.
+move => <-.
+rewrite mxE//.
+Unshelve. all: by end_near. Qed.
+
+End integral_ode.
 Section picard.
 Context {R : realType} {n : nat}.
 Notation U := (@row_vector R n).
@@ -1164,6 +1348,50 @@ Proof.
 by move=> Vrg taad; rewrite /contrac eval_mod_on_itv //; exact: picard_from_cont_simpl.
 Qed.
 
+
+Lemma picard_lindeloef_integral_version : is_integral_sol_on f a (a + (Delta f a b k u0 r rho)) u0 phioo.
+Proof.
+have Vrphioo : Vr phioo.
+  by apply (svalP (cid2 (@banach_fixed_point R V Vr _
+    (@is_contraction_picard_to_cont R n f _ _ ab k k0 u0 r lip2 cont1 _ rho1) closed_Vr Vr0))).
+have h0 : phioo a = u0.
+  rewrite phiooE.
+  rewrite /contrac.
+  rewrite eval_mod_on_itv; last first.
+    by rewrite inE/= in_itv/= lexx (ltW (aaDelta_subproof f ab u0 r k0 rho)).
+  by rewrite /picard_from_cont /= picard_to_cont_init.
+split => //.
+move => t tad.
+rewrite {1}phiooE.
+rewrite eval_mod_on_itv; last by rewrite inE.
+rewrite h0.
+apply : picard_from_cont_simpl.
+exact Vrphioo.
+Qed.
+
+Theorem picard_lindeloeff_unique (phioo' : V) : Vr phioo' -> (forall t, t \in `[a, a+Delta f a b k u0 r rho] -> phioo' t = u0 + \vint[mu]_(x in `[a, t]) f x (phioo' x)%R) ->  phioo = phioo'.
+Proof.
+  move => Vrphioo' h.
+  have Vrphioo : Vr phioo.
+  by apply (svalP (cid2 (@banach_fixed_point R V Vr _
+    (@is_contraction_picard_to_cont R n f _ _ ab k k0 u0 r lip2 cont1 _ rho1) closed_Vr Vr0))).
+    
+  apply (contraction_fixpoint_unique tmp Vrphioo Vrphioo') => //=.
+  rewrite -(reprK  phioo').
+  apply /eqquotP.
+  rewrite /Quotient.equiv/=. 
+  rewrite inE /submod_itv.
+  apply/funext => x.
+  rewrite /patch;case: ifPn => [xK | xKnot] => //.
+  rewrite /quot_continuousFunType_to_fun /=.
+  rewrite !fctE.
+  rewrite !reprK.
+  rewrite picard_from_cont_simpl //=.
+  have -> : (repr phioo' x = phioo' x) by [].
+  rewrite h //.
+  by rewrite subrr.
+Qed.
+
 Theorem picard_lindelof_existence : phioo a = u0 /\
   {in `]a, a + Delta f a b k u0 r rho[, forall x, phioo^`() x = f x (phioo x)}.
 Proof.
@@ -1228,4 +1456,129 @@ rewrite eval_mod_on_itv => //.
 by rewrite inE;apply: subset_itv_oo_cc;rewrite -inE.
 Qed.
 
+Lemma picard_lindelof_in_ball (t : R) :
+  `[a, (a + Delta f a b k u0 r rho)%E] t ->
+  closed_ball u0 r%:num (phioo t).
+Proof.
+move => taad.
+have Vrphioo : Vr phioo.
+  (* same proof pattern you already use several times *)
+  by apply (svalP (cid2 (@banach_fixed_point R V Vr _
+      (@is_contraction_picard_to_cont R n f _ _ ab k k0 u0 r lip2 cont1 _ rho1)
+      closed_Vr Vr0))).
+
+have image_phioo : phioo @` `[a, (a + Delta f a b k u0 r rho)%E]
+                   `<=` closed_ball u0 r%:num.
+  by move: Vrphioo.
+
+apply image_phioo.
+by exists t.
+Qed.
+
+
 End picard.
+
+Section ode_integral.
+
+
+
+
+End ode_integral.
+
+Lemma rowRintegral_itv_split
+  {R : realType} (n : nat)
+  (F : R -> 'rV[R]_n) (t0 t1 t2 : R) :
+  t0 <= t1 <= t2 ->
+  (forall i,  lebesgue_measure.-integrable `[t0, t2] (EFin \o (fun x : R => F x ord0 i))) ->
+  \vint[lebesgue_measure]_(s in `[t0, t2]) F s
+  =
+  \vint[lebesgue_measure]_(s in `[t0, t1]) F s
+  +
+  \vint[lebesgue_measure]_(s in `[t1, t2]) F s.
+Proof.
+move=> /andP[t0t1 t1t2] intF.
+apply/rowP=> i.
+rewrite !rowRintegralE !mxE.
+apply/eqP.
+rewrite addrC -subr_eq.
+apply/eqP.
+rewrite (@Rintegral_itvB _ (fun x => F x ord0 i)  (BLeft t0) (BRight t2) t1) //=.
+apply Rintegral_itv_obnd_cbnd.
+apply (@integrableS _ _ _ lebesgue_measure `[t0, t2] `]t1,t2] (EFin \o (fun x => F x ord0 i))) =>//.
+by apply:subset_itvScc.
+Qed.
+
+Section picard_extension.
+
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : R -> U -> U) (a b c : R)  (u0 : U) (phi1 : R-> U) (phi2 : R -> U).
+Hypothesis ab : a < b.
+Hypothesis bc : b < c.
+Lemma continuous_within_ext {A B : nbhsType} (g h : A -> B) D :{in D, g =1 h} -> {within D, continuous g } -> {within D, continuous h}.
+Proof.
+  move => h1 h2 x xD.
+Admitted.
+
+Lemma solution_extends : is_integral_sol_on f a b u0   phi1 -> is_integral_sol_on f  b c (phi1 b) phi2 -> is_integral_sol_on f a c u0 (patch phi2 `[a,b] phi1) .
+Proof.
+move => [p0a p0s ] [p1a p1s].
+have h0 :  patch phi2 `[a, b] phi1 a = u0.
+   rewrite /patch.
+   case: ifPn => [xK | xKnot] => //.
+   move /negP : xKnot.
+   by rewrite inE/=in_itv/=lexx ltW.
+  split => //.
+  rewrite h0.
+  move => t tac.
+  rewrite /patch.
+  case: ifPn => [xK | xKnot] => /=.
+- rewrite inE in xK.
+  rewrite p0s // p0a.
+  apply /rowP => i.
+  rewrite !mxE.
+  congr (_ + _)%E.
+  apply eq_Rintegral => /= x xat.
+  suff ->: (x \in `[a,b]) by [].
+  move : xat xK.
+  rewrite !inE /= !in_itv /= => /andP [xat1 xat2] /andP [tab1 tab2].
+  apply /andP;split => //.
+  by apply /le_trans/tab2.
+have tbc : t \in `[b, c].
+  move  : tac.
+  move /negP : xKnot.
+  rewrite !inE /= !in_itv /=.
+  have /orP := le_total b t.
+  case => // -> h1 /andP [h2 ->] //.
+  by move : h1;rewrite h2.
+  rewrite (rowRintegral_itv_split (t1 := b) (F := (fun x => f x (patch phi2 `[a,b] phi1 x)))).
+rewrite inE in tbc.
+rewrite p1s //.
+suff  : phi2 b = u0 + \vint[lebesgue_measure]_(s in `[a, b]) f s (patch phi2 `[a, b] phi1 s).
+  rewrite /GRing.add /= addmxA => ->;congr (addmx _).
+  apply eq_rowRintegral => /= x xbt.
+  rewrite /patch;case: ifPn => [ | ] => //.
+  rewrite inE/=in_itv/= => /andP [_ xleb].
+  move : xbt.
+  rewrite !inE/=!in_itv/= => /andP [h _].
+  suff -> : x = b by rewrite p1a.
+  apply le_anti.
+  by rewrite xleb /=.
+rewrite p1a p0s;last by rewrite /=in_itv/=ltW//=.
+rewrite p0a.
+congr (_ + _)%E.
+rewrite /patch.
+by apply eq_rowRintegral => /= x ->.
+by rewrite ltW //=; move : tbc; rewrite inE /= in_itv /= => /andP [-> _].
+move => i.
+have cont' : {within `[a, t], continuous (fun x => f x (patch phi2 `[a, b] phi1 x) ord0 i) }.
+have -> : `[a,t] = `[a,b] `|`  `[b,t].
+admit.
+apply: (withinU_continuous (@itv_closed _ _ a b) (@itv_closed _ _ b t)).
+admit.
+admit.
+apply continuous_compact_integrable => //.
+exact: segment_compact.
+Admitted.
+Import Cont_on_seg_quot.

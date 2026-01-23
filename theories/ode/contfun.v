@@ -16,20 +16,18 @@ From mathcomp Require Import lebesgue_measure lebesgue_integral ftc common.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-
 Import Order.TTheory GRing.Theory Num.Def Num.Theory.
 Import numFieldNormedType.Exports.
 
 Open Scope ring_scope.
 Open Scope classical_set_scope.
-
+Locate continuousEP.
 Module Cont_on_seg_zlmodtype.
 Section cont_on_seg_zlmodtype.
 Context {R : realType} {V : normedModType R} (a b : R).
 
 HB.instance Definition _ := GRing.isZmodClosed.Build _ _
   (@cont_on_seg_zmod_closed R V a b).
-
 Fail Check continuousFunType `[a, b] [set: V] : zmodType.
 
 HB.instance Definition _ :=
