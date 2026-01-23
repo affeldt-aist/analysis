@@ -1456,6 +1456,8 @@ rewrite eval_mod_on_itv => //.
 by rewrite inE;apply: subset_itv_oo_cc;rewrite -inE.
 Qed.
 
+Definition picard_local_sol := phioo.
+
 Lemma picard_lindelof_in_ball (t : R) :
   `[a, (a + Delta f a b k u0 r rho)%E] t ->
   closed_ball u0 r%:num (phioo t).
@@ -1516,10 +1518,27 @@ Notation U := (@row_vector R n).
 Variables (f : R -> U -> U) (a b c : R)  (u0 : U) (phi1 : R-> U) (phi2 : R -> U).
 Hypothesis ab : a < b.
 Hypothesis bc : b < c.
-Lemma continuous_within_ext {A B : nbhsType} (g h : A -> B) D :{in D, g =1 h} -> {within D, continuous g } -> {within D, continuous h}.
+Hypothesis cont1 : {within `[a,b], continuous (fun x => f x (phi1 x))}.
+Hypothesis cont2 : {within `[b,c], continuous (fun x => f x (phi2 x))}.
+Hypothesis matchb : phi1 b = phi2 b.
+
+
+Lemma continuous_within_ext {A B : topologicalType} (g h : A -> B) D :{in D, g =1 h} -> {within D, continuous g } -> {within D, continuous h}.
 Proof.
-  move => h1 h2 x xD.
-Admitted.
+  move => h1 h2.
+  apply subspace_continuousP.
+  move => x Dx.
+  apply : cvg_trans.
+  apply (fmap_within_eq (g := g)) => //.
+  apply nbhs_filter.
+  move => x' Dx' .
+  symmetry.
+  by apply h1.
+  rewrite <-h1.
+  move /subspace_continuousP : h2.
+  by apply.
+  by rewrite inE.
+Qed.
 
 Lemma solution_extends : is_integral_sol_on f a b u0   phi1 -> is_integral_sol_on f  b c (phi1 b) phi2 -> is_integral_sol_on f a c u0 (patch phi2 `[a,b] phi1) .
 Proof.
@@ -1574,11 +1593,156 @@ by rewrite ltW //=; move : tbc; rewrite inE /= in_itv /= => /andP [-> _].
 move => i.
 have cont' : {within `[a, t], continuous (fun x => f x (patch phi2 `[a, b] phi1 x) ord0 i) }.
 have -> : `[a,t] = `[a,b] `|`  `[b,t].
-admit.
+apply funext => x.
+apply propext.
+rewrite /=!in_itv/=.
+split.
+move => /andP [ax xt].
+rewrite ax xt //=.
+have /orP := le_total b x.
+case => -> //=.
+by right.
+by left.
+case.
+move => /andP [-> h1] //=.
+apply (@le_trans _ _ b) => //.
+move : tbc.
+by rewrite inE/=in_itv/= => /andP [-> _].
+move => /andP [h1 ->] //=.
+apply /andP;split=>//.
+apply (@le_trans _ _ b) => //.
+by apply ltW.
 apply: (withinU_continuous (@itv_closed _ _ a b) (@itv_closed _ _ b t)).
-admit.
-admit.
+move : i.
+apply /within_continuous_coord.
+have eq1 : {in `[a,b], (fun x0 => f x0 (phi1 x0)) =1 (fun x0 => f x0 (patch phi2 `[a,b] phi1 x0))}.
+  move => x0 x0ab.
+  by rewrite /patch x0ab.
+apply (continuous_within_ext eq1).
+exact: cont1. 
+move : i.
+apply /within_continuous_coord.
+have eq2 : {in `[b,c], (fun x0 => f x0 (phi2 x0)) =1 (fun x0 => f x0 (patch phi2 `[a,b] phi1 x0))}.
+  move => x0 x0ab.
+  rewrite /patch;case: ifPn => [xab | xabnot] => //.
+  suff -> : (x0 = b) by rewrite matchb.
+  apply le_anti.
+  move : x0ab xab.
+  by rewrite !inE/=!in_itv/= => /andP [-> _] /andP [_ ->].
+apply /continuous_subspaceW/(continuous_within_ext eq2)/cont2.
+apply: subset_itvl.
+move : tbc.
+by rewrite inE/=in_itv/= => /andP [_ +].
 apply continuous_compact_integrable => //.
 exact: segment_compact.
-Admitted.
-Import Cont_on_seg_quot.
+Qed.
+End picard_extension.
+
+Section picard_local.
+
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : R -> U -> U) (a b : R) (k : R) (u0 : U) (r : {posnum R}).
+Hypothesis ab : a < b.
+Hypothesis k0 : 0 < k.
+Let B := closed_ball u0 r%:num.
+Hypothesis lip2 : {in `[a, b]%R, forall x : R, k.-lipschitz_B (f x)}.
+Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
+Local Lemma half_pos : 0 < (1 / 2 : R).
+Proof. by apply divr_gt0. Qed.
+
+Let rho : {posnum R} := PosNum half_pos.
+
+Local Lemma rho1 : rho%:num < 1.
+  rewrite /rho/=.
+  rewrite ltr_pdivrMr //.
+  rewrite mul1r //.
+  by rewrite -subr_gt0.
+Qed.
+
+
+Definition local_solution := repr (picard_local_sol ab k0 lip2 cont1 rho1).
+Definition ls_delta := Delta  f a b k u0 r rho.
+
+Lemma ls_delta_ab : ls_delta <= b-a.
+Proof. by rewrite /ls_delta/Delta ge_min lexx. Qed.
+
+Lemma solution_local_solution : is_sol_on f a (a + ls_delta) u0 local_solution.
+Proof.
+apply /(integral_sol_iff_sol (k:=k) (r:=r)) => //.
+by rewrite ltrDl Delta_gt0.
+move => t td.
+apply lip2.
+move : td.
+rewrite /=!in_itv/= => /andP [-> h] /=.
+apply (le_trans h).
+rewrite -lerBrDl.
+exact: ls_delta_ab.
+move =>  /= x xB  .
+apply /continuous_subspaceW/cont1=>//.
+apply: subset_itvl => //=.
+rewrite bnd_simp -lerBrDl.
+exact: ls_delta_ab.
+rewrite /local_solution.
+exact: cts_fun.
+move => _ [t tad] <-.
+by apply picard_lindelof_in_ball.
+by apply picard_lindeloef_integral_version.
+Qed.
+
+Lemma solution_stays_in_ball : {in `[a, (a + Delta f a b k u0 r rho)%E], forall t, closed_ball u0 r%:num (local_solution t)}.
+Proof.
+move => t.
+rewrite inE => tad.
+apply (picard_lindelof_in_ball  tad).
+Qed.
+
+Theorem picard_lindeloeff_local : exists sol delta, delta > 0 /\ is_sol_on f a (a+delta) u0 sol /\ {in `[a, a +delta], forall t, closed_ball u0 r%:num (sol t)}.
+Proof.
+exists (repr (picard_local_sol ab k0 lip2 cont1 rho1)).
+exists (Delta f a b k u0 r rho).
+split; first by apply Delta_gt0.
+split.
+exact: solution_local_solution.
+exact: solution_stays_in_ball.
+Qed.
+End picard_local.
+
+Section picard_autonomous.
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : U -> U)  (k : R) (u0 : U) (r : {posnum R}).
+Hypothesis k0 : 0 < k.
+Let B := closed_ball u0 r%:num.
+Hypothesis lip2 : k.-lipschitz_B f.
+Print is_sol_on.
+Definition is_sol_autonomous t0 t1 (phi : R -> U) := phi t0 = u0 /\ {in `]t0, t1[, forall x, derivable phi x 1 /\ phi^`() x = f (phi x)}.
+Definition ft (t : R) x := f x.
+
+Lemma ft_lip2 a b:  {in `[a, b]%R, forall x, k.-lipschitz_B (ft x)}.
+Proof.
+  move => x abx.
+  apply lip2.
+Qed.
+
+Lemma ft_cont1 a b : {in B, forall y, {within `[a, b], continuous ft ^~ y}}.
+Proof.
+  move => /= x Bx.
+  rewrite /ft.
+  apply: cst_continuous_subspace.
+Qed.
+
+Lemma autonomous_solution t0 t1 phi : is_sol_autonomous t0 t1 phi <-> is_sol_on ft t0 t1 u0 phi.
+Proof. by []. Qed.
+
+Theorem picard_lindeloeff_autonomous t0 : exists sol delta, delta > 0 /\ is_sol_autonomous t0 (t0+delta) sol /\ {in `[t0, t0 + delta], forall t, closed_ball u0 r%:num (sol t)}.
+Proof.
+  have t0d : (t0 < t0 + 1).
+    by rewrite -ltrBlDl subrr.
+  have [sol [d [d0 [solh solb]]]]:= (picard_lindeloeff_local t0d k0 (@ft_lip2 t0 (t0+1)) (@ft_cont1 t0 (t0+1))).
+  exists sol;exists d.
+  by [].
+Qed.
+End picard_autonomous.
