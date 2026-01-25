@@ -24,6 +24,23 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+From mathcomp Require Import cardinality.
+Section lemmas.
+Context {R : realType}.
+Local Notation mu := (@completed_lebesgue_measure R).
+
+Lemma is_subset1_countable (A : set R) : is_subset1 A -> countable A.
+Proof.
+move=> A1.
+have[->|] := eqVneq A set0.
+  done.
+move/set0P/is_subset1_set1/(_ A1) ->.
+exact: countable1.
+Qed.
+
+End lemmas.
+
+
 Section lemma6_direct.
 Context {R : realType}.
 Variables a b : R.
@@ -65,6 +82,7 @@ have compactH : compact (H @` Z).
 pose c : R := inf Z.
 pose d : R := sup Z.
 have perfectZ : perfect_set Z.
+  
   admit. (* wlog *)
 pose ab_ := contiguous_intervals Z.
 pose alpha := mu (H @` Z).
@@ -90,6 +108,57 @@ pose V := fine (total_variation c d f).
 have S_V_V (n : nat) : S_ n <= V_ n <= V.
   admit.
 have S_V : S_ n @[n --> \oo] --> V.
+  have cd : c < d.
+    apply: has_bound_not_subset1_inf_sup.
+    - by exists a => x /Zab/=; rewrite in_itv/= => /andP[].
+    - by exists b => x /Zab/=; rewrite in_itv/= => /andP[].
+    move=> Z1.
+    move: muHZ_gt0.
+    rewrite measure_gt0/= => /negP; apply; apply/eqP.
+    apply: countable_lebesgue_measure0.
+    apply: (@sub_countable _ _ _ Z).
+      exact: card_image_le.
+    exact: is_subset1_countable.
+
+  have ac : a <= c.
+    apply: lb_le_inf; last by move=> x /Zab /=; rewrite in_itv/= => /andP[].
+    apply/set0P/negP; move/eqP => Z0.
+    have := muHZ_gt0; apply/negP.
+    rewrite -leNgt le_eqVlt; apply/predU1P; left.
+    by rewrite Z0 image_set0 measure0.
+  have db : d <= b.
+    apply: ge_sup; last by move=> x /Zab /=; rewrite in_itv/= => /andP[].
+    apply/set0P/negP; move/eqP => Z0.
+    have := muHZ_gt0; apply/negP.
+    rewrite -leNgt le_eqVlt; apply/predU1P; left.
+    by rewrite Z0 image_set0 measure0.
+  have cdcf : {within `[c, d], continuous f}.
+    apply: continuous_subspaceW cf.
+    by apply: subset_itv; rewrite bnd_simp.
+  have cdbvf : bounded_variation c d f.
+    apply: (bounded_variationl (ltW cd) db).
+    apply: bounded_variationr ac _ bvf.
+    by apply: ltW; exact: (lt_le_trans cd).
+  have := lemma5 cd cdcf.
+  rewrite -(@fineK _ (total_variation c d f)) -/V; last first.
+    by apply/bounded_variationP => //; exact: ltW.
+  move/fine_cvgP => [fin_inf].
+  move/cvg_at_rightP.
+  move/(_ lambda).
+  have Hlambda : (forall n : nat, 0 < lambda n) /\ lambda n @[n --> \oo] --> 0.
+    split => // n.
+    admit.
+  move/(_ Hlambda); move{Hlambda} => Hl.
+  apply: squeeze_cvgr Hl (cvg_cst V).
+  near=> n.
+  apply/andP; split; last first.
+    rewrite /V/total_variation.
+    rewrite -lee_fin fineK; last by apply/bounded_variationP => //; exact: ltW.
+    apply: le_ereal_sup_tmp.
+    admit.
+  rewrite -lee_fin fineK; last first.
+    admit.
+  apply: ge_ereal_inf.
   admit.
 have V_V : V_ n @[n --> \oo]--> V.
   admit.
