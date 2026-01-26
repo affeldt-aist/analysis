@@ -1480,12 +1480,6 @@ Qed.
 
 End picard.
 
-Section ode_integral.
-
-
-
-
-End ode_integral.
 
 Lemma rowRintegral_itv_split
   {R : realType} (n : nat)
@@ -1698,16 +1692,42 @@ rewrite inE => tad.
 apply (picard_lindelof_in_ball  tad).
 Qed.
 
-Theorem picard_lindeloeff_local : exists sol delta, delta > 0 /\ is_sol_on f a (a+delta) u0 sol /\ {in `[a, a +delta], forall t, closed_ball u0 r%:num (sol t)}.
+Lemma solution_continuous : {within `[a, (a + Delta f a b k u0 r rho)%E], continuous local_solution}.
+Proof. exact: cts_fun. Qed.
+
+Theorem picard_lindeloeff_local : exists sol delta, delta > 0 /\ is_sol_on f a (a+delta) u0 sol /\ {in `[a, a +delta], forall t, closed_ball u0 r%:num (sol t)} /\ {within `[a, a + delta], continuous sol}.
 Proof.
 exists (repr (picard_local_sol ab k0 lip2 cont1 rho1)).
 exists (Delta f a b k u0 r rho).
 split; first by apply Delta_gt0.
-split.
+split; [| split].
 exact: solution_local_solution.
 exact: solution_stays_in_ball.
+exact: solution_continuous.
 Qed.
 End picard_local.
+
+Section solution_unique.
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : R -> U -> U) (a b : R) (k : R) (u0 : U) (r : {posnum R}) (sol sol' : R -> U).
+Hypothesis ab : a < b.
+Hypothesis k0 : 0 < k.
+Let B := closed_ball u0 r%:num.
+Hypothesis lip2 : {in `[a, b]%R, forall x : R, k.-lipschitz_B (f x)}.
+Hypothesis cont1 : {in B, forall y, {within `[a, b], continuous f ^~ y}}.
+Hypothesis cont_sol :  {within `[a, b], continuous sol}.
+Hypothesis cont_sol' :  {within `[a, b], continuous sol'}.
+
+
+Lemma solution_unique : is_sol_on f a b u0 sol -> is_sol_on f a b u0 sol' -> {in `[a,b], sol =1 sol'}.
+Proof.
+rewrite -!(integral_sol_iff_sol (r := r) (k:=k)) => //.
+move => h1 h2 t tab.
+have /=:= (picard_lindeloeff_unique lip2 cont1 rho1).
+Admitted.
+End solution_unique.
 
 Section picard_autonomous.
 Context {R : realType} {n : nat}.
@@ -1717,8 +1737,8 @@ Variables (f : U -> U)  (k : R) (u0 : U) (r : {posnum R}).
 Hypothesis k0 : 0 < k.
 Let B := closed_ball u0 r%:num.
 Hypothesis lip2 : k.-lipschitz_B f.
-Print is_sol_on.
-Definition is_sol_autonomous t0 t1 (phi : R -> U) := phi t0 = u0 /\ {in `]t0, t1[, forall x, derivable phi x 1 /\ phi^`() x = f (phi x)}.
+
+Definition is_sol_autonomous t0 t1 (sol : R -> U) := sol t0 = u0 /\ {in `]t0, t1[, forall x, derivable sol x 1 /\ sol^`() x = f (sol x)}.
 Definition ft (t : R) x := f x.
 
 Lemma ft_lip2 a b:  {in `[a, b]%R, forall x, k.-lipschitz_B (ft x)}.
@@ -1737,12 +1757,29 @@ Qed.
 Lemma autonomous_solution t0 t1 phi : is_sol_autonomous t0 t1 phi <-> is_sol_on ft t0 t1 u0 phi.
 Proof. by []. Qed.
 
-Theorem picard_lindeloeff_autonomous t0 : exists sol delta, delta > 0 /\ is_sol_autonomous t0 (t0+delta) sol /\ {in `[t0, t0 + delta], forall t, closed_ball u0 r%:num (sol t)}.
+Theorem picard_lindeloef_autonomous t0 : exists sol delta, delta > 0 /\ is_sol_autonomous t0 (t0+delta) sol /\ {in `[t0, t0 + delta], forall t, closed_ball u0 r%:num (sol t)} /\ {within `[t0,t0+delta], continuous sol}.
 Proof.
   have t0d : (t0 < t0 + 1).
     by rewrite -ltrBlDl subrr.
-  have [sol [d [d0 [solh solb]]]]:= (picard_lindeloeff_local t0d k0 (@ft_lip2 t0 (t0+1)) (@ft_cont1 t0 (t0+1))).
-  exists sol;exists d.
-  by [].
+  have [sol [d [d0 [solh [solb contb]]]]]:= (picard_lindeloeff_local t0d k0 (@ft_lip2 t0 (t0+1)) (@ft_cont1 t0 (t0+1))).
+  by exists sol;exists d;split.
 Qed.
+
 End picard_autonomous.
+
+Section locally_lipschitz.
+
+Context {R : realType} {n : nat}.
+Notation U := (@row_vector R n).
+
+Variables (f : U -> U) .
+
+Hypothesis locally_lipschitz : forall x, exists (r k : {posnum R}),  k%:num.-lipschitz_(closed_ball x r%:num) f.
+Theorem picard_lindeloeff_ll u0 t0 : exists sol delta r, delta > 0 /\ is_sol_autonomous f u0 t0 (t0+delta) sol /\ {in `[t0, t0 + delta], forall t, closed_ball u0 r (sol t)}.
+Proof.
+  have [/= r [k lip]]:= locally_lipschitz u0.
+  have  [| sol [Delta [Delta0 [solP [scont sb]]]]] := picard_lindeloef_autonomous  _ lip t0  => //.
+  by exists sol, Delta, r%:num.
+Qed.
+
+End locally_lipschitz.
