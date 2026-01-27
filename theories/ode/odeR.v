@@ -860,7 +860,7 @@ rewrite (@le_trans _ _ (\int[mu]_(x in `[a, y]) (k * `|F x - u0| + hmax)))//.
     apply: ub_le_sup => /=.
       have [M [Mb1 Mb2]] : bounded_set [set `|f t u0| | t in `[a,b]].
         apply/compact_bounded/continuous_compact; last exact: segment_compact.
-        apply within_continuous_comp_norm.
+        apply: within_continuous_comp_norm.
           by rewrite ltW.
         by apply cont1;rewrite inE;apply: closed_ballxx.
       exists (M + 1) => _ [x0 x0ab] <- /=.
