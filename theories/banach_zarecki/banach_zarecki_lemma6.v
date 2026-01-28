@@ -1,7 +1,7 @@
 From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
-From mathcomp Require Import ssrint interval archimedean.
+From mathcomp Require Import ssrint interval archimedean perm.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import reals constructive_ereal topology normedtype.
 From mathcomp Require Import ereal sequences.
@@ -38,8 +38,10 @@ move/set0P/is_subset1_set1/(_ A1) ->.
 exact: countable1.
 Qed.
 
-End lemmas.
+Lemma omega_max0 (a b : R) f : omega_max a b f [:: b] = oscillation f `[a, b].
+Proof. by rewrite/omega_max/= big_nat1. Qed.
 
+End lemmas.
 
 Section lemma6_direct.
 Context {R : realType}.
@@ -84,17 +86,79 @@ pose d : R := sup Z.
 have perfectZ : perfect_set Z.
   
   admit. (* wlog *)
-pose ab_ := contiguous_intervals Z.
+(* pose ab_ := contiguous_intervals Z. *)
+
+pose a_ n := fine (contiguous_intervals1 Z n).
+pose b_ n := fine (contiguous_intervals2 Z n).
+
+pose t_ab n := [tuple (contiguous_intervals Z i) | i < n].
+
+pose ta_ n := [tuple a_ i | i < n].
+pose tb_ n := [tuple b_ i | i < n].
+have aE n (i : 'I_ n) : a_ i = tnth (ta_ n) i.
+  admit.
+have bE n (i : 'I_ n) : b_ i = tnth (tb_ n) i.
+  admit.
+(* (9) *)
+have sum_osf_cvg0 :
+  \big[+%E/0%E]_(n <= j <oo) oscillation f `[a_ j, b_ j] @[n --> \oo] --> 0%E.
+  apply: nneseries_tail_cvg; last first.
+    move=> n _.
+    exact: oscillation_ge0.
+  apply: (@le_lt_trans _ _ (total_variation a b f)); last first.
+    rewrite -ge0_fin_numE; last exact: (total_variation_ge0 f (ltW ab)).
+    exact/(bounded_variationP f (ltW ab)).
+  rewrite /total_variation.
+  apply: lime_le.
+    apply: is_cvg_nneseries => n _ _.
+    exact: oscillation_ge0.
+  near=> n.
+  apply: le_ereal_sup_tmp.
+  have [sort_a sort_aE] : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
+         = [tuple tnth (ta_ n) (p i) | i < n].
+    apply/tuple_permP.
+    by rewrite perm_sort.
+  have tbE : sort <%R (tb_ n) = [tuple tnth (tb_ n) i | i < n].
+    apply: lt_sorted_eq.
+        admit.
+      admit.
+    admit.
+
+(*
+  have := @lemma5' _ _ _ _ ab cf bvf
+    (fine (\big[+%R/0%R]_(0 <= k < n) oscillation f `[(a_ k), (b_ k)])).
+*)
+  admit.
+suff HZ2_gt_osf : \forall n \near \oo, (mu [set H x | x in Z] / 2 <
+ \big[+%E/0%E]_(n <= j <oo) oscillation f `[a_ j, b_ j])%E. (* (8) *)
+  move: muHZ_gt0.
+  apply/negP.
+  rewrite -leNgt.
+  rewrite -(@pmule_lle0 _ 2%:E^-1); last by rewrite inve_gt0.
+  have/cvg_lim <- := sum_osf_cvg0; last by [].
+  have <- : (limn (fun n : nat => @cst nat _ (mu [set H x | x in Z] / 2)%E n)
+      = mu (H @` Z) / 2)%E.
+    apply/cvg_lim => //; exact: cvg_cst.
+  apply: lee_lim HZ2_gt_osf.
+  - exact: eventually_filter.
+  - exact: is_cvg_cst.
+  - by apply/cvg_ex; exists 0%E.
+(* ~ (8) *)
+near=> n.
+
+(* old sketch *)
+(*
+pose c_ (n : nat) (i : 'I_n.+1) :=
+  if nat_of_ord i == 0 then c else b_ i. (* left boundary of *)
+pose d_ (n : nat) (i : 'I_n.+1) :=
+  if i == @ord_max n then d else a_ i.
 pose alpha := mu (H @` Z).
 have alpha_ge0 : (alpha > 0)%E by [].
-pose c_ (n : nat) (i : 'I_n.+1) :=
-  if nat_of_ord i == 0 then c else fine (contiguous_intervals2 Z i).
-pose d_ (n : nat) (i : 'I_n.+1) :=
-  if i == @ord_max n then d else fine (contiguous_intervals1 Z i).
 pose lambda (n : nat) := \big[Num.max/0%R]_(i < n.+1) (d_ _ i - c_ _ i).
 have lambda_cvg0 : lambda n @[n --> \oo] --> 0.
   admit.
-have [x_ cdx_] : exists x_ : seq R, itv_partition c d x_ (* NB: p = size (c :: x_) *).
+have [x_ cdx_] : exists x_ : seq R, itv_partition c d x_ /\
+     (itv_partition_max c d x_ < lambda n) (* NB: p = size (c :: x_) *).
   admit.
 pose X_ := c :: x_.
 pose p := size X_.
@@ -108,6 +172,30 @@ pose V := fine (total_variation c d f).
 have S_V_V (n : nat) : S_ n <= V_ n <= V.
   admit.
 have S_V : S_ n @[n --> \oo] --> V.
+  apply/cvgrPdist_ltp.
+  near=> eps.
+  near=> n.
+  have/normr_idP -> : 0 <= V - S_ n.
+    admit.
+  rewrite ltrBlDr -ltrBlDl.
+  have -> : S_ n = variation c d f x_.
+    admit.
+  have cd : c < d.
+    admit.
+  have cdcf : {within `[c, d], continuous f}.
+   admit.
+  have cdbvf : bounded_variation c d f.
+    admit.
+  have veps0 : (0%:E < (V - eps)%:E < total_variation c d f)%E.
+    admit.
+  have := lemma5' cd cdcf cdbvf veps0.
+  move=> [l].
+  apply.
+    admit.
+  apply: (@lt_trans _ _ (lambda n)).
+    rewrite /itv_partition_max/lambda.
+    admit.
+
   have cd : c < d.
     apply: has_bound_not_subset1_inf_sup.
     - by exists a => x /Zab/=; rewrite in_itv/= => /andP[].
@@ -170,6 +258,7 @@ have H1 (n : nat) : V = \sum_(1 <= i < n.+1) `|H (d_ n (inord i)) - H (c_ n (ino
                                              (fine (contiguous_intervals2 Z i))
                                              f).
   admit.
+*)
 Admitted.
 
 End lemma6_direct.
