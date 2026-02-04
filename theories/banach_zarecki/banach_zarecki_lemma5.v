@@ -2140,7 +2140,7 @@ have [s0t0|t0s0] := ltP s0 t0.
     split.
       apply/andP; split.
         rewrite (lt_trans s0t0)//.
-        case: t0t1.
+        move: t0t1.
         move/order_path_min => /(_ lt_trans)/allP.
         by apply.
       have := abt x.
@@ -3106,7 +3106,7 @@ Qed.
 
 Definition variations_with_max a b f l : set R :=
    [set r| exists s, [/\ r = variation a b f s,
- itv_partition a b s & (itv_partition_max a b s <= l)%R]].
+ itv_partition a b s & (l <= itv_partition_max a b s)%R]].
 
 (*lemma5' :
   bounded_variation a b f ->
@@ -3115,12 +3115,82 @@ Definition variations_with_max a b f l : set R :=
        itv_partition_max a b p < l -> (* le? *)
               A < variation a b f p.*)
 
+Lemma variation_with_max0E :
+  variations_with_max a b f 0 =
+  variations a b f.
+Proof.
+rewrite eqEsubset; split => A; first by move=> [p [-> pabp _]]; exists p.
+move=> [p pabp <-]; exists p; split => //.
+
+apply/eqP; rewrite eq_le; apply/andP; split.
+rewrite /total_variation.
+apply: ereal_
+rewrite 
+
+rewrite /variations.
+
+Abort.
+
+Definition variations_with_restr a b f l : set R :=
+   [set r| exists s, [/\ r = variation a b f s,
+ itv_partition a b s & (l <= itv_partition_max a b s)%R]].
+
+Lemma variation_with_restr0E l : l <= 0 ->
+  variations_with_restr a b f l = variations a b f.
+Proof.
+move=> l0.
+rewrite eqEsubset; split => A; first by move=> [p [? ? _]]; exists p.
+move=> [p pabp vA].
+exists p; split => //.
+apply: (le_trans l0).
+exact: itv_partition_max0.
+Abort.
+
+Lemma lemma5_sup :
+  ereal_sup
+     [set v%:E | v in variations_with_restr a b f l] @[l --> 0^'+]
+     --> total_variation a b f.
+Proof.
+have -> : total_variation a b f =
+   ereal_sup [set v%:E | v in variations_with_restr a b f 0].
+  admit.
+apply: right_continuousW.
+move=> U.
+have := (@near_cst_continuous _ _ (total_variation a b f)
+  (fun l : R => ereal_sup [set v%:E | v in variations_with_restr a b f l]) 0).
+Abort.
+
+Lemma variations_with_max_restr :
+\forall l \near 0^'+,
+  (ereal_inf
+     [set v%:E | v in variations_with_max a b f l]
+  <= ereal_sup
+     [set v%:E | v in variations_with_restr a b f l])%E.
+Proof.
+near=> l.
+apply: le_ereal_sup_tmp.
+exists (total_variation a b f).
+Abort.
+
 Lemma lemma5 :
 (*  {within `[a, b], continuous f} ->*)
   ereal_inf
      [set v%:E | v in variations_with_max a b f l] @[l --> 0^'+]
        --> total_variation a b f.
 Proof.
+
+have -> : total_variation a b f
+    = ereal_inf [set v%:E | v in variations_with_max a b f 0].
+rewrite /total_variation.
+apply/eqP; rewrite eq_le; apply/andP; split; last first.
+
+have -> : variations_with_max a b f 0%R = variations a b f.
+
+  rewrite 
+
+cvg_einfs_sup.
+apply/cvgePdist.
+
 Admitted.
 
 End lemma5.
