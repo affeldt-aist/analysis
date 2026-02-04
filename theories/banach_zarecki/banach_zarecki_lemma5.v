@@ -2879,26 +2879,15 @@ exact: le_trans.
 Qed.
 
 Lemma lemma5' :
-  bounded_variation a b f ->
   forall A : R, (0%:E < A%:E < total_variation a b f)%E ->
     exists l, forall p, itv_partition a b p ->
        itv_partition_max a b p < l -> (* le? *)
               A < variation a b f p.
 Proof.
-move/(bounded_variationP f (ltW ab)) => bvf.
-move=> A /andP[]; rewrite lte_fin => A0.
-set Tf : \bar R := total_variation a b f.
-rewrite /Tf/total_variation.
-move=> ATf.
-have TfA0 : 0 < fine Tf - A.
-  by rewrite subr_gt0 -lte_fin fineK.
-have [eV' /= [V' [X' partX' X'V'] V'eV']] := ub_ereal_sup_adherent TfA0 bvf.
-rewrite -/(total_variation a b f) -/Tf.
-rewrite EFinN EFinB fineK//.
-rewrite oppeB; last first.
-  by rewrite fin_num_adde_defl.
-rewrite addeA subee// add0r.
-rewrite -{}V'eV' lte_fin => AV'.
+move=> A /andP[].
+rewrite lte_fin => A0.
+move/ereal_sup_gt => [_ /=[V' [X' partX' X'V'] <-]].
+rewrite lte_fin => AV'.
 have : @unif_continuous (subspace `[a, b]) R f.
   exact/compact_unif_continuousP.
 move/unif_continuousP => /=.
@@ -3106,7 +3095,7 @@ Qed.
 
 Definition variations_with_max a b f l : set R :=
    [set r| exists s, [/\ r = variation a b f s,
- itv_partition a b s & (l <= itv_partition_max a b s)%R]].
+ itv_partition a b s & (itv_partition_max a b s <= l)%R]].
 
 (*lemma5' :
   bounded_variation a b f ->
@@ -3124,11 +3113,6 @@ move=> [p pabp <-]; exists p; split => //.
 
 apply/eqP; rewrite eq_le; apply/andP; split.
 rewrite /total_variation.
-apply: ereal_
-rewrite 
-
-rewrite /variations.
-
 Abort.
 
 Definition variations_with_restr a b f l : set R :=
@@ -3179,17 +3163,12 @@ Lemma lemma5 :
        --> total_variation a b f.
 Proof.
 
+have := lemma5' bvf.
+
 have -> : total_variation a b f
     = ereal_inf [set v%:E | v in variations_with_max a b f 0].
-rewrite /total_variation.
-apply/eqP; rewrite eq_le; apply/andP; split; last first.
-
-have -> : variations_with_max a b f 0%R = variations a b f.
-
-  rewrite 
-
-cvg_einfs_sup.
-apply/cvgePdist.
+  rewrite /total_variation.
+  admit.
 
 Admitted.
 
