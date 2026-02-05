@@ -76,13 +76,17 @@ Section preliminary.
 Context {R : realType}.
 
 Lemma nth_map_iota (x : R) (n : nat) (f : nat -> R) (i : nat) :
+  (i < n)%N ->
   nth x [seq f k | k <- iota 0 n] i = f i.
 Proof.
-Admitted.
+by move=> iltn; rewrite (nth_map 0%N) ?nth_iota; last by rewrite size_iota.
+Qed.
 
 Lemma nth_cons_map_iota (x y : R) (n : nat) (f : nat -> R) (i : nat) :
-  nth x (y :: [seq f k | k <- iota 0 n]) i = if i == 0 then y else  f i.
+  (i < n.+1)%N ->
+  nth x (y :: [seq f k | k <- iota 0 n]) i = if i == 0 then y else f i.
 Proof.
+case: i => //.
 Admitted.
 
 Definition lambda_partition (a b : R) (lambda : R) :=
@@ -109,8 +113,6 @@ Qed.
 Lemma lambda_partition_div_width (a b l : R) (i : nat) :
   `|nth b (a :: (lp a b l)) i.+1 - nth b (a :: (lp a b l)) i| < l.
 Proof.
-rewrite 2!nth_cons_map_iota/=.
-case: i => //=[|i].
 Admitted.
 
 Lemma lambda_partition_partition (a b l : R) :
@@ -139,14 +141,6 @@ rewrite /itv_partition_max -bigmaxr_morph.
 apply: bigmax_lt => // n _.
 exact: lambda_partition_div_width.
 Qed.
-
-Lemma continuous_oscillationE (a b : R) (f : R -> R) :
-{within `[a, b], continuous f} ->
-exists s : R * R,
-  itv_partition a b [:: s.1; s.2; b] ->
-  `|f s.1 - f s.2|%:E = oscillation f `[a, b].
-Proof.
-Admitted.
 
 End preliminary.
 
@@ -270,42 +264,55 @@ Let cd_ := nth b (c :: merge_tab).
 Let c_ i := cd_ i.*2.
 Let d_ i := cd_ i.*2.+1.
 
+Lemma cd_default k : (n.*2 < k)%N -> cd_ k = b.
+Proof.
+move=> n2k.
+by rewrite /cd_ nth_default//= size_merge size_cat !size_sort !size_tuple addnn.
+Qed.
+
 Local Definition lambda : R := \big[maxr/0%R]_(i < n) `|d_ i - c_ i|%R.
 
 (* d @[n --> \oo] --> b ? *)
 (* forall i, `]c_ i, d_ i[ `<=` Z ? *)
 
+Lemma itv_partition_max_splitl : forall (s t : seq R) (l : R), sorted <%R s -> sorted <%R t ->
+    disj_seq s t ->
+    (forall n, (n < size s)%N ->
+ itv_partition_max (nth d s n) (nth d s n.+1)
+    (rcons [seq x <- t | x \in `[(nth b s n), (nth b s n.+1)[]
+                                          (nth d s n.+1)) <= l)->
+    itv_partition_max c d (merge <%R s t) <= l.
+Proof.
+Admitted.
+
 Lemma construct_x :
-  exists x : seq R, [/\ itv_partition a b x,
-   (itv_partition_max a b x <= lambda),
+  exists x : seq R, [/\ itv_partition c d x,
+   (itv_partition_max c d x <= lambda),
    (forall i, (i < n.*2)%N -> a_ i \in x),
    (forall i, (i < n.*2)%N -> b_ i \in x) &
    (forall i, nth b x i \notin (interior Z : set R))
             (* \bigcup_(i < n) `]c_ i, d_ i[ ? *)].
 Proof.
 exists (merge <%R [seq cd_ i | i <- iota 0 n.*2]
-   [seq x <- lambda_partition a b lambda |
+   [seq x <- lambda_partition c d lambda |
          x \notin \bigcup_(i < n) `[c_ i, d_ i]%classic]).
 split.
 - admit.
 - (* lemma? *)
-  have : forall (s t : seq R) (l : R), sorted <%R s -> sorted <%R t ->
-    disj_seq s t ->
-    itv_partition_max a b s <= l ->
-    (forall n, (n < size s)%N ->
-      itv_partition_max (nth b s n) (nth b s n.+1)
-         [seq x <- t | x \in `[(nth b s n), (nth b s n.+1)]] <= l) ->
-    itv_partition_max a b (merge <%R s t) <= l.
-    admit.
-  apply => //.
-  + admit.
+  apply: itv_partition_max_splitl.
   + admit.
   + admit.
   + admit.
   + move=> k.
-    rewrite size_map size_iota => kn.
-    rewrite !nth_map_iota.
-    apply: (le_trans (@itv_partition_max_mem_filter _ a b _ _ _ _ _)).
+(*    rewrite size_map size_iota => kn.
+    have [k12n|] := eqVneq k.+1 n.*2.
+      rewrite nth_map_iota//.
+        rewrite ![nth _ _ k.+1]nth_default ?size_map ?size_iota -?k12n//.
+        rewrite /cd_ (pred_Sn k) k12n.
+        have -> : n.*2 = size merge_tab.
+          by rewrite /= size_merge size_cat 2!size_tuple addnn.
+    rewrite !nth_map_iota//; last first.
+      admit.
     * admit.
     * admit.
     apply: (le_trans (itv_partition_max_filter _ _ _ _)).
@@ -323,10 +330,11 @@ split.
       move/(_ 0 1).
       rewrite !inE size_map size_iota/=.
       rewrite -[X in (X < n.*2)%N]double0 ltn_double.
-      have := (ltn_Sdouble 0%N n).
-      rewrite double0 => ->.
+      rewrite -{1}(add0n 1) addn1 -{2}double0 ltn_Sdouble.
       move/(_ n0 n0 (leqnn 0)).
-      by rewrite 2!nth_map_iota.
+      rewrite 2?nth_map_iota//.
+        by rewrite -(add0n 1) addn1/= -double0 ltn_Sdouble.
+      by rewrite double_gt0.
     apply: (@homo_sorted_in _ _ (fun k => (k < n.*2)%N) _ ltn); last 2 first.
     * by apply/allP => p; rewrite mem_iota => /andP[].
     * exact: iota_ltn_sorted.
@@ -340,6 +348,8 @@ split.
       by rewrite -muln2 mulnS muln1; move/leq_trans; apply.
     * move: m12n.
       by rewrite -muln2 mulnS muln1; move/leq_trans; apply.
+  *)
+  admit.
 - move=> k.
   move=> k2n.
   rewrite mem_merge mem_cat; apply/orP; left.
@@ -364,9 +374,9 @@ Let x := fun n => sval (cid (@construct_x n)).
 
 Local Notation p n := (size (x n)).
 
-Let pabx n : itv_partition a b (x n).
+Let pcdx n : itv_partition c d (x n).
 Proof. by have [] := proj2_sig (cid (@construct_x n)). Qed.
-Let max_x n : itv_partition_max a b (x n) <= (lambda n).
+Let max_x n : itv_partition_max c d (x n) <= (lambda n).
 Proof. by have [] := proj2_sig (cid (construct_x n)). Qed.
 Let ax n i (_ : (i < n.*2)%N) : a_ i \in (x n).
 Proof. by have [_ _ + _ _] := proj2_sig (cid (@construct_x n)); apply. Qed.
@@ -378,6 +388,8 @@ Proof. by have [] := proj2_sig (cid (@construct_x n)). Qed.
 Let S_ n : R := variation c d f (x n).
 
 Let V_ n : R :=
+  
+
 `|f (a_ 0) - c| + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)| + `|f d - f (b_ n)|
     + \sum_(i < n) (fine (total_variation (a_ i) (b_ i) f)).
 
@@ -429,11 +441,22 @@ apply/andP; split; last first.
   rewrite /Vcd/total_variation.
   rewrite -lee_fin fineK; last by apply/bounded_variationP => //; exact: ltW.
   apply: le_ereal_sup_tmp.
-  admit.
+  exists (S_ n)%:E => //.
+  exists (S_ n) => //.
+  by exists (x n).
 rewrite -lee_fin fineK; last first.
+  have := fin_inf.
+  move=> [l /= l0].
+  apply => //=.
+  rewrite sub0r normrN ger0_norm; last first.
+    exact/ltW/lambda_gt0.
+  move: l l0; near: n.
   admit.
+  exact: lambda_gt0.
 apply: ge_ereal_inf.
-  admit.
+exists (S_ n)%:E => //.
+exists (S_ n) => //.
+by exists (x n); split.
 Unshelve. end_near. Admitted.
 
 Lemma Voo_tv : V_ n @[n --> \oo] --> Vcd.
@@ -471,7 +494,9 @@ apply: le_ereal_sup_tmp.
 have subab_cf k :
    {within `[nth b (sort_ta n) k, nth b (sort_tb n) k], continuous f}.
   admit.
-have := fun k => continuous_oscillationE (subab_cf k).
+have ltcd k : (nth b (sort_ta n) k) < (nth b (sort_tb n) k).
+  admit.
+have := fun k => continuous_oscillationE (ltcd k) (subab_cf k).
 move/choice => [osc_pts Hosc_pts].
 pose osc_seq := \big[cat/[::]]_(i < n) [:: (osc_pts i).1; (osc_pts i).2].
 have pab_osc_seq : itv_partition a b (rcons osc_seq b).
