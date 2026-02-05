@@ -1140,23 +1140,107 @@ Context {R : realType}.
 Implicit Types (a b : R) (f : R -> R).
 Implicit Types (s : seq R) (x : R).
 
+Lemma itvcc_max_sup a b f : a <= b ->
+  {within `[a, b], continuous f} ->
+  forall c, c \in `[a, b] ->
+   (f c = sup (f @` `[a, b]) <-> (forall x, x \in `[a, b] -> f x <= f c)).
+Proof.
+move=> ab cf c cab; split => H.
+- have [d dab dmax] := EVT_max ab cf.
+  move=> x /dmax.
+  move/le_trans; apply.
+  rewrite H.
+  apply: ub_le_sup; last by exists d.
+  exists (f d) => _/=[y yab <-].
+  exact: dmax.
+- apply/eqP; rewrite eq_le; apply/andP; split.
+    apply: ub_le_sup => //.
+    by exists (f c) => _/=[? ? <-]; exact: H.
+  apply: ge_sup; first by exists (f c).
+  move=> _/=[? ? <-]; exact: H.
+Qed.
+
+Lemma continuous_oscillationE (a b : R) (f : R -> R) :
+a < b ->
+{within `[a, b], continuous f} ->
+exists s : R * R,
+  [/\ s.1 != s.2,
+  s.1 \in `[a, b], s.2 \in `[a, b],
+  (forall t, t \in `[a, b] -> f s.2 <= f t <= f s.1) &
+  `|f s.1 - f s.2|%:E = oscillation f `[a, b]].
+Proof.
+move=> ab cf.
+have [d' dab maxd] := EVT_max (ltW ab) cf.
+have [e' eab mine] := EVT_min (ltW ab) cf.
+have fcst : (f d' = f e') = {in `[a, b], f =1 cst (f a)}.
+  apply/propext; split.
+  - move=> fdfe x xab.
+    apply/eqP; rewrite eq_le; apply/andP; split.
+      apply: (le_trans (maxd x xab)).
+      rewrite fdfe; apply: mine.
+      by rewrite boundl_in_itv bnd_simp/= ltW.
+    apply: (le_trans _ (mine x xab)).
+    rewrite -fdfe; apply: maxd.
+    by rewrite boundl_in_itv bnd_simp/= ltW.
+  by move=> H; rewrite H//; apply/esym; rewrite H.
+(*
+pose e := if f d' == f e' then (a + 2 * b) / 3 else e'.
+pose d := if f d' == f e' then (2 * a + b) / 3 else d'.
+*)
+pose e := if f d' == f e' then a else e'.
+pose d := if f d' == f e' then b else d'.
+
+have neq_ed : d != e.
+  rewrite /e/d; case: ifPn => [_|H].
+    by rewrite neq_lt; apply/orP; right.
+(* by right; rewrite ltr_pM2r// 2!mulr_natl 2!mulr2n -addrA [ltRHS]addrCA ltrD2r. *)
+  apply/negP; move/eqP => ed.
+  have := fcst.
+  rewrite propeqE => -[_ /contra_not]; apply.
+    exact/eqP.
+  by rewrite -fcst ed.
+exists (d, e); split => //=.
+- move: dab; rewrite in_itv/= => /andP[ae eb].
+  by rewrite /d in_itv/=; apply/andP; split; case: ifP => //; rewrite ltW.
+- move: eab; rewrite in_itv/= => /andP[ae eb].
+  by rewrite /e in_itv/=; apply/andP; split; case: ifP => //; rewrite ltW.
+- move=> t tab.
+  apply/andP; split; rewrite /d/e; case: ifP => [|_].
+  + move/eqP; rewrite fcst => H.
+    rewrite H; last by rewrite boundl_in_itv/= bnd_simp ltW.
+    by rewrite [leRHS]H.
+  + exact: mine.
+  + move/eqP; rewrite fcst => H.
+    rewrite [leRHS]H; last by rewrite boundr_in_itv/= bnd_simp ltW.
+    by rewrite H.
+  + exact: maxd.
+- rewrite /oscillation ifN; last first.
+  by apply/neitvP => /=; rewrite bnd_simp ltW.
+- 
+Admitted.
+
+Lemma oscillation_set1 a f : oscillation f [set a] = 0.
+Proof.
+rewrite /oscillation ifF; last first.
+  by apply/negP/negP/set0P; exists a.
+by rewrite !image_set1 ereal_sup1 ereal_inf1 subee.
+Qed.
+
 Lemma variation_oscillation a b c1 c2 f :
   {within `[a, b], continuous f} -> c1 \in `[a, b] -> c2 \in `[a, b] ->
-  (`|f c1 - f c2|%:E <=
-   ereal_sup [set (EFin \o f) x | x in `[a, b]] -
+  (`|f c1 - f c2|%:E <= oscillation f `[a, b])%E.
+(*   ereal_sup [set (EFin \o f) x | x in `[a, b]] -
    ereal_inf [set (EFin \o f) x | x in `[a, b]])%E.
+*)
 Proof.
 have [ab|] := ltP a b; last first.
  rewrite le_eqVlt => /predU1P[-> cf|ba _].
    rewrite !in_itv/= -!eq_le => /eqP <- /eqP <-.
-   rewrite subrr normr0 sube_ge0.
-     rewrite ereal_inf_sup//; exists (f a)%:E => /=; exists a => //.
-     by rewrite bound_itvE.
-   apply/orP; left.
-   by rewrite set_itv1 image_set1 ereal_inf1.
+   by rewrite set_itvE oscillation_set1 subrr normr0.
   rewrite in_itv/= => /andP[/le_trans] /[apply].
   by rewrite leNgt ba.
 move=> cf c1ab c2ab.
+rewrite /oscillation.
 have [d dab maxd] := EVT_max (ltW ab) cf.
 have [e eab mine] := EVT_min (ltW ab) cf.
 rewrite (@le_trans _ _ (f d - f e)%:E)//.
@@ -1166,6 +1250,8 @@ rewrite (@le_trans _ _ (f d - f e)%:E)//.
   rewrite ltr0_norm ?subr_lt0// lee_fin opprB lerB//.
     by rewrite maxd.
   by rewrite mine.
+rewrite ifN; last first.
+  by apply/neitvP; rewrite bnd_simp ltW.
 rewrite EFinB leeB//.
   apply: le_ereal_sup_tmp.
   by exists (f d)%:E => //=; exists d.
@@ -1450,13 +1536,8 @@ rewrite leeD//.
 rewrite mule_natl.
 rewrite mule2n.
 rewrite EFinD.
-have xkxk10 : `[x_k, x_k1]%classic != set0.
-  apply/set0P; exists x => /=.
-  by rewrite in_itv/= (ltW xkx) (ltW xxk1).
 rewrite leeD//.
   rewrite /variation/= big_nat_recr//= big_nil add0r.
-  rewrite /oscillation.
-  rewrite (negbTE xkxk10).
   apply: (@variation_oscillation _ _ _ _ f).
   apply: continuous_subspaceW cf.
   apply: subset_itv; rewrite bnd_simp//.
@@ -1464,8 +1545,6 @@ rewrite leeD//.
   by rewrite in_itv/= (ltW xkx) (ltW xxk1).
   by rewrite in_itv/= lexx (ltW (lt_trans xkx _)).
 rewrite /variation/= big_nat_recr//= big_nil add0r.
-rewrite /oscillation.
-rewrite (negbTE xkxk10).
 apply: (@variation_oscillation _ _ _ _ f).
 apply: continuous_subspaceW cf.
 apply: subset_itv; rewrite bnd_simp//.
@@ -3162,9 +3241,8 @@ Lemma lemma5 :
      [set v%:E | v in variations_with_max a b f l] @[l --> 0^'+]
        --> total_variation a b f.
 Proof.
-
-have := lemma5' bvf.
-
+have [tvfoo|] := eqVneq (total_variation a b f) +oo%E.
+  admit.
 have -> : total_variation a b f
     = ereal_inf [set v%:E | v in variations_with_max a b f 0].
   rewrite /total_variation.
