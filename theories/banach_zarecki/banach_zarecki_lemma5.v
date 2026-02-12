@@ -1160,6 +1160,13 @@ move=> ab cf c cab; split => H.
   move=> _/=[? ? <-]; exact: H.
 Qed.
 
+Lemma itvcc_min_inf a b f : a <= b ->
+  {within `[a, b], continuous f} ->
+  forall c, c \in `[a, b] ->
+   (f c = inf (f @` `[a, b]) <-> (forall x, x \in `[a, b] -> f c <= f x)).
+Proof.
+Admitted.
+
 Lemma continuous_oscillationE (a b : R) (f : R -> R) :
 a < b ->
 {within `[a, b], continuous f} ->
@@ -2959,8 +2966,8 @@ Qed.
 
 Lemma lemma5' :
   forall A : R, (0%:E < A%:E < total_variation a b f)%E ->
-    exists l, forall p, itv_partition a b p ->
-       itv_partition_max a b p < l -> (* le? *)
+    exists delta, forall p, itv_partition a b p ->
+       itv_partition_max a b p < delta -> (* le? *)
               A < variation a b f p.
 Proof.
 move=> A /andP[].
@@ -3235,6 +3242,57 @@ apply: le_ereal_sup_tmp.
 exists (total_variation a b f).
 Abort.
 
+Lemma lemma5 (l : nat -> R) (x_ : nat -> seq R) :
+  (forall n, itv_partition a b (x_ n)) ->
+  (forall n, itv_partition_max a b (x_ n) < l n) ->
+  {homo l : n m / (n <= m)%N >-> (m <= n)} ->
+  l i @[i --> \oo] --> 0 ->
+  (variation a b f (x_ n))%:E @[n --> \oo] --> total_variation a b f.
+Proof.
+move=> pabx xl ninl lcvg0.
+have vletv n : ((variation a b f (x_ n))%:E <= total_variation a b f)%E.
+  apply: le_ereal_sup_tmp.
+  exists (variation a b f (x_ n))%:E=> //; exists (variation a b f (x_ n))=> //.
+  by exists (x_ n).
+have := total_variation_ge0 f (ltW ab).
+rewrite le_eqVlt => /predU1P[tvf0|tvfgt0].
+  apply: cvg_near_cst; apply: nearW => n.
+  apply/eqP; rewrite eq_le; apply/andP; split => //.
+  by rewrite -tvf0; exact: variation_ge0.
+have [tvfoo|] := eqVneq (total_variation a b f) +oo%E.
+  rewrite tvfoo.
+  move=> /= U.
+  rewrite /nbhs/= => -[A [_ HA]].
+  have [A0|A0] := leP A 0.
+    exists 0%N => // k/= => _; apply: HA.
+    rewrite -lee_fin in A0.
+    apply: (le_lt_trans A0).
+    
+    admit.
+    
+    (* exact: variation_gt0. *) admit.
+rewrite -ltey.
+move=> tvfltey.
+have tvf_fin : total_variation a b f \is a fin_num.
+  rewrite ge0_fin_numE => //.
+  exact: (total_variation_ge0 _ (ltW ab)).
+rewrite -(@fineK _ (total_variation a b f)) => //.
+apply/fine_cvgP.
+split => //.
+  exact: nearW.
+apply/cvgrPdist_ltp.
+near=> e; near=> n.
+
+rewrite ger0_norm; last by rewrite subr_ge0 -lee_fin !fineK//.
+rewrite ltrBlDl -ltrBlDr.
+have : (0%:E < (fine (total_variation a b f) - e)%:E < total_variation a b f)%E.
+  apply/andP; split; rewrite ?lte_fin.
+    rewrite subr_gt0; near: e.
+    apply: nbhs_right_lt.
+  admit.
+move/lemma5' => [A].
+Admitted.
+
 Lemma lemma5 :
 (*  {within `[a, b], continuous f} ->*)
   ereal_inf
@@ -3242,6 +3300,9 @@ Lemma lemma5 :
        --> total_variation a b f.
 Proof.
 have [tvfoo|] := eqVneq (total_variation a b f) +oo%E.
+  rewrite tvfoo.
+  
+  apply/cvgeryP.
   admit.
 have -> : total_variation a b f
     = ereal_inf [set v%:E | v in variations_with_max a b f 0].
