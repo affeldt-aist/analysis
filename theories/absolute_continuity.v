@@ -565,8 +565,9 @@ Qed.
 
 End move_to_realfun.
 
+(* TODO: PR ここから *)
 (* TODO: generalize for PR? *)
-Section closure_neitv.
+Section closure_neitv_real.
 Context {R : realType}.
 Implicit Type a b : R.
 
@@ -631,7 +632,7 @@ case: x; case: y.
 - exact: closure_neitv_oc.
 Qed.
 
-End closure_neitv.
+End closure_neitv_real.
 
 Section subset_neitv.
 Context {R : realType}.
@@ -650,6 +651,7 @@ by rewrite closure_neitv_oo.
 Qed.
 
 End subset_neitv.
+(* TODO: PR ここまで *)
 
 Section measurable_squeeze.
 Context {R : realType}.
