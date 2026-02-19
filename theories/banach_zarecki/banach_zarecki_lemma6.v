@@ -424,7 +424,7 @@ have cdbvf : bounded_variation c d f.
   apply: (bounded_variationl (ltW cd) db).
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
-have := lemma5 cd cdcf.
+have := lemma5_cvg_style cd cdcf.
 rewrite -{1}(@fineK _ (total_variation c d f)); last first.
   by apply/bounded_variationP => //; exact: ltW.
 move/fine_cvgP => [fin_inf].
@@ -490,9 +490,24 @@ apply: lime_le.
   exact: oscillation_ge0.
 apply: nearW => n.
 apply: le_ereal_sup_tmp.
-
+have aa i : a <= a_ i.
+  have : bounded_set Z.
+    rewrite Rbounded_setE; split.
+    - by exists a => r /Zab/=; rewrite in_itv/= => /andP[].
+    - by exists b => r /Zab/=; rewrite in_itv/= => /andP[].
+  rewrite Rbounded_setE => -[lbZ ubZ].
+  have := @contiguous_intervalsS _ Z i.
+  move/(image_subset EFin).
+  rewrite (contiguous_ooitv ubZ lbZ i).
+  move/closure_subset.
+  rewrite closure_neitv_oo.
+  move/cplt_hull_subset_Rhull.
+  rewrite contiguous_ooitv.
 have subab_cf k :
    {within `[nth b (sort_ta n) k, nth b (sort_tb n) k], continuous f}.
+  apply: continuous_subspaceW cf.
+  apply: subset_itv; rewrite bnd_simp.
+  apply: contiguous_interval1
   admit.
 have ltcd k : (nth b (sort_ta n) k) < (nth b (sort_tb n) k).
   admit.
