@@ -567,8 +567,22 @@ End move_to_realfun.
 
 (* TODO: PR ここから *)
 (* TODO: generalize for PR? *)
+
+Section closure_neitv_ereal.
+Context {R : realFieldType}.
+Implicit Types a b : \bar R.
+Local Open Scope ereal_scope.
+
+(* maybe PR#1848 *)
+Lemma closure_neitv_oo a b : a < b ->
+  closure `]a, b[%classic = `[a, b]%classic.
+Proof.
+Admitted.
+
+End
+
 Section closure_neitv_real.
-Context {R : realType}.
+Context {R : numDomainType}.
 Implicit Type a b : R.
 
 Lemma closure_neitv_oo a b : a < b ->
@@ -621,7 +635,7 @@ symmetry; apply/closure_id; rewrite -closure_neitv_oo//.
 exact: closed_closure.
 Qed.
 
-Lemma closure_neitv a b (x y : bool) : a < b ->
+Lemma closure_neitv_bnd a b (x y : bool) : a < b ->
   closure [set` (Interval (BSide x a) (BSide y b))] = `[a, b]%classic.
 Proof.
 move=> ab.
@@ -631,6 +645,41 @@ case: x; case: y.
 - exact: closure_neitv_oo.
 - exact: closure_neitv_oc.
 Qed.
+
+Lemma closure_neitv_rray (a : R) :
+  closure `]a, +oo[%classic = `[a, +oo[%classic.
+Proof.
+set x := a + 1.
+have -> : (`]a, +oo[ = `]a, x[ `|` `[x, +oo[)%classic.
+  by apply: itv_bndbnd_setU => //; rewrite bnd_simp ltrDl.
+rewrite closureU -((closure_id _).1 (@rray_closed _ _ _)).
+rewrite closure_neitv_oo; last by rewrite ltrDl.
+rewrite -setUitv1 ?bnd_simp; last by rewrite lerDl.
+rewrite -setUA [[set x] `|` _]setUidr; last first.
+  by rewrite -set_itv1; apply: subset_itvl.
+apply/esym.
+by apply: itv_bndbnd_setU => //; rewrite bnd_simp lerDl.
+Qed.
+
+Lemma closure_neitv_lray (a : R) :
+  closure `]-oo, a[%classic = `]-oo, a]%classic.
+Proof.
+set x := a - 1.
+have -> : (`]-oo, a[ = `]-oo, x] `|` `]x, a[)%classic.
+  by apply: itv_bndbnd_setU => //; rewrite bnd_simp gtrBl.
+rewrite closureU -((closure_id _).1 (@lray_closed _ _ _)).
+rewrite closure_neitv_oo; last by rewrite gtrBl.
+rewrite -setU1itv ?bnd_simp//; last by rewrite gerBl.
+rewrite setUA [_ `|` [set x]]setUidl; last first.
+  by rewrite -set_itv1; apply: subset_itvr.
+apply/esym.
+by apply: itv_bndbnd_setU => //; rewrite bnd_simp gerBl.
+Qed.
+
+(*
+Lemma closure_neitv (i : interval R) :
+  closure [set` i] = (* ? *)
+*)
 
 End closure_neitv_real.
 
