@@ -574,15 +574,15 @@ Implicit Types a b : \bar R.
 Local Open Scope ereal_scope.
 
 (* maybe PR#1848 *)
-Lemma closure_neitv_oo a b : a < b ->
+Lemma closure_eneitv_oo a b : a < b ->
   closure `]a, b[%classic = `[a, b]%classic.
 Proof.
 Admitted.
 
-End
+End closure_neitv_ereal.
 
 Section closure_neitv_real.
-Context {R : numDomainType}.
+Context {R : realType}.
 Implicit Type a b : R.
 
 Lemma closure_neitv_oo a b : a < b ->
