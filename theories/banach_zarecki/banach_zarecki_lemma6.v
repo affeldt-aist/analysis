@@ -436,6 +436,8 @@ have Hlambda : (forall n : nat, 0 < lambda n) /\ lambda n @[n --> \oo] --> 0.
   exact: lambda_gt0.
 move/(_ Hlambda); move{Hlambda} => Hl.
 apply: squeeze_cvgr _ Hl (cvg_cst Vcd).
+have := fin_inf.
+move=> [l /= l0 Hl].
 near=> n.
 apply/andP; split; last first.
   rewrite /Vcd/total_variation.
@@ -445,12 +447,40 @@ apply/andP; split; last first.
   exists (S_ n) => //.
   by exists (x n).
 rewrite -lee_fin fineK; last first.
-  have := fin_inf.
-  move=> [l /= l0].
-  apply => //=.
+  apply: Hl => //=; last first.
+    rewrite /lambda/=.
+    apply/bigmax_gtP.
+    right => /=.
+    have n0 : (0 < n)%N.
+      near: n.
+      exact: nbhs_infty_gt.
+    exists (Ordinal n0) => //.
+    rewrite normr_gt0.
+    
   rewrite sub0r normrN ger0_norm; last first.
     exact/ltW/lambda_gt0.
+  near: n.
+  have := cvg_lambda0.
+  move/(_ (ball 0 l)) => /=.
+  move/(_ (nbhsx_ballx 0 _ l0)) => H.
+  move: H.
+  move=> [m _ Hm].
+  near=> n.
+  have := Hm n.
+  have mn : (m <= n)%N.
+    near: n.
+    exact: nbhs_infty_ge.
+  move/(_ mn) => /=.
+  rewrite /ball/=.
+  rewrite sub0r normrN ger0_norm//.
+  exact/ltW/lambda_gt0.
+
+  have := lt_nbhsl_lt l0.
+  move=> [r /= r0]; apply => /=.
   move: l l0; near: n.
+  apply: lt_nbhsl_lt.
+
+  have := cvg_lambda0.
   admit.
   exact: lambda_gt0.
 apply: ge_ereal_inf.
