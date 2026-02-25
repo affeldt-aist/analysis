@@ -3367,12 +3367,10 @@ have [|] := eqVneq (total_variation a b f) +oo%E.
     by rewrite lee_fin tvfoo ltry andbT.
   move/lemma5' => /=[l l0 Hl].
   exists l => // x/=.
-apply/cvgrPdist_lt.
-have := lemma5.
-
+  admit.
 
 (* from old lemma6 proof *)
-
+(*
 rewrite -{1}(@fineK _ (total_variation a b f)); last first.
   by apply/bounded_variationP => //; exact: ltW.
 move/fine_cvgP => [fin_inf].
@@ -3416,7 +3414,7 @@ have -> : total_variation a b f
     = ereal_inf [set v%:E | v in variations_with_max a b f 0].
   rewrite /total_variation.
   admit.
-
+*)
 Admitted.
 
 End lemma5.
