@@ -448,15 +448,19 @@ apply/andP; split; last first.
   by exists (x n).
 rewrite -lee_fin fineK; last first.
   apply: Hl => //=; last first.
-    rewrite /lambda/=.
+    rewrite /lambda.
     apply/bigmax_gtP.
-    right => /=.
+    right.
     have n0 : (0 < n)%N.
       near: n.
       exact: nbhs_infty_gt.
     exists (Ordinal n0) => //.
     rewrite normr_gt0.
-    
+    rewrite lt0r_neq0// subr_gt0.
+    have := sorted_merge_tab n.
+    move=> /(pathP b).
+    apply.
+    by rewrite size_merge size_cat !size_tuple/= addnn ltn_double.
   rewrite sub0r normrN ger0_norm; last first.
     exact/ltW/lambda_gt0.
   near: n.
@@ -474,20 +478,11 @@ rewrite -lee_fin fineK; last first.
   rewrite /ball/=.
   rewrite sub0r normrN ger0_norm//.
   exact/ltW/lambda_gt0.
-
-  have := lt_nbhsl_lt l0.
-  move=> [r /= r0]; apply => /=.
-  move: l l0; near: n.
-  apply: lt_nbhsl_lt.
-
-  have := cvg_lambda0.
-  admit.
-  exact: lambda_gt0.
 apply: ge_ereal_inf.
 exists (S_ n)%:E => //.
 exists (S_ n) => //.
 by exists (x n); split.
-Unshelve. end_near. Admitted.
+Unshelve. all: end_near. Qed.
 
 Lemma Voo_tv : V_ n @[n --> \oo] --> Vcd.
 Proof.
@@ -530,14 +525,17 @@ have aa i : a <= a_ i.
   move/(image_subset EFin).
   rewrite (contiguous_ooitv ubZ lbZ i).
   move/closure_subset.
-  rewrite closure_neitv_oo.
-  move/cplt_hull_subset_Rhull.
-  rewrite contiguous_ooitv.
+  (* rewrite closure_neitv_oo. *)
+  have -> :
+   (closure `](contiguous_intervals1 Z i), (contiguous_intervals2 Z i)[ =
+   `[(contiguous_intervals1 Z i), (contiguous_intervals2 Z i)])%classic.
+    admit.
+  (* rewrite contiguous_ooitv. *) admit.
 have subab_cf k :
    {within `[nth b (sort_ta n) k, nth b (sort_tb n) k], continuous f}.
   apply: continuous_subspaceW cf.
   apply: subset_itv; rewrite bnd_simp.
-  apply: contiguous_interval1
+    admit.
   admit.
 have ltcd k : (nth b (sort_ta n) k) < (nth b (sort_tb n) k).
   admit.
