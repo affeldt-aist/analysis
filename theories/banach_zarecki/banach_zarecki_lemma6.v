@@ -424,6 +424,47 @@ have cdbvf : bounded_variation c d f.
   apply: (bounded_variationl (ltW cd) db).
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
+have := lemma5 cd cdcf pcdx max_x cvg_lambda0.
+rewrite /total_variation ereal_sup_EFin; last 2 first.
+- exists (fine (total_variation a b f)).
+  move=> _ [s ps <-].
+  rewrite -lee_fin fineK; last first.
+    apply/bounded_variationP => //.
+    exact: ltW.
+  apply: (le_trans (variation_le_total_variation _ _)) => //.
+  rewrite (total_variationD f ac); last first.
+    apply: le_trans db.
+    exact: ltW.
+  rewrite (total_variationD f _ db); last exact: ltW.
+  by rewrite addeCA leeDl ?adde_ge0 ?total_variation_ge0.
+- exists (variation c d f [:: d]).
+  apply: variations_variation.
+  exact: itv_partition1.
+move/fine_cvg => /=.
+exact.
+Qed.
+
+(* prove by lemma5_cvg_style *)
+(*
+have ac : a <= c.
+  apply: lb_le_inf; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
+  apply/set0P/negP; move/eqP => Z0.
+  have := muHZ_gt0; apply/negP.
+  rewrite -leNgt le_eqVlt; apply/predU1P; left.
+  by rewrite Z0 image_set0 measure0.
+have db : d <= b.
+  apply: ge_sup; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
+  apply/set0P/negP; move/eqP => Z0.
+  have := muHZ_gt0; apply/negP.
+  rewrite -leNgt le_eqVlt; apply/predU1P; left.
+  by rewrite Z0 image_set0 measure0.
+have cdcf : {within `[c, d], continuous f}.
+  apply: continuous_subspaceW cf.
+  by apply: subset_itv; rewrite bnd_simp.
+have cdbvf : bounded_variation c d f.
+  apply: (bounded_variationl (ltW cd) db).
+  apply: bounded_variationr ac _ bvf.
+  by apply: ltW; exact: (lt_le_trans cd).
 have := lemma5_cvg_style cd cdcf.
 rewrite -{1}(@fineK _ (total_variation c d f)); last first.
   by apply/bounded_variationP => //; exact: ltW.
@@ -483,6 +524,7 @@ exists (S_ n)%:E => //.
 exists (S_ n) => //.
 by exists (x n); split.
 Unshelve. all: end_near. Qed.
+*)
 
 Lemma Voo_tv : V_ n @[n --> \oo] --> Vcd.
 Proof.

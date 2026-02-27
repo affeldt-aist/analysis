@@ -113,6 +113,17 @@ Qed.
 
 End bounded_set_lemmas.
 
+Lemma variation_le_total_variation {R : realType} (c d : R) s g :
+   itv_partition c d s -> (* maybe path <=%R c s and all (< d) s are necessary *)
+   ((variation c d g s)%:E <= total_variation c d g)%E.
+Proof.
+move=> ps.
+apply: le_ereal_sup_tmp.
+exists (variation c d g s)%:E => //.
+exists (variation c d g s) => //.
+by exists s.
+Qed.
+
 Section completed_algebra_lemmas.
 Context {d : measure_display}.
 Context {T : semiRingOfSetsType d}.
