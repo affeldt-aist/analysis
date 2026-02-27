@@ -3216,6 +3216,32 @@ Definition lambda_partition (a b : R) (lambda : R) :=
   let n := `|ceil ((b - a) / lambda)|%N in
   [seq (a + (b - a) * i.+1%:R / n%:R) | i <- iota 0 n].
 
+Lemma itv_partition_max_lambda x :
+  itv_partition_max a b (lambda_partition a b x) =
+     (b - a) / `|ceil ((b - a) / x)|%N%:R.
+Proof.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  rewrite /itv_partition_max/=.
+  (* apply: bigmax_le. *)
+  admit.
+Admitted.
+
+Lemma itv_partition_lambda x : itv_partition a b (lambda_partition a b x).
+Proof.
+Admitted.
+
+Let divr_ceil_le x : (b - a) / `|ceil ((b - a) / x)|%:R <= x.
+Proof.
+Admitted.
+
+Lemma variations_with_max_lambda x :
+   variations_with_max a b f x (variation a b f (lambda_partition a b x)).
+Proof.
+exists (lambda_partition a b x); split => //; first exact: itv_partition_lambda.
+rewrite itv_partition_max_lambda.
+exact: divr_ceil_le.
+Qed.
+
 Lemma total_variation_ex :
   bounded_variation a b f ->
   exists2 p, itv_partition a b p &
@@ -3353,6 +3379,17 @@ near: n.
 exact: (cvgr_lt _ lcvg0 _ d0).
 Unshelve. all: end_near. Qed.
 
+Lemma variation_le_total_variation (c d : R) s g :
+   itv_partition c d s -> (* maybe path <=%R c s and all (< d) s are necessary *)
+   ((variation c d g s)%:E <= total_variation c d g)%E.
+Proof.
+move=> ps.
+apply: le_ereal_sup_tmp.
+exists (variation c d g s)%:E => //.
+exists (variation c d g s) => //.
+by exists s.
+Qed.
+
 Lemma lemma5_cvg_style :
 (*  {within `[a, b], continuous f} ->*)
   ereal_inf
@@ -3361,14 +3398,128 @@ Lemma lemma5_cvg_style :
 Proof.
 have [|] := eqVneq (total_variation a b f) +oo%E.
   move=> tvfoo; rewrite tvfoo.
-  apply/cvgeyPgty.
+  apply/cvgeyPgey.
   near=> A.
   have : (0%:E <= A%:E < total_variation a b f)%E.
     by rewrite lee_fin tvfoo ltry andbT.
   move/lemma5' => /=[l l0 Hl].
   exists l => // x/=.
+  rewrite sub0r normrN.
+  move/ltr_normlW => xl x0.
+  apply/ereal_infP => _ [_ [s [-> pabs sx]] <-].
+  rewrite lee_fin; apply: ltW.
+  apply: Hl => //.
+  exact: le_lt_trans xl.
+rewrite -ltey => bvf.
+suff H : inf (variations_with_max a b f l) @[l --> 0^'+] -->
+    sup (variations a b f).
+  rewrite /total_variation ereal_sup_EFin; last 2 first.
+  - exists (fine (total_variation a b f)) => s vs.
+    rewrite -lee_fin fineK; last first.
+      rewrite ge0_fin_numE//.
+      apply: total_variation_ge0.
+      exact: ltW.
+    apply/ereal_sup_geP.
+      rewrite/=.
+    (* lemma? *)
+    admit.
+    exists s%:E => //.
+    by exists s.
+  - exists `|f b - f a|.
+    exists [:: b].
+      exact: itv_partition1.
+    by rewrite /variation/= big_seq1.
+  apply: cvg_EFin.
+    admit.
+  under eq_cvg => l/=.
+    rewrite ereal_inf_EFin/=; last 2 first.
+    - admit.
+    - admit.
+    over.
+  done.
+  apply/cvg_at_rightP => l [l0 cvgl].
+apply/cvgrPdist_le => /= e e0.
+have : (0%:E <= (fine (total_variation a b f) - e)%:E < total_variation a b f)%E.
   admit.
+move/lemma5' => /= [L L0 HL].
+have := cvgl (ball 0 L) (nbhsx_ballx _ _ L0).
+  move=> [m _ mL].
+near=> n.
+rewrite gtr0_norm; last first.
+  rewrite subr_gt0.
+  apply: (@lt_le_trans _ _ (sup (variations_with_max a b f (l n)))).
+    apply: has_bound_not_subset1_inf_sup.
+        exists 0 => /= _ [? [-> _ _]].
+        exact: variation_ge0.
+      exists (fine (total_variation a b f)).
+      move=> v [s [-> pabs _]].
+      rewrite -lee_fin fineK; last first.
+        rewrite ge0_fin_numE//.
+        exact/total_variation_ge0/ltW.
+      apply: le_ereal_sup_tmp.
+      exists (variation a b f s)%:E => //.
+      exists (variation a b f s) => //.
+      by exists s.
+    rewrite -existsNE.
+    have : exists k, l k < l n.
+      move: cvgl.
+      move/(_ (ball 0 (l n))).
+      move/(_ (nbhsx_ballx _ _ (l0 n))).
+      move=> [k _].
+      move/(_ k (leqnn k)).
+      rewrite /ball/= sub0r normrN gtr0_norm// => lkn.
+      by exists k.
+    move=> [k lkn].
+    exists (variation a b f (lambda_partition a b (l n))).
+    rewrite -existsNE.
+    exists (variation a b f (lambda_partition a b (l k))).
+    apply/not_implyP; split; last (apply/not_implyP; split).
+    - exact: variations_with_max_lambda.
+    - exists (lambda_partition a b (l k)); split => //.
+        exact: itv_partition_lambda.
+      rewrite itv_partition_max_lambda.
+        apply: ltW.
+        apply: le_lt_trans lkn.
+        exact: divr_ceil_le.
+    admit.
+  apply: sup_le; last 2 first.
+  - exists (variation a b f (lambda_partition a b (l n))).
+    exact: variations_with_max_lambda.
+  - split.
+      exists (variation a b f [:: b]).
+      exists [:: b] => //.
+      exact: itv_partition1.
+    exists (fine (total_variation a b f)) => _ [s ps <-].
+    rewrite -lee_fin fineK; last first.
+      by rewrite ge0_fin_numE ?total_variation_ge0 ?ltW.
+    exact: variation_le_total_variation.
+  move=> _ [s [-> ps _]].
+  exists (variation a b f s); split => //.
+  exact: variations_variation.
+rewrite lerBlDr -lerBlDl.
+rewrite -lee_fin.
+rewrite -ereal_inf_EFin; last 2 first.
+- admit.
+- admit.
+apply: le_ereal_inf_tmp.
+move=> _ [_ [s [-> ps sl] <-]].
+rewrite EFinB -ereal_sup_EFin; last 2 first.
+- admit.
+- admit.
+rewrite -[X in (X - _ <= _)%E]fineK; last first.
+  admit.
+rewrite lee_fin.
+apply: ltW.
+apply: HL => //.
+apply: (le_lt_trans sl).
+have : (m <= n)%N.
+  near: n.
+  exact: nbhs_infty_ge.
+move/(mL n) => /=.
+by rewrite/ball/= sub0r normrN gtr0_norm.
+Unshelve. all: end_near. Admitted.
 
+xxx
 (* from old lemma6 proof *)
 (*
 rewrite -{1}(@fineK _ (total_variation a b f)); last first.
@@ -3415,6 +3566,5 @@ have -> : total_variation a b f
   rewrite /total_variation.
   admit.
 *)
-Admitted.
 
 End lemma5.
