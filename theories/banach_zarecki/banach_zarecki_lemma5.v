@@ -352,7 +352,7 @@ case: ifPn => [ba|]; last rewrite -leNgt le_eqVlt => /predU1P[ab|ab].
   apply: IH'.
    exact: path_sorted pbt.
   exact: disj_seq_consl dasbt.
-- have /disj_seq_allP[/allP] := dasbt.
+- have /disj_seq_allP/allP := dasbt.
   move/(_ a (mem_head a s)).
   rewrite in_cons; move/norP => [/negP].
   by rewrite ab.
@@ -3379,17 +3379,6 @@ near: n.
 exact: (cvgr_lt _ lcvg0 _ d0).
 Unshelve. all: end_near. Qed.
 
-Lemma variation_le_total_variation (c d : R) s g :
-   itv_partition c d s -> (* maybe path <=%R c s and all (< d) s are necessary *)
-   ((variation c d g s)%:E <= total_variation c d g)%E.
-Proof.
-move=> ps.
-apply: le_ereal_sup_tmp.
-exists (variation c d g s)%:E => //.
-exists (variation c d g s) => //.
-by exists s.
-Qed.
-
 Lemma lemma5_cvg_style :
 (*  {within `[a, b], continuous f} ->*)
   ereal_inf
@@ -3519,7 +3508,6 @@ move/(mL n) => /=.
 by rewrite/ball/= sub0r normrN gtr0_norm.
 Unshelve. all: end_near. Admitted.
 
-xxx
 (* from old lemma6 proof *)
 (*
 rewrite -{1}(@fineK _ (total_variation a b f)); last first.
