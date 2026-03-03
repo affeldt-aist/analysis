@@ -665,7 +665,7 @@ have -> : (`]a, +oo[ = `]a, x[ `|` `[x, +oo[)%classic.
   by apply: itv_bndbnd_setU => //; rewrite bnd_simp ltrDl.
 rewrite closureU -((closure_id _).1 (@rray_closed _ _ _)).
 rewrite closure_neitv_oo; last by rewrite ltrDl.
-rewrite -setUitv1 ?bnd_simp; last by rewrite lerDl.
+rewrite -(setUitv1 true) ?bnd_simp; last by rewrite lerDl.
 rewrite -setUA [[set x] `|` _]setUidr; last first.
   by rewrite -set_itv1; apply: subset_itvl.
 apply/esym.
@@ -680,7 +680,7 @@ have -> : (`]-oo, a[ = `]-oo, x] `|` `]x, a[)%classic.
   by apply: itv_bndbnd_setU => //; rewrite bnd_simp gtrBl.
 rewrite closureU -((closure_id _).1 (@lray_closed _ _ _)).
 rewrite closure_neitv_oo; last by rewrite gtrBl.
-rewrite -setU1itv ?bnd_simp//; last by rewrite gerBl.
+rewrite -(setU1itv false) ?bnd_simp//; last by rewrite gerBl.
 rewrite setUA [_ `|` [set x]]setUidl; last first.
   by rewrite -set_itv1; apply: subset_itvr.
 apply/esym.
