@@ -63,12 +63,13 @@ Lemma itv_partition_max_mem_filter (a b c d : R) (s : seq R) :
   a <= c -> d <= b ->
   itv_partition_max c d [seq x <- s | x \in `[c, d]] <= itv_partition_max a b s.
 Proof.
-Admitted.
+
+Abort.
 
 Lemma itv_partition_max_filter (a b : R) (s : seq R) (P : pred R) :
   itv_partition_max a b [seq x <- s | P x] <= itv_partition_max a b s.
 Proof.
-Admitted.
+Abort.
 
 End lemmas.
 
@@ -86,8 +87,7 @@ Lemma nth_cons_map_iota (x y : R) (n : nat) (f : nat -> R) (i : nat) :
   (i < n.+1)%N ->
   nth x (y :: [seq f k | k <- iota 0 n]) i = if i == 0 then y else f i.
 Proof.
-case: i => //.
-Admitted.
+Abort.
 
 Definition lambda_partition (a b : R) (lambda : R) :=
   let n := `|ceil ((b - a) / lambda)|%N in
@@ -113,6 +113,14 @@ Qed.
 Lemma lambda_partition_div_width (a b l : R) (i : nat) :
   `|nth b (a :: (lp a b l)) i.+1 - nth b (a :: (lp a b l)) i| < l.
 Proof.
+have lpw0 : (0 < `|ceil ((b - a) / l)|)%N.
+  admit.
+case: i => //=.
+  rewrite /lp/=.
+  rewrite (nth_map 0%N); last first.
+  by rewrite size_iota.
+  rewrite nth_iota//.
+
 Admitted.
 
 Lemma lambda_partition_partition (a b l : R) :
@@ -362,12 +370,25 @@ Admitted.
 
 End construct_x.
 
-Let lambda_gt0 n : 0 < lambda n.
+Let lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
 Proof.
+case: n => // n _.
+rewrite /lambda.
+rewrite (lt_le_trans _ (le_bigmax _ _ ord0))//=.
+rewrite double0/=.
+rewrite normr_gt0.
+rewrite subr_eq0.
 Admitted.
 
 Let cvg_lambda0 : lambda n @[n --> \oo] --> 0.
 Proof.
+apply/cvgrPdist_lt => /= e e0.
+near=> n.
+rewrite sub0r normrN gtr0_norm; last exact: lambda_gt0.
+
+rewrite /lambda.
+
+
 Admitted.
 
 Let x := fun n => sval (cid (@construct_x n)).
