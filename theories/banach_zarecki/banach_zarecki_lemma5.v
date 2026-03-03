@@ -2,6 +2,7 @@ From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
+From mathcomp Require Import unstable.
 From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype derive.
 From mathcomp Require Import sequences measure lebesgue_measure numfun realfun.
@@ -358,7 +359,7 @@ case: ifPn => [ba|]; last rewrite -leNgt le_eqVlt => /predU1P[ab|ab].
   by rewrite ab.
 - rewrite ab.
     have ->/= : [seq x <- t | x < a] = [::].
-      apply: path_lt_filter0.
+      apply/path_lt_filter0.
       apply: path_le ab pbt.
       exact: lt_trans.
     congr cons.

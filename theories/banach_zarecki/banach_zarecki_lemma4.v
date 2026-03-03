@@ -191,7 +191,7 @@ move/asboolP : (hasubA) => ->.
 move/asboolF : (hasNlbA) => -> /=.
 have [Asup|nAsup] := pselect (A (sup A)).
   move/asboolP : (Asup) => ->/=.
-  rewrite -setUitv1// setDUl -[RHS]setU0; congr setU.
+  rewrite -(setUitv1 true)// setDUl -[RHS]setU0; congr setU.
   rewrite setD_eq0.
   by rewrite sub1set inE.
 by move/asboolF : nAsup => ->.
@@ -209,7 +209,7 @@ move/asboolP : (haslbA) => ->.
 move/asboolF : (hasNubA) => -> /=.
 have [Ainf|nAinf] := pselect (A (inf A)).
   move/asboolP : (Ainf) => ->/=.
-  rewrite -setU1itv// setDUl -[RHS]set0U; congr setU.
+  rewrite -(setU1itv false)// setDUl -[RHS]set0U; congr setU.
   rewrite setD_eq0.
   by rewrite sub1set inE.
 by move/asboolF : nAinf => ->.
