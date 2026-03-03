@@ -158,60 +158,39 @@ End preliminaries.
 Section limit_point_closed.
 Context {R : realType}.
 
+Lemma not_limit_point_set1 (A : set R) (a : R) : ~ limit_point A a ->
+  exists e : {posnum R}, ball a e%:num `&` A `<=` [set a].
+Proof.
+move=> Ua; apply/not_existsP => aAa.
+apply: Ua; rewrite /limit_point => /= V [e /= e0 aeV].
+have /nonsubset[/= x [[aex Ax] /eqP xa]] := aAa (PosNum e0).
+by exists x; split => //; exact: aeV.
+Qed.
+
 Lemma limit_point_closed (A : set R) : closed (limit_point A).
 Proof.
 rewrite -openC.
 set U : set R := ~` _.
-rewrite openE/= => a Ua.
-have [e Aa] : exists e : {posnum R}, ball a e%:num `&` A `<=` [set a].
-  (* TODO: lemma *)
-  apply/not_existsP => H.
-  apply: Ua => /= V.
-  rewrite /nbhs/= /nbhs_ball_/= => -[e /= e0].
-  rewrite /ball_/= => aeV.
-  have /nonsubset {H} := H (PosNum e0).
-  case=> /= => x [[aex Ex] /eqP xa].
-  exists x; split => //.
-  apply: aeV => /=.
-  by move: aex; rewrite /ball/=.
-have H1 : forall b, b \in (ball a e%:num : set R) ->
-    nbhs b (ball a e%:num) /\ ball a e%:num `&` A `<=` [set a].
-  move=> b bae.
+rewrite openE/= => a /not_limit_point_set1[e AeAa].
+rewrite /interior /nbhs/= /nbhs_ball_; exists e%:num => //= b bae.
+suff : b \notin limit_point A by rewrite notin_setE.
+have [{}bae aeEa] : nbhs b (ball a e%:num) /\ ball a e%:num `&` A `<=` [set a].
   have [ab|ab] := eqVneq a b.
-    rewrite ab.
-    split.
-      by apply: nbhsx_ballx.
-    move=> /= r [ber Er].
-    rewrite -ab.
-    apply: Aa; split => //.
-    by rewrite ab.
+    split=> [|/= r [aer Ar]].
+      by rewrite ab; exact: nbhsx_ballx.
+    exact: AeAa.
   split => //.
   rewrite /nbhs/= /nbhs_ball_/=.
   exists (Num.min `|b - a| (e%:num - `|b - a|)) => //=.
-    rewrite lt_min/= normr_gt0 subr_eq0 eq_sym ab/=.
-    rewrite subr_gt0.
-    move: bae.
-    by rewrite inE/= /ball/= distrC.
+    by rewrite lt_min/= normr_gt0 subr_eq0 eq_sym ab/= subr_gt0 distrC.
   move=> x.
-  rewrite /ball /ball_ /=.
-  rewrite lt_min => /andP[bxba bxe].
-  rewrite -(subrKA b) (le_lt_trans (ler_normD _ _))//.
-  rewrite -ltrBrDl.
-  by rewrite (distrC a).
-have H2 : forall b, b \in (ball a e%:num : set R) -> b \notin limit_point A.
-  move=> b /H1[bae aeEa].
-  rewrite notin_setE.
-  move/limit_point_infinite_setP => /(_ _ bae).
-  apply.
-  exact: (sub_finite_set aeEa).
-have H3 : ball a e%:num `<=` U.
-  move=> /= b.
-  move/mem_set => /H2.
-  by rewrite notin_setE.
-rewrite /interior /nbhs/= /nbhs_ball_.
-by exists e%:num => /=.
+  rewrite /ball /ball_ /= lt_min => /andP[bxba bxe].
+  by rewrite -(subrKA b) (le_lt_trans (ler_normD _ _))// -ltrBrDl (distrC a).
+rewrite notin_setE => /limit_point_infinite_setP/(_ _ bae); apply.
+exact: (sub_finite_set aeEa).
 Qed.
 
+(*
 Section checking.
 
 Lemma isolated_id_set1 (x : R) : isolated [set x] = [set x].
@@ -316,6 +295,7 @@ split.
 Abort.
 
 End checking.
+*)
 
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
@@ -338,6 +318,67 @@ Let ndH := nondecreasing_total_variation bvf.
 Let cH : {within `[a, b], continuous H}.
 Proof. exact: total_variation_continuous. Qed.
 
+Lemma limit_point_open (U : set R) (p : R) :
+  limit_point U p <-> forall V, open_nbhs p V ->
+                         exists y : R, [/\ y != p, U y & V y].
+Proof.
+split.
+  move=> Up /= V pV.
+  apply: Up.
+  by apply: open_nbhs_nbhs.
+move=> /= H V.
+rewrite nbhsE/= => -[A pA AV].
+have [y [yp Uy Ay]] := H _ pA.
+exists y; split => //.
+by apply: AV.
+Qed.
+
+Lemma limit_point_redundant (Z : set R) L :
+  L = limit_point Z -> limit_point L `<=` L.
+(* there is another proof using the fact that limit_point is closed *)
+Proof.
+move=> LE.
+move=> /= p limlimZp.
+rewrite LE.
+apply/limit_point_open => U pU.
+simpl in *.
+have [y yp ULy] : exists2 y, y != p & (U `&` L) y.
+  have [y [yp Ly Uy]] := limlimZp _ (open_nbhs_nbhs pU).
+  by exists y => //.
+have [V yV Vp] : exists2 V, nbhs y V & ~ V p.
+  have : hausdorff_space R by [].
+  rewrite ball_hausdorff => /(_ _ _ yp) -[[r1 r2]/=] => /eqP yr1pr2.
+  exists (ball y r1%:num).
+    exact: nbhsx_ballx.
+  move=> yr1p.
+  move: yr1pr2.
+  rewrite -subset0.
+  move/(_ p).
+  by apply; split => //.
+have UVy : (U `&` V) y.
+  split.
+    by case: ULy.
+  by apply: nbhs_singleton.
+have [z UVZz] : exists z, ((U `&` V) `&` Z) z.
+  have : L y by case: ULy.
+  rewrite LE.
+  rewrite /limit_point/=.
+  have : nbhs y (U `&` V).
+    apply: filterI => //.
+    apply: open_nbhs_nbhs.
+    split => //.
+      by case: pU.
+    by case: UVy.
+  move=> /[swap] /[apply] -[z [zy Zz UVz]].
+  by exists z; split => //.
+have zp : z != p.
+  have zV : V z by case: UVZz => -[].
+  by apply/eqP => ?; subst z.
+exists z; split => //.
+by case: UVZz.
+by case: UVZz => -[].
+Qed.
+
 Lemma lemma6_direct : lusinN `[a, b] H.
 Proof.
 apply: contrapT => nl.
@@ -356,10 +397,10 @@ have cHZ : compact (H @` Z).
   exact: (continuous_subspaceW Zab).
 wlog : Z Zab cZ Z0 HZ {c} {d} cHZ / perfect_set Z.
   move=> wlg.
-  set Z' := Z `\` isolated Z.
+  set L := Z `\` isolated Z.
   have closedZ : closed Z by apply: compact_closed.
-  have compactZ' : compact Z'.
-    rewrite /Z'.
+  have compactL : compact L.
+    rewrite /L.
     rewrite {1}(_ : Z = closure Z); last exact/closure_id.
     rewrite closure_isolated_limit_point.
     rewrite setUKD; last first.
@@ -371,34 +412,50 @@ wlog : Z Zab cZ Z0 HZ {c} {d} cHZ / perfect_set Z.
     apply: subset_trans.
       exact: subset_limit_point.
     by rewrite {2}((closure_id Z).1 closedZ).
-  have Z'E : Z' = limit_point Z.
-    rewrite /Z'.
+  have LE : L = limit_point Z.
+    rewrite /L.
     rewrite {1}((closure_id Z).1 closedZ).
     rewrite closure_isolated_limit_point.
     rewrite setUKD//.
     rewrite subset0.
     apply/disj_set2P.
     exact: disjoint_isolated_limit_point.
-  have closedZ' : closed Z'.
-    rewrite Z'E.
+  have closedL : closed L.
+    rewrite LE.
     exact: limit_point_closed.
-  apply: (wlg Z').
+  apply: (wlg L).
   - apply: (subset_trans _ Zab).
     exact: subDsetl.
-  - exact: compactZ'.
+  - exact: compactL.
   - apply/eqP.
     rewrite -measure_le0/=.
     rewrite -Z0.
     rewrite le_outer_measure//.
     exact: subDsetl.
-  - admit.
-  - apply: (@continuous_compact _ _ H Z'); last exact: compactZ'.
+  - have muHisoZ0 : mu [set H x | x in isolated Z] = 0.
+      apply: countable_lebesgue_measure0.
+      apply: card_le_trans.
+        exact: card_image_le.
+      exact: countable_isolated.
+    have : (mu (H @` Z) - mu (H @` isolated Z) <= mu (H @` L))%E.
+      rewrite leeBlDr; last first.
+        by rewrite muHisoZ0.
+      rewrite [in leLHS](_ : Z = L `|` isolated Z); last first.
+        rewrite setUC LE.
+        rewrite -closure_isolated_limit_point.
+        exact/closure_id.
+      rewrite image_setU.
+      by apply: outer_measureU2.
+    apply: lt_le_trans.
+    by rewrite muHisoZ0 sube0.
+  - apply: (@continuous_compact _ _ H L); last exact: compactL.
     apply: (@continuous_subspaceW _ _ _ Z) => //.
       exact: subDsetl.
     exact: (@continuous_subspaceW _ _ _ _ _ Zab).
-  - rewrite /perfect_set; split => //.
-    admit.
-move=> perfectZ.
+  - split => //.
+    apply/seteqP; split.
+      by apply: limit_point_redundant LE.
+    rewrite LE.
 Admitted.
 
 End lemma6_direct.

@@ -1805,12 +1805,12 @@ rewrite /itv_partition_max => //.
 rewrite size_merge.
 have hs : h \in s.
   have /mem_subseq/subsetP := subhts.
-  move/(_ h); rewrite 2!inE; apply.
+(*  move/(_ h); rewrite 2!inE; apply.
   exact: mem_head.
 set n := index h (s ++ [:: h]).
 have : (n <= size (s ++ [:: h]))%N.
   by rewrite index_size.
-rewrite size_cat/= addn1 => ns.
+rewrite size_cat/= addn1 => ns.*)
 (* needs Monoid instance! *)
 (* have : (\big[@Num.max {nonneg R}/_]_(0 <= n0 < (size s).+1)
       widen_itv `|nth b (merge <=%R s [:: h]) n0 - nth b (a :: merge <=%R s [:: h]) n0|%:itv)%:num = a.
@@ -2997,7 +2997,7 @@ pose V0 : R := variation a b f (merge <%R p X').
 have sleX' : sorted <=%R X' by have [/path_sorted/sorted_ltW] := partX'.
 have slep : sorted <=%R p by have [/path_sorted/sorted_ltW] := pabp.
 apply: (@le_trans _ _ (V0 - (V' - A) / 2)).
-  rewrite [leRHS](_ : _ = V0 - V' + (V' + A)%E / 2); last first.
+  rewrite [leRHS](_ : _ = V0 - V' + (V' + A) / 2); last first.
     rewrite -[in LHS](@subrK _ V' V0).
     rewrite -(addrA (V0 - V')).
     congr +%R.
