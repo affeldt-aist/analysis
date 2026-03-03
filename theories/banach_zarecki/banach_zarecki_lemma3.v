@@ -346,10 +346,10 @@ apply: measurable_image_Gdelta_set_nondecreasing_fun Z1ab gZ1 => //.
 have ZZ1 : Z `\ a `\ b `<=` Z1.
   rewrite subsetI; split.
   - rewrite -(setIidr Zab).
-    rewrite -setU1itv ?bnd_simp ?ltW//.
+    rewrite -(setU1itv false) ?bnd_simp ?ltW//.
     rewrite setIUl setDUl.
     rewrite setIC -setIDA setDv setI0 set0U.
-    rewrite -setUitv1 ?bnd_simp ?ltW//.
+    rewrite -(setUitv1 true) ?bnd_simp ?ltW//.
     rewrite setIUl 2!setDUl -2!setIDA.
     rewrite -setIDA (setIC [set b]) -setIDA setDv setI0 setU0.
     exact: subIsetl.
@@ -537,10 +537,10 @@ have FZ1oo : (mu (F @` Z1) < +oo)%E.
 have ZabZ1 : Z `\ a `\ b `<=` Z1.
   rewrite subsetI; split.
   - rewrite -(setIidr Zab).
-    rewrite -setU1itv ?bnd_simp ?ltW//.
+    rewrite -(setU1itv false) ?bnd_simp ?ltW//.
     rewrite setIUl setDUl.
     rewrite setIC -setIDA setDv setI0 set0U.
-    rewrite -setUitv1 ?bnd_simp ?ltW//.
+    rewrite -(setUitv1 true) ?bnd_simp ?ltW//.
     rewrite setIUl 2!setDUl -2!setIDA.
     rewrite -setIDA (setIC [set b]) -setIDA setDv setI0 setU0.
     exact: subIsetl.
