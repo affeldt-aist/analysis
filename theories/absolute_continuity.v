@@ -7,6 +7,7 @@ From mathcomp Require Import cardinality fsbigop interval set_interval.
 From mathcomp Require Import reals ereal topology normedtype sequences.
 From mathcomp Require Import real_interval esum measure.
 From mathcomp Require Import lebesgue_stieltjes_measure lebesgue_measure numfun.
+From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import realfun exp derive borel_hierarchy.
 
 (**md**************************************************************************)
@@ -278,10 +279,10 @@ move/(_ (lt_trans ar rb)) => [cf fa fb].
 move : fa.
 move/cvg_at_rightP.
 move/(_ (fun n => a + 2^-1 ^ n.+1)).
-have H : ((forall n : nat, a < (a + 2^-1 ^ n.+1)%E) /\ (a + 2^-1 ^ n.+1)%E @[n --> \oo] --> a).
+have H : ((forall n : nat, a < (a + 2^-1 ^ n.+1)) /\ (a + 2^-1 ^ n.+1) @[n --> \oo] --> a).
   admit.
 move/(_ H) => {H}.
-have H : (f (a + 2^-1 ^ n.+1)%E - f a) @[n --> \oo] --> (0:R)%R.
+have H : (f (a + 2^-1 ^ n.+1) - f a) @[n --> \oo] --> (0:R)%R.
   admit.
 move=> cvgfa.
 have : \forall x \near a^'+, f x < f r.
@@ -1751,7 +1752,7 @@ move=> B12 Bab i; rewrite leNgt; apply/negP => Bi1a.
 have := Bab i.
 move=> /(_ (((B i).1 + minr a (B i).2)/2)).
 rewrite /= !in_itv/= midf_lt//=; last by rewrite lt_min Bi1a B12.
-have : ((B i).1 + minr a (B i).2)%E / 2 < (B i).2.
+have : ((B i).1 + minr a (B i).2) / 2 < (B i).2.
   by rewrite ltr_pdivrMr// mulr_natr mulr2n ltr_leD// ge_min lexx orbT.
 move=> /[swap] /[apply] /andP[+ _].
 rewrite ler_pdivlMr// mulr_natr mulr2n leNgt => /negP; apply.
@@ -1782,7 +1783,7 @@ have := Bab i.
 move=> /(_ ((maxr (B i).1 b + (B i).2)/2)).
 rewrite /= !in_itv/= midf_lt//=; last by rewrite gt_max Bi2b B12.
 rewrite andbT.
-have : (B i).1 < (maxr (B i).1 b + (B i).2)%E / 2.
+have : (B i).1 < (maxr (B i).1 b + (B i).2) / 2.
   by rewrite ltr_pdivlMr// mulr_natr mulr2n ler_ltD// le_max lexx.
 move=> /[swap] /[apply] /andP[_].
 rewrite ler_pdivrMr// mulr_natr mulr2n leNgt => /negP; apply.
