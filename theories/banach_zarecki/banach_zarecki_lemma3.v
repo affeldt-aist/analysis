@@ -6,6 +6,7 @@ From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import cardinality.
 From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences measure lebesgue_measure realfun.
+From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import borel_hierarchy absolute_continuity.
 From mathcomp Require Import banach_zarecki_lemma2.
 
@@ -51,14 +52,14 @@ split.
     * by rewrite lexx (ltW ab).
 - move=> x y; rewrite 2!inE/= 2!in_itv/= => /andP[ax xb]/andP[ay yb].
   move/eqP; rewrite eq_le => /andP[fxy fyx].
-  apply/notP => /eqP.
+  apply/not_notP => /eqP.
   rewrite neq_lt => /orP[xy|yx].
-  + move: fyx => /notP; apply.
+  + move: fyx => /not_notP; apply.
     apply/negP; rewrite lt_geF//.
     apply: incf; rewrite ?in_itv//=.
     * by rewrite ax xb.
     * by rewrite ay yb.
-  + move: fxy => /notP; apply.
+  + move: fxy => /not_notP; apply.
     apply/negP; rewrite lt_geF//.
     apply: incf; rewrite ?in_itv//=.
     * by rewrite ay yb.
@@ -653,7 +654,7 @@ apply: HZ.
     - move=> x/= [xab [[x' Z1x' Fx'Fx ]]].
       (* lemma? *)
       rewrite /preimages_gt1.
-      rewrite not_andE notE orNp => /(_ Logic.I) sub1Fx.
+      rewrite not_andE not_notE orNp => /(_ Logic.I) sub1Fx.
       split => //.
       rewrite (sub1Fx x x')//.
       split => //.
@@ -663,7 +664,7 @@ apply: HZ.
     - move=> x/= [Z1x].
       (* lemma? *)
       rewrite /preimages_gt1.
-      rewrite not_andE notE orNp => /(_ Logic.I) sub1Fx.
+      rewrite not_andE not_notE orNp => /(_ Logic.I) sub1Fx.
       split => //.
         apply: subset_itv_oo_cc.
         exact: Z1ab.
