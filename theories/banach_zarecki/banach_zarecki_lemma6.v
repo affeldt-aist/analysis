@@ -152,6 +152,154 @@ Qed.
 
 End preliminary.
 
+Section limit_point_closed.
+Context {R : realType}.
+
+Lemma limit_point_closed (A : set R) : closed (limit_point A).
+Proof.
+rewrite -openC.
+set U : set R := ~` _.
+rewrite openE/= => a Ua.
+have [e Aa] : exists e : {posnum R}, ball a e%:num `&` A `<=` [set a].
+  (* TODO: lemma *)
+  apply/not_existsP => H.
+  apply: Ua => /= V.
+  rewrite /nbhs/= /nbhs_ball_/= => -[e /= e0].
+  rewrite /ball_/= => aeV.
+  have /nonsubset {H} := H (PosNum e0).
+  case=> /= => x [[aex Ex] /eqP xa].
+  exists x; split => //.
+  apply: aeV => /=.
+  by move: aex; rewrite /ball/=.
+have H1 : forall b, b \in (ball a e%:num : set R) ->
+    nbhs b (ball a e%:num) /\ ball a e%:num `&` A `<=` [set a].
+  move=> b bae.
+  have [ab|ab] := eqVneq a b.
+    rewrite ab.
+    split.
+      by apply: nbhsx_ballx.
+    move=> /= r [ber Er].
+    rewrite -ab.
+    apply: Aa; split => //.
+    by rewrite ab.
+  split => //.
+  rewrite /nbhs/= /nbhs_ball_/=.
+  exists (Num.min `|b - a| (e%:num - `|b - a|)) => //=.
+    rewrite lt_min/= normr_gt0 subr_eq0 eq_sym ab/=.
+    rewrite subr_gt0.
+    move: bae.
+    by rewrite inE/= /ball/= distrC.
+  move=> x.
+  rewrite /ball /ball_ /=.
+  rewrite lt_min => /andP[bxba bxe].
+  rewrite -(subrKA b) (le_lt_trans (ler_normD _ _))//.
+  rewrite -ltrBrDl.
+  by rewrite (distrC a).
+have H2 : forall b, b \in (ball a e%:num : set R) -> b \notin limit_point A.
+  move=> b /H1[bae aeEa].
+  rewrite notin_setE.
+  move/limit_point_infinite_setP => /(_ _ bae).
+  apply.
+  exact: (sub_finite_set aeEa).
+have H3 : ball a e%:num `<=` U.
+  move=> /= b.
+  move/mem_set => /H2.
+  by rewrite notin_setE.
+rewrite /interior /nbhs/= /nbhs_ball_.
+by exists e%:num => /=.
+Qed.
+
+Lemma limit_point_isolated (A : set R) : limit_point (isolated A) = set0.
+Proof.
+Abort.
+
+End limit_point_closed.
+Arguments limit_point_closed {R} A.
+
+Module lemma6_direct_new.
+Section lemma6_direct.
+Context {R : realType}.
+Local Notation mu := (@completed_lebesgue_measure R).
+
+Variables a b : R.
+Hypothesis ab : a < b.
+Variable f : R -> R.
+Hypotheses (cf : {within `[a, b], continuous f})
+           (bvf : bounded_variation a b f)
+           (lusinf : lusinN `[a, b] f).
+Definition H := fun x => fine (total_variation a ^~ f x).
+
+(* "Clearly, H is increasing and continuous. " *)
+Let ndH := nondecreasing_total_variation bvf.
+Let cH : {within `[a, b], continuous H}.
+Proof. exact: total_variation_continuous. Qed.
+
+Lemma lemma6_direct : lusinN `[a, b] H.
+Proof.
+apply: contrapT => nl.
+(* use lemma 3 *)
+have [Z [Zab cZ Z0 HZ]] : exists Z : set R,
+    [/\ Z `<=` `[a, b], compact Z, mu Z = 0 & (0%R < mu [set H x | x in Z])%E].
+  have := image_measure0_Lusin_nondecreasing ab cH ndH.
+  move/contra_not => /(_ nl).
+  move/existsNP=> [Z /not_implyP [Zab /not_implyP[cZ /not_implyP[muZ0]]]].
+  move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ_gt0.
+  by exists Z.
+pose c : R := inf Z.
+pose d : R := sup Z.
+have cHZ : compact (H @` Z).
+  apply: (@continuous_compact _ _ H Z); last exact: cZ.
+  exact: (continuous_subspaceW Zab).
+wlog : Z Zab cZ Z0 HZ {c} {d} cHZ / perfect_set Z.
+  move=> wlg.
+  set Z' := Z `\` isolated Z.
+  have closedZ : closed Z by apply: compact_closed.
+  have compactZ' : compact Z'.
+    rewrite /Z'.
+    rewrite {1}(_ : Z = closure Z); last exact/closure_id.
+    rewrite closure_isolated_limit_point.
+    rewrite setUKD; last first.
+      rewrite subset0.
+      apply/disj_set2P.
+      exact: disjoint_isolated_limit_point.
+    have clpZ := limit_point_closed Z.
+    apply: (subclosed_compact _ cZ) => //.
+    apply: subset_trans.
+      exact: subset_limit_point.
+    by rewrite {2}((closure_id Z).1 closedZ).
+  have Z'E : Z' = limit_point Z.
+    rewrite /Z'.
+    rewrite {1}((closure_id Z).1 closedZ).
+    rewrite closure_isolated_limit_point.
+    rewrite setUKD//.
+    rewrite subset0.
+    apply/disj_set2P.
+    exact: disjoint_isolated_limit_point.
+  have closedZ' : closed Z'.
+    rewrite Z'E.
+    exact: limit_point_closed.
+  apply: (wlg Z').
+  - apply: (subset_trans _ Zab).
+    exact: subDsetl.
+  - exact: compactZ'.
+  - apply/eqP.
+    rewrite -measure_le0/=.
+    rewrite -Z0.
+    rewrite le_outer_measure//.
+    exact: subDsetl.
+  - admit.
+  - apply: (@continuous_compact _ _ H Z'); last exact: compactZ'.
+    apply: (@continuous_subspaceW _ _ _ Z) => //.
+      exact: subDsetl.
+    exact: (@continuous_subspaceW _ _ _ _ _ Zab).
+  - rewrite /perfect_set; split => //.
+    admit.
+move=> perfectZ.
+Admitted.
+
+End lemma6_direct.
+End lemma6_direct_new.
+
 Section lemma6_direct.
 Context {R : realType}.
 Local Notation mu := (@completed_lebesgue_measure R).
@@ -384,9 +532,9 @@ Let cvg_lambda0 : lambda n @[n --> \oo] --> 0.
 Proof.
 apply/cvgrPdist_lt => /= e e0.
 near=> n.
-rewrite sub0r normrN gtr0_norm; last exact: lambda_gt0.
+rewrite sub0r normrN gtr0_norm(*; last exact: lambda_gt0.
 
-rewrite /lambda.
+rewrite /lambda*).
 
 
 Admitted.
@@ -602,6 +750,7 @@ have subab_cf k :
   admit.
 have ltcd k : (nth b (sort_ta n) k) < (nth b (sort_tb n) k).
   admit.
+(*
 have := fun k => continuous_oscillationE (ltcd k) (subab_cf k).
 move/choice => [osc_pts Hosc_pts].
 pose osc_seq := \big[cat/[::]]_(i < n) [:: (osc_pts i).1; (osc_pts i).2].
@@ -609,7 +758,7 @@ have pab_osc_seq : itv_partition a b (rcons osc_seq b).
   admit.
 exists (variation a b f (rcons osc_seq b))%:E.
   exists (variation a b f (rcons osc_seq b)) => //.
-  exact: variations_variation.
+  exact: variations_variation.*)
 Admitted.
 
 Lemma contra : False.
@@ -633,7 +782,7 @@ End contra.
 
 (* lemma6 *)
 Lemma Lusin_total_variation :
-  lusinN `[a, b] (fun x => fine (total_variation a ^~ f x)).
+  lusinN `[a, b] H.
 Proof.
 apply: contrapT => nl.
 exact: (contra nl).
