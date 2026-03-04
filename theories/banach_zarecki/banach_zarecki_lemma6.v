@@ -90,18 +90,14 @@ Proof.
 Abort.
 
 Definition lambda_partition (a b : R) (lambda : R) :=
-  let n := `|ceil ((b - a) / lambda)|%N in
+  let n := (truncn ((b - a) / lambda)).+1 in
   [seq (a + (b - a) * i.+1%:R / n%:R) | i <- iota 0 n].
 
 Local Notation lp := lambda_partition.
 
 Lemma lambda_partition_size0_tmp (a b l : R) :
-  a < b -> 0 < l ->
-  (0 < `|ceil ((b - a) / l)|%N)%N.
-Proof.
-move=> ab l0.
-rewrite absz_gt0 ceil_neq0; apply/orP; right; by rewrite divr_gt0 ?subr_gt0.
-Qed.
+  (0 < (truncn ((b - a) / l)).+1)%N.
+Proof. by []. Qed.
 
 Lemma lambda_partition_size0 (a b l : R) :
   a < b -> 0 < l ->
@@ -111,15 +107,25 @@ move=> ab l0; by rewrite size_map size_iota lambda_partition_size0_tmp.
 Qed.
 
 Lemma lambda_partition_div_width (a b l : R) (i : nat) :
+  a < b -> 0 < l ->
   `|nth b (a :: (lp a b l)) i.+1 - nth b (a :: (lp a b l)) i| < l.
 Proof.
-have lpw0 : (0 < `|ceil ((b - a) / l)|)%N.
+move=> ab l0.
+have lpw0 := lambda_partition_size0_tmp.
+case: i.
+  rewrite /= mulr1 -addrA subrKC.
+  rewrite gtr0_norm; last by rewrite divr_gt0// subr_gt0.
+  rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
+  exact: truncnS_gt.
+move=> n.
+have [|] := leqP n (truncn ((b - a) / l)).
+  rewrite leq_eqVlt => /predU1P[-> |].
+    rewrite nth_default; last by rewrite /= size_map size_iota.
+    rewrite [lp a b l]lock /=; unlock; rewrite nth_map_iota//.
+    by rewrite -mulrA divff// mulr1 subrKC subrr normr0.
   admit.
-case: i => //=.
-  rewrite /lp/=.
-  rewrite (nth_map 0%N); last first.
-  by rewrite size_iota.
-  rewrite nth_iota//.
+move=> nsize.
+rewrite 2?nth_default ?subrr ?normr0//.
 
 Admitted.
 
@@ -132,19 +138,16 @@ split; last first.
 - rewrite (last_nth b).
   rewrite -(@prednK (size _))/=; last exact: lambda_partition_size0.
   rewrite nth_map_iota//.
-  rewrite prednK; last exact: lambda_partition_size0.
   rewrite size_map size_iota mulfK; first by rewrite subrKC.
   rewrite lt0r_neq0//.
-  rewrite (_ : 0 = 0%:R)// ltr_nat.
-  exact: lambda_partition_size0_tmp.
 - admit.
 Admitted.
 
 Lemma lambda_partition_max (a b l : R) :
-  0 < l ->
+  a < b -> 0 < l ->
   itv_partition_max a b (lp a b l) < l.
 Proof.
-move=> l0.
+move=> ab l0.
 rewrite /itv_partition_max -bigmaxr_morph.
 apply: bigmax_lt => // n _.
 exact: lambda_partition_div_width.
@@ -532,11 +535,10 @@ Let cvg_lambda0 : lambda n @[n --> \oo] --> 0.
 Proof.
 apply/cvgrPdist_lt => /= e e0.
 near=> n.
-rewrite sub0r normrN gtr0_norm(*; last exact: lambda_gt0.
-
-rewrite /lambda*).
-
-
+rewrite sub0r normrN gtr0_norm; last first.
+  apply: lambda_gt0.
+  near: n.
+  exact: nbhs_infty_gt.
 Admitted.
 
 Let x := fun n => sval (cid (@construct_x n)).
