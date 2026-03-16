@@ -190,7 +190,6 @@ rewrite notin_setE => /limit_point_infinite_setP/(_ _ bae); apply.
 exact: (sub_finite_set aeEa).
 Qed.
 
-(*
 Section checking.
 
 Lemma isolated_id_set1 (x : R) : isolated [set x] = [set x].
@@ -295,7 +294,6 @@ split.
 Abort.
 
 End checking.
-*)
 
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
