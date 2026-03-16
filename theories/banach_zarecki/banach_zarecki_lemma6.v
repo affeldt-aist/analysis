@@ -73,7 +73,7 @@ Abort.
 
 End lemmas.
 
-Section preliminary.
+Section preliminaries.
 Context {R : realType}.
 
 Lemma nth_map_iota (x : R) (n : nat) (f : nat -> R) (i : nat) :
@@ -153,7 +153,7 @@ apply: bigmax_lt => // n _.
 exact: lambda_partition_div_width.
 Qed.
 
-End preliminary.
+End preliminaries.
 
 Section limit_point_closed.
 Context {R : realType}.
@@ -212,9 +212,110 @@ rewrite /interior /nbhs/= /nbhs_ball_.
 by exists e%:num => /=.
 Qed.
 
-Lemma limit_point_isolated (A : set R) : limit_point (isolated A) = set0.
+Section checking.
+
+Lemma isolated_id_set1 (x : R) : isolated [set x] = [set x].
 Proof.
+rewrite eqEsubset; split; first exact: isolatedS.
+rewrite -[isolated _]setU0.
+apply: (subset_trans (@subset_closure _ _)).
+rewrite closure_isolated_limit_point.
+apply: setUS.
+move=> z.
+move/limit_pointP => [z_ [zx nzx cvgz]]/=.
+have := zx z.
+have rzx : range z_ x by exists 0 => //; apply: zx.
+apply/not_implyP; split => //.
 Abort.
+
+Lemma isolated_points_of_limit_points_is_not_empty :
+  exists A : set R, isolated (limit_point A) !=set0.
+Proof.
+exists [set n.+1%:R^-1 | n in [set: nat]].
+exists 0%:R; split.
+  rewrite inE.
+  apply/limit_pointP.
+  exists (fun n => n.+1%:R^-1); split.
+  - done.
+  - move=> n.
+    by rewrite lt0r_neq0.
+  - have <- : inf [set n.+1%:R^-1 | n in [set: nat]] = 0%:R :> R.
+      apply/eqP; rewrite eq_le; apply/andP; split; last first.
+        apply: lb_le_inf.
+          by exists 1; exists 0 => //; rewrite invr1.
+        by move=> _ [n _ <-]; rewrite invr_ge0.
+      rewrite -lee_fin.
+      rewrite -ereal_inf_EFin; last 2 first.
+      - by exists 0 => _ [n _ <-]; rewrite invr_ge0.
+      - by exists 1; exists 0 => //; rewrite invr1.
+      admit.
+    apply: nonincreasing_cvgn.
+      apply/nonincreasing_seqP => n.
+      by rewrite lef_pV2 ?posrE// ler_nat.
+    by exists 0%:R => _ [n _ <-]; rewrite invr_ge0 (_ : 0 = 0%:R)// ler_nat.
+exists (ball 0 1).
+  exact: nbhsx_ballx.
+rewrite eqEsubset; split.
+  move=> x/= [] _ l2.
+  apply/not_notP => /eqP.
+  rewrite eq_le.
+  rewrite negb_and => /orP.
+  rewrite -2!ltNge => -[]x0;move/limit_point_infinite_setP : l2; apply/existsNP.
+    have [x1|x1] := leP 1 x.
+      exists (ball x (x - 1 / 2)).
+      apply/not_implyP; split.
+        apply: nbhsx_ballx.
+        rewrite subr_gt0.
+        apply: lt_le_trans _ x1.
+        rewrite div1r invf_lt1//.
+        by rewrite (_ : 1 = 1%:R)// ltr_nat.
+      rewrite not_notP.
+      apply/finite_set_leP.
+      exists 1.
+      rewrite -(card_le_eqr (@card_set1 R 1%:R)).
+      apply: subset_card_le.
+      move=> r/= [+ [n _]];  move/[swap] => <-{r}.
+      apply: contraPP.
+      case: n => // n _.
+(*
+      apply/negP; rewrite /ball/= -leNgt.
+      rewrite ler_normr; apply/orP; left.
+      rewrite lerB//.
+      rewrite ler_pdivlMr//.
+      rewrite exprSr divfK//.
+      apply: exprn_ile1 => //.
+      rewrite invf_le1//.
+      by rewrite (_ : 1 = 1%:R)// ler_nat.
+    exists (ball x (x / 2)).
+    apply/not_implyP; split.
+      apply: nbhsx_ballx.
+      by rewrite divr_gt0.
+    rewrite not_notE.
+    apply/finite_set_leP.
+    exists (truncn (x / 2)).+1.
+    apply: (@card_le_trans _ _ _
+           [set n%:R | n in `I_((Nat.log2 (truncn (x / 2))).+1)]).
+      apply: subset_card_le.
+      move=> r/=[+ [n _]] => /[swap] => <-{r}.
+      rewrite /ball/=.
+      move/ltr_normlW; rewrite ltrBlDr -ltrBlDl {1}(splitr x) addrK => x2n.
+      exists (Nat.log2 (truncn (x / 2))) => //.
+      rewrite 
+      rewrite -{2}(invrK 2) -{2}(expr1 2^-1).
+      
+      rewrite gtr0_norm; last first.
+        rewrite 
+  move/limit_pointP => [a_ [a2]].
+rewrite subset_set1.
+Lemma perfect_set_closedDisolated (A : set R) : closed A ->
+  perfect_set (A `\` isolated A).
+Proof.
+move=> cA.
+split.
+*)
+Abort.
+
+End checking.
 
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
@@ -333,7 +434,7 @@ move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ_gt0.
 by exists Z.
 Qed.
 
-(* wlog *)
+(* wlog step *)
 Lemma lusinN_contra_wlog :
  ~ (lusinN `[a, b] (fun x => fine (total_variation a ^~ f x))) ->
  exists Z : set R,
@@ -343,8 +444,9 @@ Proof.
 move=> ababsurdo.
 have := image_measure0_Lusin_nondecreasing ab cH ndH.
 move/contra_not=> /(_ ababsurdo).
-move/existsNP=> [Z /not_implyP [Zab /not_implyP[cZ /not_implyP[muZ0]]]].
-move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ_gt0.
+move/existsNP=> [Z' /not_implyP [Z'ab /not_implyP[cZ' /not_implyP[muZ'0]]]].
+move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ'_gt0.
+pose Z := Z' `\` isolated Z'.
 Admitted.
 
 Section contra.
