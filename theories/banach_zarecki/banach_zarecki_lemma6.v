@@ -662,6 +662,7 @@ Admitted.
 End lemma6_direct.
 End lemma6_direct_new.
 
+(*
 Section lemma6_direct.
 Context {R : realType}.
 Local Notation mu := (@completed_lebesgue_measure R).
@@ -708,7 +709,7 @@ pose Z := Z' `\` isolated Z'. (* extract lemma to perfect_set_compact *)
   have closedZ : closed Z.
     apply: compact_closed.
   have compactZ' : compact Z'.
-    rewrite /Z'.
+    (* rewrite /Z'. *)
     rewrite {1}(_ : Z = closure Z); last exact/closure_id.
     rewrite closure_isolated_limit_point.
     rewrite setUKD; last first.
@@ -747,8 +748,9 @@ pose Z := Z' `\` isolated Z'. (* extract lemma to perfect_set_compact *)
     exact: (@continuous_subspaceW _ _ _ _ _ Zab).
   - rewrite /perfect_set; split => //.
     admit.
-Admitted.
-
+*)
+Abort.
+(*
 Section contra.
 Hypothesis (nl : ~ (lusinN `[a, b] H)).
 Let Z : set R := sval (cid (lusinN_contra_wlog nl)).
@@ -815,7 +817,7 @@ fun_of_sort : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
 
 Local Lemma sorted_merge_tab : sorted <%R (c :: merge_tab).
 Proof.
-Admitted.
+Abort.
 
 (* nth b merge_tab n.*2 = nth b sort_ta n /\
    nth b merge_tab n.*2.+1 = nth b sort_tb n ? *)
@@ -844,7 +846,7 @@ Lemma itv_partition_max_splitl : forall (s t : seq R) (l : R), sorted <%R s -> s
                                           (nth d s n.+1)) <= l)->
     itv_partition_max c d (merge <%R s t) <= l.
 Proof.
-Admitted.
+Abort,
 
 Lemma construct_x :
   exists x : seq R, [/\ itv_partition c d x,
@@ -919,7 +921,7 @@ split.
   admit.
 - move=> k.
   admit.
-Admitted.
+Abort.
 
 End construct_x.
 
@@ -1310,6 +1312,8 @@ Admitted.
 *)
 
 End lemma6_direct.
+
+*)
 
 Section lemma6_converse.
 Context {R : realType}.
