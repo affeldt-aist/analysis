@@ -295,6 +295,118 @@ Abort.
 
 End checking.
 
+Section ex_perfect_set.
+Local Notation mu := (@lebesgue_measure R).
+
+(* enumration of rational numbers in A *)
+Let enum_ (A : set R) : nat -> R.
+Admitted.
+
+Let elt_prop (A : set R) (x : nat * set R) :=
+  [/\ open x.2, is_interval x.2 &
+     (forall m : nat, (m < x.1)%nat /\ enum_ A m \notin x.2)].
+
+Let elt_type A := {x : nat * set R * set R | elt_prop A x.1}.
+
+Let p_ A (x : elt_type A) := (proj1_sig x).1.1.
+Let U_ A (x : elt_type A) := (proj1_sig x).1.2.
+Let E_ A (x : elt_type A) := (proj1_sig x).2.
+
+Let elt_rel A (i j : elt_type A) :=
+  [/\ p_ j = (p_ i).+1,
+   (forall k : nat, (k <= p_ j)%N -> enum_ A k \notin E_ j)
+  & (0 <= mu (U_ j) < (2 ^- (p_ j).+2)%:E * mu A)%E].
+
+Lemma ex_perfect_set (A : set R) :
+  (0 < mu A)%E -> compact A ->
+  exists B, [/\ B !=set0, B `<=` A, perfect_set B & (0 < mu B)%E].
+Proof.
+Abort.
+(* move=> cA.
+pose iA := isolated A : set R.
+have : countable iA.
+  exact: countable_isolated.
+move/countable_bijP => [I].
+rewrite card_eq_sym.
+move/card_set_bijP => /= [i_ [funi inji surji]].
+pose hoge := Record {pU : nat * set R} 
+pose dpc_con (pU : nat * set R) (qV : nat * set R) :=
+  [/\ compact qV.2, (forall m, qV.1 < m /\ i_ m \in qV.2),
+     (forall k, (k < qV.1)%N -> i_ k \notin closure qV.2) &
+     closure qV.2 `<=` pU.2].
+have : forall X, open X.2 ->  {Y | dpc_con X Y}.
+  move=> X.
+  have [|] := pselect (exists m, i_ m \in X.2).
+    move/cid=> [m imX].
+
+pose dp_con (qX : (nat -> R) * set R)
+(abY1 : ((R * R) * set R)) (abY2 : ((R * R) * set R)) :=
+  [/\ irrational abY1.1.1, irrational abY1.1.2,
+   (forall n, qX.1 n \in `]abY1.1.1, abY1.1.2[) &
+  abY2.2 = abY1.2 `\` `]abY1.1.1, abY1.1.2[].
+(* enumration of rational numbers in `]b, a[ *)
+have : {q_ : nat -> R |
+         (forall n, rational (q_ n)) /\ (forall n, q_ n \in `[b, a])}.
+  apply: cid.
+
+pose q : nat -> R := 0.
+
+
+have : forall abY1, { abY2 | dp_con (q, `[b, a]%classic) abY1 abY2}.
+  admit.
+move/dependent_choice.
+move/(_ ((a, b), `[b, a]%classic)).
+move=> [abE].
+have spabE := fun n => (surjective_pairing (abE n)).
+have spab  := fun n => (surjective_pairing (abE n).1).
+pose a_ := fun n => (abE n).1.1.
+pose b_ := fun n => (abE n).1.2.
+pose E_ := fun n => (abE n).2.
+move=> [].
+rewrite spabE spab => -[a0 b0 E0].
+move/all_and4=> [ir_Ebl ir_Ebr qE ES].
+exists (\bigcap_n (E_ n)); split.
+- have := (@bigcap_inf _ _ 0 [set: nat] E_).
+  by rewrite /E_ E0; apply.
+- admit.
+- 
+  [/\ (forall n, irrational (abY.1 n).1), (forall n, irrational (abY.1 n).2),
+   (forall n, qX.1 n \in `](abY.1 n).1, (abY.1 n).2[)
+ & abY.2 = qX.2 `\` `]abY.1.1, abY.1.2[]}.
+
+End ex_perfect_set.
+
+
+Lemma perfect_set_compact (A : set R) :
+  infinite_set A ->
+  compact A -> exists B, B `<=` A /\ perfect_set B.
+Proof.
+move=> infA cA.
+have : forall X : set R, {Y | Y = X `\` (isolated X)}.
+  admit.
+move/dependent_choice/(_ A) => [B_ [B0A HB]].
+exists (\bigcap_n B_ n); split.
+  move=> x.
+  move/(_ 0 I).
+  by rewrite B0A.
+apply/perfectP; split.
+  apply: closed_bigI => i _.
+  elim: i.
+    rewrite B0A.
+    exact: compact_closed.
+  move=> n cBn.
+  rewrite HB.
+  rewrite {1}((closure_id _).1 cBn).
+  rewrite closure_isolated_limit_point.
+  rewrite setUKD; last first.
+    rewrite subset0; apply/eqP.
+    rewrite -disj_set2E.
+    exact: disjoint_isolated_limit_point.
+  exact: limit_point_closed.
+
+*)
+End ex_perfect_set.
+
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
 
@@ -592,7 +704,49 @@ have := image_measure0_Lusin_nondecreasing ab cH ndH.
 move/contra_not=> /(_ ababsurdo).
 move/existsNP=> [Z' /not_implyP [Z'ab /not_implyP[cZ' /not_implyP[muZ'0]]]].
 move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ'_gt0.
-pose Z := Z' `\` isolated Z'.
+pose Z := Z' `\` isolated Z'. (* extract lemma to perfect_set_compact *)
+  have closedZ : closed Z.
+    apply: compact_closed.
+  have compactZ' : compact Z'.
+    rewrite /Z'.
+    rewrite {1}(_ : Z = closure Z); last exact/closure_id.
+    rewrite closure_isolated_limit_point.
+    rewrite setUKD; last first.
+      rewrite subset0.
+      apply/disj_set2P.
+      exact: disjoint_isolated_limit_point.
+    have clpZ := limit_point_closed Z.
+    apply: (subclosed_compact _ cZ) => //.
+    apply: subset_trans.
+      exact: subset_limit_point.
+    by rewrite {2}((closure_id Z).1 closedZ).
+  have Z'E : Z' = limit_point Z.
+    rewrite /Z'.
+    rewrite {1}((closure_id Z).1 closedZ).
+    rewrite closure_isolated_limit_point.
+    rewrite setUKD//.
+    rewrite subset0.
+    apply/disj_set2P.
+    exact: disjoint_isolated_limit_point.
+  have closedZ' : closed Z'.
+    rewrite Z'E.
+    exact: limit_point_closed.
+  apply: (wlg Z').
+  - apply: (subset_trans _ Zab).
+    exact: subDsetl.
+  - exact: compactZ'.
+  - apply/eqP.
+    rewrite -measure_le0/=.
+    rewrite -Z0.
+    rewrite le_outer_measure//.
+    exact: subDsetl.
+  - admit.
+  - apply: (@continuous_compact _ _ H Z'); last exact: compactZ'.
+    apply: (@continuous_subspaceW _ _ _ Z) => //.
+      exact: subDsetl.
+    exact: (@continuous_subspaceW _ _ _ _ _ Zab).
+  - rewrite /perfect_set; split => //.
+    admit.
 Admitted.
 
 Section contra.
