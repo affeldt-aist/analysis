@@ -592,6 +592,22 @@ pose cd_ n := nth b (c :: merge_tab n).
 pose c_ n i := cd_ n i.*2.
 pose d_ n i := cd_ n i.*2.+1.
 pose lambda n : R := \big[maxr/0%R]_(i < n) `|d_ n i - c_ n i|.
+have fin_alpha : alpha \is a fin_num.
+  rewrite gt0_fin_numE//.
+  apply: (@le_lt_trans _ _ (mu (H @` `[a, b]))).
+    apply: le_outer_measure.
+    exact: image_subset.
+  apply: (@le_lt_trans _ _ (mu `[H a, H b])).
+    apply: le_outer_measure.
+    apply: continuous_nondecreasing_image_itvcc => //.
+    exact: ltW.
+  have [|] := ltP (H b) (H a).
+    rewrite ltNge.
+    by rewrite ndH ?boundl_in_itv ?boundr_in_itv ?bnd_simp//= ltW.
+  rewrite le_eqVlt => /predU1P[->|HaHb].
+    by rewrite set_itv1 completed_lebesgue_measureE lebesgue_measure_set1.
+  rewrite completed_lebesgue_measure_itv ifT ?lte_fin//=.
+  by rewrite -EFinB ltry.
 have lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
   case: n => // n _.
   rewrite /lambda.
@@ -656,7 +672,144 @@ have Soo_tv : S_ n @[n --> \oo] --> Vcd.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
   admit. (* squeeze *)
 have [n0] : exists2 n0, (0 < n0)%N & forall n, (n >= n0)%N -> V_ n > Vcd - (fine alpha) / 2.
-  admit.
+  have alpha20 : 0 < fine alpha / 2.
+    rewrite divr_gt0//.
+    rewrite -lte_fin fineK//.
+  have := Voo_V (ball Vcd (fine alpha / 2)) (nbhsx_ballx _ _ alpha20).
+  move=> [n0 _ H].
+  exists n0.+1 => //n n0n.
+  have := H n (ltnW n0n).
+  rewrite /ball/=.
+  rewrite ger0_norm; last first.
+    rewrite subr_ge0.
+    admit.
+  by rewrite ltrBlDl -ltrBlDr.
+move=> n00.
+near \oo => n.
+have n0n : (n0 <= n)%N.
+  near: n.
+  exact: nbhs_infty_ge.
+move/(_ n n0n) => vcda2Vn.
+have Z_set0 : Z !=set0.
+  apply/set0P/negP; move/eqP => Z_set0.
+  have := HZ.
+  by rewrite Z_set0 image_set0 measure0; apply/negP; rewrite -leNgt.
+have lbZa : lbound Z a.
+  move=> r Zr.
+  have := Zab r Zr.
+  by rewrite /= in_itv/= => /andP[].
+have ubZb : ubound Z b.
+  move=> r Zr.
+  have := Zab r Zr.
+  by rewrite /= in_itv/= => /andP[].
+have : fine alpha / 2 < V_ n.
+  apply: (le_lt_trans _ vcda2Vn).
+  rewrite lerBrDl -splitr.
+  rewrite fine_le//.
+    have/(bounded_variationP _ (ltW ab)):= bvf.
+    rewrite 2?ge0_fin_numE ?total_variation_ge0 ?ltW//.
+    move=> tvabfoo; apply: le_lt_trans _ tvabfoo.
+    rewrite (@total_variationD _ a b c); last 2 first.
+    + exact: lb_le_inf.
+    + apply: (le_trans (ltW cd)).
+      exact: ge_sup.
+    rewrite (@total_variationD _ c b d); last 2 first.
+    + exact: ltW.
+    + exact: ge_sup.
+    rewrite addrCA leeDl// adde_ge0//; apply: total_variation_ge0.
+      exact: lb_le_inf.
+    exact: ge_sup.
+  rewrite (_ : total_variation c d f = mu (H @` `[c, d])).
+    rewrite le_outer_measure//.
+    apply: image_subset.
+    apply: (subset_trans (@sub_Rhull _ Z)).
+    rewrite /Rhull 2?ifT/=; last 2 first.
+    - by apply/asboolP; exists b.
+    - by apply/asboolP; exists a.
+    case: `[< Z (inf Z) >]; case: `[< Z (sup Z) >] => //=.
+    - exact: subset_itv_co_cc.
+    - exact: subset_itv_oc_cc.
+    - exact: subset_itv_oo_cc.
+  rewrite inc_surj_image_segment; last 3 first.
+  - exact: ltW.
+  - move=> p q; rewrite 2!in_itv/= => /andP[cp pd] /andP[cq qd].
+    apply: ndH; rewrite in_itv/=; apply/andP; split.
+    + apply: le_trans cp.
+      exact: lb_le_inf.
+    + apply: (le_trans pd).
+      exact: ge_sup.
+    + apply: le_trans cq.
+      exact: lb_le_inf.
+    + apply: (le_trans qd).
+      exact: ge_sup.
+  - apply: segment_continuous_le_surjective.
+    + exact: ltW.
+    + apply: ndH; rewrite ?ltW// in_itv/=; apply/andP; split.
+      * exact: lb_le_inf.
+      * apply: (le_trans (ltW cd)).
+        exact: ge_sup.
+      * apply: le_trans (ltW cd).
+        exact: lb_le_inf.
+      * exact: ge_sup.
+    + apply: continuous_subspaceW cH.
+      apply: subset_itv; rewrite bnd_simp.
+        exact: lb_le_inf.
+      exact: ge_sup.
+  rewrite (_ : total_variation c d f = (H d - H c)%:E); last first.
+    rewrite EFinB 2?fineK ?ge0_fin_numE ?total_variation_ge0//; last 4 first.
+    - apply: (@le_lt_trans _ _ (total_variation a b f)).
+      rewrite (@total_variationD _ a b c); last 2 first.
+      + exact: lb_le_inf.
+      + apply/ltW/(lt_le_trans cd).
+        exact: ge_sup.
+      rewrite leeDl// total_variation_ge0//.
+      apply/ltW/(lt_le_trans cd).
+      exact: ge_sup.
+    - rewrite -ge0_fin_numE ?total_variation_ge0 ?ltW//.
+      apply/bounded_variationP => //.
+      exact: ltW.
+    - exact: lb_le_inf.
+      have/(bounded_variationP _ (ltW ab)) := bvf.
+      rewrite ge0_fin_numE ?total_variation_ge0//; last exact: ltW.
+      apply: le_lt_trans.
+      rewrite (@total_variationD _ a b d); last 2 first.
+      + apply: le_trans (ltW cd).
+        exact: lb_le_inf.
+      + exact: ge_sup.
+      rewrite leeDl ?total_variation_ge0//.
+      exact: ge_sup.
+    - apply: le_trans (ltW cd).
+      exact: lb_le_inf.
+    rewrite (@total_variationD _ a d c); last 2 first.
+    - exact: lb_le_inf.
+    - exact: ltW.
+    rewrite (@addeC _ (_ a c f)) addeK//.
+    have/(bounded_variationP _ (ltW ab)) := bvf.
+    rewrite 2?ge0_fin_numE ?total_variation_ge0//; last 2 first.
+    - exact: lb_le_inf.
+    - exact: ltW.
+    apply: le_lt_trans.
+    rewrite (@total_variationD _ a b c); last 2 first.
+    - exact: lb_le_inf.
+    - apply: (le_trans (ltW cd)).
+      exact: ge_sup.
+    rewrite leeDl ?total_variation_ge0//.
+    apply: (le_trans (ltW cd)).
+    exact: ge_sup.
+  rewrite completed_lebesgue_measure_itv => //.
+  have [|] := ltP (H d) (H c).
+    rewrite ltNge.
+    rewrite ndH; rewrite ?ltW// in_itv/=; apply/andP; split.
+    - exact: lb_le_inf.
+    - apply: (le_trans (ltW cd)).
+      exact: ge_sup.
+    - apply: le_trans (ltW cd).
+      exact: lb_le_inf.
+    - exact: ge_sup.
+  rewrite le_eqVlt => /predU1P[->|HcHd].
+    by rewrite subrr ifF.
+  by rewrite ifT.
+admit.
 Admitted.
 
 End lemma6_direct.
