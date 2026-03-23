@@ -95,6 +95,198 @@ Lemma GdeltaIl {T : topologicalType} (U S : set T) : open U ->
   Gdelta S -> Gdelta (S `&` U).
 Proof. by move=> oU GS; rewrite setIC; exact: GdeltaIr. Qed.
 
+Lemma isolatedP {T : topologicalType} (A : set T) (x : T) :
+ isolated A x ->
+  x \in A /\ exists2 V, open_nbhs x V & V `&` A = [set x].
+Proof.
+move=> [zA [V xV VAx]].
+split => //.
+move: xV; rewrite nbhsE/= => -[B xB BV].
+exists B => //.
+apply/seteqP; split => [z [Bz Az]|].
+  by rewrite -VAx; split => //; exact: BV.
+move=> z/= ?; subst z.
+move/seteqP : VAx => [_ /(_ x erefl)[Vx Ax]].
+split => //.
+by case: xB.
+Qed.
+
+From mathcomp Require Import rat.
+
+Section perfect_set_rm.
+Context {R : realType}.
+Let mu := @lebesgue_measure R.
+Local Open Scope ereal_scope.
+Local Open Scope classical_set_scope.
+
+Definition oobasis : set (set R) := [set `]ratr x.1, ratr x.2[ | x in setT].
+
+Lemma set0_oobasis : set0 \in oobasis.
+Proof.
+rewrite inE /oobasis/=.
+exists (1, 0)%R => //=.
+rewrite -subset0 => x/=; rewrite in_itv/= => /andP[/lt_trans] => /[apply].
+by rewrite ltr_rat ltr10.
+Qed.
+
+Lemma oobasis_countable : countable oobasis.
+Proof.
+by rewrite /countable -(card_le_eqr card_rat2); exact: card_image_le.
+Qed.
+
+Lemma oobasis_basis : basis oobasis.
+Proof.
+split; first by move=> A [[a b]] _/= <-; exact: itv_open.
+move=> r V; rewrite nbhsE/= => -[U [oU /mem_set Ur] UV].
+have [a [b [_ [rB BU]]]] := open_subball_rat oU Ur.
+exists (@ball _ R (ratr a) (ratr b)) => /=; last exact: subset_trans UV.
+split; last exact/set_mem.
+by exists (a - b, a + b)%R => //=; rewrite ball_itv raddfB/= raddfD.
+Qed.
+
+Lemma Rsecond_countable : @second_countable R.
+Proof. by exists oobasis; [exact: oobasis_countable|exact: oobasis_basis]. Qed.
+
+Definition rat_itv (U : set R) := [set pq : (rat * rat)%type |
+  (pq.1 < pq.2)%R /\ `]ratr pq.1, ratr pq.2[ `<=` U].
+
+Lemma open_rat_itv (U : set R) : open U ->
+  U = \bigcup_(pq in rat_itv U) `]ratr pq.1, ratr pq.2[.
+Proof.
+move=> openU.
+apply/seteqP; split => [x /mem_set Ux|z [i [i12 + iz]]]; last exact.
+suff [[p q] Bpq /=xpq] : exists2 pq : (rat * rat)%type,
+    pq \in rat_itv U & x \in `]ratr pq.1, ratr pq.2[.
+  by exists (p, q) => //=; [exact: set_mem|by rewrite inE in xpq].
+have [a [b [r0 [xB BU]]]] := open_subball_rat openU Ux.
+exists (a - b, a + b)%R.
+  rewrite inE /rat_itv /=; split => //.
+    by rewrite ltrBlDr -addrA ltrDl addr_gt0.
+  by rewrite raddfB/= raddfD/= -ball_itv.
+rewrite inE/= raddfB/= raddfD/=.
+by move: xB; rewrite ball_itv inE.
+Qed.
+
+Lemma perfect_set_rm (X : set R) :
+  compact X -> mu X < +oo ->
+  exists B, [/\ B `<=` X, compact B, isolated B = set0 &
+    mu B = mu X].
+Proof.
+move=> compactX boundedX.
+pose G : set R := \bigcup_(U in [set U | open U /\ mu (X `&` U) = 0]) U.
+have openG : open G.
+  rewrite /G.
+  by apply: bigcup_open => ? [].
+pose K := X `\` G.
+have mG : measurable G by exact: open_measurable.
+have mX : measurable X by exact: compact_measurable.
+have compactK : compact K.
+  rewrite /K.
+  rewrite setDE.
+  apply: compact_closedI => //.
+  by apply: open_closedC.
+have G0 : mu (X `&` G) = 0.
+  have [F [Fbasis F0] GF] : exists2 F : (set R)^nat,
+      (forall i, F i \in oobasis) /\ (forall i, mu (X `&` F i) = 0) &
+      G = \bigcup_i F i.
+    have GE : G = \bigcup_(U in [set U | oobasis U /\ mu (X `&` U) = 0%R]) U.
+      apply/seteqP; split => [r [/= A [oA XA0]]|r].
+        rewrite (open_rat_itv oA) => -[pq Apq rpq].
+        exists (`]ratr pq.1, ratr pq.2[) => //=.
+        split; first by exists pq.
+        rewrite /rat_itv /= in Apq.
+        apply/eqP; rewrite eq_le measure_ge0 andbT.
+        rewrite -XA0 le_measure//= ?inE//=.
+          exact: measurableI.
+          by apply: measurableI => //; exact: open_measurable.
+        by apply: setIS; case: Apq.
+      move=> [_/= [[pq _ <-]]] Xpq pqr.
+      by exists `]ratr pq.1, ratr pq.2[.
+    have /countable_bijP[B] := oobasis_countable.
+    (* TODO: write this down in the FAQ *)
+    rewrite card_eq_sym => /card_set_bijP[f/=] bijf.
+    Check f : nat -> set R.
+    pose f1 : set R -> nat := pinv B f.
+    exists (fun n => if (n \in B) && (mu (X `&` f n) == 0) then
+      f n else set0).
+      split.
+        move=> n.
+        case: ifPn.
+          move=> /andP[/set_mem Bn _].
+          apply/mem_set.
+          case: bijf => + _ _.
+          by apply.
+        by rewrite set0_oobasis.
+      move=> i.
+      case: ifPn=> [|_].
+        by move=> /andP[_ /eqP].
+      by rewrite setI0 [LHS]measure0.
+    rewrite GE.
+    rewrite bigcup_mkcondr.
+    rewrite (reindex_bigcup f B)//; last 2 first.
+      by case: bijf.
+      by case: bijf.
+    rewrite bigcup_mkcond.
+    apply: eq_bigcup => //= i _.
+    case: ifPn => //= Bi.
+    rewrite /mem/= /in_mem/= /in_set/=.
+    by case: asboolP => [->|/eqP/negPf ->//]; rewrite eqxx.
+  rewrite GF.
+  rewrite setI_bigcupr.
+  apply/eqP; rewrite eq_le.
+  rewrite measure_ge0 andbT.
+  apply: (@le_trans _ _ (\sum_(0 <= i <oo) mu (X `&` F i))).
+    exact: outer_measure_sigma_subadditive.
+  by rewrite eseries0//.
+have muKX : mu K = mu X.
+  rewrite /K.
+  rewrite [LHS]measureD//= -/mu.
+    by rewrite G0 sube0.
+have isoK : isolated K = set0.
+  rewrite -subset0 => /= x.
+  move/isolatedP => [xK /= [U xU UKx]].
+  have xG : x \notin G by move: xK; rewrite in_setD => /andP[].
+  have mXU0 : mu (X `&` U) > 0.
+    rewrite lt_neqAle measure_ge0 andbT eq_sym.
+    apply/eqP => XU0.
+    have UG : U `<=` G.
+      rewrite /G.
+      apply: bigcup_sup => /=; split => //.
+      by case: xU.
+    move/negP : xG; apply.
+    apply/mem_set/UG.
+    by case: xU.
+  have : 0 < mu (K `&` U).
+    rewrite /K.
+    rewrite setDE.
+    rewrite setIAC.
+    rewrite -setDE.
+    have mU : measurable U by apply: open_measurable; case: xU.
+    rewrite [ltRHS](@measureD _ _ _ mu (X `&` U) G)//; last 2 first.
+      exact: measurableI.
+      rewrite (le_lt_trans _ boundedX)// le_measure// ?inE//.
+      exact: measurableI.
+    have XUG0 : mu (X `&` U `&` G) = 0.
+      apply/eqP.
+      rewrite eq_le measure_ge0 andbT.
+      rewrite -G0.
+      rewrite le_measure// ?inE.
+      by apply: measurableI => //; apply: measurableI.
+      by apply: measurableI => //.
+      rewrite setIAC.
+      exact: subIsetl.
+    by rewrite [X in _ - X]XUG0 sube0.
+  by rewrite setIC UKx /mu lebesgue_measure_set1 ltxx.
+exists K.
+split.
+- exact: subDsetl.
+- assumption.
+- assumption.
+- by rewrite muKX.
+Qed.
+
+End perfect_set_rm.
+
 Section lemma3.
 Context {R : realType}.
 Variables a b : R.
@@ -476,6 +668,7 @@ Abort.
   (*     admit. *)
   (*   by apply: sub_Rhullr. *)
 
+
 Section main_lemma.
 
 Arguments open : clear implicits.
@@ -641,6 +834,216 @@ apply: HZ.
   rewrite closed_setIS; last exact: itv_closed.
   apply: ((@continuous_closedP (subspace `[a, b]) _ F).1 cF).
   exact: compact_closed cK.
+- apply/eqP; rewrite -measure_le0/=.
+  rewrite -muZ10.
+  apply: le_outer_measure.
+  apply: (@subset_trans _ (`[a, b] `&` F @^-1` FZ1')).
+    apply: setIS.
+    exact: preimage_subset.
+  rewrite /FZ1' setDE.
+  rewrite [X in X `<=` _](_: _
+    = Z1 `\` (F @^-1` preimages_gt1 `[a, b] [set: R] F)); last first.
+    rewrite eqEsubset; split.
+    - move=> x/= [xab [[x' Z1x' Fx'Fx ]]].
+      (* lemma? *)
+      rewrite /preimages_gt1.
+      rewrite not_andE not_notE orNp => /(_ Logic.I) sub1Fx.
+      split => //.
+      rewrite (sub1Fx x x')//.
+      split => //.
+      rewrite /=.
+      apply: subset_itv_oo_cc.
+      exact: Z1ab.
+    - move=> x/= [Z1x].
+      (* lemma? *)
+      rewrite /preimages_gt1.
+      rewrite not_andE not_notE orNp => /(_ Logic.I) sub1Fx.
+      split => //.
+        apply: subset_itv_oo_cc.
+        exact: Z1ab.
+      split => //.
+      by exists x.
+  exact: subDsetl.
+Qed.
+
+Lemma image_measure0_Lusin_nondecreasing_new (F : R -> R) :
+  {within `[a, b], continuous F} ->
+  (* increasing means nondecreasing or not? *)
+  {in `[a, b] &, {homo F : x y / x <= y}} ->
+  (forall Z : set R, Z `<=` `[a, b]%classic ->
+      compact R Z ->
+      isolated Z = set0 (* TODO: change compact to perfect set instead *) ->
+      mu Z = 0 ->
+      mu (F @` Z) = 0) ->
+  lusinN `[a, b] F.
+Proof.
+move=> cF ndF HZ.
+(* Suppose on the contrary that F \notin (N) on `[a, b] *)
+apply: contrapT.
+(*Then there exists ... *)
+move=> /existsNP[Z]/not_implyP[Zab/=] /not_implyP[mZ] /not_implyP[muZ0].
+move=> /eqP; rewrite neq_lt ltNge measure_ge0/= => muFZ0.
+have Zoo : (mu Z < +oo)%E.
+  apply: (@le_lt_trans _ _ (mu `[a, b])); first exact: le_outer_measure.
+  rewrite completed_lebesgue_measureE.
+  by rewrite lebesgue_measure_itv/= lte_fin ab -EFinD ltry.
+(* wlog (we should read Z1 as Z in paper) *)
+have [U_ [ZU oU _ mZIU]] := lebesgue_measure_Gdelta_approx Zoo.
+set Z1 := `]a, b[ `&` \bigcap_n U_ n.
+have muZ10 : mu Z1 = 0.
+  apply/eqP; rewrite -measure_le0/= -muZ0.
+  rewrite completed_lebesgue_measureE.
+  rewrite /lebesgue_measure/lebesgue_stieltjes_measure/measure_extension mZIU.
+  apply: le_outer_measure.
+  exact: subIsetr.
+have gZ1 : Gdelta Z1.
+ exists (fun n => `]a, b[ `&` U_ n).
+    by move=> n; apply: openI.
+  by rewrite bigcapIr.
+have Z1ab : Z1 `<=` `]a, b[ by exact: subIsetl.
+have mFZ1 : measurable (F @` Z1).
+  exact: measurable_image_Gdelta_set_nondecreasing_fun Z1ab gZ1.
+have FZ1oo : (mu (F @` Z1) < +oo)%E.
+  apply: (@le_lt_trans _ _ (mu (F @` `]a, b[))).
+    apply: le_outer_measure.
+    exact: image_subset.
+  apply: (@le_lt_trans _ _ (mu `[F a, F b])).
+    apply: le_outer_measure.
+    apply: continuous_nondecreasing_image_itvoo => //.
+    by move=> ? ? ? ?; apply: ndF; exact: subset_itv_oo_cc.
+  rewrite completed_lebesgue_measure_itv.
+  by case: ifP => //; rewrite -EFinB ltry.
+have ZabZ1 : Z `\ a `\ b `<=` Z1.
+  rewrite subsetI; split.
+  - rewrite -(setIidr Zab).
+    rewrite -(setU1itv false) ?bnd_simp ?ltW//.
+    rewrite setIUl setDUl.
+    rewrite setIC -setIDA setDv setI0 set0U.
+    rewrite -(setUitv1 true) ?bnd_simp ?ltW//.
+    rewrite setIUl 2!setDUl -2!setIDA.
+    rewrite -setIDA (setIC [set b]) -setIDA setDv setI0 setU0.
+    exact: subIsetl.
+  - apply: sub_bigcap => n _.
+    apply: subset_trans (ZU n).
+    rewrite setDDl.
+    exact: subDsetl.
+have FZ10 : (0 < mu (F @` Z1))%E.
+  apply: (@lt_le_trans _ _ (mu (F @` (Z `\ a `\ b)))).
+    by rewrite 2!measure_image_setD_set1.
+  apply: le_outer_measure.
+  exact: image_subset.
+set e := fine (mu (F @` Z1)) / 2.
+have e0 : 0 < e by rewrite divr_gt0 ?fine_gt0 ?FZ1oo ?FZ10.
+set FZ1' := ((F @` Z1) `\` preimages_gt1 `[a, b] [set: R] F).
+set e' := fine (mu FZ1') / 2.
+have mpreF0 : mu ([set F x | x in Z1] `&` preimages_gt1 `[a, b] [set: R] F) = 0.
+  apply: countable_lebesgue_measure0.
+  apply: (@sub_countable _ _ _ (preimages_gt1 `[a, b] [set: R] F)).
+    apply: subset_card_le.
+    exact: subIsetr.
+  exact: is_countable_preimages_gt1_nondecreasing_fun.
+have e'0 : 0 < e'.
+  rewrite /e' measureD//=; last 2 first.
+  - exact: sub_caratheodory.
+  - apply: sub_caratheodory.
+    apply: countable_measurable => //.
+    exact: is_countable_preimages_gt1_nondecreasing_fun.
+  rewrite mpreF0 sube0.
+  exact: e0.
+have FZ1'oo : (mu FZ1' < +oo)%E.
+  apply: le_lt_trans FZ1oo.
+  apply: le_outer_measure.
+  exact: subIsetl.
+have mFZ1' : measurable FZ1'.
+  apply: measurableI => //.
+  apply: measurableC.
+  apply: countable_measurable => //.
+  exact: is_countable_preimages_gt1_nondecreasing_fun.
+have [K [cK KFZ1' FZ1'Ke']] := lebesgue_regularity_inner mFZ1' FZ1'oo e'0.
+wlog : K cK KFZ1' FZ1'Ke' / isolated K = set0.
+  move=> wlg.
+  have : (mu K < +oo)%E.
+    rewrite (le_lt_trans _ FZ1'oo)//.
+    by rewrite le_outer_measure.
+  move/(perfect_set_rm cK) => [K0 [K0K cK0 isoK0 mK0]].
+  apply: (wlg K0) => //.
+  by apply: subset_trans KFZ1'.
+  rewrite (le_lt_trans _ FZ1'Ke')//.
+  rewrite measureD//; last first.
+    by apply: compact_measurable.
+  rewrite [in leRHS]measureD//; last first.
+    by apply: compact_measurable.
+  rewrite leeD//.
+  rewrite leeN2.
+  rewrite setIidr//.
+  rewrite setIidr//.
+    by rewrite [leRHS]mK0//.
+  by apply: (subset_trans K0K).
+move=> isoK0.
+set K1 := `[a, b] `&` F @^-1` K.
+have K1K : F @` K1 = K.
+  rewrite eqEsubset; split.
+    apply: (subset_trans sub_image_setI).
+    apply: subIset; right.
+    exact: image_preimage_subset.
+  move=> r Kr/=.
+  pose L := `[a, b] `&` preimage F [set r].
+  have L0 : L !=set0.
+    have [] := @IVT _ _ _ _ r (ltW ab) cF.
+      have Fab : F a <= F b.
+        apply: ndF => //.
+        - by rewrite boundl_in_itv bnd_simp ltW.
+        - by rewrite boundr_in_itv bnd_simp ltW.
+        - exact: ltW.
+      rewrite minEle Fab.
+      rewrite maxEle Fab.
+      move: Kr=> /KFZ1'.
+      case=> -[t [/= tab _] <-] _.
+      rewrite 2?ndF//.
+      - exact: subset_itv_oo_cc.
+      - by rewrite boundr_in_itv ?bnd_simp ?ltW.
+      - by apply/ltW; move: tab; rewrite in_itv/= => /andP[].
+      - by rewrite boundl_in_itv ?bnd_simp ?ltW.
+      - exact: subset_itv_oo_cc.
+      - by apply/ltW; move: tab; rewrite in_itv/= => /andP[].
+    by move=> x xab; rewrite /L; move <-; exists x.
+  move: (L0) => [r'] /[dup] Lr'.
+  rewrite /L/= => [[r'ab Fr'r]].
+  exists r' => //.
+  rewrite /K1/=; split => //.
+  by rewrite Fr'r.
+have : (0 < mu (F @` K1))%E.
+  rewrite K1K.
+  have := FZ1'Ke'.
+  rewrite measureD//; last exact: compact_measurable.
+  rewrite setIidr//.
+  rewrite lteBlDl; last first.
+    rewrite ge0_fin_numE//.
+    apply: le_lt_trans FZ1'oo.
+    exact: le_outer_measure.
+  rewrite -lteBlDr//.
+  rewrite completed_lebesgue_measureE.
+  apply: le_lt_trans.
+  rewrite sube_ge0// /e EFinM fineK; last by rewrite ge0_fin_numE.
+  rewrite muleC gee_pMl//.
+  rewrite lee_fin invf_le1//.
+  by rewrite -[leLHS](mulr1n 1) ler_nat.
+apply/negP.
+rewrite -leNgt.
+rewrite measure_le0/=.
+apply/eqP.
+apply: HZ.
+- exact: subIsetl.
+- rewrite /K1 setIC -(setIid `[a, b]%classic) setICA.
+  apply: compact_closedI; first exact: segment_compact.
+  rewrite closed_setIS; last exact: itv_closed.
+  apply: ((@continuous_closedP (subspace `[a, b]) _ F).1 cF).
+  exact: compact_closed cK.
+- admit.
+
+
+
+
 - apply/eqP; rewrite -measure_le0/=.
   rewrite -muZ10.
   apply: le_outer_measure.
