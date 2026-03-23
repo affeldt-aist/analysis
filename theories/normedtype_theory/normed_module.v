@@ -2211,7 +2211,8 @@ by rewrite -ball_normE/= in exy; exact: ltW.
 Qed.
 
 Lemma open_subball_rat {R : realType} (S : set R) x : open S -> x \in S ->
-  exists c r, let B : set R := ball (@ratr R c) (ratr r) in x \in B /\ B `<=` S.
+  exists c r, 0 < r /\
+    let B : set R := ball (@ratr R c) (ratr r) in x \in B /\ B `<=` S.
 Proof.
 move=> oS /set_mem/(open_subball oS)[r/= r0 rS].
 have [y yxr] : exists y, ball x (r / 4) (ratr y).
@@ -2240,7 +2241,9 @@ have [yqxr xrS] : ball (@ratr R y) (ratr q) `<=` ball x r /\ ball x r `<=` S.
   - rewrite in_itv/= => /andP[xzp pr]; apply: (rS (ratr p)) => //=.
     + by rewrite sub0r normrN gtr0_norm// (le_lt_trans _ xzp).
     + exact: le_lt_trans xzp.
-exists y, q; split; last exact: subset_trans xrS.
+exists y, q; split.
+  by rewrite -(ltr_rat R) (le_lt_trans _ rq)// raddf0 divr_ge0// ltW.
+split; last exact: subset_trans xrS.
 exact/mem_set/ball_sym/(le_ball _ yxr)/ltW.
 Qed.
 
@@ -2266,7 +2269,7 @@ have [e Sxe] : exists e : {posnum R},
   split => //; last exact/set_mem.
   apply: interior_subset; apply: exV xey => //.
   by rewrite /ball_/= sub0r normrN gtr0_norm// gtr_pMr// invf_lt1// ltr1n.
-have [c [r [xcr crxe]]] : exists c r,
+have [c [r [_ [xcr crxe]]]] : exists c r, 0 < r /\
   let B : set R := ball (@ratr R c) (ratr r) in x \in B /\ B `<=` ball x e%:num.
   by apply: open_subball_rat; [exact: ball_open|exact/mem_set/ballxx].
 by exists (c, r); split=> //= y /Sxe /[!inE] /[swap] /crxe /[swap] /[apply].
