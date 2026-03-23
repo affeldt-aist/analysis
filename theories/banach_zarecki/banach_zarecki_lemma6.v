@@ -1,11 +1,12 @@
 From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
-From mathcomp Require Import ssrint interval archimedean perm.
+From mathcomp Require Import ssrint interval archimedean perm finmap.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import reals constructive_ereal topology normedtype.
 From mathcomp Require Import ereal sequences.
 From mathcomp Require Import measure lebesgue_measure numfun realfun.
+From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import absolute_continuity banach_zarecki_lemma2.
 From mathcomp Require Import banach_zarecki_lemma3 banach_zarecki_lemma5.
 From mathcomp Require Import banach_zarecki_lemma4 (* for contiguous intervals *).
@@ -410,6 +411,7 @@ End ex_perfect_set.
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
 
+
 Module lemma6_direct_new.
 Section lemma6_direct.
 Context {R : realType}.
@@ -507,6 +509,53 @@ have cHZ : compact (H @` Z).
   apply: (@continuous_compact _ _ H Z); last exact: cZ.
   exact: (continuous_subspaceW Zab).
 wlog : Z Zab cZ Z0 HZ cHZ / perfect_set Z.
+wlog : Z Zab cZ Z0 HZ cHZ / perfect_set Z.
+  move=> wlg.
+  have : (mu Z < +oo)%E by rewrite Z0.
+  move/perfect_set_rm => /(_ cZ)[L [LZ cL isoL0 muLZ]].
+  have closedZ : closed Z by apply: compact_closed.
+  have compactL : compact L.
+    by [].
+  have closedL : closed L.
+    by apply: compact_closed compactL.
+  apply: (wlg L).
+  - by apply: (subset_trans _ Zab).
+  - exact: compactL.
+  - by rewrite [LHS]muLZ.
+  - have muHisoZ0 : mu [set H x | x in isolated Z] = 0.
+      apply: countable_lebesgue_measure0.
+      apply: card_le_trans.
+        exact: card_image_le.
+      exact: countable_isolated.
+    rewrite (lt_le_trans HZ)//.
+    
+    have : (mu (H @` Z) - mu (H @` isolated Z) <= mu (H @` L))%E.
+      rewrite leeBlDr; last first.
+        by rewrite muHisoZ0.
+      rewrite muHisoZ0.
+      rewrite [in leLHS](_ : Z = L `|` isolated Z); last first.
+        rewrite setUC LE.
+        rewrite -closure_isolated_limit_point.
+        exact/closure_id.
+      rewrite image_setU.
+      by apply: outer_measureU2.
+    apply: lt_le_trans.
+    by rewrite muHisoZ0 sube0.
+
+    have : (mu (H @` Z) <= mu (H @` L))%E.
+      
+      
+
+  - admit.
+  - apply: (@continuous_compact _ _ H L); last exact: compactL.
+    apply: (@continuous_subspaceW _ _ _ Z) => //.
+    exact: (@continuous_subspaceW _ _ _ _ _ Zab).
+  - split => //.
+    by apply: compact_closed compactL.
+
+
+
+
   move=> wlg.
   set L := Z `\` isolated Z. (* TODO: this is too harsh *)
   have closedZ : closed Z by apply: compact_closed.
@@ -563,7 +612,29 @@ wlog : Z Zab cZ Z0 HZ cHZ / perfect_set Z.
     apply: (@continuous_subspaceW _ _ _ Z) => //.
       exact: subDsetl.
     exact: (@continuous_subspaceW _ _ _ _ _ Zab).
+  - split => //.
+
+
+
+
+
+
+
+
+
+
+
+
+
+perfect_set_rm
+
+
+
   - admit.
+
+perfect_set_rm
+
+
 pose c : R := inf Z.
 pose d : R := sup Z.
 have cd : c < d.
