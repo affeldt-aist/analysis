@@ -125,6 +125,34 @@ exists (variation c d g s) => //.
 by exists s.
 Qed.
 
+(* TODO: PR? *)
+Section open_mem_lemmas.
+Context {R : realType}.
+Implicit Type (A : set R).
+
+Lemma open_haslb_memNinf A : has_lbound A -> open A ->
+  ~ (A (inf A)).
+Proof.
+move=> haslbA oA; rewrite -{1}((interior_id A).1 oA).
+by move/(left_bounded_interior haslbA); rewrite /= ltxx.
+Qed.
+
+Lemma open_hasub_memNsup A : has_ubound A -> open A ->
+  ~ (A (sup A)).
+Proof.
+move=> hasubA oA; rewrite -{1}((interior_id A).1 oA).
+by move/(right_bounded_interior hasubA); rewrite /= ltxx.
+Qed.
+
+Lemma slosed_haslb_mem_inf A : has_lbound A -> closed A ->
+  A (inf A).
+Proof.
+move=> haslbA cA.
+Abort.
+
+End open_mem_lemmas.
+
+
 Section completed_algebra_lemmas.
 Context {d : measure_display}.
 Context {T : semiRingOfSetsType d}.
