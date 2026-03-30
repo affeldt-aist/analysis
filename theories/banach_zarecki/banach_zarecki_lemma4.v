@@ -38,27 +38,6 @@ apply/seteqP; split => [_ [x [i Di Six <-]]|_ [i Di [x Six <-]]].
 by exists x => //; exists i.
 Qed.
 
-(* TODO: PR? *)
-Section open_mem_lemmas.
-Context {R : realType}.
-Implicit Type (A : set R).
-
-Lemma open_haslb_memNinf A : has_lbound A -> open A ->
-  ~ (A (inf A)).
-Proof.
-move=> haslbA oA; rewrite -{1}((interior_id A).1 oA).
-by move/(left_bounded_interior haslbA); rewrite /= ltxx.
-Qed.
-
-Lemma open_hasub_memNsup A : has_ubound A -> open A ->
-  ~ (A (sup A)).
-Proof.
-move=> hasubA oA; rewrite -{1}((interior_id A).1 oA).
-by move/(right_bounded_interior hasubA); rewrite /= ltxx.
-Qed.
-
-End open_mem_lemmas.
-
 Section cplt_hull.
 Context {R : realType}.
 Implicit Type (A : set R).
