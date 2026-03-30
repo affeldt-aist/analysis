@@ -411,6 +411,56 @@ End ex_perfect_set.
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
 
+Section isolated_limit_point_lemmas.
+Context {R : realType}.
+
+Lemma continuous_preimage_limit_point (g : R -> R) (X: set R) (y : R) :
+  {in X, continuous g} ->
+  limit_point (g @` X) y ->
+  forall x, x \in (g @^-1` [set y]) `&` X -> limit_point X x.
+Proof.
+move=> cg /limit_pointP[y_ [yY nyy cvg2y]] x.
+rewrite inE/= => -[gxy Xx].
+apply/limit_pointP.
+have : forall n, exists z : R, z \in (g @^-1` [set y_ n]) `&` X.
+  move=> n.
+  have : range y_ (y_ n) by exists n.
+  move/(yY (y_ n)) => [z Xz gzyn].
+  by exists z; rewrite inE/=; split.
+move/choice => [z_ zy].
+exists z_; split.
+    move => x1 [n _ <-]; have := zy n.
+    by rewrite inE/= => -[].
+  move=> n.
+  apply/negP.
+  move/eqP.
+  move/(f_equal g).
+  rewrite gxy.
+  have := zy n.
+  rewrite inE/= => -[-> _].
+  move/eqP.
+  apply/negP.
+  exact: nyy.
+move=> U [r /= r0 xrU].
+have {}Xx : x \in X.
+  by rewrite inE.
+have nbhsgx : nbhs (g x) [set g x | x in U].
+  admit.
+have [r' /= r'0 r'gU] := cg x Xx (g @` U) nbhsgx.
+have [rr /= rr0 Hrr] : nbhs y [set g x | x in U].
+  exists r' => //.
+  move=> t/=.
+  admit.
+have := cvg2y (g @` U).
+rewrite -gxy.
+move/(_ nbhsgx).
+move=> [k _ Hk].
+exists k => //.
+move=> m /= km.
+have [] := Hk m km.
+exists .
+have := (@cvg_comp _ _ _ z_ g
+xxx
 
 Module lemma6_direct_new.
 Section lemma6_direct.
@@ -662,6 +712,42 @@ have sorted_merge_tab n : sorted <%R (c :: merge_tab n).
 pose cd_ n := nth b (c :: merge_tab n).
 pose c_ n i := cd_ n i.*2.
 pose d_ n i := cd_ n i.*2.+1.
+have c2b n i : exists k, c_ n i.+1 = b_ k.
+
+  set elt_rel := fun (mp1 mp2 : {m : nat & {perm 'I_ m.+1}}) =>
+  (sort_ta (projT1 mp2)) = [tuple tnth (ta (projT1 mp2).+1)
+     ((projT2 mp2) i) | i < (projT1 mp2).+1].
+  have : forall mp1, {mp2 | elt_rel mp1 mp2}.
+    move=> mp1; apply/cid.
+    have : perm_eq (sort_ta (projT1 mp1).+1) (ta (projT1 mp1).+1).
+      by rewrite perm_sort.
+    move/tuple_permP => [p pE].
+    exists (existT _ (projT1 mp1) p).
+    rewrite /elt_rel/=.
+  move/dependent_choice.
+
+ @pair nat (forall m, {perm 'I_ m}).
+  set P := fun m (p : {perm 'I_ m}) => (sort_ta m)
+         = [tuple tnth (ta m) (p i) | i < m].
+  have : forall m, exists p : {perm 'I_m}, P m p.
+    move=> m; apply/tuple_permP.
+    by rewrite perm_sort.
+  
+  move/choice.
+[fun_of_sort sortE].
+  rewrite /c_/cd_/merge_tab.
+  elim: i.
+    rewrite doubleE double0/=.
+  have sort_bE : sort <%R (tb_ n) = [tuple tnth (tb_ n) i | i < n].
+    apply: lt_sorted_eq.
+        admit.
+      admit.
+    admit.
+
+  
+  admit.
+have d2a n i : exists k, d_ n i = a_ k.
+  admit.
 pose lambda n : R := \big[maxr/0%R]_(i < n) `|d_ n i - c_ n i|.
 have fin_alpha : alpha \is a fin_num.
   rewrite gt0_fin_numE//.
@@ -708,7 +794,7 @@ have pcdx n : itv_partition c d (x n).
   by have [] := proj2_sig (cid (@construct_x n)).
 pose S_ n : R := variation c d f (x n).
 pose V_ n : R :=
-  `|f (a_ 0) - c| + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)| + `|f d - f (b_ n)|
+  `|f (a_ 0) - f c| + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)| + `|f d - f (b_ n)|
     + \sum_(i < n) (fine (total_variation (a_ i) (b_ i) f)).
 have SV n : S_ n <= V_ n.
   admit.
@@ -756,11 +842,6 @@ have [n0] : exists2 n0, (0 < n0)%N & forall n, (n >= n0)%N -> V_ n > Vcd - (fine
     admit.
   by rewrite ltrBlDl -ltrBlDr.
 move=> n00.
-near \oo => n.
-have n0n : (n0 <= n)%N.
-  near: n.
-  exact: nbhs_infty_ge.
-move/(_ n n0n) => vcda2Vn.
 have Z_set0 : Z !=set0.
   apply/set0P/negP; move/eqP => Z_set0.
   have := HZ.
@@ -773,6 +854,93 @@ have ubZb : ubound Z b.
   move=> r Zr.
   have := Zab r Zr.
   by rewrite /= in_itv/= => /andP[].
+near \oo => n.
+have n0n : (n0 <= n)%N.
+  near: n.
+  exact: nbhs_infty_ge.
+move/(_ n n0n).
+(* (4) *)
+rewrite /Vcd/V_.
+have -> : fine (total_variation c d f) =
+ (`|H (a_ 0) - H c|%R + (\sum_(i < n) `|H (a_ i.+1) - H (b_ i)|)%R
+    + `|H d - H (b_ n)|%R +
+   (\sum_(i < n) fine (total_variation (a_ i) (b_ i) f))%R)%E.
+  admit.
+rewrite addrC 2!addrA ltrD2r -2!addrA addrC.
+(* (5.5) (between (5) and (6)) *)
+have alphaH : fine alpha <
+ (`|H (a_ 0) - H c|%R + (\sum_(i < n) `|H (a_ i.+1) - H (b_ i)|)%R
+   + `|H d - H (b_ n)|%R)%E.
+  rewrite /alpha.
+  have -> : Z = ([set` Rhull Z] `\` cplt_hull Z).
+   admit.
+  rewrite setDE.
+  apply: (@le_lt_trans _ _
+    (fine (mu ((H @` [set` Rhull Z]) `&` (H @` (~` cplt_hull Z)))))).
+    apply: fine_le.
+    - admit.
+    - admit.
+    apply: le_outer_measure.
+    exact: sub_image_setI.
+  admit.
+move/(@lt_trans _ _ _ (fine alpha / 2)).
+rewrite ltrBrDl -splitr; move/(_ alphaH).
+(* (6.5) (between (6) and (7)) *)
+pose abcd i := [set k | `[a_ k, b_ k] `<=` `[c_ n i, d_ n i]].
+set Uabcdn := \bigcup_(j in abcd n) `[a_ j, b_ j]%classic.
+have : forall i, (i < n)%N -> (`|f (d_ n i) - f (c_ n i)|%:E <=
+  \sum_(n <= j <oo | `[< `[a_ j, b_ j] `<=` Uabcdn >])
+     oscillation f `[a_ j, b_ j])%E.
+  move=> i iltn.
+  apply: lime_ge.
+    apply: ereal_nondecreasing_is_cvgn.
+    apply: ereal_nondecreasing_series => k _ _.
+    exact: oscillation_ge0.
+  apply/nearW => k.
+  have cdi : c_ n i < d_ n i.
+    admit.
+  have itvfcd : is_interval [set f x | x in `[(c_ n i), (d_ n i)]].
+    admit.
+  have cUabcdn : closed Uabcdn.
+    admit.
+  have hull_Uabcd : Rhull Uabcdn = `[(c_ n i), (d_ n i)].
+    admit.
+  have := (@lemma4 _ (c_ n i) (d_ n i) cdi f Uabcdn itvfcd cUabcdn hull_Uabcd).
+  move/andP => [le1 le2].
+  apply: (le_trans (le_trans le1 le2)).
+  have -> : (mu^*%mu [set f x | x in Uabcdn] = 0)%E.
+    apply/eqP; rewrite eq_le; apply/andP; split; last first.
+      exact: outer_measure_ge0.
+    have <- : mu^*%mu (f @` Z) = 0.
+      rewrite measurable_mu_extE; last first.
+        apply: sub_caratheodory.
+        apply: compact_measurable.
+        apply: continuous_compact => //.
+        exact: continuous_subspaceW cf.
+      apply: lusinf => //.
+      apply: sub_caratheodory.
+      exact: compact_measurable.
+    apply: le_outer_measure.
+    apply: image_subset.
+    apply: bigcup_sub => j.
+    rewrite /abcd/=.
+    move/subset_trans; apply.
+    rewrite /a_ /b_.
+    apply: (subset_trans (contiguous_intervalsS _)).
+    rewrite /a_.
+  admit.
+(* (7) *)
+have : ((`|f (a_ 0) - f c|%R + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)|
+           + `|f d - f (b_ n)|%R)%:E <=
+  \sum_(n <= i <oo) oscillation f `[a_ i, b_ i])%E.
+  apply: lime_ge.
+    apply: ereal_nondecreasing_is_cvgn.
+    apply: ereal_nondecreasing_series => i _ _.
+    exact: oscillation_ge0.
+  near=> i.
+
+  have := lemma4.
+move/(@le_lt_trans _ _ _ (fine alpha - fine alpha / 2)).
 have : fine alpha / 2 < V_ n.
   apply: (le_lt_trans _ vcda2Vn).
   rewrite lerBrDl -splitr.
@@ -880,7 +1048,42 @@ have : fine alpha / 2 < V_ n.
   rewrite le_eqVlt => /predU1P[->|HcHd].
     by rewrite subrr ifF.
   by rewrite ifT.
-admit.
+
+rewrite /V_.
+
+have ifcd : is_interval [set f x | x in `[c, d]].
+  (* by continuity *)
+  admit.
+have clZ : closed Z by exact: compact_closed.
+have hZE : Rhull Z = `[c, d].
+  congr Interval.
+  - rewrite ifT; last by apply/asboolP; exists a.
+    congr BSide.
+    apply/asboolP.
+    admit.
+  - rewrite ifT; last by apply/asboolP; exists b.
+    congr BSide.
+    apply/asboolPn.
+    rewrite not_notE.
+    admit.
+have := (@lemma4 _ _ _ cd f Z ifcd clZ hZE).
+rewrite measurable_mu_extE/=.
+have -> : mu (f @` Z) = 0.
+  apply: lusinf => //=.
+  apply: sub_caratheodory.
+  exact: compact_measurable.
+rewrite add0r.
+
+pose set_abcd_ i := [seq j |
+ (exists j, J = `[a_ j, b_ j]
+ /\ (`[a_ j, b_ j] `<=` `[c_ n i, d_ n i]))].
+have : forall i, (i < n)%nat ->
+  (`| f (d_ n i) - f (c_ n i)|%:E <=
+   \big[+%E/0%:E]_( J <- set_abcd i ) oscillation f `[a_ j, b_ j])%E.
+lemma4
+
+xxx
+
 Admitted.
 
 End lemma6_direct.
