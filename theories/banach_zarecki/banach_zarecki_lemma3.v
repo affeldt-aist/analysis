@@ -866,6 +866,56 @@ apply: HZ.
   exact: subDsetl.
 Qed.
 
+Section isolated_limit_point_lemmas.
+
+Lemma continuous_preimage_limit_point (g : R -> R) (X: set R) (y : R) :
+  {in X, continuous g} ->
+  limit_point (g @` X) y ->
+  forall x, x \in (g @^-1` [set y]) `&` X -> limit_point X x.
+Proof.
+move=> cg /limit_pointP[y_ [yY nyy cvg2y]] x.
+rewrite inE/= => -[gxy Xx].
+apply/limit_pointP.
+have : forall n, exists z : R, z \in (g @^-1` [set y_ n]) `&` X.
+  move=> n.
+  have : range y_ (y_ n) by exists n.
+  move/(yY (y_ n)) => [z Xz gzyn].
+  by exists z; rewrite inE/=; split.
+move/choice => [z_ zy].
+exists z_; split.
+    move => x1 [n _ <-]; have := zy n.
+    by rewrite inE/= => -[].
+  move=> n.
+  apply/negP.
+  move/eqP.
+  move/(f_equal g).
+  rewrite gxy.
+  have := zy n.
+  rewrite inE/= => -[-> _].
+  move/eqP.
+  apply/negP.
+  exact: nyy.
+move=> U [r /= r0 xrU].
+have {}Xx : x \in X.
+  by rewrite inE.
+have nbhsgx : nbhs (g x) [set g x | x in U].
+  admit.
+have [r' /= r'0 r'gU] := cg x Xx (g @` U) nbhsgx.
+have [rr /= rr0 Hrr] : nbhs y [set g x | x in U].
+  exists r' => //.
+  move=> t/=.
+  admit.
+have := cvg2y (g @` U).
+rewrite -gxy.
+move/(_ nbhsgx).
+move=> [k _ Hk].
+exists k => //.
+move=> m /= km.
+have [] := Hk m km.
+Abort.
+
+End isolated_limit_point_lemmas.
+
 Lemma image_measure0_Lusin_nondecreasing_new (F : R -> R) :
   {within `[a, b], continuous F} ->
   (* increasing means nondecreasing or not? *)
@@ -1041,9 +1091,6 @@ apply: HZ.
   exact: compact_closed cK.
 - admit.
 
-
-
-
 - apply/eqP; rewrite -measure_le0/=.
   rewrite -muZ10.
   apply: le_outer_measure.
@@ -1074,7 +1121,7 @@ apply: HZ.
       split => //.
       by exists x.
   exact: subDsetl.
-Qed.
+Admitted.
 
 End main_lemma.
 
