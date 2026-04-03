@@ -46,7 +46,7 @@ apply: Banach_Zarecki_nondecreasing => //. (* lemma 7 *)
   + apply/(bounded_variationP _ ax); exact:(bounded_variationl _ xb).
   + apply/(bounded_variationP _ ay); exact:(bounded_variationl _ yb).
   + by apply: (@total_variation_nondecreasing _ _ b); rewrite ?in_itv /= ?ax ?ay.
-- exact: Lusin_total_variation. (* lemma 6 *)
+- by apply: lemma6_direct_new.lemma6_direct => //.
 Qed.
 
 End banach_zarecki.
