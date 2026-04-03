@@ -669,7 +669,380 @@ Abort.
   (*   by apply: sub_Rhullr. *)
 
 
+(* NB: available as PR https://github.com/math-comp/analysis/pull/1809 *)
+Lemma compact_unif_continuousP f :
+  {within `[a, b], continuous f} <-> @unif_continuous (subspace `[a, b]) R f.
+Proof.
+Admitted.
+
 Section main_lemma.
+
+Lemma limit_point_open (U : set R) (p : R) :
+  limit_point U p <-> forall V, open_nbhs p V ->
+                         exists y : R, [/\ y != p, U y & V y].
+Proof.
+split.
+  move=> Up /= V pV.
+  apply: Up.
+  by apply: open_nbhs_nbhs.
+move=> /= H V.
+rewrite nbhsE/= => -[A pA AV].
+have [y [yp Uy Ay]] := H _ pA.
+exists y; split => //.
+by apply: AV.
+Qed.
+
+(* NB: this is too long! *)
+Lemma nondecreasing_cont_isolated (F : R -> R) (K : set R) :
+  compact K ->
+  {within `[a, b], continuous F} ->
+  {in `[a, b] &, {homo F : x y / x <= y}} ->
+  isolated K = set0 ->
+  let A := `[a, b] `&` F @^-1` K : set R in
+  [set F x | x in A] = K ->
+  isolated A = set0.
+Proof.
+move=> cK cF ndF isoK0 A AK.
+apply/nonemptyPn => -[/= x].
+move/isolatedP => [/=].
+rewrite inE => -[/= xab].
+set y := F x.
+move=> KFx.
+have : limit_point K y.
+  have : (closure K) y by exact: subset_closure.
+  by rewrite closure_isolated_limit_point isoK0 set0U.
+move/limit_pointP => [y_ [y_K y_neq y_cvg]].
+move=> -[V + VAx].
+move/open_nbhs_nbhs.
+rewrite /nbhs/= /nbhs_ball_ => -[d /= d0 xdV].
+have [xa|[xb|{}xab]] : x = a \/ x = b \/ x \in `]a, b[.
+  have : x \in `[a, b]%classic.
+    by rewrite inE.
+  rewrite -(setU1itv false) ?bnd_simp//; last exact/ltW.
+  rewrite -(setUitv1 true) ?bnd_simp//.
+  by rewrite setUA setUAC inE/= orA.
+- subst x.
+  pose d' := Num.min (d / 2) (b - a).
+  have d'0 : 0 < d'.
+    by rewrite /d' lt_min divr_gt0// subr_gt0.
+  have : F a <= F (a + d').
+    rewrite ndF//.
+      rewrite in_itv/=; apply/andP; split.
+        by rewrite lerDl ltW.
+      by rewrite -lerBrDl ge_min lexx orbT.
+    by rewrite lerDl ltW.
+  rewrite le_eqVlt => /predU1P[FaFad'|FaFad'].
+    have : (V `&` A) (a + d').
+      split.
+        apply: xdV.
+        rewrite /ball_/=.
+        rewrite opprD addrA subrr add0r normrN gtr0_norm//.
+        by rewrite gt_min gtr_pMr// invf_lt1// ltr1n.
+      rewrite /A/=; split.
+        rewrite in_itv/= lerDl ltW//=.
+        by rewrite -lerBrDl ge_min lexx orbT.
+      rewrite -FaFad' -AK/=.
+      by exists a => //.
+    rewrite VAx/=.
+    apply/eqP.
+    by rewrite eq_sym lt_eqF// ltrDl.
+  have [n /andP[Fayn ynFad']] : exists n, F a < y_ n < F (a + d').
+    pose k := ((F (a + d') - F a) / 2).
+    have k0 : 0 < k.
+      by rewrite divr_gt0// subr_gt0.
+    move/cvgrPdist_lt : y_cvg => /(_ _ k0)[n _]/(_ n (@leqnn n)).
+    rewrite ltr_distlC => /andP[ykyn ynyk].
+    exists n.
+    apply/andP; split.
+      rewrite lt_neqAle; apply/andP; split.
+        by rewrite eq_sym y_neq.
+      have := y_K (y_ n).
+      move=> /(_ (imageT _ _)).
+      rewrite -AK/= => -[x' Ax' <-].
+      rewrite ndF//.
+        move: Ax'.
+        by rewrite /A/= => -[].
+      move: Ax'.
+      by rewrite /A/= => -[] /itvP ->.
+    rewrite (lt_le_trans ynyk)//.
+    rewrite -lerBrDl.
+    rewrite /k -/y.
+    rewrite ger_pMr.
+      by rewrite invf_le1// ler1n//.
+    by rewrite subr_gt0.
+  have H3 : {within `[a, a + d'], continuous F}.
+    apply: continuous_subspaceW cF.
+    apply: subset_itv; rewrite bnd_simp//=.
+    by rewrite -lerBrDl ge_min lexx orbT.
+  have : Num.min (F a) (F (a + d')) <= y_ n <=
+         Num.max (F a) (F (a + d')).
+    by rewrite ge_min (ltW Fayn)/= le_max (ltW ynFad') orbT.
+  have aad' : a <= a + d'.
+    by rewrite lerDl ltW.
+  move/IVT => /(_ aad' H3)[x' x'aad' Fx'yn].
+  have : x' \in V `&` A.
+    rewrite inE.
+    split.
+      apply: xdV.
+      apply/set_mem.
+      rewrite -[X in _ \in X]/(ball _ _).
+      rewrite ball_itv inE/=.
+      apply: subset_itv x'aad'; rewrite bnd_simp//=.
+        by rewrite ltrBlDl ltrDr.
+      by rewrite ltrD2l gt_min gtr_pMr// invf_lt1//= ltr1n.
+    rewrite /A; split => //=.
+      apply: subset_itvl x'aad'; rewrite bnd_simp -lerBrDl.
+      by rewrite ge_min lexx orbT.
+    rewrite Fx'yn.
+    apply/y_K.
+    by apply/imageT.
+  rewrite VAx inE/= => x'x.
+  subst x'.
+  move/eqP : Fx'yn.
+  apply/negP.
+  rewrite eq_sym.
+  exact: y_neq.
+- subst x.
+  pose d' := Num.min (d / 2) (b - a).
+  have d'0 : 0 < d'.
+    by rewrite /d' lt_min divr_gt0// subr_gt0.
+  have : F (b - d') <= F b.
+    rewrite ndF//.
+      rewrite in_itv/=; apply/andP; split.
+        by rewrite lerBrDl -lerBrDr ge_min lexx orbT.
+      by rewrite lerBlDl lerDr// ltW.
+     by rewrite lerBlDl lerDr// ltW.
+  rewrite le_eqVlt => /predU1P[FbFbd'|FbFbd'].
+    have : (V `&` A) (b - d').
+      split.
+        apply: xdV.
+        rewrite /ball_/=.
+        rewrite opprD addrA opprK subrr add0r gtr0_norm//.
+        by rewrite gt_min gtr_pMr// invf_lt1// ltr1n.
+      rewrite /A/=; split.
+        rewrite in_itv/= lerBlDl lerDr (ltW d'0) andbT.
+        by rewrite lerBrDr -lerBrDl ge_min lexx orbT.
+      rewrite FbFbd' -AK/=.
+      by exists b => //.
+    rewrite VAx/=.
+    apply/eqP.
+    by rewrite eq_sym gt_eqF// ltrBlDl ltrDr.
+  have [n /andP[Fbyn ynFbd']] : exists n, F (b - d') < y_ n < F b.
+    pose k := ((F b - F (b - d')) / 2).
+    have k0 : 0 < k by rewrite divr_gt0// subr_gt0.
+    move/cvgrPdist_lt : y_cvg => /(_ _ k0)[n _]/(_ n (@leqnn n)).
+    rewrite ltr_distlC => /andP[ykyn ynyk].
+    exists n.
+    apply/andP; split.
+      rewrite (le_lt_trans _ ykyn)//.
+      rewrite lerBrDr -lerBrDl /y.
+      rewrite /k.
+      rewrite ger_pMr.
+        by rewrite invf_le1// ler1n//.
+      by rewrite subr_gt0.
+    rewrite lt_neqAle; apply/andP; split.
+      by rewrite y_neq.
+    have := y_K (y_ n).
+    move=> /(_ (imageT _ _)).
+    rewrite -AK/= => -[x' Ax' <-].
+    rewrite ndF//.
+      move: Ax'.
+      by rewrite /A/= => -[].
+    move: Ax'.
+    by rewrite /A/= => -[] /itvP ->.
+  have H3 : {within `[b - d', b], continuous F}.
+    apply: continuous_subspaceW cF.
+    apply: subset_itv; rewrite bnd_simp//=.
+    by rewrite lerBrDl -lerBrDr ge_min lexx orbT.
+  have : Num.min (F (b - d')) (F b) <= y_ n <=
+         Num.max (F (b - d')) (F b).
+    by rewrite ge_min (ltW Fbyn)/= le_max (ltW ynFbd') orbT.
+  have bd'b : b - d' <= b.
+    rewrite lerBlDl.
+    by rewrite lerDr ltW.
+  move/IVT => /(_ bd'b H3)[x' x'bd'b Fx'yn].
+  have : x' \in V `&` A.
+    rewrite inE.
+    split.
+      apply: xdV.
+      apply/set_mem.
+      rewrite -[X in _ \in X]/(ball _ _).
+      rewrite ball_itv inE/=.
+      apply: subset_itv x'bd'b; rewrite bnd_simp//=.
+        by rewrite ltrD2l ltrN2 // gt_min gtr_pMr// invf_lt1//= ltr1n.
+      by rewrite ltrDl.
+    rewrite /A; split => //=.
+      apply: subset_itvr x'bd'b; rewrite bnd_simp.
+      rewrite lerBrDl -lerBrDr.
+      by rewrite ge_min lexx orbT.
+    rewrite Fx'yn.
+    apply/y_K.
+    by apply/imageT.
+  rewrite VAx inE/= => x'x.
+  subst x'.
+  move/eqP : Fx'yn.
+  apply/negP.
+  rewrite eq_sym.
+  exact: y_neq.
+pose d' := Num.min (d/2) (Num.min (x - a) (b - x)).
+have d'0 : 0 < d'.
+  by rewrite lt_min divr_gt0//= lt_min !subr_gt0 !(itvP xab).
+have axd' : a <= x - d'.
+  by rewrite lerBrDl -lerBrDr !ge_min lexx/= orbT.
+have xd'b : x + d' <= b.
+  by rewrite -lerBrDl !ge_min lexx/= !orbT.
+have xd'xd' : x - d' <= x + d'.
+  by rewrite lerBlDr -addrA lerDl addr_ge0// ltW.
+have xd'ab : ball x d' `<=` `[a, b].
+  move=> z.
+  rewrite ball_itv/=.
+  by apply: subset_itv; rewrite bnd_simp.
+have : F (x - d') <= F (x + d').
+  apply: ndF => //.
+  rewrite in_itv/=; apply/andP; split => //.
+    by rewrite (le_trans _ xd'b)//.
+  rewrite in_itv/=; apply/andP; split => //.
+  by rewrite (le_trans axd').
+have d'd : d' < d.
+  by rewrite !gt_min gtr_pMr// invf_lt1// ltr1n.
+have xBd'b : x - d' <= b.
+  rewrite lerBlDl -lerBlDr !le_min.
+  rewrite lerD2l lerN2 (ltW ab)/=.
+  apply/andP; split.
+    rewrite lerBlDl -lerBlDr (le_trans _ xd'b)//.
+    rewrite lerD2l (@le_trans _ _ 0)//.
+      by rewrite lerNl oppr0 divr_ge0// ltW.
+    by rewrite ltW.
+  rewrite lerBlDl addrA -lerBlDr opprK.
+  by rewrite lerD// (itvP xab).
+have axDd' : a <= x + d'.
+  rewrite -lerBlDl !le_min.
+  rewrite lerD2r (ltW ab) andbT.
+  apply/andP; split.
+    rewrite lerBlDl (le_trans axd')// lerD2l (@le_trans _ _ 0)//.
+      by rewrite lerNl oppr0 ltW.
+    by rewrite divr_ge0// ltW.
+  rewrite lerBlDl addrA -lerBlDr opprK.
+  by rewrite lerD// (itvP xab).
+rewrite le_eqVlt => /predU1P[FxBd|FxBd].
+  have {}FxBd : F x = F (x + d').
+    apply/eqP/negPn/negP; rewrite neq_lt => /orP[|].
+      rewrite -FxBd ltNge => /negP; apply.
+      rewrite ndF ?in_itv//=.
+      by rewrite axd' xBd'b.
+      by rewrite !(itvP xab).
+      by rewrite gerBl ltW.
+    rewrite ltNge => /negP; apply.
+    rewrite ndF ?in_itv//=.
+    by rewrite !(itvP xab).
+    by rewrite xd'b andbT axDd'.
+    by rewrite lerDl// ltW.
+  have : (V `&` A) (x + d').
+    split.
+      apply: xdV.
+      rewrite /ball_/=.
+      by rewrite opprD addrA subrr add0r normrN gtr0_norm//.
+    rewrite /A/=; split.
+      rewrite in_itv/= xd'b andbT.
+      by rewrite (ler_wpDr (ltW _))// (itvP xab).
+    by rewrite -FxBd.
+  rewrite VAx/=.
+  by apply/eqP; rewrite eq_sym lt_eqF// ltrDl.
+have [yE|] := eqVneq (F (x - d')) y.
+  subst y.
+  have : (V `&` A) (x - d').
+    split.
+      apply: xdV.
+      rewrite /ball_/=.
+      rewrite opprD addrA subrr add0r normrN ltr0_norm//.
+      by rewrite opprK.
+      by rewrite oppr_lt0.
+    rewrite /A/=; split.
+      by rewrite in_itv/= axd'/=.
+    by rewrite yE.
+  rewrite VAx/=.
+  apply/eqP.
+  by rewrite eq_sym gt_eqF// ltrBlDl ltrDr.
+move=> Fxd'y.
+have [yE|] := eqVneq (F (x + d')) y.
+  subst y.
+  have : (V `&` A) (x + d').
+    split.
+      apply: xdV.
+      rewrite /ball_/=.
+      by rewrite opprD addrA subrr add0r normrN gtr0_norm//.
+    rewrite /A/=; split.
+    by rewrite in_itv/= xd'b andbT (le_trans axd')//.
+    by rewrite yE.
+  rewrite VAx/=.
+  apply/eqP.
+  by rewrite eq_sym lt_eqF// ltrDl.
+move=> yFxd'.
+have [n /andP[xd'yn ynxd']] : exists n, F (x - d') < y_ n < F (x + d').
+  pose k := Num.min ((F (x + d') - y) / 2) ((y - F (x - d')) / 2).
+  have k0 : 0 < k.
+    rewrite lt_min !divr_gt0//.
+    rewrite subr_gt0 lt_neqAle Fxd'y ndF//.
+      by rewrite in_itv/= axd'//= (le_trans _ xd'b)//.
+    by apply: subset_itv_oo_cc.
+    by rewrite lerBlDl lerDr ltW.
+    rewrite subr_gt0.
+    rewrite lt_neqAle eq_sym yFxd'/= ndF//.
+    by apply: subset_itv_oo_cc.
+    rewrite in_itv/= axDd'//=.
+    by rewrite lerDl ltW.
+  move/cvgrPdist_lt : y_cvg => /(_ _ k0)[n _]/(_ n (@leqnn n)).
+  rewrite ltr_distlC => /andP[ykyn ynyk].
+  exists n.
+  apply/andP; split.
+    rewrite (le_lt_trans _ ykyn)// /k.
+    rewrite lerBrDl -lerBrDr.
+    rewrite ge_min.
+    apply/orP; right.
+    rewrite ler_piMr//; last by rewrite ?invf_le1 ?ler1n//.
+    rewrite subr_ge0 ndF//.
+    by rewrite in_itv/= axd'/= (le_trans xd'xd').
+    by rewrite in_itv/= !(itvP xab).
+    by rewrite lerBlDl lerDr ltW.
+  rewrite (lt_le_trans ynyk)// /k.
+  rewrite -lerBrDl.
+  rewrite ge_min.
+  apply/orP; left.
+  rewrite ler_piMr//; last by rewrite ?invf_le1 ?ler1n//.
+  rewrite subr_ge0 ndF//.
+  by rewrite in_itv/= !(itvP xab).
+  rewrite in_itv/= xd'b andbT.
+  by rewrite (le_trans axd')//.
+  by rewrite lerDl ltW.
+have H3 : {within `[x - d', x + d'], continuous F}.
+  apply: continuous_subspaceW cF.
+  by apply: subset_itv; rewrite bnd_simp//=.
+have : Num.min (F (x - d')) (F (x + d')) <= y_ n <=
+       Num.max (F (x - d')) (F (x + d')).
+  by rewrite ge_min (ltW xd'yn)/= le_max (ltW ynxd') orbT.
+move/IVT => /(_ xd'xd' H3)[x' x'xd Fx'yn].
+have : x' \in V `&` A.
+  rewrite inE.
+  split.
+    apply: xdV.
+    apply/set_mem.
+    rewrite -[X in _ \in X]/(ball _ _).
+    rewrite ball_itv inE/=.
+    apply: subset_itv x'xd; rewrite bnd_simp//=.
+      by rewrite ltrD2l ltrN2//.
+    by rewrite ltrD2l//.
+  rewrite /A; split => //=.
+  by apply: subset_itv x'xd; rewrite bnd_simp//=.
+  rewrite Fx'yn.
+  apply/y_K.
+  by apply/imageT.
+rewrite VAx inE/= => x'x.
+subst x'.
+move/eqP : Fx'yn.
+apply/negP.
+rewrite eq_sym.
+exact: y_neq.
+Qed.
 
 Arguments open : clear implicits.
 Arguments closed : clear implicits.
@@ -1089,8 +1462,7 @@ apply: HZ.
   rewrite closed_setIS; last exact: itv_closed.
   apply: ((@continuous_closedP (subspace `[a, b]) _ F).1 cF).
   exact: compact_closed cK.
-- admit.
-
+- by apply: nondecreasing_cont_isolated => //.
 - apply/eqP; rewrite -measure_le0/=.
   rewrite -muZ10.
   apply: le_outer_measure.
@@ -1121,8 +1493,9 @@ apply: HZ.
       split => //.
       by exists x.
   exact: subDsetl.
-Admitted.
+Qed.
 
 End main_lemma.
 
 End lemma3.
+
