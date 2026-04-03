@@ -604,21 +604,6 @@ Let ndH := nondecreasing_total_variation bvf.
 Let cH : {within `[a, b], continuous H}.
 Proof. exact: total_variation_continuous. Qed.
 
-Lemma limit_point_open (U : set R) (p : R) :
-  limit_point U p <-> forall V, open_nbhs p V ->
-                         exists y : R, [/\ y != p, U y & V y].
-Proof.
-split.
-  move=> Up /= V pV.
-  apply: Up.
-  by apply: open_nbhs_nbhs.
-move=> /= H V.
-rewrite nbhsE/= => -[A pA AV].
-have [y [yp Uy Ay]] := H _ pA.
-exists y; split => //.
-by apply: AV.
-Qed.
-
 (* https://math.stackexchange.com/questions/1925764/limit-point-of-the-set-of-limit-points-is-in-the-set-of-limit-points *)
 Lemma limit_point_redundant (Z : set R) L :
   L = limit_point Z -> limit_point L `<=` L.
@@ -685,146 +670,6 @@ have [Z [Zab cZ isoZ0 Z0 HZ]] : exists Z : set R,
 have cHZ : compact (H @` Z).
   apply: (@continuous_compact _ _ H Z); last exact: cZ.
   exact: (continuous_subspaceW Zab).
-
-(*
-wlog : Z Zab cZ Z0 HZ cHZ / perfect_set Z.
-  move=> wlg.
-  have : (mu Z < +oo)%E by rewrite Z0.
-  move/perfect_set_rm => /(_ cZ)[L [LZ cL isoL0 muLZ]].
-  have closedZ : closed Z by apply: compact_closed.
-  have compactL : compact L.
-    by [].
-  have closedL : closed L.
-    by apply: compact_closed compactL.
-  apply: (wlg L).
-  - by apply: (subset_trans _ Zab).
-  - exact: compactL.
-  - by rewrite [LHS]muLZ.
-  - have muHisoZ0 : mu [set H x | x in isolated Z] = 0.
-      apply: countable_lebesgue_measure0.
-      apply: card_le_trans.
-        exact: card_image_le.
-      exact: countable_isolated.
-    rewrite (lt_le_trans HZ)//.
-    rewrite ((closure_id _).1 closedZ) closure_isolated_limit_point image_setU.
-    rewrite measureU => /=; last 3 first.
-    - admit.
-    - admit.
-
-    have : (mu (H @` Z) - mu (H @` isolated Z) <= mu (H @` L))%E.
-      rewrite leeBlDr; last first.
-        by rewrite muHisoZ0.
-      rewrite muHisoZ0.
-      rewrite [in leLHS](_ : Z = L `|` isolated Z); last first.
-        rewrite setUC.
-        
-        rewrite -closure_isolated_limit_point.
-        exact/closure_id.
-      rewrite image_setU.
-      by apply: outer_measureU2.
-    apply: lt_le_trans.
-    by rewrite muHisoZ0 sube0.
-    rewrite ((closure_id L).1 closedL).
-    rewrite closure_isolated_limit_point.
-    rewrite isoL0 set0U.
-    
-
-    rewrite (lt_le_trans HZ)//.
-    rewrite -(setDUK LZ).
-    rewrite image_setU.
-    apply: (le_trans (outer_measureU2 mu (H @` L) _)).
-    rewrite -[leRHS]adde0.
-    apply: leeD2l.
-    rewrite setDE.
-    have := @sub_image_setI _ _ H Z (~` L).
-    move/(le_outer_measure mu).
-    move/le_trans.
-    apply.
-    have : (mu (H @` Z) - mu (H @` isolated Z) <= mu (H @` L))%E.
-      rewrite leeBlDr; last first.
-        by rewrite muHisoZ0.
-      rewrite muHisoZ0.
-      rewrite [in leLHS](_ : Z = L `|` isolated Z); last first.
-        rewrite setUC LE.
-        rewrite -closure_isolated_limit_point.
-        exact/closure_id.
-      rewrite image_setU.
-      by apply: outer_measureU2.
-    apply: lt_le_trans.
-    by rewrite muHisoZ0 sube0.
-
-    have : (mu (H @` Z) <= mu (H @` L))%E.
-      
-      
-
-  - admit.
-  - apply: (@continuous_compact _ _ H L); last exact: compactL.
-    apply: (@continuous_subspaceW _ _ _ Z) => //.
-    exact: (@continuous_subspaceW _ _ _ _ _ Zab).
-  - split => //.
-    by apply: compact_closed compactL.
-
-
-
-
-  move=> wlg.
-  set L := Z `\` isolated Z. (* TODO: this is too harsh *)
-  have closedZ : closed Z by apply: compact_closed.
-  have compactL : compact L.
-    rewrite /L.
-    rewrite {1}(_ : Z = closure Z); last exact/closure_id.
-    rewrite closure_isolated_limit_point.
-    rewrite setUKD; last first.
-      rewrite subset0.
-      apply/disj_set2P.
-      exact: disjoint_isolated_limit_point.
-    have clpZ := limit_point_closed Z.
-    apply: (subclosed_compact _ cZ) => //.
-    apply: subset_trans.
-      exact: subset_limit_point.
-    by rewrite {2}((closure_id Z).1 closedZ).
-  have LE : L = limit_point Z.
-    rewrite /L.
-    rewrite {1}((closure_id Z).1 closedZ).
-    rewrite closure_isolated_limit_point.
-    rewrite setUKD//.
-    rewrite subset0.
-    apply/disj_set2P.
-    exact: disjoint_isolated_limit_point.
-  have closedL : closed L.
-    rewrite LE.
-    exact: limit_point_closed.
-  apply: (wlg L).
-  - apply: (subset_trans _ Zab).
-    exact: subDsetl.
-  - exact: compactL.
-  - apply/eqP.
-    rewrite -measure_le0/=.
-    rewrite -Z0.
-    rewrite le_outer_measure//.
-    exact: subDsetl.
-  - have muHisoZ0 : mu [set H x | x in isolated Z] = 0.
-      apply: countable_lebesgue_measure0.
-      apply: card_le_trans.
-        exact: card_image_le.
-      exact: countable_isolated.
-    have : (mu (H @` Z) - mu (H @` isolated Z) <= mu (H @` L))%E.
-      rewrite leeBlDr; last first.
-        by rewrite muHisoZ0.
-      rewrite [in leLHS](_ : Z = L `|` isolated Z); last first.
-        rewrite setUC LE.
-        rewrite -closure_isolated_limit_point.
-        exact/closure_id.
-      rewrite image_setU.
-      by apply: outer_measureU2.
-    apply: lt_le_trans.
-    by rewrite muHisoZ0 sube0.
-  - apply: (@continuous_compact _ _ H L); last exact: compactL.
-    apply: (@continuous_subspaceW _ _ _ Z) => //.
-      exact: subDsetl.
-    exact: (@continuous_subspaceW _ _ _ _ _ Zab).
-  - split => //.
-*)
 pose c : R := inf Z.
 pose d : R := sup Z.
 have cd : c < d.
@@ -1033,6 +878,7 @@ have alphaH : fine alpha <
     exact: sub_image_setI.
   admit.
 move/(@lt_trans _ _ _ (fine alpha / 2)).
+rewrite addrA.
 rewrite ltrBrDl -splitr; move/(_ alphaH).
 (* (6.5) (between (6) and (7)) *)
 pose abcd i := [set k | `[a_ k, b_ k] `<=` `[c_ n i, d_ n i]].
@@ -1119,6 +965,7 @@ admit.
 Admitted.
 
 End lemma6_direct.
+
 End lemma6_direct_new.
 
 (*
