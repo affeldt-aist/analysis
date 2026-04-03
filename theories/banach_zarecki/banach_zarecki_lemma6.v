@@ -411,6 +411,181 @@ End ex_perfect_set.
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
 
+(* Note: PR in future *)
+Section interior_lemmas.
+Context {R : realType}.
+
+Lemma isolated_interior_set0 (A : set R) :
+  isolated (interior A) = set0.
+Proof.
+apply/eqP.
+apply: contrapT.
+move/negP.
+move/set0P.
+move=> [/= x [Ax /=[V]]].
+rewrite nbhsE/=.
+move=> [U [oU Ux] UV] => VAx.
+have {V UV VAx}UAx : U `&` (interior A) = [set x].
+  rewrite eqEsubset; split.
+    rewrite -VAx.
+    exact: setSI.
+  rewrite sub1set inE; split => //.
+  by rewrite inE in Ax.
+have : open (U `&` (interior A)).
+  apply: openI => //.
+  exact: open_interior.
+rewrite UAx.
+move/(interior_id _).1.
+rewrite interior_set1.
+by rewrite eqEsubset => -[_ /(_ x erefl)].
+Qed.
+
+Lemma nonempty_open_interval_not_subset1 (A : set R) :
+  A !=set0 -> open A -> is_interval A ->
+  ~ is_subset1 A.
+Proof.
+move=> [x Ax] oA itvA.
+apply/existsNP.
+have /(_ x Ax)[e/= e0] := open_subball oA.
+have e20 : 0 < e / 2 by exact: divr_gt0.
+move/(_ (e / 2)).
+have ballee2 : ball_ [eta normr] 0 e (e / 2).
+  rewrite /ball_/= sub0r normrN gtr0_norm//.
+by rewrite -subr_gt0 {1}(splitr e) addrK.
+move/(_ ballee2 e20).
+move/(subset_trans (subset_closure_half e20)).
+Abort.
+
+Lemma limit_point_interior (A : set R) :
+  interior A `<=` limit_point (interior A).
+Proof.
+move=> /= x [e /=e0].
+rewrite open_subsetE; last exact: ball_open.
+ move=> ballxA.
+apply/limit_pointP.
+exists (fun n => x - e / n.+2%:R); split.
+- move=> _/= [n _ <-].
+  apply: ballxA; rewrite /ball_/=.
+  rewrite opprB addrCA subrr addr0 ger0_norm; last first.
+    by rewrite divr_ge0// ltW.
+  rewrite ltr_pdivrMr//.
+  rewrite ltr_pMr//.
+  by rewrite {1}(_ : 1 = 1%:R)// ltr_nat.
+- move=> n.
+  rewrite neq_lt; apply/orP; left.
+  rewrite gtrBl.
+  by rewrite divr_gt0.
+- rewrite -{2}(subr0 x).
+  apply: cvgB.
+    exact: cvg_cst.
+  rewrite -(mulr0 e).
+  apply: cvgM.
+    exact: cvg_cst.
+  apply/cvgrVy.
+    by apply: nearW.
+  under eq_cvg do rewrite /unstable.inv_fun/= invrK.
+  apply/cvgrnyP.
+  rewrite cvg_shiftS.
+  rewrite (cvg_shiftS (fun x => x)).
+  exact: cvg_id.
+Qed.
+
+Lemma ex_perfect_set (A : set R) :
+  closed A ->
+  exists B, [/\ B `<=` A, perfect_set B &
+   (0 < lebesgue_measure A)%E -> (0 < lebesgue_measure B)%E].
+Proof.
+move=> cA.
+exists (closure (interior A)); split.
+- rewrite {2}((closure_id _).1 cA).
+  apply: closureS.
+  exact: interior_subset.
+- apply/perfectP; split; first exact: closed_closure.
+  rewrite closure_isolated_limit_point.
+  rewrite isolated_interior_set0 set0U.
+  rewrite -subset0.
+  move=> /= x []/= .
+  rewrite inE; move/[dup] => limAx /limit_pointP[a_ [aA anx cvgax]].
+  move=> [V].
+  rewrite nbhsE/= => -[U [oU Ux] UV VAx].
+  have {V UV VAx}UAx : U `&` limit_point (interior A) = [set x].
+    rewrite eqEsubset; split.
+      rewrite -VAx.
+      exact: setSI.
+    by rewrite sub1set inE; split.
+  have [I_ [/all_and2[oI intI] [trivI UUI]]] := open_disjoint oU.
+  have := Ux.
+  rewrite UUI => -[n _ Inx].
+Abort.
+(*
+    rewrite open_disjoint_i
+ /nbhs_singleton Vx VAx].
+  rewrite limit_point_interior.
+*)
+
+End interior_lemmas.
+
+Section contiguous_interval_partition.
+Context {R : realType}.
+Implicit Type (A : set R).
+
+(* note: (i <= j :> interval R) means i `<=` j as sets.
+         (itv_leEmeet, subitvP, leRhull, etc.) *)
+Lemma interval_le_bound (X Y : set R) :
+  is_interval X -> is_interval Y ->
+  [disjoint X & Y] ->
+  (ereal_sup (EFin @` X) <= ereal_inf (EFin @` Y))%E \/
+    (ereal_sup (EFin @` Y) <= ereal_inf (EFin @` X))%E.
+Proof.
+move=> intX intY disjXY.
+rewrite 2!leNgt.
+apply/nandP/negP => /andP[YX XY].
+have X0 : X !=set0.
+  apply/set0P.
+Admitted.
+
+Definition cgitvs A := contiguous_intervals A.
+Definition cgitv_lbs A := fun n => fine (contiguous_intervals1 A n).
+Definition cgitv_ubs A := fun n => fine (contiguous_intervals2 A n).
+
+Definition tuple_take {T} (s : T^nat) (n : nat) := [tuple s i | i < n].
+
+Local Notation sort_lbs A := (fun n => (sort <=%R (tuple_take (cgitv_lbs A) n))).
+
+Variable A : set R.
+Hypothesis (cA : compact A).
+
+Check (sort_lbs A).
+
+Definition fun_of_sort n : { p : {perm 'I_ n.+1} &
+ forall i, forall (iltn : (i < n.+1)%N),
+   tnth (sort_lbs A n.+1) (Ordinal iltn) =
+           cgitv_lbs A (p (Ordinal iltn))}.
+have : perm_eq (sort_lbs A n.+1) (tuple_take (cgitv_lbs A) n.+1).
+  by rewrite perm_sort.
+move/tuple_permP/cid => [p pH].
+exists p.
+move=> i iltn.
+
+rewrite pH /=.
+
+
+Admitted.
+
+Definition sort_fun n := (projT1 (fun_of_sort n)).
+(*
+Definition sort_ubs (X : set R) := (fun n => (sort <=%R (tuple_take (cgitv_ubs X) n))).
+
+Definition c_ n i := tnth (sort_lbs A n) i.
+Definition d_ n i := tnth (sort_fun A n) i.
+
+Definition bound_partition (X : set R) (n : nat) :=
+  merge <%R 
+*)
+
+End contiguous_interval_partition.
+
+
 Module lemma6_direct_new.
 Section lemma6_direct.
 Context {R : realType}.
@@ -693,6 +868,7 @@ have c2b n i : exists k, c_ n i.+1 = b_ k.
     exists (existT _ (projT1 mp1).+1 p).
     rewrite /elt_rel/=.
     split => //.
+    
     admit.
   move/dependent_choice.
   have tinj_ffunid : @injectiveb ('I_ 1) _ [ffun x => x].
