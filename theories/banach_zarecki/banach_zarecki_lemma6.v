@@ -454,7 +454,8 @@ have ballee2 : ball_ [eta normr] 0 e (e / 2).
 by rewrite -subr_gt0 {1}(splitr e) addrK.
 move/(_ ballee2 e20).
 move/(subset_trans (subset_closure_half e20)).
-Abort.
+
+Admitted.
 
 Lemma limit_point_interior (A : set R) :
   interior A `<=` limit_point (interior A).
@@ -516,6 +517,13 @@ exists (closure (interior A)); split.
   have [I_ [/all_and2[oI intI] [trivI UUI]]] := open_disjoint oU.
   have := Ux.
   rewrite UUI => -[n _ Inx].
+  have In0 : I_ n !=set0 by exists x.
+  have := nonempty_open_interval_not_subset1 In0 (oI n) (intI n).
+  move/existsNP => [x0 /existsNP[x1] /not_implyP[Inx0] /not_implyP[Inx1]].
+  move/eqP.
+  rewrite eq_le.
+  move/nandP.
+  rewrite -2!ltNge => -[x10|x01].
 Abort.
 (*
     rewrite open_disjoint_i
@@ -566,7 +574,6 @@ have : perm_eq (sort_lbs A n.+1) (tuple_take (cgitv_lbs A) n.+1).
 move/tuple_permP/cid => [p pH].
 exists p.
 move=> i iltn.
-
 rewrite pH /=.
 
 
@@ -693,9 +700,84 @@ pose ta n := [tuple a_ i | i < n].
 pose tb n := [tuple b_ i | i < n].
 pose sort_ta n := sort <%R (ta n).
 pose sort_tb n := sort <%R (tb n).
+pose c_ n i := tnth (c :: sort_tb n) i.
+pose d_ n i := tnth (rcons (sort_ta n) d) i.
+
+pose lambda n : R := \big[maxr/0%R]_(i < n.+1) `|d_ n i - c_ n i|.
+have fin_alpha : alpha \is a fin_num.
+  rewrite gt0_fin_numE//.
+  apply: (@le_lt_trans _ _ (mu (H @` `[a, b]))).
+    apply: le_outer_measure.
+    exact: image_subset.
+  apply: (@le_lt_trans _ _ (mu `[H a, H b])).
+    apply: le_outer_measure.
+    apply: continuous_nondecreasing_image_itvcc => //.
+    exact: ltW.
+  have [|] := ltP (H b) (H a).
+    rewrite ltNge.
+    by rewrite ndH ?boundl_in_itv ?boundr_in_itv ?bnd_simp//= ltW.
+  rewrite le_eqVlt => /predU1P[->|HaHb].
+    by rewrite set_itv1 completed_lebesgue_measureE lebesgue_measure_set1.
+  rewrite completed_lebesgue_measure_itv ifT ?lte_fin//=.
+  by rewrite -EFinB ltry.
+have lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
+  case: n => // n _.
+  rewrite /lambda.
+  apply/bigmax_gtP; right.
+  exists ord0 => //.
+  rewrite /c_/d_.
+  rewrite (tnth_nth 0) (tnth_nth 0 (c :: _))/=.
+  
+  admit.
+have lambda0 : lambda @ \oo --> 0.
+  apply/cvgrPdist_lt.
+  apply/not_notP.
+  move/existsNP => /=[e /not_implyP[e0]].
+  suff contra : (forall N, exists n, (N < n)%N /\ e <= lambda n) -> False.
+    move=> H.
+    apply/contra.
+    move=> n.
+    move: H.
+    rewrite /eventually/filter_from/=.
+    move/forallPNP/(_ _ I).
+    move/(_ n.+1).
+    move/existsNP => [N H].
+    have /not_implyP[/= nN] := H.
+    move/negP; rewrite -leNgt sub0r normrN gtr0_norm//; last first.
+      apply: lambda_gt0.
+      exact: leq_ltn_trans nN.
+    move=> eN.
+    by exists N; split.
+  move/choice => [N /all_and2[nN eN]].
+  have : forall n, (((N n)%:R * e)%:E <= mu Z)%E.
+    have dcZ n : \big[setU/set0]_(i < (N n).+1)
+          `[c_ (N n) i, d_ (N n) i]%classic `<=` Z.
+      admit.
+    have mdcZ n : (mu (\big[setU/set0]_(i < (N n).+1)
+          `[c_ (N n) i, d_ (N n) i]%classic) <= mu Z)%E.
+      exact: le_outer_measure.
+    have ecd n : (((N n)%:R * e)%:E <= mu (\big[setU/set0]_(i < (N n).+1)
+          `[c_ (N n) i, d_ (N n) i]%classic))%E.
+      have -> : (mu (\big[setU/set0]_(i < (N n).+1)
+      `[c_ (N n) i, d_ (N n) i]%classic) = \big[+%E/0%E]_(i < (N n).+1)
+      mu `[c_ (N n) i, d_ (N n) i])%E.
+        admit.
+      apply: (@le_trans _ _ (((N n)%:R * lambda (N n))%:E)).
+        rewrite lee_fin.
+        rewrite ler_pM2l.
+          apply: eN.
+        admit.
+      admit.
+    move=> n.
+    have -> : Z = [set` Rhull Z] `\` cplt_hull Z.
+      rewrite setDD setIidr//.
+      exact: sub_Rhull.
+    admit.
+  admit.
 pose merge_tab n := (merge <%R (sort_ta n) (sort_tb n)).
 have sorted_merge_tab n : sorted <%R (c :: merge_tab n).
   admit.
+(*
 pose cd_ n := nth b (c :: merge_tab n).
 pose c_ n i := cd_ n i.*2.
 pose d_ n i := cd_ n i.*2.+1.
@@ -740,39 +822,10 @@ have c2b n i : exists k, c_ n i.+1 = b_ k.
     rewrite double0/merge_tab.
     admit.
   admit.
+*)
 have d2a n i : exists k, d_ n i = a_ k.
   admit.
-pose lambda n : R := \big[maxr/0%R]_(i < n) `|d_ n i - c_ n i|.
-have fin_alpha : alpha \is a fin_num.
-  rewrite gt0_fin_numE//.
-  apply: (@le_lt_trans _ _ (mu (H @` `[a, b]))).
-    apply: le_outer_measure.
-    exact: image_subset.
-  apply: (@le_lt_trans _ _ (mu `[H a, H b])).
-    apply: le_outer_measure.
-    apply: continuous_nondecreasing_image_itvcc => //.
-    exact: ltW.
-  have [|] := ltP (H b) (H a).
-    rewrite ltNge.
-    by rewrite ndH ?boundl_in_itv ?boundr_in_itv ?bnd_simp//= ltW.
-  rewrite le_eqVlt => /predU1P[->|HaHb].
-    by rewrite set_itv1 completed_lebesgue_measureE lebesgue_measure_set1.
-  rewrite completed_lebesgue_measure_itv ifT ?lte_fin//=.
-  by rewrite -EFinB ltry.
-have lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
-  case: n => // n _.
-  rewrite /lambda.
-  apply/bigmax_gtP; right.
-  exists ord0 => //.
-  admit.
-have lambda0 : lambda @ \oo --> 0.
-  apply/cvgrPdist_lt => /= e e0.
-  near=> n.
-  rewrite sub0r normrN gtr0_norm; last first.
-    apply: lambda_gt0.
-  near: n.
-  exact: nbhs_infty_gt.
-  admit. (* because m(Z) = 0 *)
+
 have construct_x n :
   exists x : seq R, [/\ itv_partition c d x,
     (itv_partition_max c d x <= lambda n),
@@ -882,11 +935,14 @@ rewrite addrA.
 rewrite ltrBrDl -splitr; move/(_ alphaH).
 (* (6.5) (between (6) and (7)) *)
 pose abcd i := [set k | `[a_ k, b_ k] `<=` `[c_ n i, d_ n i]].
-set Uabcdn := \bigcup_(j in abcd n) `[a_ j, b_ j]%classic.
-have prop65 : forall i, (i < n)%N -> (`|f (d_ n i) - f (c_ n i)|%:E <=
+have {}n0n : (n0 < n.+1)%N.
+  admit.
+set on0 := Ordinal n0n.
+set Uabcdn := \bigcup_(j in abcd on0) `[a_ j, b_ j]%classic.
+have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
   \sum_(n <= j <oo | `[< `[a_ j, b_ j] `<=` Uabcdn >])
      oscillation f `[a_ j, b_ j])%E.
-  move=> i iltn.
+  move => i.
   apply: lime_ge.
     apply: ereal_nondecreasing_is_cvgn.
     apply: ereal_nondecreasing_series => k _ _.
