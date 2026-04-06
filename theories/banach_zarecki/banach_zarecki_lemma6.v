@@ -874,7 +874,12 @@ have Soo_tv : S_ n @[n --> \oo] --> Vcd.
     admit.
   by move/fine_cvgP => -[_ /=].
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
-  admit. (* squeeze *)
+  apply: (squeeze_cvgr _ Soo_tv); last first.
+    exact: cvg_cst.
+  apply: nearW => n.
+  apply/andP; split.
+    exact: SV.
+  exact: V_tv.
 have [n0] : exists2 n0, (0 < n0)%N & forall n, (n >= n0)%N -> V_ n > Vcd - (fine alpha) / 2.
   have alpha20 : 0 < fine alpha / 2.
     rewrite divr_gt0//.
@@ -886,7 +891,7 @@ have [n0] : exists2 n0, (0 < n0)%N & forall n, (n >= n0)%N -> V_ n > Vcd - (fine
   rewrite /ball/=.
   rewrite ger0_norm; last first.
     rewrite subr_ge0.
-    admit.
+    exact: V_tv.
   by rewrite ltrBlDl -ltrBlDr.
 move=> n00.
 have Z_set0 : Z !=set0.
