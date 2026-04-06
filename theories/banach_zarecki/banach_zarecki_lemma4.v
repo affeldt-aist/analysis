@@ -69,7 +69,7 @@ Proof.
 move=> /[dup]/asboolP u [ub ubAub]; exists ub => x [+ _].
 have [|/=/contrapT A0] := pselect (~ (A !=set0)).
   by move/not_nonemptyP ->; rewrite RhullK ?inE.
-by rewrite in_itv/= u => /andP[_]/lteifW/le_trans; apply; exact: sup_le_ub.
+by rewrite in_itv/= u => /andP[_]/lteifW/le_trans; apply; exact: ge_sup.
 Qed.
 
 Lemma has_lbound_cplt_hull A :
@@ -248,7 +248,7 @@ End cplt_hull.
 (* NB: A is supposed to be a perfect set so that A is closed *)
 Definition contiguous_intervals {R : realType} (A : set R) : (set R)^nat :=
   match pselect (closed A) with
-  | left H => open_disjointI (closed_open_cplt_hull H)
+  | left H => open_disjoint_itv (closed_open_cplt_hull H)
   | right _ => cst set0
   end.
 
@@ -265,21 +265,21 @@ Implicit Type (A : set R).
 Lemma open_contiguous_intervals A n : open (contiguous_intervals A n).
 Proof.
 rewrite /contiguous_intervals; case: pselect => cA//.
-exact: open_disjointI_open.
+exact: open_disjoint_itv_open.
 Qed.
 
 Lemma is_interval_contiguous_intervals A n :
   is_interval (contiguous_intervals A n).
 Proof.
 rewrite /contiguous_intervals; case: pselect => cA//.
-exact: open_disjointI_is_interval.
+exact: open_disjoint_itv_is_interval.
 Qed.
 
 Lemma disjoint_contiguous_intervals A :
   trivIset [set: nat] (contiguous_intervals A).
 Proof.
 rewrite /contiguous_intervals; case: pselect => cA//.
-  exact: open_disjointI_trivIset.
+  exact: open_disjoint_itv_trivIset.
 exact: trivIset_set0.
 Qed.
 
@@ -288,7 +288,7 @@ Lemma bigcup_contiguous_intervals A :
 Proof.
 move=> cA.
 rewrite /contiguous_intervals; case: pselect => ? //.
-by rewrite -open_disjointI_bigcup.
+by rewrite -open_disjoint_itv_bigcup.
 Qed.
 
 Lemma contiguous_intervals_subsetC A n :
@@ -297,7 +297,7 @@ Proof.
 rewrite /contiguous_intervals; case: pselect => cA//=.
 apply: (@subset_trans _ (cplt_hull A)); last first.
   exact: cplt_hull_complement.
-rewrite [in X in _ `<=` X](open_disjointI_bigcup (closed_open_cplt_hull cA)).
+rewrite [in X in _ `<=` X](open_disjoint_itv_bigcup (closed_open_cplt_hull cA)).
 exact: bigcup_sup.
 Qed.
 
@@ -356,10 +356,8 @@ have [An0|] := pselect ((contiguous_intervals A n) !=set0); last first.
   by rewrite inf0 sup0.
 rewrite -ereal_inf_EFin// -ereal_sup_EFin//.
 move: An0 => [z Anz].
-apply: ereal_inf_le.
-exists z%:E => //.
-apply: ereal_sup_ge.
-by exists z%:E.
+apply: ge_ereal_inf; exists z%:E => //.
+by apply: le_ereal_sup_tmp; exists z%:E.
 Qed.
 
 Lemma bigcup_contiguous_intervals_fine A :
@@ -702,7 +700,7 @@ have [hasubf|hasNubf] :=
     apply/eqP.
     move/eqe_oppLRP => /=.
     move/ereal_inf_pinfty.
-    apply/not_forallP; rewrite notE.
+    apply/not_forallP; rewrite not_notE.
     have [y [x/= xab fax]] := fab0.
     by exists y%:E; rewrite ?not_implyP; split => //; exists y => //; exists x.
   rewrite ifT; last first.
@@ -718,7 +716,7 @@ have [haslbf|hasNlbf] :=
     move/asboolP: (hasubf) => ->; exact: ltNyr.
   rewrite /=; move/asboolF: (hasNlbf) => -> /=.
   have supNy: ereal_sup ((EFin \o f) @` `[(fine (a_ n)), (fine (b_ n))]) != -oo.
-    apply/eqP; move/ereal_sup_ninfty; apply/not_forallP; rewrite notE.
+    apply/eqP; move/ereal_sup_ninfty; apply/not_forallP; rewrite not_notE.
     have [y [x/= xab fax]] := fab0.
     by exists y%:E; rewrite ?not_implyP; split => //; exists x=> //; congr EFin.
   by case: ifP; rewrite addey.
