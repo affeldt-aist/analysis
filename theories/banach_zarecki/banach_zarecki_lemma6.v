@@ -730,9 +730,17 @@ have lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
   
   admit.
 have lambda0 : lambda @ \oo --> 0.
-  apply/cvgrPdist_lt.
-  apply/not_notP.
-  move/existsNP => /=[e /not_implyP[e0]].
+  under eq_cvg => n.
+    rewrite (_ : lambda n = fine (lambda n)%:E)//.
+    over.
+  apply: fine_cvg.
+  rewrite (_ : 0%:E = 0%E)//.
+  rewrite -Z0.
+  admit.
+(*
+move: lambda0.
+apply/cvgrPdist_lt.
+move/existsNP => /=[e /not_implyP[e0]].
   suff contra : (forall N, exists n, (N < n)%N /\ e <= lambda n) -> False.
     move=> H.
     apply/contra.
@@ -749,24 +757,27 @@ have lambda0 : lambda @ \oo --> 0.
     move=> eN.
     by exists N; split.
   move/choice => [N /all_and2[nN eN]].
-  have : forall n, (((N n)%:R * e)%:E <= mu Z)%E.
+  have : (e%:E <= mu Z)%E.
+
     have dcZ n : \big[setU/set0]_(i < (N n).+1)
           `[c_ (N n) i, d_ (N n) i]%classic `<=` Z.
       admit.
     have mdcZ n : (mu (\big[setU/set0]_(i < (N n).+1)
           `[c_ (N n) i, d_ (N n) i]%classic) <= mu Z)%E.
       exact: le_outer_measure.
-    have ecd n : (((N n)%:R * e)%:E <= mu (\big[setU/set0]_(i < (N n).+1)
-          `[c_ (N n) i, d_ (N n) i]%classic))%E.
-      have -> : (mu (\big[setU/set0]_(i < (N n).+1)
+    have mu_add n : (mu (\big[setU/set0]_(i < (N n).+1)
       `[c_ (N n) i, d_ (N n) i]%classic) = \big[+%E/0%E]_(i < (N n).+1)
-      mu `[c_ (N n) i, d_ (N n) i])%E.
+       mu `[c_ (N n) i, d_ (N n) i])%E.
+      admit.
+    have ecd n : (e%:E <= mu (\big[setU/set0]_(i < (N n).+1)
+          `[c_ (N n) i, d_ (N n) i]%classic))%E.
         admit.
-      apply: (@le_trans _ _ (((N n)%:R * lambda (N n))%:E)).
+      
+      apply: (@le_trans _ _ ((lambda (N n))%:E)).
         rewrite lee_fin.
-        rewrite ler_pM2l.
-          apply: eN.
+        apply: eN.
         admit.
+      
       admit.
     move=> n.
     have -> : Z = [set` Rhull Z] `\` cplt_hull Z.
@@ -774,6 +785,7 @@ have lambda0 : lambda @ \oo --> 0.
       exact: sub_Rhull.
     admit.
   admit.
+*)
 pose merge_tab n := (merge <%R (sort_ta n) (sort_tb n)).
 have sorted_merge_tab n : sorted <%R (c :: merge_tab n).
   admit.
@@ -840,9 +852,8 @@ have max_x n : itv_partition_max c d (x n) <= lambda n.
 have pcdx n : itv_partition c d (x n).
   by have [] := proj2_sig (cid (@construct_x n)).
 pose S_ n : R := variation c d f (x n).
-pose V_ n : R :=
-  `|f (a_ 0) - f c| + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)| + `|f d - f (b_ n)|
-    + \sum_(i < n) (fine (total_variation (a_ i) (b_ i) f)).
+pose V_ n : R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)| +
+     (\sum_(i < n) fine (total_variation (a_ i) (b_ i) f))%R.
 have SV n : S_ n <= V_ n.
   admit.
 pose Vcd := fine (total_variation c d f).
@@ -914,15 +925,12 @@ move/(_ n n0n).
 (* (4) *)
 rewrite /Vcd/V_.
 have -> : fine (total_variation c d f) =
- `|H (a_ 0) - H c|%R + (\sum_(i < n) `|H (a_ i.+1) - H (b_ i)|)%R
-    + `|H d - H (b_ n)|%R +
+  \sum_(i < n.+1) `|H (d_ n i) - H (c_ n i)| +
    (\sum_(i < n) fine (total_variation (a_ i) (b_ i) f))%R.
   admit.
-rewrite addrC 2!addrA ltrD2r -2!addrA addrC.
+rewrite addrAC ltrD2r.
 (* (5.5) (between (5) and (6)) *)
-have alphaH : fine alpha <
-  `|H (a_ 0) - H c|%R + (\sum_(i < n) `|H (a_ i.+1) - H (b_ i)|)%R
-   + `|H d - H (b_ n)|%R.
+have alphaH : fine alpha < \sum_(i < n.+1) `|H (d_ n i) - H (c_ n i)|.
   rewrite /alpha.
   have -> : Z = ([set` Rhull Z] `\` cplt_hull Z).
    admit.
@@ -936,7 +944,6 @@ have alphaH : fine alpha <
     exact: sub_image_setI.
   admit.
 move/(@lt_trans _ _ _ (fine alpha / 2)).
-rewrite addrA.
 rewrite ltrBrDl -splitr; move/(_ alphaH).
 (* (6.5) (between (6) and (7)) *)
 pose abcd i := [set k | `[a_ k, b_ k] `<=` `[c_ n i, d_ n i]].
@@ -988,8 +995,7 @@ have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
     admit.
   admit.
 (* (7) *)
-have : ((`|f (a_ 0) - f c|%R + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)|
-           + `|f d - f (b_ n)|%R)%:E <=
+have : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
   \sum_(n <= i <oo) oscillation f `[a_ i, b_ i])%E.
   apply: lime_ge.
     apply: ereal_nondecreasing_is_cvgn.
