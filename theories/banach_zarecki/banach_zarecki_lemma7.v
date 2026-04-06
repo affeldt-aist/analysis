@@ -1,6 +1,6 @@
 From HB Require Import structures.
 From Stdlib Require Import Bool.
-From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
+From mathcomp Require Import all_boot all_order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype.
@@ -506,7 +506,7 @@ have H n : (e0%:num%:E <= mu (f @` G_ n))%E.
           by rewrite setU0 set0U K set_itv_ge ?bnd_simp// set_itv_ge ?bnd_simp//=.
           exists (true, false) => //=.
           rewrite setU0 K [in RHS]set_itv_ge ?bnd_simp//= setU0.
-          by rewrite interval_set1.
+          by rewrite set_itv1.
           exists (false, false) => //=.
           by rewrite setU0 set0U K set_itv_ge ?bnd_simp// set_itv_ge ?bnd_simp//=.
           exists (false, false) => //=.
