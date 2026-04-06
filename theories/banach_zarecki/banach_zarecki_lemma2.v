@@ -1,6 +1,6 @@
 From HB Require Import structures.
 From Stdlib Require Import Bool.
-From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
+From mathcomp Require Import all_boot all_order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import cardinality.
@@ -124,7 +124,7 @@ Let Uab n : \bigcup_(y in X n) `]infpre y, suppre y[%classic `<=` `[a, b].
 Proof.
 apply: bigcup_sub => r B_nr; apply: subset_itvW.
   by apply: lb_le_inf; [apply: B_nonempty; case: B_nr|exact: lba].
-by apply: sup_le_ub; [apply: B_nonempty; case: B_nr|exact: ubb].
+by apply: ge_sup; [apply: B_nonempty; case: B_nr|exact: ubb].
 Qed.
 
 Let finXn n : finite_set (X n).
@@ -358,11 +358,11 @@ have : exists l r, [/\ a <= l, l <= r, r <= b & bigcup_ointsub Z (index n) = `]l
         apply: lb_le_inf => //.
       move: neZn => [z Znz].
       apply: (@le_trans _ _ z).
-        apply: inf_lbound => //.
+        apply: ge_inf => //.
         by exists a.
-      apply: sup_ubound => //.
+      apply: ub_le_sup => //.
       by exists b.
-    exact: sup_le_ub.
+    exact: ge_sup.
   rewrite {1}(_:bigcup_ointsub _ _ = interior (bigcup_ointsub Z (index n))); last first.
     rewrite eqEsubset; split.
       have := @openE R.

@@ -1,6 +1,6 @@
 From HB Require Import structures.
 From Stdlib Require Import Bool.
-From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
+From mathcomp Require Import all_boot all_order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean perm finmap.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import reals constructive_ereal topology normedtype.
@@ -402,11 +402,11 @@ exists (closure (interior A)); split.
       rewrite -VAx.
       exact: setSI.
     by rewrite sub1set inE; split.
-  have [I_ [/all_and2[oI intI] [trivI UUI]]] := open_disjoint oU.
+  pose I_ := open_disjoint_itv oU.
   have := Ux.
-  rewrite UUI => -[n _ Inx].
+  rewrite (open_disjoint_itv_bigcup oU) => -[n _ Inx].
   have In0 : I_ n !=set0 by exists x.
-  have := nonempty_open_interval_not_subset1 In0 (oI n) (intI n).
+  have := nonempty_open_interval_not_subset1 In0 (@open_disjoint_itv_open _ _ oU n) (@open_disjoint_itv_is_interval _ _ oU n).
   move/existsNP => [x0 /existsNP[x1] /not_implyP[Inx0] /not_implyP[Inx1]].
   move/eqP.
   rewrite eq_le.
@@ -681,6 +681,10 @@ pose S_ n : R := variation c d f (x n).
 pose V_ n : R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)| +
      (\sum_(i < n) fine (total_variation (a_ i) (b_ i) f))%R.
 have SV n : S_ n <= V_ n.
+  rewrite /S_.
+  rewrite /V_.
+  rewrite /variation.
+  rewrite /=.
   admit.
 pose Vcd := fine (total_variation c d f).
 have V_tv n : V_ n <= Vcd.
@@ -915,20 +919,20 @@ have H1 : mu (H @` Z1) = mu (\bigcap_i (H @` (G i))) /\
   admit.
 have H2 : mu (H @` G i) @[i --> \oo] --> 0%E.
   admit.
-pose G_ i := \bigcup_j (open_disjointI (oG i) j).
+pose G_ i := \bigcup_j (open_disjoint_itv (oG i) j).
 have H3 i :
-  mu (f @` Z1) = mu (f @` (\bigcup_j (Z1 `&` (open_disjointI (oG i) j)))).
+  mu (f @` Z1) = mu (f @` (\bigcup_j (Z1 `&` (open_disjoint_itv (oG i) j)))).
   admit.
 have H4 i :
-    (mu (f @` (\bigcup_j (Z1 `&` (open_disjointI (oG i) j)))) <=
-    \sum_(j <oo) (mu^*)%mu (f @` (Z1 `&` (open_disjointI (oG i) j))))%E.
+    (mu (f @` (\bigcup_j (Z1 `&` (open_disjoint_itv (oG i) j)))) <=
+    \sum_(j <oo) (mu^*)%mu (f @` (Z1 `&` (open_disjoint_itv (oG i) j))))%E.
   admit.
 have H5 i :
-    (\sum_(j <oo) (mu^*)%mu (f @` (Z1 `&` (open_disjointI (oG i) j))) <
-    \sum_(j <oo) oscillation f (closure (open_disjointI (oG i) j)))%E.
+    (\sum_(j <oo) (mu^*)%mu (f @` (Z1 `&` (open_disjoint_itv (oG i) j))) <
+    \sum_(j <oo) oscillation f (closure (open_disjoint_itv (oG i) j)))%E.
   admit.
 have H6 i :
-    (\sum_(j <oo) oscillation f (closure (open_disjointI (oG i) j)) =
+    (\sum_(j <oo) oscillation f (closure (open_disjoint_itv (oG i) j)) =
     mu (H @` G_ i))%E.
   admit.
 apply/eqP; rewrite eq_le measure_ge0 andbT.

@@ -1,6 +1,6 @@
 From HB Require Import structures.
 From Stdlib Require Import Bool.
-From mathcomp Require Import all_ssreflect interval_inference ssralg ssrnum.
+From mathcomp Require Import all_boot all_order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
 From mathcomp Require Import cardinality.
@@ -668,12 +668,6 @@ Abort.
   (*     admit. *)
   (*   by apply: sub_Rhullr. *)
 
-
-(* NB: available as PR https://github.com/math-comp/analysis/pull/1809 *)
-Lemma compact_unif_continuousP f :
-  {within `[a, b], continuous f} <-> @unif_continuous (subspace `[a, b]) R f.
-Proof.
-Admitted.
 
 Section main_lemma.
 
