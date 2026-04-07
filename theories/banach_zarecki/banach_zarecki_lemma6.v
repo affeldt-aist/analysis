@@ -295,123 +295,11 @@ split.
 Abort.
 
 End checking.
-
-Section ex_perfect_set.
-Local Notation mu := (@lebesgue_measure R).
-
-(* enumration of rational numbers in A *)
-Let enum_ (A : set R) : nat -> R.
-Admitted.
-
-Let elt_prop (A : set R) (x : nat * set R) :=
-  [/\ open x.2, is_interval x.2 &
-     (forall m : nat, (m < x.1)%nat /\ enum_ A m \notin x.2)].
-
-Let elt_type A := {x : nat * set R * set R | elt_prop A x.1}.
-
-Let p_ A (x : elt_type A) := (proj1_sig x).1.1.
-Let U_ A (x : elt_type A) := (proj1_sig x).1.2.
-Let E_ A (x : elt_type A) := (proj1_sig x).2.
-
-Let elt_rel A (i j : elt_type A) :=
-  [/\ p_ j = (p_ i).+1,
-   (forall k : nat, (k <= p_ j)%N -> enum_ A k \notin E_ j)
-  & (0 <= mu (U_ j) < (2 ^- (p_ j).+2)%:E * mu A)%E].
-
-Lemma ex_perfect_set (A : set R) :
-  (0 < mu A)%E -> compact A ->
-  exists B, [/\ B !=set0, B `<=` A, perfect_set B & (0 < mu B)%E].
-Proof.
-Abort.
-(* move=> cA.
-pose iA := isolated A : set R.
-have : countable iA.
-  exact: countable_isolated.
-move/countable_bijP => [I].
-rewrite card_eq_sym.
-move/card_set_bijP => /= [i_ [funi inji surji]].
-pose hoge := Record {pU : nat * set R} 
-pose dpc_con (pU : nat * set R) (qV : nat * set R) :=
-  [/\ compact qV.2, (forall m, qV.1 < m /\ i_ m \in qV.2),
-     (forall k, (k < qV.1)%N -> i_ k \notin closure qV.2) &
-     closure qV.2 `<=` pU.2].
-have : forall X, open X.2 ->  {Y | dpc_con X Y}.
-  move=> X.
-  have [|] := pselect (exists m, i_ m \in X.2).
-    move/cid=> [m imX].
-
-pose dp_con (qX : (nat -> R) * set R)
-(abY1 : ((R * R) * set R)) (abY2 : ((R * R) * set R)) :=
-  [/\ irrational abY1.1.1, irrational abY1.1.2,
-   (forall n, qX.1 n \in `]abY1.1.1, abY1.1.2[) &
-  abY2.2 = abY1.2 `\` `]abY1.1.1, abY1.1.2[].
-(* enumration of rational numbers in `]b, a[ *)
-have : {q_ : nat -> R |
-         (forall n, rational (q_ n)) /\ (forall n, q_ n \in `[b, a])}.
-  apply: cid.
-
-pose q : nat -> R := 0.
-
-
-have : forall abY1, { abY2 | dp_con (q, `[b, a]%classic) abY1 abY2}.
-  admit.
-move/dependent_choice.
-move/(_ ((a, b), `[b, a]%classic)).
-move=> [abE].
-have spabE := fun n => (surjective_pairing (abE n)).
-have spab  := fun n => (surjective_pairing (abE n).1).
-pose a_ := fun n => (abE n).1.1.
-pose b_ := fun n => (abE n).1.2.
-pose E_ := fun n => (abE n).2.
-move=> [].
-rewrite spabE spab => -[a0 b0 E0].
-move/all_and4=> [ir_Ebl ir_Ebr qE ES].
-exists (\bigcap_n (E_ n)); split.
-- have := (@bigcap_inf _ _ 0 [set: nat] E_).
-  by rewrite /E_ E0; apply.
-- admit.
-- 
-  [/\ (forall n, irrational (abY.1 n).1), (forall n, irrational (abY.1 n).2),
-   (forall n, qX.1 n \in `](abY.1 n).1, (abY.1 n).2[)
- & abY.2 = qX.2 `\` `]abY.1.1, abY.1.2[]}.
-
-End ex_perfect_set.
-
-
-Lemma perfect_set_compact (A : set R) :
-  infinite_set A ->
-  compact A -> exists B, B `<=` A /\ perfect_set B.
-Proof.
-move=> infA cA.
-have : forall X : set R, {Y | Y = X `\` (isolated X)}.
-  admit.
-move/dependent_choice/(_ A) => [B_ [B0A HB]].
-exists (\bigcap_n B_ n); split.
-  move=> x.
-  move/(_ 0 I).
-  by rewrite B0A.
-apply/perfectP; split.
-  apply: closed_bigI => i _.
-  elim: i.
-    rewrite B0A.
-    exact: compact_closed.
-  move=> n cBn.
-  rewrite HB.
-  rewrite {1}((closure_id _).1 cBn).
-  rewrite closure_isolated_limit_point.
-  rewrite setUKD; last first.
-    rewrite subset0; apply/eqP.
-    rewrite -disj_set2E.
-    exact: disjoint_isolated_limit_point.
-  exact: limit_point_closed.
-
-*)
-End ex_perfect_set.
  
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
 
-(* Note: PR in future *)
+(* TODO: PR *)
 Section interior_lemmas.
 Context {R : realType}.
 
@@ -525,73 +413,9 @@ exists (closure (interior A)); split.
   move/nandP.
   rewrite -2!ltNge => -[x10|x01].
 Abort.
-(*
-    rewrite open_disjoint_i
- /nbhs_singleton Vx VAx].
-  rewrite limit_point_interior.
-*)
+
 
 End interior_lemmas.
-
-Section contiguous_interval_partition.
-Context {R : realType}.
-Implicit Type (A : set R).
-
-(* note: (i <= j :> interval R) means i `<=` j as sets.
-         (itv_leEmeet, subitvP, leRhull, etc.) *)
-Lemma interval_le_bound (X Y : set R) :
-  is_interval X -> is_interval Y ->
-  [disjoint X & Y] ->
-  (ereal_sup (EFin @` X) <= ereal_inf (EFin @` Y))%E \/
-    (ereal_sup (EFin @` Y) <= ereal_inf (EFin @` X))%E.
-Proof.
-move=> intX intY disjXY.
-rewrite 2!leNgt.
-apply/nandP/negP => /andP[YX XY].
-have X0 : X !=set0.
-  apply/set0P.
-Admitted.
-
-Definition cgitvs A := contiguous_intervals A.
-Definition cgitv_lbs A := fun n => fine (contiguous_intervals1 A n).
-Definition cgitv_ubs A := fun n => fine (contiguous_intervals2 A n).
-
-Definition tuple_take {T} (s : T^nat) (n : nat) := [tuple s i | i < n].
-
-Local Notation sort_lbs A := (fun n => (sort <=%R (tuple_take (cgitv_lbs A) n))).
-
-Variable A : set R.
-Hypothesis (cA : compact A).
-
-Check (sort_lbs A).
-
-Definition fun_of_sort n : { p : {perm 'I_ n.+1} &
- forall i, forall (iltn : (i < n.+1)%N),
-   tnth (sort_lbs A n.+1) (Ordinal iltn) =
-           cgitv_lbs A (p (Ordinal iltn))}.
-have : perm_eq (sort_lbs A n.+1) (tuple_take (cgitv_lbs A) n.+1).
-  by rewrite perm_sort.
-move/tuple_permP/cid => [p pH].
-exists p.
-move=> i iltn.
-rewrite pH /=.
-
-
-Admitted.
-
-Definition sort_fun n := (projT1 (fun_of_sort n)).
-(*
-Definition sort_ubs (X : set R) := (fun n => (sort <=%R (tuple_take (cgitv_ubs X) n))).
-
-Definition c_ n i := tnth (sort_lbs A n) i.
-Definition d_ n i := tnth (sort_fun A n) i.
-
-Definition bound_partition (X : set R) (n : nat) :=
-  merge <%R 
-*)
-
-End contiguous_interval_partition.
-
 
 Module lemma6_direct_new.
 Section lemma6_direct.
@@ -700,8 +524,55 @@ pose ta n := [tuple a_ i | i < n].
 pose tb n := [tuple b_ i | i < n].
 pose sort_ta n := sort <%R (ta n).
 pose sort_tb n := sort <%R (tb n).
+
+have H : forall n, exists (p : {perm 'I_n}), sort_ta n
+         = [tuple tnth (ta n) (p i) | i < n].
+  move=> n.
+  apply/tuple_permP.
+  rewrite /sort_ta.
+  by rewrite perm_sort.
+Print choice.
+pose fun_of_sort := fun n => sval (cid (H n)) : {perm 'I_ n}.
+pose fun_of_sortE := fun n => svalP (cid (H n)) :
+   sort_ta n = [tuple tnth (ta n) (fun_of_sort n i) | i < n].
+have fun_of_sort_tb : forall n,
+   sort_tb n = [tuple tnth (tb n) (fun_of_sort n i) | i < n].
+  admit.
+(*
+fun_of_sort : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
+         = [tuple tnth (ta_ n) (p i) | i < n].
+    apply/tuple_permP.
+    by rewrite perm_sort.
+  have sort_bE : sort <%R (tb_ n) = [tuple tnth (tb_ n) i | i < n].
+    apply: lt_sorted_eq.
+        admit.
+      admit.
+    admit.
+*)
 pose c_ n i := tnth (c :: sort_tb n) i.
 pose d_ n i := tnth (rcons (sort_ta n) d) i.
+have cndn n i : c_ n i < d_ n i.
+  rewrite /c_/d_.
+  have [-> |] := eqVneq i ord0.
+    rewrite tnth0.
+    rewrite (tnth_nth d) nth_rcons_default.
+    admit.
+  rewrite eq_le.
+    
+  admit.
+have c2b n i : exists k, c_ n i = b_ k.
+  admit.
+have d2a n i : exists k, d_ n i = a_ k.
+  admit.
+have cdi : c_ n i < d_ n i.
+    admit.
+have itvfcd : is_interval [set f x | x in `[(c_ n i), (d_ n i)]].
+    admit.
+have cUabcdn : closed Uabcdn.
+    admit.
+have hull_Uabcd : Rhull Uabcdn = `[(c_ n i), (d_ n i)].
+    admit.
+
 
 pose lambda n : R := \big[maxr/0%R]_(i < n.+1) `|d_ n i - c_ n i|.
 have fin_alpha : alpha \is a fin_num.
@@ -730,17 +601,9 @@ have lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
   
   admit.
 have lambda0 : lambda @ \oo --> 0.
-  under eq_cvg => n.
-    rewrite (_ : lambda n = fine (lambda n)%:E)//.
-    over.
-  apply: fine_cvg.
-  rewrite (_ : 0%:E = 0%E)//.
-  rewrite -Z0.
-  admit.
-(*
-move: lambda0.
-apply/cvgrPdist_lt.
-move/existsNP => /=[e /not_implyP[e0]].
+  apply/cvgrPdist_lt.
+  apply/not_notP.
+  move/existsNP => /=[e /not_implyP[e0]].
   suff contra : (forall N, exists n, (N < n)%N /\ e <= lambda n) -> False.
     move=> H.
     apply/contra.
@@ -759,11 +622,21 @@ move/existsNP => /=[e /not_implyP[e0]].
   move/choice => [N /all_and2[nN eN]].
   have : (e%:E <= mu Z)%E.
 
-    have dcZ n : \big[setU/set0]_(i < (N n).+1)
+    have dcZ n : exists i,
           `[c_ (N n) i, d_ (N n) i]%classic `<=` Z.
       admit.
-    have mdcZ n : (mu (\big[setU/set0]_(i < (N n).+1)
-          `[c_ (N n) i, d_ (N n) i]%classic) <= mu Z)%E.
+    have mdcZ n : ((lambda (N n))%:E <= mu Z)%E.
+      rewrite -EFin_bigmax.
+      apply: bigmax_le.
+        exact: measure_ge0.
+      move=> /= i _.
+      have -> : `|d_ (N n) i - c_ (N n) i|%:E = mu `[c_ (N n) i, d_ (N n) i].
+        rewrite completed_lebesgue_measure_itv/= lte_fin.
+      have [i0 sub_cdZ] := dcZ n.
+        rewrite cndn. (* *)
+      apply: (@le_trans _ _ (mu 
+      rewrite le_outer_measure => //.
+      
       exact: le_outer_measure.
     have mu_add n : (mu (\big[setU/set0]_(i < (N n).+1)
       `[c_ (N n) i, d_ (N n) i]%classic) = \big[+%E/0%E]_(i < (N n).+1)
@@ -789,54 +662,7 @@ move/existsNP => /=[e /not_implyP[e0]].
 pose merge_tab n := (merge <%R (sort_ta n) (sort_tb n)).
 have sorted_merge_tab n : sorted <%R (c :: merge_tab n).
   admit.
-(*
-pose cd_ n := nth b (c :: merge_tab n).
-pose c_ n i := cd_ n i.*2.
-pose d_ n i := cd_ n i.*2.+1.
-have c2b n i : exists k, c_ n i.+1 = b_ k.
-  
-  set elt_rel := fun (mp1 mp2 : {m : nat & {perm 'I_ m.+1}}) =>
-  (projT1 mp2) = (projT1 mp1).+1 /\
-  (sort_ta (projT1 mp2)) = [tuple tnth (ta (projT1 mp2).+1)
-     ((projT2 mp2) i) | i < (projT1 mp2).+1].
-  have : forall mp1, {mp2 | elt_rel mp1 mp2}.
-    move=> mp1; apply/cid.
-    have : perm_eq (sort_ta (projT1 mp1).+2) (ta (projT1 mp1).+2).
-      by rewrite perm_sort.
-    move/tuple_permP => [p pE].
-    exists (existT _ (projT1 mp1).+1 p).
-    rewrite /elt_rel/=.
-    split => //.
-    
-    admit.
-  move/dependent_choice.
-  have tinj_ffunid : @injectiveb ('I_ 1) _ [ffun x => x].
-    rewrite /injectiveb/dinjectiveb map_inj_uniq.
-      exact: enum_uniq.
-    by move=> ? ?; rewrite !ffunE.
-  move/(_ (@existT nat (fun n => {perm 'I_ n.+1}) 0%N (Perm tinj_ffunid))).
-  move=> [mp_ [mp0 mpS]].
-  pose m_ n := projT1 (mp_ n).
-  pose p_ n := projT2 (mp_ n).
-  have mE k : m_ k = k.
-    elim: k.
-      by have/(f_equal (@projT1 _ _)) := mp0.
-    rewrite /m_.
-    move=> k.
-    have := mpS k.
-    rewrite /elt_rel => -[+ _].
-    by move=> -> ->.
-  exists (p_ i).
-  rewrite /c_.
-  rewrite /cd_.
-  rewrite doubleS/=.
-  elim: i.
-    rewrite double0/merge_tab.
-    admit.
-  admit.
-*)
-have d2a n i : exists k, d_ n i = a_ k.
-  admit.
+
 
 have construct_x n :
   exists x : seq R, [/\ itv_partition c d x,
@@ -960,14 +786,7 @@ have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
     apply: ereal_nondecreasing_series => k _ _.
     exact: oscillation_ge0.
   apply/nearW => k.
-  have cdi : c_ n i < d_ n i.
-    admit.
-  have itvfcd : is_interval [set f x | x in `[(c_ n i), (d_ n i)]].
-    admit.
-  have cUabcdn : closed Uabcdn.
-    admit.
-  have hull_Uabcd : Rhull Uabcdn = `[(c_ n i), (d_ n i)].
-    admit.
+
   have := (@lemma4 _ (c_ n i) (d_ n i) cdi f Uabcdn itvfcd cUabcdn hull_Uabcd).
   move/andP => [le1 le2].
   apply: (le_trans (le_trans le1 le2)).
@@ -1034,658 +853,6 @@ Admitted.
 End lemma6_direct.
 
 End lemma6_direct_new.
-
-(*
-Section lemma6_direct.
-Context {R : realType}.
-Local Notation mu := (@completed_lebesgue_measure R).
-
-Variables a b : R.
-Hypothesis ab : a < b.
-Variable f : R -> R.
-Hypotheses (cf : {within `[a, b], continuous f})
-           (bvf : bounded_variation a b f)
-           (lusinf : lusinN `[a, b] f).
-Definition H := fun x => fine (total_variation a ^~ f x).
-
-(* "Clearly, H is increasing and continuous. " *)
-Let ndH := nondecreasing_total_variation bvf.
-Let cH : {within `[a, b], continuous H}.
-Proof. exact: total_variation_continuous. Qed.
-
-Lemma lusinN_contra :
- ~ (lusinN `[a, b] H) ->
- exists Z : set R,
-  [/\ Z `<=` `[a, b], compact Z, mu Z = 0 & (0%R < mu [set H x | x in Z])%E].
-Proof.
-move=> ababsurdo.
-have := image_measure0_Lusin_nondecreasing ab cH ndH.
-move/contra_not=> /(_ ababsurdo).
-move/existsNP=> [Z /not_implyP [Zab /not_implyP[cZ /not_implyP[muZ0]]]].
-move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ_gt0.
-by exists Z.
-Qed.
-
-(* wlog step *)
-Lemma lusinN_contra_wlog :
- ~ (lusinN `[a, b] (fun x => fine (total_variation a ^~ f x))) ->
- exists Z : set R,
- [/\ Z `<=` `[a, b], compact Z, mu Z = 0, (0%R < mu [set H x | x in Z])%E &
-  perfect_set Z].
-Proof.
-move=> ababsurdo.
-have := image_measure0_Lusin_nondecreasing ab cH ndH.
-move/contra_not=> /(_ ababsurdo).
-move/existsNP=> [Z' /not_implyP [Z'ab /not_implyP[cZ' /not_implyP[muZ'0]]]].
-move/eqP; rewrite neq_lt ltNge measure_ge0/= => muHZ'_gt0.
-pose Z := Z' `\` isolated Z'. (* extract lemma to perfect_set_compact *)
-  have closedZ : closed Z.
-    apply: compact_closed.
-  have compactZ' : compact Z'.
-    (* rewrite /Z'. *)
-    rewrite {1}(_ : Z = closure Z); last exact/closure_id.
-    rewrite closure_isolated_limit_point.
-    rewrite setUKD; last first.
-      rewrite subset0.
-      apply/disj_set2P.
-      exact: disjoint_isolated_limit_point.
-    have clpZ := limit_point_closed Z.
-    apply: (subclosed_compact _ cZ) => //.
-    apply: subset_trans.
-      exact: subset_limit_point.
-    by rewrite {2}((closure_id Z).1 closedZ).
-  have Z'E : Z' = limit_point Z.
-    rewrite /Z'.
-    rewrite {1}((closure_id Z).1 closedZ).
-    rewrite closure_isolated_limit_point.
-    rewrite setUKD//.
-    rewrite subset0.
-    apply/disj_set2P.
-    exact: disjoint_isolated_limit_point.
-  have closedZ' : closed Z'.
-    rewrite Z'E.
-    exact: limit_point_closed.
-  apply: (wlg Z').
-  - apply: (subset_trans _ Zab).
-    exact: subDsetl.
-  - exact: compactZ'.
-  - apply/eqP.
-    rewrite -measure_le0/=.
-    rewrite -Z0.
-    rewrite le_outer_measure//.
-    exact: subDsetl.
-  - admit.
-  - apply: (@continuous_compact _ _ H Z'); last exact: compactZ'.
-    apply: (@continuous_subspaceW _ _ _ Z) => //.
-      exact: subDsetl.
-    exact: (@continuous_subspaceW _ _ _ _ _ Zab).
-  - rewrite /perfect_set; split => //.
-    admit.
-*)
-(*
-Section contra.
-Hypothesis (nl : ~ (lusinN `[a, b] H)).
-Let Z : set R := sval (cid (lusinN_contra_wlog nl)).
-
-Let Zab : Z `<=` `[a, b].
-Proof. by have []:= proj2_sig (cid (lusinN_contra_wlog nl)). Qed.
-Let cZ : compact Z.
-Proof. by have []:= proj2_sig (cid (lusinN_contra_wlog nl)). Qed.
-Let muZ0 : mu Z = 0.
-Proof. by have []:= proj2_sig (cid (lusinN_contra_wlog nl)). Qed.
-Let muHZ_gt0 : (0%R < mu [set H x | x in Z])%E.
-Proof. by have []:= proj2_sig (cid (lusinN_contra_wlog nl)). Qed.
-
-(* wlog *)
-Let perfectZ : perfect_set Z.
-Proof. by have []:= proj2_sig (cid (lusinN_contra_wlog nl)). Qed.
-
-Lemma compactH : compact (H @` Z).
-Proof.
-apply: (@continuous_compact _ _ H Z); last exact: cZ.
-exact: (continuous_subspaceW Zab).
-Qed.
-
-Let c : R := inf Z.
-Let d : R := sup Z.
-
-Let cd : c < d.
-Proof.
-apply: has_bound_not_subset1_inf_sup.
-- by exists a => ? /Zab/=; rewrite in_itv/= => /andP[].
-- by exists b => ? /Zab/=; rewrite in_itv/= => /andP[].
-move=> Z1.
-move: muHZ_gt0.
-rewrite measure_gt0/= => /negP; apply; apply/eqP.
-apply: countable_lebesgue_measure0.
-apply: (@sub_countable _ _ _ Z).
-  exact: card_image_le.
-exact: is_subset1_countable.
-Qed.
-
-Let a_ n := fine (contiguous_intervals1 Z n).
-Let b_ n := fine (contiguous_intervals2 Z n).
-
-Section construct_x.
-Variable (n : nat).
-Let ta := [tuple a_ i | i < n].
-Let tb := [tuple b_ i | i < n].
-
-Local Definition sort_ta := sort <%R ta.
-Local Definition sort_tb := sort <%R tb.
-Let merge_tab := (merge <%R sort_ta sort_tb).
-
-(*
-fun_of_sort : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
-         = [tuple tnth (ta_ n) (p i) | i < n].
-    apply/tuple_permP.
-    by rewrite perm_sort.
-  have sort_bE : sort <%R (tb_ n) = [tuple tnth (tb_ n) i | i < n].
-    apply: lt_sorted_eq.
-        admit.
-      admit.
-    admit.
-*)
-
-Local Lemma sorted_merge_tab : sorted <%R (c :: merge_tab).
-Proof.
-Abort.
-
-(* nth b merge_tab n.*2 = nth b sort_ta n /\
-   nth b merge_tab n.*2.+1 = nth b sort_tb n ? *)
-
-Let cd_ := nth b (c :: merge_tab).
-
-Let c_ i := cd_ i.*2.
-Let d_ i := cd_ i.*2.+1.
-
-Lemma cd_default k : (n.*2 < k)%N -> cd_ k = b.
-Proof.
-move=> n2k.
-by rewrite /cd_ nth_default//= size_merge size_cat !size_sort !size_tuple addnn.
-Qed.
-
-Local Definition lambda : R := \big[maxr/0%R]_(i < n) `|d_ i - c_ i|%R.
-
-(* d @[n --> \oo] --> b ? *)
-(* forall i, `]c_ i, d_ i[ `<=` Z ? *)
-
-Lemma itv_partition_max_splitl : forall (s t : seq R) (l : R), sorted <%R s -> sorted <%R t ->
-    disj_seq s t ->
-    (forall n, (n < size s)%N ->
- itv_partition_max (nth d s n) (nth d s n.+1)
-    (rcons [seq x <- t | x \in `[(nth b s n), (nth b s n.+1)[]
-                                          (nth d s n.+1)) <= l)->
-    itv_partition_max c d (merge <%R s t) <= l.
-Proof.
-Abort,
-
-Lemma construct_x :
-  exists x : seq R, [/\ itv_partition c d x,
-   (itv_partition_max c d x <= lambda),
-   (forall i, (i < n.*2)%N -> a_ i \in x),
-   (forall i, (i < n.*2)%N -> b_ i \in x) &
-   (forall i, nth b x i \notin (interior Z : set R))
-            (* \bigcup_(i < n) `]c_ i, d_ i[ ? *)].
-Proof.
-exists (merge <%R [seq cd_ i | i <- iota 0 n.*2]
-   [seq x <- lambda_partition c d lambda |
-         x \notin \bigcup_(i < n) `[c_ i, d_ i]%classic]).
-split.
-- admit.
-- (* lemma? *)
-  apply: itv_partition_max_splitl.
-  + admit.
-  + admit.
-  + admit.
-  + move=> k.
-(*    rewrite size_map size_iota => kn.
-    have [k12n|] := eqVneq k.+1 n.*2.
-      rewrite nth_map_iota//.
-        rewrite ![nth _ _ k.+1]nth_default ?size_map ?size_iota -?k12n//.
-        rewrite /cd_ (pred_Sn k) k12n.
-        have -> : n.*2 = size merge_tab.
-          by rewrite /= size_merge size_cat 2!size_tuple addnn.
-    rewrite !nth_map_iota//; last first.
-      admit.
-    * admit.
-    * admit.
-    apply: (le_trans (itv_partition_max_filter _ _ _ _)).
-    apply/ltW/lambda_partition_max.
-    apply/bigmax_gtP; right.
-    rewrite /=.
-    have n0 : (0 < n)%N.
-      rewrite -ltn_double double0.
-      apply: leq_ltn_trans kn => //.
-    exists (Ordinal n0) => //=.
-    rewrite normr_gt0 lt0r_neq0// subr_gt0.
-    suff : sorted <%R [seq cd_ i | i <- iota 0 n.*2].
-      rewrite lt_sorted_pairwise.
-      move/(pairwiseP b).
-      move/(_ 0 1).
-      rewrite !inE size_map size_iota/=.
-      rewrite -[X in (X < n.*2)%N]double0 ltn_double.
-      rewrite -{1}(add0n 1) addn1 -{2}double0 ltn_Sdouble.
-      move/(_ n0 n0 (leqnn 0)).
-      rewrite 2?nth_map_iota//.
-        by rewrite -(add0n 1) addn1/= -double0 ltn_Sdouble.
-      by rewrite double_gt0.
-    apply: (@homo_sorted_in _ _ (fun k => (k < n.*2)%N) _ ltn); last 2 first.
-    * by apply/allP => p; rewrite mem_iota => /andP[].
-    * exact: iota_ltn_sorted.
-    move=> m0 m1/=.
-    rewrite !unfold_in => m02n m12n m01.
-    rewrite /cd_.
-    have := sorted_merge_tab.
-    rewrite lt_sorted_pairwise => /pairwiseP.
-    apply; rewrite ?unfold_in//= size_merge size_cat !size_sort !size_tuple.
-    * move: m02n.
-      by rewrite -muln2 mulnS muln1; move/leq_trans; apply.
-    * move: m12n.
-      by rewrite -muln2 mulnS muln1; move/leq_trans; apply.
-  *)
-  admit.
-- move=> k.
-  move=> k2n.
-  rewrite mem_merge mem_cat; apply/orP; left.
-  admit.
-- move=> k.
-  admit.
-- move=> k.
-  admit.
-Abort.
-
-End construct_x.
-
-Let lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
-Proof.
-case: n => // n _.
-rewrite /lambda.
-rewrite (lt_le_trans _ (le_bigmax _ _ ord0))//=.
-rewrite double0/=.
-rewrite normr_gt0.
-rewrite subr_eq0.
-Admitted.
-
-Let cvg_lambda0 : lambda n @[n --> \oo] --> 0.
-Proof.
-apply/cvgrPdist_lt => /= e e0.
-near=> n.
-rewrite sub0r normrN gtr0_norm; last first.
-  apply: lambda_gt0.
-  near: n.
-  exact: nbhs_infty_gt.
-Admitted.
-
-Let x := fun n => sval (cid (@construct_x n)).
-
-Local Notation p n := (size (x n)).
-
-Let pcdx n : itv_partition c d (x n).
-Proof. by have [] := proj2_sig (cid (@construct_x n)). Qed.
-Let max_x n : itv_partition_max c d (x n) <= (lambda n).
-Proof. by have [] := proj2_sig (cid (construct_x n)). Qed.
-Let ax n i (_ : (i < n.*2)%N) : a_ i \in (x n).
-Proof. by have [_ _ + _ _] := proj2_sig (cid (@construct_x n)); apply. Qed.
-Let bx n i (_ : (i < n.*2)%N) : b_ i \in (x n).
-Proof. by have [_ _ _ + _] := proj2_sig (cid (@construct_x n)); apply. Qed.
-Let xZ n i : nth b (x n) i \notin (interior Z : set R).
-Proof. by have [] := proj2_sig (cid (@construct_x n)). Qed.
-
-Let S_ n : R := variation c d f (x n).
-
-Let V_ n : R :=
-  
-
-`|f (a_ 0) - c| + \sum_(i < n) `|f (a_ i.+1) - f (b_ i)| + `|f d - f (b_ n)|
-    + \sum_(i < n) (fine (total_variation (a_ i) (b_ i) f)).
-
-Local Notation Vcd := (fine (total_variation c d f)).
-
-Lemma SV n : S_ n <= V_ n.
-Proof.
-Admitted.
-
-Lemma V_tv n : V_ n <= Vcd.
-Proof.
-Admitted.
-
-Lemma Soo_tv : S_ n @[n --> \oo] --> Vcd.
-Proof.
-have ac : a <= c.
-  apply: lb_le_inf; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
-  apply/set0P/negP; move/eqP => Z0.
-  have := muHZ_gt0; apply/negP.
-  rewrite -leNgt le_eqVlt; apply/predU1P; left.
-  by rewrite Z0 image_set0 measure0.
-have db : d <= b.
-  apply: ge_sup; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
-  apply/set0P/negP; move/eqP => Z0.
-  have := muHZ_gt0; apply/negP.
-  rewrite -leNgt le_eqVlt; apply/predU1P; left.
-  by rewrite Z0 image_set0 measure0.
-have cdcf : {within `[c, d], continuous f}.
-  apply: continuous_subspaceW cf.
-  by apply: subset_itv; rewrite bnd_simp.
-have cdbvf : bounded_variation c d f.
-  apply: (bounded_variationl (ltW cd) db).
-  apply: bounded_variationr ac _ bvf.
-  by apply: ltW; exact: (lt_le_trans cd).
-have := lemma5 cd cdcf pcdx max_x cvg_lambda0.
-rewrite /total_variation ereal_sup_EFin; last 2 first.
-- exists (fine (total_variation a b f)).
-  move=> _ [s ps <-].
-  rewrite -lee_fin fineK; last first.
-    apply/bounded_variationP => //.
-    exact: ltW.
-  apply: (le_trans (variation_le_total_variation _ _)) => //.
-  rewrite (total_variationD f ac); last first.
-    apply: le_trans db.
-    exact: ltW.
-  rewrite (total_variationD f _ db); last exact: ltW.
-  by rewrite addeCA leeDl ?adde_ge0 ?total_variation_ge0.
-- exists (variation c d f [:: d]).
-  apply: variations_variation.
-  exact: itv_partition1.
-move/fine_cvg => /=.
-exact.
-Qed.
-
-(* prove by lemma5_cvg_style *)
-(*
-have ac : a <= c.
-  apply: lb_le_inf; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
-  apply/set0P/negP; move/eqP => Z0.
-  have := muHZ_gt0; apply/negP.
-  rewrite -leNgt le_eqVlt; apply/predU1P; left.
-  by rewrite Z0 image_set0 measure0.
-have db : d <= b.
-  apply: ge_sup; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
-  apply/set0P/negP; move/eqP => Z0.
-  have := muHZ_gt0; apply/negP.
-  rewrite -leNgt le_eqVlt; apply/predU1P; left.
-  by rewrite Z0 image_set0 measure0.
-have cdcf : {within `[c, d], continuous f}.
-  apply: continuous_subspaceW cf.
-  by apply: subset_itv; rewrite bnd_simp.
-have cdbvf : bounded_variation c d f.
-  apply: (bounded_variationl (ltW cd) db).
-  apply: bounded_variationr ac _ bvf.
-  by apply: ltW; exact: (lt_le_trans cd).
-have := lemma5_cvg_style cd cdcf.
-rewrite -{1}(@fineK _ (total_variation c d f)); last first.
-  by apply/bounded_variationP => //; exact: ltW.
-move/fine_cvgP => [fin_inf].
-move/cvg_at_rightP.
-move/(_ lambda).
-have Hlambda : (forall n : nat, 0 < lambda n) /\ lambda n @[n --> \oo] --> 0.
-  split; last exact: cvg_lambda0.
-  move=> k.
-  exact: lambda_gt0.
-move/(_ Hlambda); move{Hlambda} => Hl.
-apply: squeeze_cvgr _ Hl (cvg_cst Vcd).
-have := fin_inf.
-move=> [l /= l0 Hl].
-near=> n.
-apply/andP; split; last first.
-  rewrite /Vcd/total_variation.
-  rewrite -lee_fin fineK; last by apply/bounded_variationP => //; exact: ltW.
-  apply: le_ereal_sup_tmp.
-  exists (S_ n)%:E => //.
-  exists (S_ n) => //.
-  by exists (x n).
-rewrite -lee_fin fineK; last first.
-  apply: Hl => //=; last first.
-    rewrite /lambda.
-    apply/bigmax_gtP.
-    right.
-    have n0 : (0 < n)%N.
-      near: n.
-      exact: nbhs_infty_gt.
-    exists (Ordinal n0) => //.
-    rewrite normr_gt0.
-    rewrite lt0r_neq0// subr_gt0.
-    have := sorted_merge_tab n.
-    move=> /(pathP b).
-    apply.
-    by rewrite size_merge size_cat !size_tuple/= addnn ltn_double.
-  rewrite sub0r normrN ger0_norm; last first.
-    exact/ltW/lambda_gt0.
-  near: n.
-  have := cvg_lambda0.
-  move/(_ (ball 0 l)) => /=.
-  move/(_ (nbhsx_ballx 0 _ l0)) => H.
-  move: H.
-  move=> [m _ Hm].
-  near=> n.
-  have := Hm n.
-  have mn : (m <= n)%N.
-    near: n.
-    exact: nbhs_infty_ge.
-  move/(_ mn) => /=.
-  rewrite /ball/=.
-  rewrite sub0r normrN ger0_norm//.
-  exact/ltW/lambda_gt0.
-apply: ge_ereal_inf.
-exists (S_ n)%:E => //.
-exists (S_ n) => //.
-by exists (x n); split.
-Unshelve. all: end_near. Qed.
-*)
-
-Lemma Voo_tv : V_ n @[n --> \oo] --> Vcd.
-Proof.
-apply: squeeze_cvgr _ Soo_tv (cvg_cst Vcd).
-apply: nearW => n.
-by rewrite SV V_tv.
-Qed.
-
- (* (3) ~ (8) *)
-Let HZ2_gt_osf : \forall n \near \oo, (mu [set H x | x in Z] / 2 <
- \big[+%E/0%E]_(n <= j <oo) oscillation f `[a_ j, b_ j])%E.
-Proof.
-near=> n.
-
-Admitted.
-
-(* (9) *)
-Lemma sum_osf_cvg0 :
-  \big[+%E/0%E]_(n <= j <oo) oscillation f `[a_ j, b_ j] @[n --> \oo] --> 0%E.
-Proof.
-apply: nneseries_tail_cvg; last first.
-  move=> n _.
-  exact: oscillation_ge0.
-apply: (@le_lt_trans _ _ (total_variation a b f)); last first.
-  rewrite -ge0_fin_numE; last exact: (total_variation_ge0 f (ltW ab)).
-  exact/(bounded_variationP f (ltW ab)).
-rewrite /total_variation.
-apply: lime_le.
-  apply: is_cvg_nneseries => n _ _.
-  exact: oscillation_ge0.
-apply: nearW => n.
-apply: le_ereal_sup_tmp.
-have aa i : a <= a_ i.
-  have : bounded_set Z.
-    rewrite Rbounded_setE; split.
-    - by exists a => r /Zab/=; rewrite in_itv/= => /andP[].
-    - by exists b => r /Zab/=; rewrite in_itv/= => /andP[].
-  rewrite Rbounded_setE => -[lbZ ubZ].
-  have := @contiguous_intervalsS _ Z i.
-  move/(image_subset EFin).
-  rewrite (contiguous_ooitv ubZ lbZ i).
-  move/closure_subset.
-  (* rewrite closure_neitv_oo. *)
-  have -> :
-   (closure `](contiguous_intervals1 Z i), (contiguous_intervals2 Z i)[ =
-   `[(contiguous_intervals1 Z i), (contiguous_intervals2 Z i)])%classic.
-    admit.
-  (* rewrite contiguous_ooitv. *) admit.
-have subab_cf k :
-   {within `[nth b (sort_ta n) k, nth b (sort_tb n) k], continuous f}.
-  apply: continuous_subspaceW cf.
-  apply: subset_itv; rewrite bnd_simp.
-    admit.
-  admit.
-have ltcd k : (nth b (sort_ta n) k) < (nth b (sort_tb n) k).
-  admit.
-(*
-have := fun k => continuous_oscillationE (ltcd k) (subab_cf k).
-move/choice => [osc_pts Hosc_pts].
-pose osc_seq := \big[cat/[::]]_(i < n) [:: (osc_pts i).1; (osc_pts i).2].
-have pab_osc_seq : itv_partition a b (rcons osc_seq b).
-  admit.
-exists (variation a b f (rcons osc_seq b))%:E.
-  exists (variation a b f (rcons osc_seq b)) => //.
-  exact: variations_variation.*)
-Admitted.
-
-Lemma contra : False.
-Proof.
-move: muHZ_gt0.
-apply/negP.
-rewrite -leNgt.
-rewrite -(@pmule_lle0 _ 2%:E^-1); last by rewrite inve_gt0.
-have/cvg_lim <- := sum_osf_cvg0; last by [].
-have <- : (limn (fun n : nat => @cst nat _ (mu [set H x | x in Z] / 2)%E n)
-           = mu (H @` Z) / 2)%E.
-  apply/cvg_lim => //; exact: cvg_cst.
-apply: lee_lim HZ2_gt_osf.
-- exact: eventually_filter.
-- exact: is_cvg_cst.
-apply/cvg_ex; exists 0%E.
-exact: sum_osf_cvg0.
-(* ? *) Admitted.
-
-End contra.
-
-(* lemma6 *)
-Lemma Lusin_total_variation :
-  lusinN `[a, b] H.
-Proof.
-apply: contrapT => nl.
-exact: (contra nl).
-Qed.
-
-(* old sketch *)
-(*
-pose c_ (n : nat) (i : 'I_n.+1) :=
-  if nat_of_ord i == 0 then c else b_ i. (* left boundary of *)
-pose d_ (n : nat) (i : 'I_n.+1) :=
-  if i == @ord_max n then d else a_ i.
-pose alpha := mu (H @` Z).
-have alpha_ge0 : (alpha > 0)%E by [].
-pose lambda (n : nat) := \big[Num.max/0%R]_(i < n.+1) (d_ _ i - c_ _ i).
-have lambda_cvg0 : lambda n @[n --> \oo] --> 0.
-  admit.
-have [x_ cdx_] : exists x_ : seq R, itv_partition c d x_ /\
-     (itv_partition_max c d x_ < lambda n) (* NB: p = size (c :: x_) *).
-  admit.
-pose X_ := c :: x_.
-pose p := size X_.
-pose S_ (n : nat) := \sum_(1 <= j < p.+1) `|f (nth 0 X_ j) - f (nth 0 X_ (j - 1))|.
-pose V_ (n : nat) := \sum_(1 <= i < n.+1) `|f (d_ n (inord i)) - f (c_ n (inord i))|
-           +
-           \sum_(1 <= i < n) fine (total_variation (fine (contiguous_intervals1 Z i))
-                                             (fine (contiguous_intervals2 Z i))
-                                             f).
-pose V := fine (total_variation c d f).
-have S_V_V (n : nat) : S_ n <= V_ n <= V.
-  admit.
-have S_V : S_ n @[n --> \oo] --> V.
-  apply/cvgrPdist_ltp.
-  near=> eps.
-  near=> n.
-  have/normr_idP -> : 0 <= V - S_ n.
-    admit.
-  rewrite ltrBlDr -ltrBlDl.
-  have -> : S_ n = variation c d f x_.
-    admit.
-  have cd : c < d.
-    admit.
-  have cdcf : {within `[c, d], continuous f}.
-   admit.
-  have cdbvf : bounded_variation c d f.
-    admit.
-  have veps0 : (0%:E < (V - eps)%:E < total_variation c d f)%E.
-    admit.
-  have := lemma5' cd cdcf cdbvf veps0.
-  move=> [l].
-  apply.
-    admit.
-  apply: (@lt_trans _ _ (lambda n)).
-    rewrite /itv_partition_max/lambda.
-    admit.
-
-  have cd : c < d.
-    apply: has_bound_not_subset1_inf_sup.
-    - by exists a => x /Zab/=; rewrite in_itv/= => /andP[].
-    - by exists b => x /Zab/=; rewrite in_itv/= => /andP[].
-    move=> Z1.
-    move: muHZ_gt0.
-    rewrite measure_gt0/= => /negP; apply; apply/eqP.
-    apply: countable_lebesgue_measure0.
-    apply: (@sub_countable _ _ _ Z).
-      exact: card_image_le.
-    exact: is_subset1_countable.
-
-  have ac : a <= c.
-    apply: lb_le_inf; last by move=> x /Zab /=; rewrite in_itv/= => /andP[].
-    apply/set0P/negP; move/eqP => Z0.
-    have := muHZ_gt0; apply/negP.
-    rewrite -leNgt le_eqVlt; apply/predU1P; left.
-    by rewrite Z0 image_set0 measure0.
-  have db : d <= b.
-    apply: ge_sup; last by move=> x /Zab /=; rewrite in_itv/= => /andP[].
-    apply/set0P/negP; move/eqP => Z0.
-    have := muHZ_gt0; apply/negP.
-    rewrite -leNgt le_eqVlt; apply/predU1P; left.
-    by rewrite Z0 image_set0 measure0.
-  have cdcf : {within `[c, d], continuous f}.
-    apply: continuous_subspaceW cf.
-    by apply: subset_itv; rewrite bnd_simp.
-  have cdbvf : bounded_variation c d f.
-    apply: (bounded_variationl (ltW cd) db).
-    apply: bounded_variationr ac _ bvf.
-    by apply: ltW; exact: (lt_le_trans cd).
-  have := lemma5 cd cdcf.
-  rewrite -(@fineK _ (total_variation c d f)) -/V; last first.
-    by apply/bounded_variationP => //; exact: ltW.
-  move/fine_cvgP => [fin_inf].
-  move/cvg_at_rightP.
-  move/(_ lambda).
-  have Hlambda : (forall n : nat, 0 < lambda n) /\ lambda n @[n --> \oo] --> 0.
-    split => // n.
-    admit.
-  move/(_ Hlambda); move{Hlambda} => Hl.
-  apply: squeeze_cvgr Hl (cvg_cst V).
-  near=> n.
-  apply/andP; split; last first.
-    rewrite /V/total_variation.
-    rewrite -lee_fin fineK; last by apply/bounded_variationP => //; exact: ltW.
-    apply: le_ereal_sup_tmp.
-    admit.
-  rewrite -lee_fin fineK; last first.
-    admit.
-  apply: ge_ereal_inf.
-  admit.
-have V_V : V_ n @[n --> \oo]--> V.
-  admit.
-have [n0 Hn0] : exists n0, forall n, (n >= n0)%N -> V_ n > V - (fine alpha) / 2.
-  admit.
-have H1 (n : nat) : V = \sum_(1 <= i < n.+1) `|H (d_ n (inord i)) - H (c_ n (inord i))|
-           +
-           \sum_(1 <= i < n) fine (total_variation (fine (contiguous_intervals1 Z i))
-                                             (fine (contiguous_intervals2 Z i))
-                                             f).
-  admit.
-apply/negP.
-
-Admitted.
-*)
-
-End lemma6_direct.
-
-*)
 
 Section lemma6_converse.
 Context {R : realType}.
