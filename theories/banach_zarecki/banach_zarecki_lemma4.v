@@ -463,7 +463,7 @@ Qed.
 
 End contiguous_intervals_lemmas.
 
-Section lemma4.
+Section lemma4_preliminaries.
 Context {R : realType}.
 
 Lemma eq_Rhull_itvccP A (a b : R) :
@@ -486,9 +486,6 @@ split.
   by rewrite infa supa.
 Qed.
 
-Variables a b : R.
-Hypothesis ab : a < b.
-Local Notation mu := (@completed_lebesgue_measure R).
 Local Open Scope ereal_scope.
 
 Lemma interval_ooS (A : interval R) : A.1 <= A.2 -> `](fine A.1), (fine A.2)[ `<=` [set` A].
@@ -570,6 +567,15 @@ apply: subsetI_eq0. (* TODO: generalize this lemma to trivIset *)
   by apply: interval_ooS; exact: Rull_fst_snd.
 Qed.
 
+End lemma4_preliminaries.
+
+Section lemma4.
+Context {R: realType}.
+Variables a b : R.
+Hypothesis ab : a <= b.
+Local Notation mu := (@completed_lebesgue_measure R).
+Local Open Scope ereal_scope.
+
 Lemma lemma4 (f : R -> R) (P : set R) :
   is_interval (f @` `[a, b]) ->
   (* perfect_set P *) closed P ->
@@ -632,10 +638,8 @@ apply/andP; split.
       by move/ltW/normr_idP ->.
     apply: le_outer_measure => /= x/= xfab.
     apply: (fab (f a) (f b)).
-    - exists a => //=.
-      by rewrite boundl_in_itv/= bnd_simp ltW.
-    - exists b => //=.
-      by rewrite boundr_in_itv/= bnd_simp ltW.
+    - by exists a => //=; rewrite bound_itvE.
+    - by exists b => //=; rewrite bound_itvE.
     - by rewrite in_itv/= in xfab.
     move/negP; rewrite -leNgt.
     rewrite le_eqVlt => /predU1P[-> |].
@@ -648,10 +652,8 @@ apply/andP; split.
     by move/ltW/normr_idP ->.
   apply: le_outer_measure => /= x/= xfba.
   apply: (fab (f b) (f a)).
-  - exists b => //=.
-   by rewrite boundr_in_itv/= bnd_simp ltW.
-  - exists a => //=.
-   by rewrite boundl_in_itv/= bnd_simp ltW.
+  - by exists b => //=; rewrite bound_itvE.
+  - by exists a => //=; rewrite bound_itvE.
   - by rewrite in_itv/= in xfba.
 rewrite -measurable_mu_extE; last first.
   apply: sub_caratheodory.

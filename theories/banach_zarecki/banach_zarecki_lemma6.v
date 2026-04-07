@@ -127,8 +127,7 @@ have [|] := leqP n (truncn ((b - a) / l)).
   admit.
 move=> nsize.
 rewrite 2?nth_default ?subrr ?normr0//.
-
-Admitted.
+Abort.
 
 Lemma lambda_partition_partition (a b l : R) :
   a < b -> 0 < l ->
@@ -142,7 +141,7 @@ split; last first.
   rewrite size_map size_iota mulfK; first by rewrite subrKC.
   rewrite lt0r_neq0//.
 - admit.
-Admitted.
+Abort.
 
 Lemma lambda_partition_max (a b l : R) :
   a < b -> 0 < l ->
@@ -151,8 +150,8 @@ Proof.
 move=> ab l0.
 rewrite /itv_partition_max -bigmaxr_morph.
 apply: bigmax_lt => // n _.
-exact: lambda_partition_div_width.
-Qed.
+(*exact: lambda_partition_div_width.*)
+Abort.
 
 End preliminaries.
 
@@ -295,7 +294,7 @@ split.
 Abort.
 
 End checking.
- 
+
 End limit_point_closed.
 Arguments limit_point_closed {R} A.
 
@@ -342,8 +341,7 @@ have ballee2 : ball_ [eta normr] 0 e (e / 2).
 by rewrite -subr_gt0 {1}(splitr e) addrK.
 move/(_ ballee2 e20).
 move/(subset_trans (subset_closure_half e20)).
-
-Admitted.
+Abort.
 
 Lemma limit_point_interior (A : set R) :
   interior A `<=` limit_point (interior A).
@@ -406,12 +404,12 @@ exists (closure (interior A)); split.
   have := Ux.
   rewrite (open_disjoint_itv_bigcup oU) => -[n _ Inx].
   have In0 : I_ n !=set0 by exists x.
-  have := nonempty_open_interval_not_subset1 In0 (@open_disjoint_itv_open _ _ oU n) (@open_disjoint_itv_is_interval _ _ oU n).
+(*  have := nonempty_open_interval_not_subset1 In0 (@open_disjoint_itv_open _ _ oU n) (@open_disjoint_itv_is_interval _ _ oU n).
   move/existsNP => [x0 /existsNP[x1] /not_implyP[Inx0] /not_implyP[Inx1]].
   move/eqP.
   rewrite eq_le.
   move/nandP.
-  rewrite -2!ltNge => -[x10|x01].
+  rewrite -2!ltNge => -[x10|x01].*)
 Abort.
 
 
@@ -519,6 +517,14 @@ Qed.
 Definition contiguous_intervals12 (A : set R) : (\bar R * \bar R)^nat :=
   fun n => (contiguous_intervals1 A n, contiguous_intervals2 A n).
 
+Lemma mem_contiguous_intervals2 (Z : set R) j : compact Z -> Z !=set0 ->
+  Z (fine (contiguous_intervals2 Z j)).
+Proof.
+move=> cZ Z0; rewrite fine_contiguous_intervals2//.
+have := @is_interval_contiguous_intervals _ Z j.
+move/is_intervalP => ->.
+Admitted.
+
 (* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
 Lemma lemma6_direct : lusinN `[a, b] H.
 Proof.
@@ -572,33 +578,50 @@ have fin_alpha : alpha \is a fin_num.
     by rewrite set_itv1 completed_lebesgue_measureE lebesgue_measure_set1.
   rewrite completed_lebesgue_measure_itv ifT ?lte_fin//=.
   by rewrite -EFinB ltry.
-pose a_ n := sort <%R [tuple A_ i | i < n].
-pose b_ n := sort <%R [tuple B_ i | i < n].
+pose a_ n := sort <=%R [tuple A_ i | i < n].
+pose b_ n := sort <=%R [tuple B_ i | i < n].
+(*have A_lt_B_ n : if contiguous_intervals Z n == set0 then true else A_ n < B_ n.
+  case: ifPn => // Zn0.
+  rewrite /A_ /B_ fine_contiguous_intervals2// fine_contiguous_intervals1//.
+  rewrite has_bound_not_subset1_inf_sup//.
+  - apply: has_lbound_contiguous_intervals.
+    by move: cZ; rewrite Rcompact_boundE/= => -[].
+  - apply: has_ubound_contiguous_intervals.
+    by move: cZ; rewrite Rcompact_boundE/= => -[].
+  - apply: nonempty_open_interval_not_subset1 => //.
+    + exact/set0P.
+    + exact: open_contiguous_intervals.
+    + exact: is_interval_contiguous_intervals.*)
 pose c_ n i := tnth (c :: b_ n) i.
-have tnth_b_ n (i j : 'I_n) : (i < j)%N -> tnth (b_ n) i < tnth (b_ n) j.
+have tnth_b_ n (i j : 'I_n) : (i <= j)%N -> tnth (b_ n) i <= tnth (b_ n) j.
   move => ij.
   rewrite /tnth.
   rewrite (set_nth_default (tnth_default (b_ n) j)) ?size_tuple//.
-  apply: sorted_ltn_nth => //; rewrite ?inE ?size_tuple//.
-  exact: lt_trans.
-  (* sorted <%R (b_ n) *)
-  admit.
-have c_b_ n i : c < tnth (b_ n) i.
+  apply: sorted_leq_nth => //; rewrite ?inE ?size_tuple//.
+    exact: le_trans.
+  by apply: sort_sorted; exact: le_total.
+have Zb_ n i : Z (tnth (b_ n.+1) i).
+  suff: [set` (b_ n.+1)] `<=` Z by apply; apply/tnthP; exists i.
+  move=> x/=; rewrite /b_ mem_sort/= => /mapP[/= j _ ->{x}].
+  rewrite /B_.
+  apply: mem_contiguous_intervals2 => //.
+  apply/set0P/negP => /eqP Z00.
+  by move: HZ; rewrite Z00 image_set0 measure0 ltxx.
+have c_b_ n i : c <= tnth (b_ n) i.
   move: n i => [[[]//]|n i].
-  suff: c < tnth (b_ n.+1) ord0.
+  suff: c <= tnth (b_ n.+1) ord0.
     have [->//|i0] := eqVneq i ord0.
-    move=> /lt_le_trans; apply.
-    apply/ltW.
-    apply: tnth_b_.
-    by rewrite lt0n.
-  (* c < tnth (b_ n.+1) ord0 *)
-  admit.
+    by move=> /le_trans; apply; exact: tnth_b_.
+  rewrite /c.
+  apply: ge_inf.
+    by move: cZ; rewrite Rcompact_boundE/= => -[].
+  rewrite /b_.
+  exact: Zb_.
 pose d_ n i := tnth (rcons (a_ n) d) i.
 pose lambda n : R :=
   \big[Num.max/0%R]_(i < n.+1) `|d_ n i - c_ n i|.
 have lambda_ge0 n : 0 <= lambda n.
-  apply: le_trans; last first.
-    exact: (le_bigmax _ _ ord0).
+  apply: le_trans; last exact: (le_bigmax _ _ ord0).
   by [].
 have lambda0 : lambda @ \oo --> 0.
   apply/cvgrPdist_lt.
@@ -710,18 +733,10 @@ have Z_set0 : Z !=set0.
   apply/set0P/negP; move/eqP => Z_set0.
   have := HZ.
   by rewrite Z_set0 image_set0 measure0; apply/negP; rewrite -leNgt.
-have lbZa : lbound Z a.
-  move=> r Zr.
-  have := Zab r Zr.
-  by rewrite /= in_itv/= => /andP[].
-have ubZb : ubound Z b.
-  move=> r Zr.
-  have := Zab r Zr.
-  by rewrite /= in_itv/= => /andP[].
+have lbZa : lbound Z a by move=> r /Zab/= /itvP ->.
+have ubZb : ubound Z b by move=> r /Zab/= /itvP ->.
 near \oo => n.
-have n0n : (n0 <= n)%N.
-  near: n.
-  exact: nbhs_infty_ge.
+have n0n : (n0 <= n)%N by near: n; exact: nbhs_infty_ge.
 move/(_ n n0n).
 (* (4) *)
 rewrite /Vcd/V_.
@@ -752,8 +767,8 @@ have {}n0n : (n0 < n.+1)%N.
   admit.
 set on0 := Ordinal n0n.
 set Uabcdn := \bigcup_(j in abcd on0) `[A_ j, B_ j]%classic.
-have cdi i : c_ n i < d_ n i.
-    admit.
+have cdi i : c_ n i <= d_ n i.
+  admit.
 (*
 have sorted_index_prop : forall n,
    {i_s : seq nat | perm_eq i_s (iota 0 n) &
@@ -816,7 +831,6 @@ have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
     apply: ereal_nondecreasing_series => k _ _.
     exact: oscillation_ge0.
   apply/nearW => k.
-
   have := @lemma4 _ (c_ n i) (d_ n i) (cdi i) f Uabcdn
                  (itvfcd i) cUabcdn (hull_Uabcd i).
   move/andP => [le1 le2].
@@ -869,7 +883,7 @@ have hZE : Rhull Z = `[c, d].
     apply/asboolPn.
     rewrite not_notE.
     admit.
-have := (@lemma4 _ _ _ cd f Z ifcd clZ hZE).
+have := (@lemma4 _ _ _ (ltW cd) f Z ifcd clZ hZE).
 rewrite measurable_mu_extE/=; last first.
   admit.
 have -> : mu (f @` Z) = 0.
