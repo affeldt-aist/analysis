@@ -417,6 +417,40 @@ Abort.
 
 End interior_lemmas.
 
+Section continuous_interval.
+Context {R : realType}.
+Variables (D : set R) (f : R -> R).
+Hypothesis cf : {within D, continuous f}.
+
+Lemma is_interval_image_cc a b : `[a, b] `<=` D ->
+  is_interval (f @` `[a, b]).
+Proof.
+have [ab abD|ba _] := leP a b; last first.
+  rewrite set_itv_ge// ?bnd_simp -?ltNge// image_set0.
+  exact/connected_intervalP/connected0.
+move=> _ _/= -[x0 x0ab <-] [x1 x1ab <-] z /andP[fx0z zfx1].
+have [x01|x10] := leP x0 x1.
+  have [x [xx01 fxz]] : exists2 x : R, x \in `[x0, x1] & f x = z.
+    apply: IVT => //.
+      apply: continuous_subspaceW cf.
+      by apply: subset_trans abD; apply: subset_itv;
+        rewrite bnd_simp ?(itvP x0ab) ?(itvP x1ab).
+    by rewrite ge_min le_max fx0z/= zfx1 orbT.
+  exists x => //.
+  by apply: subset_itv xx01; rewrite bnd_simp ?(itvP x0ab) ?(itvP x1ab).
+have [x [xx01 fxz]] : exists2 x : R, x \in `[x1, x0] & f x = z.
+  apply: IVT => //.
+  - exact: ltW.
+  - apply: continuous_subspaceW cf.
+    by apply: subset_trans abD; apply: subset_itv;
+      rewrite bnd_simp ?(itvP x0ab) ?(itvP x1ab).
+  by rewrite ge_min le_max fx0z/= zfx1 orbT.
+exists x => //.
+by apply: subset_itv xx01; rewrite bnd_simp ?(itvP x0ab) ?(itvP x1ab).
+Qed.
+
+End continuous_interval.
+
 Module lemma6_direct_new.
 Section lemma6_direct.
 Context {R : realType}.
@@ -540,8 +574,25 @@ have fin_alpha : alpha \is a fin_num.
   by rewrite -EFinB ltry.
 pose a_ n := sort <%R [tuple A_ i | i < n].
 pose b_ n := sort <%R [tuple B_ i | i < n].
-
 pose c_ n i := tnth (c :: b_ n) i.
+have tnth_b_ n (i j : 'I_n) : (i < j)%N -> tnth (b_ n) i < tnth (b_ n) j.
+  move => ij.
+  rewrite /tnth.
+  rewrite (set_nth_default (tnth_default (b_ n) j)) ?size_tuple//.
+  apply: sorted_ltn_nth => //; rewrite ?inE ?size_tuple//.
+  exact: lt_trans.
+  (* sorted <%R (b_ n) *)
+  admit.
+have c_b_ n i : c < tnth (b_ n) i.
+  move: n i => [[[]//]|n i].
+  suff: c < tnth (b_ n.+1) ord0.
+    have [->//|i0] := eqVneq i ord0.
+    move=> /lt_le_trans; apply.
+    apply/ltW.
+    apply: tnth_b_.
+    by rewrite lt0n.
+  (* c < tnth (b_ n.+1) ord0 *)
+  admit.
 pose d_ n i := tnth (rcons (a_ n) d) i.
 pose lambda n : R :=
   \big[Num.max/0%R]_(i < n.+1) `|d_ n i - c_ n i|.
@@ -743,8 +794,14 @@ fun_of_sort : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
       admit.
     admit.
 *)
-have itvfcd i : is_interval [set f x | x in `[(c_ n i), (d_ n i)]].
-  move=> _ _/= [x0 x0cd <-] [x1 x1cd <-] z /andP[fx0z zfx1].
+have itvfcd i : is_interval (f @` `[c_ n i, d_ n i]).
+  apply: (is_interval_image_cc cf).
+  apply: subset_itv => //; rewrite bnd_simp.
+    rewrite /c_.
+    (* a <= c_ n i *)
+    admit.
+  rewrite /d_.
+  (* d_ n i <= b *)
   admit.
 have cUabcdn : closed Uabcdn.
     admit.
@@ -797,10 +854,9 @@ have : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
   near=> m.
   admit.
   (* have := lemma4. *)
-
-have ifcd : is_interval [set f x | x in `[c, d]].
-  (* by continuity *)
-  admit.
+have ifcd : is_interval (f @` `[c, d]).
+  by apply: (is_interval_image_cc cf); apply: subset_itv; rewrite bnd_simp;
+    [exact: lb_le_inf|exact: ge_sup].
 have clZ : closed Z by exact: compact_closed.
 have hZE : Rhull Z = `[c, d].
   congr Interval.
