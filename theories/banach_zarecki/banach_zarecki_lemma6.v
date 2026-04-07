@@ -482,8 +482,10 @@ by case: UVZz.
 by case: UVZz => -[].
 Qed.
 
-(* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
+Definition contiguous_intervals12 (A : set R) : (\bar R * \bar R)^nat :=
+  fun n => (contiguous_intervals1 A n, contiguous_intervals2 A n).
 
+(* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
 Lemma lemma6_direct : lusinN `[a, b] H.
 Proof.
 apply: contrapT => nl.
@@ -517,64 +519,9 @@ have cd : c < d.
 have perfectZ : perfect_set Z.
   apply/perfectP; split => //.
   exact: compact_closed.
-pose a_ n := fine (contiguous_intervals1 Z n).
-pose b_ n := fine (contiguous_intervals2 Z n).
+pose A_ n := fine (contiguous_intervals1 Z n).
+pose B_ n := fine (contiguous_intervals2 Z n).
 pose alpha := mu (H @` Z).
-pose ta n := [tuple a_ i | i < n].
-pose tb n := [tuple b_ i | i < n].
-pose sort_ta n := sort <%R (ta n).
-pose sort_tb n := sort <%R (tb n).
-
-have H : forall n, exists (p : {perm 'I_n}), sort_ta n
-         = [tuple tnth (ta n) (p i) | i < n].
-  move=> n.
-  apply/tuple_permP.
-  rewrite /sort_ta.
-  by rewrite perm_sort.
-Print choice.
-pose fun_of_sort := fun n => sval (cid (H n)) : {perm 'I_ n}.
-pose fun_of_sortE := fun n => svalP (cid (H n)) :
-   sort_ta n = [tuple tnth (ta n) (fun_of_sort n i) | i < n].
-have fun_of_sort_tb : forall n,
-   sort_tb n = [tuple tnth (tb n) (fun_of_sort n i) | i < n].
-  admit.
-(*
-fun_of_sort : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
-         = [tuple tnth (ta_ n) (p i) | i < n].
-    apply/tuple_permP.
-    by rewrite perm_sort.
-  have sort_bE : sort <%R (tb_ n) = [tuple tnth (tb_ n) i | i < n].
-    apply: lt_sorted_eq.
-        admit.
-      admit.
-    admit.
-*)
-pose c_ n i := tnth (c :: sort_tb n) i.
-pose d_ n i := tnth (rcons (sort_ta n) d) i.
-have cndn n i : c_ n i < d_ n i.
-  rewrite /c_/d_.
-  have [-> |] := eqVneq i ord0.
-    rewrite tnth0.
-    rewrite (tnth_nth d) nth_rcons_default.
-    admit.
-  rewrite eq_le.
-    
-  admit.
-have c2b n i : exists k, c_ n i = b_ k.
-  admit.
-have d2a n i : exists k, d_ n i = a_ k.
-  admit.
-have cdi : c_ n i < d_ n i.
-    admit.
-have itvfcd : is_interval [set f x | x in `[(c_ n i), (d_ n i)]].
-    admit.
-have cUabcdn : closed Uabcdn.
-    admit.
-have hull_Uabcd : Rhull Uabcdn = `[(c_ n i), (d_ n i)].
-    admit.
-
-
-pose lambda n : R := \big[maxr/0%R]_(i < n.+1) `|d_ n i - c_ n i|.
 have fin_alpha : alpha \is a fin_num.
   rewrite gt0_fin_numE//.
   apply: (@le_lt_trans _ _ (mu (H @` `[a, b]))).
@@ -591,22 +538,30 @@ have fin_alpha : alpha \is a fin_num.
     by rewrite set_itv1 completed_lebesgue_measureE lebesgue_measure_set1.
   rewrite completed_lebesgue_measure_itv ifT ?lte_fin//=.
   by rewrite -EFinB ltry.
-have lambda_gt0 n : (0 < n)%N -> 0 < lambda n.
-  case: n => // n _.
-  rewrite /lambda.
-  apply/bigmax_gtP; right.
-  exists ord0 => //.
-  rewrite /c_/d_.
-  rewrite (tnth_nth 0) (tnth_nth 0 (c :: _))/=.
-  
-  admit.
+pose a_ n := sort <%R [tuple A_ i | i < n].
+pose b_ n := sort <%R [tuple B_ i | i < n].
+
+pose c_ n i := tnth (c :: b_ n) i.
+pose d_ n i := tnth (rcons (a_ n) d) i.
+pose lambda n : R :=
+  \big[Num.max/0%R]_(i < n.+1) `|d_ n i - c_ n i|.
+have lambda_ge0 n : 0 <= lambda n.
+  apply: le_trans; last first.
+    exact: (le_bigmax _ _ ord0).
+  by [].
 have lambda0 : lambda @ \oo --> 0.
   apply/cvgrPdist_lt.
+  move=> /= e e0.
+  near=> n.
+  rewrite sub0r normrN ger0_norm; last exact: lambda_ge0.
+  rewrite ltNge.
+  apply/negP => en.
+  admit.
+(*
   apply/not_notP.
-  move/existsNP => /=[e /not_implyP[e0]].
   suff contra : (forall N, exists n, (N < n)%N /\ e <= lambda n) -> False.
     move=> H.
-    apply/contra.
+    apply: contra.
     move=> n.
     move: H.
     rewrite /eventually/filter_from/=.
@@ -619,39 +574,8 @@ have lambda0 : lambda @ \oo --> 0.
       exact: leq_ltn_trans nN.
     move=> eN.
     by exists N; split.
-  move/choice => [N /all_and2[nN eN]].
-  have : (e%:E <= mu Z)%E.
 
-    have dcZ n : exists i,
-          `[c_ (N n) i, d_ (N n) i]%classic `<=` Z.
-      admit.
-    have mdcZ n : ((lambda (N n))%:E <= mu Z)%E.
-      rewrite -EFin_bigmax.
-      apply: bigmax_le.
-        exact: measure_ge0.
-      move=> /= i _.
-      have -> : `|d_ (N n) i - c_ (N n) i|%:E = mu `[c_ (N n) i, d_ (N n) i].
-        rewrite completed_lebesgue_measure_itv/= lte_fin.
-      have [i0 sub_cdZ] := dcZ n.
-        rewrite cndn. (* *)
-      apply: (@le_trans _ _ (mu 
-      rewrite le_outer_measure => //.
-      
-      exact: le_outer_measure.
-    have mu_add n : (mu (\big[setU/set0]_(i < (N n).+1)
-      `[c_ (N n) i, d_ (N n) i]%classic) = \big[+%E/0%E]_(i < (N n).+1)
-       mu `[c_ (N n) i, d_ (N n) i])%E.
-      admit.
-    have ecd n : (e%:E <= mu (\big[setU/set0]_(i < (N n).+1)
-          `[c_ (N n) i, d_ (N n) i]%classic))%E.
-        admit.
-      
-      apply: (@le_trans _ _ ((lambda (N n))%:E)).
-        rewrite lee_fin.
-        apply: eN.
-        admit.
-      
-      admit.
+
     move=> n.
     have -> : Z = [set` Rhull Z] `\` cplt_hull Z.
       rewrite setDD setIidr//.
@@ -659,30 +583,26 @@ have lambda0 : lambda @ \oo --> 0.
     admit.
   admit.
 *)
-pose merge_tab n := (merge <%R (sort_ta n) (sort_tb n)).
-have sorted_merge_tab n : sorted <%R (c :: merge_tab n).
-  admit.
-
-
 have construct_x n :
-  exists x : seq R, [/\ itv_partition c d x,
-    (itv_partition_max c d x <= lambda n),
-    (forall i, (i < n.*2)%N -> a_ i \in x),
-    (forall i, (i < n.*2)%N -> b_ i \in x) &
-    (forall i, nth b x i \notin (interior Z : set R))].
-    (* \bigcup_(i < n) `]c_ i, d_ i[ ? *)
+  exists x : seq R, [/\ itv_partition c d (behead x),
+    (itv_partition_max c d (behead x) <= lambda n),
+    (forall i, c_ n i \in x /\ d_ n i \in x),
+    (n < size x)%N &
+    (forall i j, nth d x j \notin `]c_ n i, d_ n i[) ].
   admit.
 pose x := fun n => sval (cid (@construct_x n)).
-have max_x n : itv_partition_max c d (x n) <= lambda n.
-  by have [] := proj2_sig (cid (construct_x n)).
-have pcdx n : itv_partition c d (x n).
+have pcdx n : itv_partition c d (behead (x n)).
   by have [] := proj2_sig (cid (@construct_x n)).
-pose S_ n : R := variation c d f (x n).
+have max_x n : itv_partition_max c d (behead (x n)) <= lambda n.
+  by have [] := proj2_sig (cid (construct_x n)).
+pose S_ n : R := variation c d f (behead (x n)).
 pose V_ n : R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)| +
-     (\sum_(i < n) fine (total_variation (a_ i) (b_ i) f))%R.
+     (\sum_(i < n) fine (total_variation (A_ i) (B_ i) f))%R.
+pose CD_ n := merge <=%R [tuple c_ n i | i < n.+1] [tuple d_ n i | i < n.+1].
+have sub_xcd n : subseq (CD_ n) (x n).
+  admit.
 have SV n : S_ n <= V_ n.
-  rewrite /S_.
-  rewrite /V_.
+  rewrite /S_ /V_.
   rewrite /variation.
   rewrite /=.
   admit.
@@ -756,7 +676,7 @@ move/(_ n n0n).
 rewrite /Vcd/V_.
 have -> : fine (total_variation c d f) =
   \sum_(i < n.+1) `|H (d_ n i) - H (c_ n i)| +
-   (\sum_(i < n) fine (total_variation (a_ i) (b_ i) f))%R.
+   (\sum_(i < n) fine (total_variation (A_ i) (B_ i) f))%R.
   admit.
 rewrite addrAC ltrD2r.
 (* (5.5) (between (5) and (6)) *)
@@ -776,14 +696,63 @@ have alphaH : fine alpha < \sum_(i < n.+1) `|H (d_ n i) - H (c_ n i)|.
 move/(@lt_trans _ _ _ (fine alpha / 2)).
 rewrite ltrBrDl -splitr; move/(_ alphaH).
 (* (6.5) (between (6) and (7)) *)
-pose abcd i := [set k | `[a_ k, b_ k] `<=` `[c_ n i, d_ n i]].
+pose abcd i := [set k | `[A_ k, B_ k] `<=` `[c_ n i, d_ n i]].
 have {}n0n : (n0 < n.+1)%N.
   admit.
 set on0 := Ordinal n0n.
-set Uabcdn := \bigcup_(j in abcd on0) `[a_ j, b_ j]%classic.
+set Uabcdn := \bigcup_(j in abcd on0) `[A_ j, B_ j]%classic.
+have cdi i : c_ n i < d_ n i.
+    admit.
+(*
+have sorted_index_prop : forall n,
+   {i_s : seq nat | perm_eq i_s (iota 0 n) &
+  sort_ta n = [seq nth d (ta n) i | i <- i_s]}.
+  move=> n.
+  have := perm_iota_sort <%R _ (ta n).
+  by rewrite size_tuple.
+pose fun_of_sort_index := fun n => (sval (sorted_index_prop n)).
+pose fun_of_sort_indexE := fun n => (svalP (sorted_index_prop n)).1.
+
+pose fun_of_sort_index_ta := fun n => (svalP (sorted_index_prop n)).2.
+have fun_of_sort_index_tb : forall n,
+  sort_tb n = [seq nth d (tb n) i | i <- sval (sorted_index_prop n)].
+have fun_of_sort_prop : forall n, exists (p : {perm 'I_n}), sort_ta n
+         = [tuple tnth (ta n) (p i) | i < n].
+  move=> n.
+  apply/tuple_permP.
+  rewrite /sort_ta.
+  by rewrite perm_sort.
+Print choice.
+pose fun_of_sort := fun n => sval (cid (fun_of_sort_prop n)) : {perm 'I_ n}.
+pose fun_of_sortE := fun n => svalP (cid (fun_of_sort_prop n)) :
+   sort_ta n = [tuple tnth (ta n) (fun_of_sort n i) | i < n].
+have fun_of_sort_tb : forall n,
+   sort_tb n = [tuple tnth (tb n) (fun_of_sort n i) | i < n].
+  move=> n.
+  
+  admit.
+*)
+(*
+fun_of_sort : exists (p : {perm 'I_n}), (sort <%R (ta_ n))
+         = [tuple tnth (ta_ n) (p i) | i < n].
+    apply/tuple_permP.
+    by rewrite perm_sort.
+  have sort_bE : sort <%R (tb_ n) = [tuple tnth (tb_ n) i | i < n].
+    apply: lt_sorted_eq.
+        admit.
+      admit.
+    admit.
+*)
+have itvfcd i : is_interval [set f x | x in `[(c_ n i), (d_ n i)]].
+  move=> _ _/= [x0 x0cd <-] [x1 x1cd <-] z /andP[fx0z zfx1].
+  admit.
+have cUabcdn : closed Uabcdn.
+    admit.
+have hull_Uabcd i : Rhull Uabcdn = `[(c_ n i), (d_ n i)].
+    admit.
 have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
-  \sum_(n <= j <oo | `[< `[a_ j, b_ j] `<=` Uabcdn >])
-     oscillation f `[a_ j, b_ j])%E.
+  \sum_(n <= j <oo | `[< `[A_ j, B_ j] `<=` Uabcdn >])
+     oscillation f `[A_ j, B_ j])%E.
   move => i.
   apply: lime_ge.
     apply: ereal_nondecreasing_is_cvgn.
@@ -791,7 +760,8 @@ have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
     exact: oscillation_ge0.
   apply/nearW => k.
 
-  have := (@lemma4 _ (c_ n i) (d_ n i) cdi f Uabcdn itvfcd cUabcdn hull_Uabcd).
+  have := @lemma4 _ (c_ n i) (d_ n i) (cdi i) f Uabcdn
+                 (itvfcd i) cUabcdn (hull_Uabcd i).
   move/andP => [le1 le2].
   apply: (le_trans (le_trans le1 le2)).
   have -> : (mu^*%mu [set f x | x in Uabcdn] = 0)%E.
@@ -819,7 +789,7 @@ have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
   admit.
 (* (7) *)
 have : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
-  \sum_(n <= i <oo) oscillation f `[a_ i, b_ i])%E.
+  \sum_(n <= i <oo) oscillation f `[A_ i, B_ i])%E.
   apply: lime_ge.
     apply: ereal_nondecreasing_is_cvgn.
     apply: ereal_nondecreasing_series => m _ _.
@@ -936,6 +906,6 @@ have H6 i :
     mu (H @` G_ i))%E.
   admit.
 apply/eqP; rewrite eq_le measure_ge0 andbT.
-Admitted.
+Abort.
 
 End lemma6_converse.
