@@ -525,6 +525,15 @@ have := @is_interval_contiguous_intervals _ Z j.
 move/is_intervalP => ->.
 Admitted.
 
+Lemma compact_mem_sup (A : set R) : compact A -> A (sup A).
+Proof.
+rewrite Rcompact_boundE => -[cA ubA _].
+Admitted.
+
+Lemma compact_mem_inf (A : set R) : compact A -> A (inf A).
+Proof.
+Admitted.
+
 (* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
 Lemma lemma6_direct : lusinN `[a, b] H.
 Proof.
@@ -592,6 +601,22 @@ pose b_ n := sort <=%R [tuple B_ i | i < n].
     + exact/set0P.
     + exact: open_contiguous_intervals.
     + exact: is_interval_contiguous_intervals.*)
+
+(*
+have Z_set0 : Z !=set0.
+  apply/set0P/negP; move/eqP => Z_set0.
+  have := HZ.
+  by rewrite Z_set0 image_set0 measure0; apply/negP; rewrite -leNgt.
+have lbZa : lbound Z a.
+  move=> r Zr.
+  have := Zab r Zr.
+  by rewrite /= in_itv/= => /andP[].
+have ubZb : ubound Z b.
+  move=> r Zr.
+  have := Zab r Zr.
+  by rewrite /= in_itv/= => /andP[].
+*)
+
 pose c_ n i := tnth (c :: b_ n) i.
 have tnth_b_ n (i j : 'I_n) : (i <= j)%N -> tnth (b_ n) i <= tnth (b_ n) j.
   move => ij.
@@ -624,13 +649,55 @@ have lambda_ge0 n : 0 <= lambda n.
   apply: le_trans; last exact: (le_bigmax _ _ ord0).
   by [].
 have lambda0 : lambda @ \oo --> 0.
-  apply/cvgrPdist_lt.
-  move=> /= e e0.
-  near=> n.
-  rewrite sub0r normrN ger0_norm; last exact: lambda_ge0.
-  rewrite ltNge.
-  apply/negP => en.
-  admit.
+  suff : \sum_(i < n) mu (contiguous_intervals Z i) @[n --> \oo]
+      --> mu (cplt_hull Z).
+  move=> H.
+    rewrite [X in _ --> X]
+    (_ : _ = fine (mu (cplt_hull Z)) - (fine (mu (cplt_hull Z)))); last first.
+      admit.
+    under eq_cvg => n.
+      rewrite -(add0r (lambda n)).
+      rewrite -(subrr (fine (mu (cplt_hull Z)))).
+      rewrite -addrA (addrC _ (lambda n)) -opprB.
+      over.
+    apply: cvgB; first exact: cvg_cst.
+    
+    admit.
+(*
+  rewrite -(@sube0 _ (mu _)) -[X in (_ - X)%E]Z0.
+  rewrite -[X in (_ - mu X)%E](@setIidr _ [set` Rhull Z] Z); last first.
+    exact: sub_Rhull.
+  rewrite -measureD/=; last 3 first.
+  - exact: sub_caratheodory.
+  - apply: sub_caratheodory.
+    exact: compact_measurable.
+  - rewrite /Rhull ?ifT; last 2 first.
+    + apply/asboolP.
+      by exists b.
+    + apply/asboolP.
+      by exists a.
+    have /asboolP-> := (compact_mem_inf cZ).
+    have /asboolP-> /= := (compact_mem_sup cZ).
+    rewrite completed_lebesgue_measure_itv/= lte_fin.
+    by rewrite ifT// -EFinB ltry.
+*)
+  rewrite bigcup_contiguous_intervals//; last first.
+    exact: compact_closed.
+  rewrite measure_semi_bigcup/=; last 3 first.
+  - move=> i.
+    apply: sub_caratheodory.
+    apply: open_measurable.
+    exact: open_contiguous_intervals.
+  - exact: disjoint_contiguous_intervals.
+  - apply: sub_caratheodory.
+    apply: bigcup_measurable => k _.
+    apply: open_measurable.
+    exact: open_contiguous_intervals.
+  rewrite -lim_mkord.
+  apply: ereal_nondecreasing_is_cvgn.
+  apply/nondecreasing_seqP => n.
+  by rewrite big_ord_recr/= leeDl.
+
 (*
   apply/not_notP.
   suff contra : (forall N, exists n, (N < n)%N /\ e <= lambda n) -> False.
