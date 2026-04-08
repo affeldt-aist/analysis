@@ -85,7 +85,7 @@ Lemma cplt_hull_complement A : cplt_hull A `<=` ~` A.
 Proof. rewrite /cplt_hull; exact: subDsetr. Qed.
 
 (* unused *)
-Let cplt_hull_sup A : has_ubound A -> ~ (cplt_hull A) (sup A).
+Lemma cplt_hull_sup A : has_ubound A -> ~ (cplt_hull A) (sup A).
 Proof.
 move=> ubA; rewrite /cplt_hull/= in_itv/= andC -implypN => Asup.
 by move/asboolPn: (Asup); move/asboolP: (ubA) => -> -> /=; rewrite ltxx andbF.
@@ -111,7 +111,7 @@ by rewrite le_eqVlt => /predU1P[|//]=> ?; subst.
 Qed.
 
 (* unused *)
-Let cplt_hull_inf A :
+Lemma cplt_hull_inf A :
   has_lbound A -> ~ (cplt_hull A) (inf A).
 Proof.
 move=> haslbA.
