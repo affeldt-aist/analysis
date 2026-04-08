@@ -648,39 +648,67 @@ pose lambda n : R :=
 have lambda_ge0 n : 0 <= lambda n.
   apply: le_trans; last exact: (le_bigmax _ _ ord0).
   by [].
+have mcgitv i : mu.-cara.-measurable (contiguous_intervals Z i).
+  move=> k; apply: sub_caratheodory.
+  apply: open_measurable.
+  exact: open_contiguous_intervals.
 have lambda0 : lambda @ \oo --> 0.
   suff : \sum_(i < n) mu (contiguous_intervals Z i) @[n --> \oo]
       --> mu (cplt_hull Z).
   move=> H.
     rewrite [X in _ --> X]
     (_ : _ = fine (mu (cplt_hull Z)) - (fine (mu (cplt_hull Z)))); last first.
-      admit.
+      by rewrite subrr.
     under eq_cvg => n.
       rewrite -(add0r (lambda n)).
       rewrite -(subrr (fine (mu (cplt_hull Z)))).
       rewrite -addrA (addrC _ (lambda n)) -opprB.
+      rewrite {2}bigcup_contiguous_intervals; last first.
+        exact: compact_closed.
+      rewrite measure_semi_bigcup//=; last 2 first.
+      - exact: disjoint_contiguous_intervals.
+      - exact: bigcup_measurable.
       over.
     apply: cvgB; first exact: cvg_cst.
-    
-    admit.
-(*
-  rewrite -(@sube0 _ (mu _)) -[X in (_ - X)%E]Z0.
-  rewrite -[X in (_ - mu X)%E](@setIidr _ [set` Rhull Z] Z); last first.
-    exact: sub_Rhull.
-  rewrite -measureD/=; last 3 first.
-  - exact: sub_caratheodory.
-  - apply: sub_caratheodory.
-    exact: compact_measurable.
-  - rewrite /Rhull ?ifT; last 2 first.
-    + apply/asboolP.
-      by exists b.
-    + apply/asboolP.
-      by exists a.
-    have /asboolP-> := (compact_mem_inf cZ).
-    have /asboolP-> /= := (compact_mem_sup cZ).
-    rewrite completed_lebesgue_measure_itv/= lte_fin.
-    by rewrite ifT// -EFinB ltry.
-*)
+    apply: (@squeeze_cvgr _ _ _ _ (fun n => fine
+    (\big[+%E/0]_(0 <= i < n)
+     mu (contiguous_intervals Z i)) -
+  lambda n) (cst (fine (mu (cplt_hull Z))))); last 2 first.
+    - admit.
+    - exact: cvg_cst.
+    have cpltZ_fin : mu (cplt_hull Z) \is a fin_num.
+      rewrite ge0_fin_numE//.
+      apply: (@le_lt_trans _ _ (mu `[a, b])).
+        apply: (@le_trans _ _ (mu [set` Rhull Z])).
+        apply: le_outer_measure.
+          exact: cplt_hull_subset_Rhull.
+        apply: le_outer_measure.
+        rewrite (is_intervalP `[a, b]).1; last first.
+          exact: interval_is_interval.
+        exact: le_Rhull.
+      by rewrite completed_lebesgue_measure_itv/= lte_fin ab -EFinB ltry.
+    near=> n; apply/andP; split.
+      rewrite lerD2r.
+      rewrite -lee_fin !fineK; last 2 first.
+      + rewrite -measure_semi_bigcup//=; last 2 first.
+        * exact: disjoint_contiguous_intervals.
+        * exact: bigcup_measurable.
+        by rewrite -bigcup_contiguous_intervals; last exact: compact_closed.
+      + rewrite ge0_fin_numE; last first.
+          exact: sume_ge0 => k _.
+        apply: (@le_lt_trans _ _ (mu (cplt_hull Z))).
+          rewrite bigcup_contiguous_intervals; last exact: compact_closed.
+          rewrite measure_semi_bigcup//=; last 2 first.
+          * exact: disjoint_contiguous_intervals.
+          * exact: bigcup_measurable => i _.
+          exact: nneseries_lim_ge => k _ _.
+        by rewrite -ge0_fin_numE.
+      exact: nneseries_lim_ge => k _ _.
+    rewrite bigcup_contiguous_intervals; last exact: compact_closed.
+    rewrite measure_semi_bigcup//=; last 2 first.
+    - exact: disjoint_contiguous_intervals.
+    - exact: bigcup_measurable.
+    by rewrite lerBlDr lerDl.
   rewrite bigcup_contiguous_intervals//; last first.
     exact: compact_closed.
   rewrite measure_semi_bigcup/=; last 3 first.
@@ -697,33 +725,6 @@ have lambda0 : lambda @ \oo --> 0.
   apply: ereal_nondecreasing_is_cvgn.
   apply/nondecreasing_seqP => n.
   by rewrite big_ord_recr/= leeDl.
-
-(*
-  apply/not_notP.
-  suff contra : (forall N, exists n, (N < n)%N /\ e <= lambda n) -> False.
-    move=> H.
-    apply: contra.
-    move=> n.
-    move: H.
-    rewrite /eventually/filter_from/=.
-    move/forallPNP/(_ _ I).
-    move/(_ n.+1).
-    move/existsNP => [N H].
-    have /not_implyP[/= nN] := H.
-    move/negP; rewrite -leNgt sub0r normrN gtr0_norm//; last first.
-      apply: lambda_gt0.
-      exact: leq_ltn_trans nN.
-    move=> eN.
-    by exists N; split.
-
-
-    move=> n.
-    have -> : Z = [set` Rhull Z] `\` cplt_hull Z.
-      rewrite setDD setIidr//.
-      exact: sub_Rhull.
-    admit.
-  admit.
-*)
 have construct_x n :
   exists x : seq R, [/\ itv_partition c d (behead x),
     (itv_partition_max c d (behead x) <= lambda n),
