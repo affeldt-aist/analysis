@@ -514,7 +514,8 @@ by case: UVZz.
 by case: UVZz => -[].
 Qed.
 
-Definition contiguous_intervals12 (A : set R) : (\bar R * \bar R)^nat :=
+Definition contiguous_intervals12 (A : set R) :
+  open_disjoint_itv_support (cplt_hull A) -> (\bar R * \bar R) :=
   fun n => (contiguous_intervals1 A n, contiguous_intervals2 A n).
 
 Lemma contiguous_intervals_Rhull (A : set R) (cA : closed A) :
@@ -524,6 +525,91 @@ rewrite -bigcup_contiguous_intervals//.
 by rewrite /cplt_hull setDKU//; exact: sub_Rhull.
 Qed.
 
+Lemma contiguous_intervals2_notin (Z : set R) : has_ubound Z -> forall j,
+  (fine (contiguous_intervals2 Z j))%:E
+    \notin `]contiguous_intervals1 Z j, contiguous_intervals2 Z j[.
+Proof.
+move=> ubZ j.
+rewrite in_itv/= fineK//; last first.
+  by apply: contiguous_intervals2_fin_num.
+by rewrite ltxx andbF.
+Qed.
+
+Lemma contiguous_intervals2_notin' (Z : set R) : compact Z ->
+  forall j l, j != l ->
+  (fine (contiguous_intervals2 Z j))%:E
+    \notin `]contiguous_intervals1 Z l, contiguous_intervals2 Z l[.
+Proof.
+move=> /[dup] cZ; rewrite Rcompact_boundE/= => -[closeZ uZ lZ] j l j_neq_l.
+rewrite in_itv/= fineK//; last exact: contiguous_intervals2_fin_num.
+rewrite negb_and -[X in _ || X]leNgt -implybE; apply/implyP.
+have fin1l : contiguous_intervals1 Z l \is a fin_num.
+  exact: contiguous_intervals1_fin_num.
+have fin2l : contiguous_intervals2 Z l \is a fin_num.
+  exact: contiguous_intervals2_fin_num.
+have fin2j : contiguous_intervals2 Z j \is a fin_num.
+  exact: contiguous_intervals2_fin_num.
+have fin1j : contiguous_intervals1 Z j \is a fin_num.
+  exact: contiguous_intervals1_fin_num.
+move/fine_lt => /(_ fin1l fin2j).
+rewrite fine_contiguous_intervals2// fine_contiguous_intervals1// => lj.
+rewrite -[leLHS]fineK// -[leRHS]fineK//.
+rewrite !fine_contiguous_intervals2//.
+rewrite lee_fin.
+rewrite leNgt; apply/negP => jl.
+have H : contiguous_intervals Z j `&` contiguous_intervals Z l = set0.
+  have /trivIsetP := @disjoint_contiguous_intervals _ Z.
+  exact.
+move: (H).
+apply/eqP/set0P.
+have ? : inf (contiguous_intervals Z j) < sup (contiguous_intervals Z j).
+  rewrite lt_neqAle; apply/andP; split.
+    admit.
+  apply: has_bound_inf_sup.
+  admit.
+  admit.
+  admit.
+have H1 : inf (contiguous_intervals Z j) < inf (contiguous_intervals Z l).
+  rewrite ltNge; apply/negP => lj'.
+  move: H.
+  apply/eqP/set0P.
+  pose m := (inf (contiguous_intervals Z j) + sup (contiguous_intervals Z j)) / 2.
+  exists m; split.
+    suff: (EFin @` contiguous_intervals Z j) m%:E by rewrite /= => -[x jx [<-]].
+    rewrite contiguous_ooitv//= in_itv/=.
+    rewrite -[X in (X < _ < _)%E]fineK// fine_contiguous_intervals1//.
+    rewrite -[X in (_ < _ < X)%E]fineK// fine_contiguous_intervals2//.
+    by rewrite !lte_fin !midf_lt//=.
+  suff: (EFin @` contiguous_intervals Z l) m%:E by rewrite /= => -[x lx [<-]].
+  rewrite contiguous_ooitv//= in_itv/=.
+  rewrite -[X in (X < _ < _)%E]fineK// fine_contiguous_intervals1//.
+  rewrite -[X in (_ < _ < X)%E]fineK// fine_contiguous_intervals2//.
+  rewrite !lte_fin; apply/andP; split.
+    rewrite /m.
+    by rewrite (le_lt_trans lj')// midf_lt.
+  rewrite (le_lt_trans _ jl)// midf_le//.
+  exact/ltW.
+pose m : R := (inf (contiguous_intervals Z l) + sup (contiguous_intervals Z j)) / 2.
+exists m; split.
+  suff: (EFin @` contiguous_intervals Z j) m%:E by rewrite /= => -[x jx [<-]].
+  rewrite contiguous_ooitv//= in_itv/=.
+  rewrite -[X in (X < _ < _)%E]fineK// fine_contiguous_intervals1//.
+  rewrite -[X in (_ < _ < X)%E]fineK// fine_contiguous_intervals2//.
+  rewrite !lte_fin.
+  rewrite !midf_lt// andbT.
+  rewrite /m.
+  rewrite (lt_le_trans H1)//.
+  by rewrite midf_le// ltW.
+suff: (EFin @` contiguous_intervals Z l) m%:E by rewrite /= => -[x lx [<-]].
+rewrite contiguous_ooitv//= in_itv/=.
+rewrite -[X in (X < _ < _)%E]fineK// fine_contiguous_intervals1//.
+rewrite -[X in (_ < _ < X)%E]fineK// fine_contiguous_intervals2//.
+rewrite !lte_fin.
+rewrite !midf_lt//=.
+rewrite (le_lt_trans _ jl)// midf_le//.
+exact: ltW.
+Admitted.
+
 Lemma mem_contiguous_intervals2 (Z : set R) j : compact Z -> Z !=set0 ->
   Z (fine (contiguous_intervals2 Z j)).
 Proof.
@@ -532,7 +618,7 @@ move: (cZ); rewrite Rcompact_boundE/= => -[closedZ ubndZ lbndZ].
 have cpltZE := bigcup_contiguous_intervals closedZ.
 have H1 : EFin @` (cplt_hull Z) =
     \bigcup_k `]contiguous_intervals1 Z k, contiguous_intervals2 Z k[%classic.
-  rewrite cpltZE image_bigcup; apply: eq_bigcup => // i _.
+  rewrite [in LHS]cpltZE image_bigcup; apply: eq_bigcup => // i _.
   by rewrite contiguous_ooitv.
 have : (~` (cplt_hull Z)) (sup (contiguous_intervals Z j)).
   move=> H2.
@@ -544,11 +630,17 @@ have : (~` (cplt_hull Z)) (sup (contiguous_intervals Z j)).
   apply/negP.
   rewrite -fine_contiguous_intervals2//.
   have [->{l}|ij] := eqVneq l j.
-    rewrite in_itv/= fineK//; last first.
-      by apply: contiguous_intervals2_fin_num.
-    by rewrite ltxx andbF.
+    exact: contiguous_intervals2_notin.
   rewrite fine_contiguous_intervals2//.
-  apply/negP => abs.
+  suff : ~ `]contiguous_intervals1 Z l, contiguous_intervals2 Z l[%classic
+      (sup (contiguous_intervals Z j))%:E.
+    rewrite -notin_setE.
+    apply: contra.
+    by rewrite inE.
+  rewrite -contiguous_ooitv//=.
+  move=> -[x Zlx].
+(*  have : contiguous_intervals Z j = 
+  apply/negP => abs.*)
   admit.
 rewrite cplt_hullEitvoo//.
 rewrite setCI setCK => -[abs|]; last first.
@@ -599,8 +691,16 @@ have cd : c < d.
 have perfectZ : perfect_set Z.
   apply/perfectP; split => //.
   exact: compact_closed.
-pose A_ n := fine (contiguous_intervals1 Z n).
-pose B_ n := fine (contiguous_intervals2 Z n).
+pose A_ n :=
+  match sumbool_of_bool (n \in open_disjoint_itv_support (cplt_hull Z)) with
+  | left H => fine (contiguous_intervals1 Z (SigSub H))
+  | _ => 0
+  end.
+pose B_ n :=
+  match sumbool_of_bool (n \in open_disjoint_itv_support (cplt_hull Z)) with
+  | left H => fine (contiguous_intervals2 Z (SigSub H))
+  | _ => 0
+  end.
 pose alpha := mu (H @` Z).
 have fin_alpha : alpha \is a fin_num.
   rewrite gt0_fin_numE//.

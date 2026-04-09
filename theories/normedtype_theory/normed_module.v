@@ -2430,6 +2430,75 @@ exists (lt_disjoint_rat_seq f \o g); split.
   by move=> q/= _; exists (f q).
 Qed.
 
+Definition supp_rat : set rat.
+destruct (sumbool_of_bool (U == set0)).
+  exact: set0.
+pose f := sval (cid (elimT card_set_bijP card_rat)).
+exact [set q | lt_disjoint_rat_seq f q !=set0].
+Defined.
+
+Definition supp : set nat.
+pose f := sval (cid (elimT card_set_bijP card_rat)).
+exact (f @` supp_rat).
+Defined.
+
+Lemma open_disjoint_itv_new : exists I : supp -> set R,
+  [/\ forall q, open (I q) /\ is_interval (I q),
+      (U !=set0 -> forall q : supp, I q !=set0) /\
+      (U = set0 -> supp = set0),
+      trivIset setT I &
+      U = \bigcup_(q : supp) I q].
+Proof.
+have [U0|U0] := eqVneq U set0.
+  exists (fun=> set0); split.
+  by move=> _; split.
+  split=> [|_].
+    by move/set0P; rewrite U0 eqxx.
+  rewrite /supp/=.
+  rewrite /supp_rat/=.
+  by rewrite /sumbool_of_bool/= U0 eqxx image_set0.
+  exact: trivIset_set0.
+  by rewrite bigcup0.
+pose f := sval (cid (elimT card_set_bijP card_rat)).
+have := svalP (cid (elimT card_set_bijP card_rat)).
+rewrite setTT_bijective => -[g cfg cgf].
+(*pose support_rat : set rat := [set q | lt_disjoint_rat_seq f q !=set0].
+pose support_nat := f @` support_rat.*)
+have @I : supp -> set R.
+  case => n nsupp.
+  exact: (lt_disjoint_rat_seq f \o g).
+exists I; split.
+- move=> [n/= nsupp].
+  exact: lt_disjoint_rat_seq_open_itv.
+- split => [_|].
+    move=> [/= n].
+    rewrite /supp/= /supp_rat/= /sumbool_of_bool/= (negbTE U0)/= inE/=.
+    move=> -[q]/= => fq0 <-.
+    by rewrite cfg.
+  by move: U0 => /eqP.
+- apply/trivIsetP => /= -[i/= isupp] [j/= jsupp] _ _ H.
+  have /trivIsetP/(_ i j Logic.I Logic.I) := lt_disjoint_rat_seq_trivIset cfg cgf.
+  apply.
+  apply: contra H => /eqP ?; subst j.
+  apply/eqP.
+  f_equal.
+  exact: Prop_irrelevance.
+- rewrite (bigcup_lt_disjoint_rat_seq cfg cgf).
+  transitivity (\bigcup_(q in supp_rat) (lt_disjoint_rat_seq f q)).
+    rewrite [in RHS]bigcup_mkcond.
+    apply: eq_bigcup => // q _.
+    case: ifPn => //.
+    by rewrite notin_setE /supp_rat/= /sumbool_of_bool (negbTE U0)/= => /set0P/negP/negPn/eqP.
+  rewrite (reindex_bigcup g supp _ (fun q => lt_disjoint_rat_seq f q))//; last 2 first.
+    by move=> q; rewrite /supp/= => -[x Hx <-]; rewrite cfg.
+    move=> q/=; rewrite /supp/= /supp_rat/= /sumbool_of_bool (negbTE U0)/= => -[r fqr].
+    exists (f q); last by rewrite cfg.
+    exists q => //.
+    by exists r.
+  rewrite bigcup_set_type//.
+  by apply: eq_bigcup => // -[n nsupp]/=.
+Qed.
+
 End opensetdisjointitvs.
 End OpenSetDisjointItvs.
 
@@ -2457,3 +2526,69 @@ Lemma open_disjoint_itv_bigcup : U = \bigcup_q open_disjoint_itv q.
 Proof. by rewrite /open_disjoint_itv; case: cid => //= I [_]. Qed.
 
 End open_set_disjoint_real_intervals.
+
+Section open_set_disjoint_real_intervals_new.
+Context {R : realType}.
+Variable U : set R.
+Hypothesis oU : open U.
+
+Definition open_disjoint_itv_support : set nat := OpenSetDisjointItvs.supp U.
+
+Definition open_disjoint_itv_new : open_disjoint_itv_support -> set R :=
+  sval (cid (OpenSetDisjointItvs.open_disjoint_itv_new oU)).
+
+Lemma open_disjoint_itv_new_open i : open (open_disjoint_itv_new i).
+Proof.
+rewrite /open_disjoint_itv_new.
+case: cid => //=.
+move=> x [/= H _ _ _].
+by apply H.
+Qed.
+
+Lemma open_disjoint_itv_new_is_interval i : is_interval (open_disjoint_itv_new i).
+Proof.
+rewrite /open_disjoint_itv_new.
+case: cid => //=.
+move=> x [/= H _ _ _].
+by apply H.
+Qed.
+
+Lemma open_disjoint_itv_new_trivIset :
+  trivIset [set: open_disjoint_itv_support] open_disjoint_itv_new.
+Proof.
+rewrite /open_disjoint_itv_new.
+case: cid => //=.
+move=> x [/= _ _ H _].
+by apply H.
+Qed.
+
+Lemma open_disjoint_itv_new_bigcup :
+  U = \bigcup_q open_disjoint_itv_new q.
+Proof.
+rewrite /open_disjoint_itv_new.
+case: cid => //=.
+move=> x [/= _ _ _].
+by apply.
+Qed.
+
+Lemma open_disjoint_itv_new_neq0 :
+  U !=set0 -> forall q : open_disjoint_itv_support, open_disjoint_itv_new q !=set0.
+Proof.
+move=> U0 q.
+rewrite /open_disjoint_itv_new.
+case: cid  => //=.
+move=> x [/= _ H _ _].
+by apply H.
+Qed.
+
+Lemma open_disjoint_itv_new_eq0 :
+  U = set0 -> open_disjoint_itv_support = set0.
+Proof.
+move=> U0.
+rewrite /open_disjoint_itv_support.
+rewrite /OpenSetDisjointItvs.supp/=.
+rewrite /OpenSetDisjointItvs.supp_rat/=.
+by rewrite /sumbool_of_bool/= U0/= eqxx image_set0.
+Qed.
+
+End open_set_disjoint_real_intervals_new.
