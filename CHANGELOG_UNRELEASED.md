@@ -76,6 +76,20 @@
 - in `ereal.v`:
   + lemma `ge0_addBefctE`
 
+- in `normal_distribution.v`:
+  + lemma `normal_funN`
+  + lemma `normal_fun_sym`
+  + lemma `normal_fun0abs`
+  + lemma `normal_pdf_sym`
+  + lemma `normal_fun_center_new`
+  + lemma `normal_fun_shift`
+  + lemma `normal_pdf_uniq_ae`
+  + lemma `normal_prob_continuous`
+  + lemma `integral_normal_prob`
+  + lemma `measurable_normal_prob`
+  + lemma `emeasurable_bounded_integrable`
+  + lemmas `integrable_normal_probD1`, `normal_probD1`, `normal_probD2`, `normal_probD`
+
 ### Changed
 
 - moved from `measurable_structure.v` to `classical_sets.v`:
@@ -113,6 +127,9 @@
   + `fune_abse` renamed to `funeposDneg` and direction of the equality changed
   + `funeposneg` renamed to `funeposBneg` and direction of the equality changed
   + `funeD_posD` renamed to `funeDB` and direction of the equality changed
+
+- in `normal_distribution.v:
+  + `normal_fun_center` -> `normal_fun_center0`
 
 ### Renamed
 
