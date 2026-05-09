@@ -93,6 +93,14 @@
   + lemma `is_diff_mx`
   + instance `is_diff_mx`
 
+- in `mathcomp_extra.v`:
+  + lemmas `divDl_ge0`, `divDl_le1`
+  + mixin `Zmodule_isSubNormed`
+  + mixin `isTmp` and structure `SubNormedZmodule_tmp` (temporary kludge)
+
+- in `unstable.v`:
+  + lemmas `divD_onem`
+
 ### Changed
 
 - moved from `measurable_structure.v` to `classical_sets.v`:
@@ -130,16 +138,6 @@
   + definition `preimage_set_system`
   + lemmas `preimage_set_system0`, `preimage_set_systemU`, `preimage_set_system_comp`,
     `preimage_set_system_id`
-
-- in `mathcomp_extra.v`:
-  + lemmas `divDl_ge0`, `divDl_le1`
-  + mixin `Zmodule_isSubNormed`
-  + mixin `isTmp` and structure `SubNormedZmodule_tmp` (temporary kludge)
-
-- in `unstable.v`:
-  + lemmas `divD_onem`
-
-### Changed
 
 - moved from `topology_structure.v` to `filter.v`:
   + lemma `continuous_comp` (and generalized)
