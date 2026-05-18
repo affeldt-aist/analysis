@@ -11,6 +11,10 @@ From mathcomp Require Import lebesgue_integral ftc gauss_integral charge.
 (**md**************************************************************************)
 (* # Normal distribution                                                      *)
 (*                                                                            *)
+(* Reference:                                                                 *)
+(* - R. Affeldt, Y. Ishiguro, Z. Stone. A Fromal Foundation for Equational    *)
+(*   Reasoning on Probabilistic Programs. APLAS2025                           *)
+(*                                                                            *)
 (* ```                                                                        *)
 (*        normal_peak s := (sqrtr (s ^+ 2 * pi *+ 2))^-1                      *)
 (*     normal_fun m s x := expR (- (x - m) ^+ 2 / (s ^+ 2 *+ 2))              *)
@@ -19,6 +23,8 @@ From mathcomp Require Import lebesgue_integral ftc gauss_integral charge.
 (*                         Using normal_peak and normal_pdf.                  *)
 (*      normal_prob m s == normal probability measure                         *)
 (* ```                                                                        *)
+(*      normal_probD    == Variable elimination and integration also known as *)
+(*                         the reproductive property of normal distribution.  *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -348,24 +354,6 @@ Local Close Scope charge_scope.
 End normal_probability.
 
 Section normal_prob_continuous.
-(* outline of proof:
-   1. It is enough to prove that `(fun x => normal_prob x s Ys)` is continuous
-      for all measurable set `Ys`.
-   2. Continuity is obtained by continuity under integral from continuity of
-      `normal_pdf`.
-   3. Fix a point `a` in `R` and `e` with `0 < e`. Then take the function
-      `g : R -> R` as that `g x` is the maximum value of
-      `normal_pdf a s x` at a point within `e` of `x`.
-      Then `g x` is equal to `normal_pdf a s 0` if `x` in `ball a e`,
-       `normal_pdf a s (x - e)` for x > a + e,
-       and `normal_pdf a s (x + e)` for x < a - e.
-   4. Integrability of `g` is checked by calculating integration.
-      By integration by substitution, the integral of `g` on ]-oo, a - e]
-      is equal to the integral of `normal_pdf a s` on `]-oo, a],
-      and it on `[a + e, +oo[ similarly.
-      So the integral of `g` on ]-oo, +oo[ is the integral of `f` on ]-oo, +oo[
-      added by the integral of `normal_pdf a s x` on ]a - e, a + e[
- *)
 Context {R : realType}.
 Notation mu := (@lebesgue_measure R).
 Variable s : R.
@@ -689,9 +677,9 @@ Lemma normal_probD2 (y m1 m2 s1 s2 : R) : s1 != 0%R -> s2 != 0%R ->
 Proof.
 move=> s10 s20; rewrite -ge0_integralZl//=.
 - apply/measurable_EFinP => //=; apply: measurable_funM => //=.
-  + rewrite /normal_fun. (* TODO: lemma? *)
-    under eq_fun do rewrite -(sqrrN (y - _)) opprB (addrC m1) -addrA -opprB.
-    exact: measurable_normal_fun.
+  + under eq_fun=> x do rewrite normal_fun_sym.
+    apply: measurableT_comp; first exact: measurable_normal_fun.
+    exact: measurable_funD.
   + exact: measurable_normal_fun.
 - by move=> z _; rewrite lee_fin mulr_ge0// expR_ge0.
 - by rewrite lee_fin mulr_ge0// ?normal_peak_ge0.
@@ -699,8 +687,6 @@ apply: eq_integral => /= z _.
 by rewrite 2?normal_pdfE// /normal_pdf0 mulrACA.
 Qed.
 
-(* Variable elimination and integration [Shan, Section 3.5, (9)],
- also known as the reproductive property of normal distribution. *)
 Lemma normal_probD (m1 s1 m2 s2 : R) V : s1 != 0%R -> s2 != 0%R ->
   measurable V ->
   \int[normal_prob m1 s1]_x normal_prob (m2 + x) s2 V =
@@ -756,7 +742,6 @@ rewrite /normal_peak /normal_fun.
 rewrite [in RHS]EFinM.
 rewrite [in RHS]sqr_sqrtr//; first by rewrite addr_ge0// sqr_ge0.
 rewrite muleA; congr *%E; last by rewrite -mulNr.
-(* gauss integral *)
 have MS12DS12_gt0 : (0 < MS12 / DS12)%R.
   rewrite divr_gt0//.
     by rewrite mulr_gt0// exprn_even_gt0.
