@@ -67,11 +67,8 @@ Qed.
 Lemma normal_fun_ge0 m s x : 0 <= normal_fun m s x.
 Proof. exact: expR_ge0. Qed.
 
-Lemma normal_fun_center0 m s : normal_fun m s = normal_fun 0 s \o center m.
-Proof. by apply/funext => x/=; rewrite /normal_fun/= subr0. Qed.
-
-Lemma normal_funN m s : normal_fun (- m) s (- m) = normal_fun m s m.
-Proof. by rewrite /normal_fun opprK addrC. Qed.
+Lemma normal_funN m s x : normal_fun (- m) s (- x) = normal_fun m s x.
+Proof. by rewrite /normal_fun -opprD sqrrN. Qed.
 
 Lemma normal_fun_sym m s x : normal_fun m s x = normal_fun x s m.
 Proof. by rewrite /normal_fun -(sqrrN (x - _)) opprB. Qed.
@@ -79,14 +76,19 @@ Proof. by rewrite /normal_fun -(sqrrN (x - _)) opprB. Qed.
 Lemma normal_fun0abs s x : normal_fun 0 s `|x| = normal_fun 0 s x.
 Proof. by rewrite /normal_fun 2!subr0 real_normK// num_real. Qed.
 
-#[deprecated(since="mathcomp-analysis 1.17.0", note="to be renamed to `normal_fun_center`")]
-Lemma normal_fun_center_new m s x :
-  normal_fun (center m x) s (center m x) = normal_fun m s m.
-Proof. by rewrite [in RHS]/normal_fun subrr -(subrr (x - m)). Qed.
+Lemma normal_fun_shift t m s x :
+  normal_fun (shift m t) s (shift x t) = normal_fun m s x.
+Proof. by rewrite [in LHS]/normal_fun/= (addrC t x) addrKA. Qed.
 
-Lemma normal_fun_shift m s x :
-  normal_fun (shift m x) s (shift m x) = normal_fun m s m.
-Proof. by rewrite -[in LHS]normal_funN/= opprD normal_fun_center_new. Qed.
+#[deprecated(since="mathcomp-analysis 1.17.0", note="to be renamed to `normal_fun_center`")]
+Lemma normal_fun_center_new t m s x:
+  normal_fun (center m t) s (center x t) = normal_fun m s x.
+Proof. by rewrite normal_fun_shift normal_funN. Qed.
+
+Lemma normal_fun_center0 m s : normal_fun m s = normal_fun 0 s \o center m.
+Proof.
+by apply/funext => x/=; rewrite -{1}(addr0 m) -{1}(subrKC m x) normal_fun_shift.
+Qed.
 
 End normal_fun.
 #[deprecated(since="mathcomp-analysis 1.17.0", note="renamed to `normal_fun_center0`")]
@@ -136,15 +138,15 @@ Qed.
 Lemma normal_pdf0_sym m s x : normal_pdf0 m s x = normal_pdf0 x s m.
 Proof. by rewrite /normal_pdf0 normal_fun_sym. Qed.
 
-Lemma normal_pdf0N m s : normal_pdf0 (- m) s (- m) = normal_pdf0 m s m.
+Lemma normal_pdf0N m s x: normal_pdf0 (- m) s (- x) = normal_pdf0 m s x.
 Proof. by rewrite /normal_pdf0 normal_funN. Qed.
 
-Lemma normal_pdf0_center m s x :
-  normal_pdf0 (center m x) s (center m x) = normal_pdf0 m s m.
+Lemma normal_pdf0_center t m s x :
+  normal_pdf0 (center m t) s (center x t) = normal_pdf0 m s x.
 Proof. by rewrite /normal_pdf0 normal_fun_center_new. Qed.
 
-Lemma normal_pdf0_shift m s x :
-  normal_pdf0 (shift m x) s (shift m x) = normal_pdf0 m s m.
+Lemma normal_pdf0_shift t m s x :
+  normal_pdf0 (shift m t) s (shift x t) = normal_pdf0 m s x.
 Proof. by rewrite /normal_pdf0 normal_fun_shift. Qed.
 
 End normal_pdf0.
@@ -481,7 +483,7 @@ apply: withinU_continuous.
       by near: t; apply: cvgr_dist_le eps eps0; exact: continuous_normal_pdf0.
     * apply/cvgrPdist_lt => eps eps0; near=> t.
       rewrite /g' !(negPf (ballFE_le _))// (addrC a) addrK normrN.
-      rewrite (ger0_norm e0)// -(normal_pdf0_center _ _ a) pdf0B//.
+      rewrite (ger0_norm e0)// -(normal_pdf0_center a) pdf0B//.
       near: t; apply: cvgr_dist_lt eps eps0.
       by apply/cvg_at_left_filter; exact: continuous_normal_pdf0.
   move: e0; rewrite le_eqVlt => /predU1P[<-|e0].
@@ -516,7 +518,7 @@ apply: withinU_continuous.
   + apply/cvgrPdist_le => eps eps0; near=> t.
     rewrite /g' !(negPf (ballFE_ge _))//.
     rewrite (addrC a) addrK (ger0_norm e0)//.
-    rewrite -(normal_pdf0_shift e s a)/= pdf0D//.
+    rewrite -(normal_pdf0_shift a)/= pdf0D//.
     near: t; apply/cvgrPdist_le : eps eps0.
     by apply: cvg_at_right_filter; exact: continuous_normal_pdf0.
 Unshelve. all: end_near. Qed.
@@ -726,7 +728,7 @@ rewrite (@fubini_tonelli _ _ _ _ _ mu mu (EFin \o
     rewrite [X in measurable_fun _  X](_ : _ = (fun x =>
         normal_pdf0 0 s2 (x.2 - (m2 + x.1)%R)))/=.
       apply/funext => x0.
-      by rewrite /normal_pdf0 normal_pdfE// normal_fun_center.
+      by rewrite /normal_pdf0 normal_pdfE// normal_fun_center0.
     apply: measurableT_comp => /=; first exact: measurable_normal_pdf0.
     under eq_fun do rewrite opprD.
     by apply: measurable_funD => //=; exact: measurable_funB.
