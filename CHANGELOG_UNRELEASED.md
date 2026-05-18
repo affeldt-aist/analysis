@@ -76,18 +76,27 @@
 - in `ereal.v`:
   + lemma `ge0_addBefctE`
 
+- in `lebesgue_intergable.v`:
+  + lemma `emeasurable_bounded_integrable`
+
+- in `ftc.v`:
+  + lemmas `ge0_integration_by_substitution_shift_itvy`, `ge0_integration_by_substitution_shift_itvNy`
+
 - in `normal_distribution.v`:
+  + definitions `normal_peak`, `normal_pdf0`, `normal_pdf`
+  + lemmas `normal_peak_ge0`, `normal_peak_gt0`
   + lemma `normal_funN`
   + lemma `normal_fun_sym`
   + lemma `normal_fun0abs`
-  + lemma `normal_pdf_sym`
-  + lemma `normal_fun_center_new`
   + lemma `normal_fun_shift`
+  + lemma `normal_fun_center_new`
+  + lemma `normal_pdfE`
+  + lemma `normal_pdf_sym`
+  + lemma `measurable_normal_pdf`
   + lemma `normal_pdf_uniq_ae`
   + lemma `normal_prob_continuous`
   + lemma `integral_normal_prob`
   + lemma `measurable_normal_prob`
-  + lemma `emeasurable_bounded_integrable`
   + lemmas `integrable_normal_probD1`, `normal_probD1`, `normal_probD2`, `normal_probD`
 
 ### Changed
@@ -178,6 +187,9 @@
   + lemma `sigma_algebra_measurable` (not specialized to `setT` anymore)
 
 ### Deprecated
+
+- in `normal_distribution.v`
+  + lemma `normal_fun_center`
 
 ### Removed
 

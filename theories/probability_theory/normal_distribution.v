@@ -11,6 +11,10 @@ From mathcomp Require Import lebesgue_integral ftc gauss_integral charge.
 (**md**************************************************************************)
 (* # Normal distribution                                                      *)
 (*                                                                            *)
+(* Reference:                                                                 *)
+(* - R. Affeldt, Y. Ishiguro, Z. Stone. A Fromal Foundation for Equational    *)
+(*   Reasoning on Probabilistic Programs. APLAS2025                           *)
+(*                                                                            *)
 (* ```                                                                        *)
 (*        normal_peak s := (sqrtr (s ^+ 2 * pi *+ 2))^-1                      *)
 (*     normal_fun m s x := expR (- (x - m) ^+ 2 / (s ^+ 2 *+ 2))              *)
@@ -19,6 +23,8 @@ From mathcomp Require Import lebesgue_integral ftc gauss_integral charge.
 (*                         Using normal_peak and normal_pdf.                  *)
 (*      normal_prob m s == normal probability measure                         *)
 (* ```                                                                        *)
+(*      normal_probD    == Variable elimination and integration also known as *)
+(*                         the reproductive property of normal distribution.  *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -67,11 +73,8 @@ Qed.
 Lemma normal_fun_ge0 m s x : 0 <= normal_fun m s x.
 Proof. exact: expR_ge0. Qed.
 
-Lemma normal_fun_center0 m s : normal_fun m s = normal_fun 0 s \o center m.
-Proof. by apply/funext => x/=; rewrite /normal_fun/= subr0. Qed.
-
-Lemma normal_funN m s : normal_fun (- m) s (- m) = normal_fun m s m.
-Proof. by rewrite /normal_fun opprK addrC. Qed.
+Lemma normal_funN m s x : normal_fun (- m) s (- x) = normal_fun m s x.
+Proof. by rewrite /normal_fun -opprD sqrrN. Qed.
 
 Lemma normal_fun_sym m s x : normal_fun m s x = normal_fun x s m.
 Proof. by rewrite /normal_fun -(sqrrN (x - _)) opprB. Qed.
@@ -79,14 +82,19 @@ Proof. by rewrite /normal_fun -(sqrrN (x - _)) opprB. Qed.
 Lemma normal_fun0abs s x : normal_fun 0 s `|x| = normal_fun 0 s x.
 Proof. by rewrite /normal_fun 2!subr0 real_normK// num_real. Qed.
 
-#[deprecated(since="mathcomp-analysis 1.17.0", note="to be renamed to `normal_fun_center`")]
-Lemma normal_fun_center_new m s x :
-  normal_fun (center m x) s (center m x) = normal_fun m s m.
-Proof. by rewrite [in RHS]/normal_fun subrr -(subrr (x - m)). Qed.
+Lemma normal_fun_shift t m s x :
+  normal_fun (shift m t) s (shift x t) = normal_fun m s x.
+Proof. by rewrite [in LHS]/normal_fun/= (addrC t x) addrKA. Qed.
 
-Lemma normal_fun_shift m s x :
-  normal_fun (shift m x) s (shift m x) = normal_fun m s m.
-Proof. by rewrite -[in LHS]normal_funN/= opprD normal_fun_center_new. Qed.
+#[deprecated(since="mathcomp-analysis 1.17.0", note="to be renamed to `normal_fun_center`")]
+Lemma normal_fun_center_new t m s x:
+  normal_fun (center m t) s (center x t) = normal_fun m s x.
+Proof. by rewrite normal_fun_shift normal_funN. Qed.
+
+Lemma normal_fun_center0 m s : normal_fun m s = normal_fun 0 s \o center m.
+Proof.
+by apply/funext => x/=; rewrite -{1}(addr0 m) -{1}(subrKC m x) normal_fun_shift.
+Qed.
 
 End normal_fun.
 #[deprecated(since="mathcomp-analysis 1.17.0", note="renamed to `normal_fun_center0`")]
@@ -136,15 +144,15 @@ Qed.
 Lemma normal_pdf0_sym m s x : normal_pdf0 m s x = normal_pdf0 x s m.
 Proof. by rewrite /normal_pdf0 normal_fun_sym. Qed.
 
-Lemma normal_pdf0N m s : normal_pdf0 (- m) s (- m) = normal_pdf0 m s m.
+Lemma normal_pdf0N m s x: normal_pdf0 (- m) s (- x) = normal_pdf0 m s x.
 Proof. by rewrite /normal_pdf0 normal_funN. Qed.
 
-Lemma normal_pdf0_center m s x :
-  normal_pdf0 (center m x) s (center m x) = normal_pdf0 m s m.
+Lemma normal_pdf0_center t m s x :
+  normal_pdf0 (center m t) s (center x t) = normal_pdf0 m s x.
 Proof. by rewrite /normal_pdf0 normal_fun_center_new. Qed.
 
-Lemma normal_pdf0_shift m s x :
-  normal_pdf0 (shift m x) s (shift m x) = normal_pdf0 m s m.
+Lemma normal_pdf0_shift t m s x :
+  normal_pdf0 (shift m t) s (shift x t) = normal_pdf0 m s x.
 Proof. by rewrite /normal_pdf0 normal_fun_shift. Qed.
 
 End normal_pdf0.
@@ -345,71 +353,7 @@ Local Close Scope charge_scope.
 
 End normal_probability.
 
-Section ge0_integration_by_substitution_shift.
-Context {R : realType}.
-Notation mu := (@lebesgue_measure R).
-
-Lemma ge0_integration_by_substitution_shift_itvy (f : R -> R) (r e : R) :
-  {within `[r + e, +oo[, continuous f} ->
-  {in `]r + e, +oo[, forall x : R, 0 <= f x} ->
-  (\int[mu]_(x in `[(r + e)%R, +oo[) (f x)%:E =
-  \int[mu]_(x in `[r, +oo[) ((f \o shift e) x)%:E)%E.
-Proof.
-move=> cf f0.
-have dshiftE : (shift e)^`() = cst 1.
-  by apply/funext => x; rewrite derive1E -(derive_shift 1 e).
-rewrite (@increasing_ge0_integration_by_substitutiony _ (shift e))//=.
-- by move=> x y _ _ xy; rewrite ltr_leD.
-- by rewrite dshiftE => ? _; exact: cst_continuous.
-- by rewrite dshiftE; exact: is_cvg_cst.
-- by rewrite dshiftE; exact: is_cvg_cst.
-- split; first by move=> x _; exact: ex_derive.
-  by apply/cvg_at_right_filter; apply: cvgD => //; exact: cvg_cst.
-- exact: cvg_addrr.
-by rewrite dshiftE mulr1.
-Qed.
-
-Lemma ge0_integration_by_substitution_shift_itvNy (f : R -> R) (r e : R) :
-  {within `]-oo, r + e], continuous f} ->
-  {in `]-oo, r + e[, forall x : R, 0 <= f x} ->
-  (\int[mu]_(x in `]-oo, (r + e)%R]) (f x)%:E =
-   \int[mu]_(x in `]-oo, r]) ((f \o shift e) x)%:E)%E.
-Proof.
-move=> cf f0.
-have dshiftE : (shift e)^`() = cst 1.
-  by apply/funext => x; rewrite derive1E -(derive_shift 1 e).
-rewrite (@increasing_ge0_integration_by_substitutionNy _ (shift e))//.
-- by move=> x y _ _ xy; rewrite ltr_leD.
-- by rewrite dshiftE => ? _; exact: cst_continuous.
-- by rewrite dshiftE; exact: is_cvg_cst.
-- by rewrite dshiftE; exact: cvg_cst.
-- split; first by move=> x _; exact: ex_derive.
-  by apply/cvg_at_left_filter; apply: cvgD => //; exact: cvg_cst.
-- exact: cvg_addrr_Ny.
-by rewrite dshiftE mulr1.
-Qed.
-
-End ge0_integration_by_substitution_shift.
-
 Section normal_prob_continuous.
-(* outline of proof:
-   1. It is enough to prove that `(fun x => normal_prob x s Ys)` is continuous
-      for all measurable set `Ys`.
-   2. Continuity is obtained by continuity under integral from continuity of
-      `normal_pdf`.
-   3. Fix a point `a` in `R` and `e` with `0 < e`. Then take the function
-      `g : R -> R` as that `g x` is the maximum value of
-      `normal_pdf a s x` at a point within `e` of `x`.
-      Then `g x` is equal to `normal_pdf a s 0` if `x` in `ball a e`,
-       `normal_pdf a s (x - e)` for x > a + e,
-       and `normal_pdf a s (x + e)` for x < a - e.
-   4. Integrability of `g` is checked by calculating integration.
-      By integration by substitution, the integral of `g` on ]-oo, a - e]
-      is equal to the integral of `normal_pdf a s` on `]-oo, a],
-      and it on `[a + e, +oo[ similarly.
-      So the integral of `g` on ]-oo, +oo[ is the integral of `f` on ]-oo, +oo[
-      added by the integral of `normal_pdf a s x` on ]a - e, a + e[
- *)
 Context {R : realType}.
 Notation mu := (@lebesgue_measure R).
 Variable s : R.
@@ -481,7 +425,7 @@ apply: withinU_continuous.
       by near: t; apply: cvgr_dist_le eps eps0; exact: continuous_normal_pdf0.
     * apply/cvgrPdist_lt => eps eps0; near=> t.
       rewrite /g' !(negPf (ballFE_le _))// (addrC a) addrK normrN.
-      rewrite (ger0_norm e0)// -(normal_pdf0_center _ _ a) pdf0B//.
+      rewrite (ger0_norm e0)// -(normal_pdf0_center a) pdf0B//.
       near: t; apply: cvgr_dist_lt eps eps0.
       by apply/cvg_at_left_filter; exact: continuous_normal_pdf0.
   move: e0; rewrite le_eqVlt => /predU1P[<-|e0].
@@ -516,7 +460,7 @@ apply: withinU_continuous.
   + apply/cvgrPdist_le => eps eps0; near=> t.
     rewrite /g' !(negPf (ballFE_ge _))//.
     rewrite (addrC a) addrK (ger0_norm e0)//.
-    rewrite -(normal_pdf0_shift e s a)/= pdf0D//.
+    rewrite -(normal_pdf0_shift a)/= pdf0D//.
     near: t; apply/cvgrPdist_le : eps eps0.
     by apply: cvg_at_right_filter; exact: continuous_normal_pdf0.
 Unshelve. all: end_near. Qed.
@@ -661,28 +605,6 @@ Qed.
 
 End normal_prob_lemmas.
 
-Section emeasurable_bounded_integrable.
-Context d {T : measurableType d} {R : realType}
-  {p : {finite_measure set T -> \bar R}} {f : T -> \bar R}.
-Local Open Scope ereal_scope.
-
-(* TODO: move *)
-Lemma emeasurable_bounded_integrable :
-  (forall x, 0 <= f x) -> (exists M : R, forall x, f x <= M%:E) ->
-  measurable_fun [set: T] f -> p.-integrable [set: T] f.
-Proof.
-move=> f0 [M fleM] mf; apply/integrableP; split => //.
-rewrite (@le_lt_trans _ _ (\int[p]_x M%:E))//.
-  apply: ge0_le_integral => //=.
-    exact: measurableT_comp.
-  move=> t _.
-  apply: (@le_trans _ _ (f t)) => //.
-  by rewrite gee0_abs.
-by rewrite integral_cst// muleC lte_mul_pinfty ?ltry//; exact: fin_num_measure.
-Qed.
-
-End emeasurable_bounded_integrable.
-
 Section normal_probD.
 Local Open Scope ereal_scope.
 Context {R : realType}.
@@ -726,7 +648,7 @@ rewrite (@fubini_tonelli _ _ _ _ _ mu mu (EFin \o
     rewrite [X in measurable_fun _  X](_ : _ = (fun x =>
         normal_pdf0 0 s2 (x.2 - (m2 + x.1)%R)))/=.
       apply/funext => x0.
-      by rewrite /normal_pdf0 normal_pdfE// normal_fun_center.
+      by rewrite /normal_pdf0 normal_pdfE// normal_fun_center0.
     apply: measurableT_comp => /=; first exact: measurable_normal_pdf0.
     under eq_fun do rewrite opprD.
     by apply: measurable_funD => //=; exact: measurable_funB.
@@ -755,9 +677,9 @@ Lemma normal_probD2 (y m1 m2 s1 s2 : R) : s1 != 0%R -> s2 != 0%R ->
 Proof.
 move=> s10 s20; rewrite -ge0_integralZl//=.
 - apply/measurable_EFinP => //=; apply: measurable_funM => //=.
-  + rewrite /normal_fun. (* TODO: lemma? *)
-    under eq_fun do rewrite -(sqrrN (y - _)) opprB (addrC m1) -addrA -opprB.
-    exact: measurable_normal_fun.
+  + under eq_fun=> x do rewrite normal_fun_sym.
+    apply: measurableT_comp; first exact: measurable_normal_fun.
+    exact: measurable_funD.
   + exact: measurable_normal_fun.
 - by move=> z _; rewrite lee_fin mulr_ge0// expR_ge0.
 - by rewrite lee_fin mulr_ge0// ?normal_peak_ge0.
@@ -765,8 +687,6 @@ apply: eq_integral => /= z _.
 by rewrite 2?normal_pdfE// /normal_pdf0 mulrACA.
 Qed.
 
-(* Variable elimination and integration [Shan, Section 3.5, (9)],
- also known as the reproductive property of normal distribution. *)
 Lemma normal_probD (m1 s1 m2 s2 : R) V : s1 != 0%R -> s2 != 0%R ->
   measurable V ->
   \int[normal_prob m1 s1]_x normal_prob (m2 + x) s2 V =
@@ -822,7 +742,6 @@ rewrite /normal_peak /normal_fun.
 rewrite [in RHS]EFinM.
 rewrite [in RHS]sqr_sqrtr//; first by rewrite addr_ge0// sqr_ge0.
 rewrite muleA; congr *%E; last by rewrite -mulNr.
-(* gauss integral *)
 have MS12DS12_gt0 : (0 < MS12 / DS12)%R.
   rewrite divr_gt0//.
     by rewrite mulr_gt0// exprn_even_gt0.
