@@ -76,6 +76,12 @@
 - in `ereal.v`:
   + lemma `ge0_addBefctE`
 
+- in `lebesgue_integral_theory\lebesgue_intergable.v`:
+  + lemma `emeasurable_bounded_integrable`
+
+- in `ftc.v`:
+  + lemmas `ge0_integration_by_substitution_shift_itvy`, `ge0_integration_by_substitution_shift_itvNy`
+
 - in `normal_distribution.v`:
   + lemma `normal_funN`
   + lemma `normal_fun_sym`

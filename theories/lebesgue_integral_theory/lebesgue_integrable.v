@@ -1094,3 +1094,24 @@ rewrite h set_neq_lt setIUr measureU//; [exact: measurable_lte..| |].
 Qed.
 
 End integral_ae_eq.
+
+Section emeasurable_bounded_integrable.
+Context d {T : measurableType d} {R : realType}
+  {p : {finite_measure set T -> \bar R}} {f : T -> \bar R}.
+Local Open Scope ereal_scope.
+
+Lemma emeasurable_bounded_integrable :
+  (forall x, 0 <= f x) -> (exists M : R, forall x, f x <= M%:E) ->
+  measurable_fun [set: T] f -> p.-integrable [set: T] f.
+Proof.
+move=> f0 [M fleM] mf; apply/integrableP; split => //.
+rewrite (@le_lt_trans _ _ (\int[p]_x M%:E))//.
+  apply: ge0_le_integral => //=.
+    exact: measurableT_comp.
+  move=> t _.
+  apply: (@le_trans _ _ (f t)) => //.
+  by rewrite gee0_abs.
+by rewrite integral_cst// muleC lte_mul_pinfty ?ltry//; exact: fin_num_measure.
+Qed.
+
+End emeasurable_bounded_integrable.

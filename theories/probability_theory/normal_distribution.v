@@ -347,52 +347,6 @@ Local Close Scope charge_scope.
 
 End normal_probability.
 
-Section ge0_integration_by_substitution_shift.
-Context {R : realType}.
-Notation mu := (@lebesgue_measure R).
-
-Lemma ge0_integration_by_substitution_shift_itvy (f : R -> R) (r e : R) :
-  {within `[r + e, +oo[, continuous f} ->
-  {in `]r + e, +oo[, forall x : R, 0 <= f x} ->
-  (\int[mu]_(x in `[(r + e)%R, +oo[) (f x)%:E =
-  \int[mu]_(x in `[r, +oo[) ((f \o shift e) x)%:E)%E.
-Proof.
-move=> cf f0.
-have dshiftE : (shift e)^`() = cst 1.
-  by apply/funext => x; rewrite derive1E -(derive_shift 1 e).
-rewrite (@increasing_ge0_integration_by_substitutiony _ (shift e))//=.
-- by move=> x y _ _ xy; rewrite ltr_leD.
-- by rewrite dshiftE => ? _; exact: cst_continuous.
-- by rewrite dshiftE; exact: is_cvg_cst.
-- by rewrite dshiftE; exact: is_cvg_cst.
-- split; first by move=> x _; exact: ex_derive.
-  by apply/cvg_at_right_filter; apply: cvgD => //; exact: cvg_cst.
-- exact: cvg_addrr.
-by rewrite dshiftE mulr1.
-Qed.
-
-Lemma ge0_integration_by_substitution_shift_itvNy (f : R -> R) (r e : R) :
-  {within `]-oo, r + e], continuous f} ->
-  {in `]-oo, r + e[, forall x : R, 0 <= f x} ->
-  (\int[mu]_(x in `]-oo, (r + e)%R]) (f x)%:E =
-   \int[mu]_(x in `]-oo, r]) ((f \o shift e) x)%:E)%E.
-Proof.
-move=> cf f0.
-have dshiftE : (shift e)^`() = cst 1.
-  by apply/funext => x; rewrite derive1E -(derive_shift 1 e).
-rewrite (@increasing_ge0_integration_by_substitutionNy _ (shift e))//.
-- by move=> x y _ _ xy; rewrite ltr_leD.
-- by rewrite dshiftE => ? _; exact: cst_continuous.
-- by rewrite dshiftE; exact: is_cvg_cst.
-- by rewrite dshiftE; exact: cvg_cst.
-- split; first by move=> x _; exact: ex_derive.
-  by apply/cvg_at_left_filter; apply: cvgD => //; exact: cvg_cst.
-- exact: cvg_addrr_Ny.
-by rewrite dshiftE mulr1.
-Qed.
-
-End ge0_integration_by_substitution_shift.
-
 Section normal_prob_continuous.
 (* outline of proof:
    1. It is enough to prove that `(fun x => normal_prob x s Ys)` is continuous
@@ -662,28 +616,6 @@ exact: normal_prob_continuous.
 Qed.
 
 End normal_prob_lemmas.
-
-Section emeasurable_bounded_integrable.
-Context d {T : measurableType d} {R : realType}
-  {p : {finite_measure set T -> \bar R}} {f : T -> \bar R}.
-Local Open Scope ereal_scope.
-
-(* TODO: move *)
-Lemma emeasurable_bounded_integrable :
-  (forall x, 0 <= f x) -> (exists M : R, forall x, f x <= M%:E) ->
-  measurable_fun [set: T] f -> p.-integrable [set: T] f.
-Proof.
-move=> f0 [M fleM] mf; apply/integrableP; split => //.
-rewrite (@le_lt_trans _ _ (\int[p]_x M%:E))//.
-  apply: ge0_le_integral => //=.
-    exact: measurableT_comp.
-  move=> t _.
-  apply: (@le_trans _ _ (f t)) => //.
-  by rewrite gee0_abs.
-by rewrite integral_cst// muleC lte_mul_pinfty ?ltry//; exact: fin_num_measure.
-Qed.
-
-End emeasurable_bounded_integrable.
 
 Section normal_probD.
 Local Open Scope ereal_scope.
