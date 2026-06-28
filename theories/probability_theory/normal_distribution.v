@@ -822,7 +822,7 @@ Section gaussian_conjugate.
 Context {R : realType}.
 Implicit Types (sigma x theta : R) (V : set R).
 
-(**md $\sqrt{\frac{\sigma0^2 \sigma^2}{\sigma0^2 + \sigma^2}}$ *)
+(**md $\sqrt{\frac{\sigma_0^2 \sigma^2}{\sigma_0^2 + \sigma^2}}$ *)
 Definition stddev_post sigma0 sigma : R :=
   Num.sqrt (sigma0 ^+ 2 * sigma ^+ 2 / (sigma0 ^+ 2 + sigma ^+ 2)).
 
@@ -834,7 +834,7 @@ rewrite lt0r_neq0 ?sqrtr_gt0 ?divr_gt0 ?addr_gt0 ?exprn_even_gt0//.
 by rewrite mulr_gt0// exprn_even_gt0.
 Qed.
 
-(**md $\frac{\sigma^2 \mu_0 + \sigma0^2 x}{\sigma0^2 + \sigma^2}$ *)
+(**md $\frac{\sigma^2 \mu_0 + \sigma_0^2 x}{\sigma_0^2 + \sigma^2}$ *)
 Definition mean_post (mu0 : R) sigma0 x sigma : R :=
   (sigma ^+ 2 * mu0 + sigma0 ^+ 2 * x) / (sigma0 ^+ 2 + sigma ^+ 2).
 
