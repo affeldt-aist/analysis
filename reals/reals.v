@@ -612,6 +612,17 @@ by move=> infA B0 AB; rewrite /inf lerN2 supS//;
   [exact/nonemptyN|exact/has_inf_supN|exact/image_subset].
 Qed.
 
+Lemma le_supP A x : has_sup A -> sup A <= x <-> forall y, A y -> y<=x.
+Proof.
+split=> [sAx y Ay|Ax]; first exact: (le_trans (sup_upper_bound H _) sAx).
+apply: ge_sup=>//. by apply/set0P/eqP=> A0; apply: (@has_sup0 _ R); rewrite -A0.
+Qed.
+
+Lemma gt_sup A x : has_sup A -> sup A < x -> forall y, A y -> y<x.
+Proof.
+by move=> hsA sAx y Ay; apply: (le_lt_trans (sup_upper_bound hsA _) sAx).
+Qed.
+
 Lemma sup_down A : sup (down A) = sup A.
 Proof.
 have [supA|supNA] := pselect (has_sup A); last first.
