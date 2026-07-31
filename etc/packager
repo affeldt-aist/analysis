@@ -57,7 +57,7 @@ else
 # variables useful for package construction
   URLLINE="src: \"$ARCHIVEURL\""
   CHECKSUMLINE="checksum: \"sha256=$SUM\""
-  PKGS=$(ls -fs -d -1 $EXTRACTED/*/*.opam \
+  PKGS=$(ls -fs -d -1 $EXTRACTED/*/rocq*.opam \
         | $SED -r "s?.*rocq-mathcomp-([^/]+).opam?\1?" \
         | paste -sd " " -)
   PKGPREFIX="$GITROOT/opam/released/packages"
