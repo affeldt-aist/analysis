@@ -173,6 +173,9 @@
   + lemma `measurable_normal_prob`
   + lemma `emeasurable_bounded_integrable`
   + lemmas `integrable_normal_probD1`, `normal_probD1`, `normal_probD2`, `normal_probD`
+  + definitions `stddev_post`, `mean_post`
+  + lemmas `stddev_post_neq0`, `normal_fun_conjugate`, `normal_pdf_conjugate`,
+    `normal_prob_conjugate`
 
 - in `lebesgue_stieltjes_measure.v`:
   + definition `lebesgue_display`
