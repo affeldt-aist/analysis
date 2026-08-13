@@ -1437,7 +1437,8 @@ pose idx n := nth 0 (idxs n) : nat -> nat.
    exact: eq_map.
 have idx_bij n :
   exists idxn_ord_with_inv : ('I_n.+1 -> 'I_n.+1) * ('I_n.+1 -> 'I_n.+1),
-  [/\ (forall i : 'I_ n.+1, idx n i = idxn_ord_with_inv.1 i),
+  [/\ (forall (i : nat) (iltn1 : (i < n.+1)%N),
+         idx n i = idxn_ord_with_inv.1 (Ordinal iltn1)),
   @cancel _ _ idxn_ord_with_inv.1 idxn_ord_with_inv.2 &
   @cancel _ _ idxn_ord_with_inv.2 idxn_ord_with_inv.1].
   have abE : (abi_ n) =i (ABi_ n).
@@ -1809,70 +1810,129 @@ have Zcd n : Z `<=` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic.
 (* lemma *)
 have citvScd n x : contiguous_intervals Z (h1 n) x ->
   forall m, (m < n)%N ->
-  exists p, (p < m.+2)%N /\ x \in `[c_ m p, d_ m p].
+  exists2 p, (p < m.+2)%N & x \in `[c_ m p, d_ m p].
   move=> xn m nm.
-  admit.
+  have hasxd : has (> x) (seq_d m).
+    apply/hasP.
+    exists d.
+      have <- : d_ m m.+1 = d.
+      rewrite daE /a_ nth_default//.
+        by rewrite size_seq_ab.
+      rewrite mem_nth//.
+      by rewrite size_seq_cd.
+    have := xn.
+    move/contiguous_intervalsS.
+    by move/cplt_hull_lt_sup => /(_ ubZ).
+  set p := (find (> x) (seq_d m)).
+  have pE : p = find (> x) (seq_d m) by [].
+  have pltm2 : (p < m.+2)%N.
+    rewrite -(size_seq_cd _ snd m).
+    by rewrite -has_find.
+  exists p => //.
+  rewrite in_itv/=; apply/andP; split; last first.
+    by apply: ltW; apply: nth_find.
+  case: p pE pltm2.
+    rewrite cbE/=.
+    have := xn.
+    move/contiguous_intervalsS.
+    move/cplt_hull_subset_Rhull.
+    by rewrite compact_Rhull//= in_itv/= => /andP[].
+  move=> p pE p1ltm2.
+  rewrite leNgt; apply/negP.
+  rewrite cbE/= bnth.
+  have pltm1 : (p < m.+1)%N.
+    by rewrite ltnS in p1ltm2.
+  have : d_ m p < x.
+    rewrite ltNge le_eqVlt; apply/negP => /predU1P.
+    apply/not_orP; split.
+      rewrite daE.
+      move=> xamp.
+      move: (xn).
+      rewrite xamp.
+      rewrite contiguous_ooitv//= in_itv/= => /andP[_ ].
+      rewrite -/(B_ _).
+      rewrite anth.
+      have [-> _] := (nth_abE m p pltm1).
+      rewrite -idxE => idxmpm1 AmpBn.
+      have := @disjoint_contiguous_intervals _ Z.
+      move/trivIsetP/(_ (h1 (idx m p)) (h1 n)).
+      move/(_ I I).
+      (* lemma *)
+      have pn : h1 (idx m p) != h1 n.
+        have [_ injh1 _] := @bij _ _ _ _ h1.
+        apply/eqP.
+        move/injh1; rewrite inE/= => /(_ I I).
+        apply/eqP.
+        rewrite neq_ltn; apply/orP; left.
+        exact: (ltn_leq_trans idxmpm1 nm).
+      move/(_ pn).
+      move/eqP; apply/negP/set0P.
+      have : A_ n < B_ (idx m p).
+        apply: (@lt_trans _ _ x).
+          move: xn.
+          by rewrite contiguous_ooitv//= in_itv/= => /andP[].
+        rewrite xamp anth.
+        have [-> _ _] := nth_abE m p pltm1.
+        rewrite -idxE.
+        exact: AB.
+      exists ((A_ (idx m p) + B_ n) / 2); split.
+        rewrite contiguous_ooitv//= in_itv/=.
+        apply/andP; split.
+          by rewrite midf_lt.
+        rewrite -/(B_ (idx m p)) mulrDl.
+        rewrite (splitr (B_ (idx m p))).
+        apply: ltr_leD.
+          by rewrite ltr_pM2r.
+        rewrite ler_pM2r//.
+        rewrite leNgt; apply/negP => mpn.
+        have := @disjoint_contiguous_intervals _ Z.
+        move/trivIsetP/(_ (h1 (idx m p)) (h1 n)) => /=.
+        move/(_ I I pn)/eqP.
+        apply/negP/set0P.
+        exists ((A_ (idx m p) + B_ (idx m p)) / 2); split.
+          rewrite contiguous_ooitv//= in_itv/=; rewrite !midf_lt//.
+          exact: AB.
+        rewrite contiguous_ooitv//= in_itv/=; apply/andP; split.
+          rewrite -/(A_ n) (splitr (A_ n)) mulrDl ltrD//.
+            rewrite ltr_pM2r//.
+            move: xn.
+            rewrite contiguous_ooitv//= in_itv/= => /andP[+ _].
+            rewrite xamp anth.
+            by have [-> _ _] := (nth_abE m p pltm1); rewrite -idxE.
+          by rewrite ltr_pM2r.
+        rewrite -/(B_ n) (splitr (B_ n)) mulrDl.
+        by apply: ltrD; rewrite ltr_pM2r.
+      rewrite contiguous_ooitv//= in_itv/=; apply/andP; split.
+        rewrite -/(A_ n) (splitr (A_ n)) mulrDl.
+        apply: ltrD.
+          rewrite ltr_pM2r//.
+          move: xn.
+          rewrite contiguous_ooitv//= in_itv/= => /andP[+ _].
+          rewrite xamp anth.
+          by have [-> _ _] := (nth_abE m p pltm1); rewrite -idxE.
+        by rewrite ltr_pM2r.
+      rewrite -/(B_ n) [in ltRHS](splitr (B_ n)) mulrDl.
+      rewrite ltrD2r.
+      by rewrite ltr_pM2r.
+    apply/negP/negPf.
+    apply: before_find.
+    by rewrite pE.
+  rewrite daE anth.
+  have [-> -> +] := nth_abE m p pltm1.
+  rewrite -idxE => idxltm1 Apx xBp.
+  have np : h1 n != h1 (idx m p).
+    (* lt_le_trans pltm1 nm *)
+    have [_ injh1 _] := (@bij _ _ _ _ h1).
+    apply/eqP; move/injh1; rewrite inE/= => /(_ I I).
+    move/eqP.
+    rewrite gtn_eqF//.
+    exact: ltn_leq_trans idxltm1 nm.
+  have := @disjoint_contiguous_intervals _ Z.
+  move/trivIsetP/(_ (h1 n) (h1 (idx m p))).
+  move/(_ I I np).
+  apply/eqP/set0P; exists x; split => //.
+  by rewrite contiguous_ooitv//= in_itv/=; apply/andP; split.
 
-(*have citvScd n m : supp n -> n \notin [seq h1 i | i <- iota 0 m.+1] ->
-   exists i, (i < m.+2)%N /\ contiguous_intervals Z n `<=` `[c_ m i, d_ m i].
-  move=> suppn nh1.
-  have: (exists2 k, (m < k)%N & n = h1 k).
-    exists (h n) => //.
-      rewrite ltnNge; apply/negP => hnm.
-      apply/(negP nh1).
-      rewrite -{1}(h1h n); first by rewrite inE.
-      rewrite mem_map => //.
-      by rewrite mem_iota.
-    by rewrite h1h// inE.
-  move=> [k mk nh1k].
-  apply/not_notP => /forallNP => H.
-  rewrite not_notE.
-  have [x Znx] := suppn.
-  have : ~ (Z x).
-    move/Zcd.
-    apply/existsNP; exists m.
-    move=> [t /= tm2].
-    have := H t.
-    rewrite -implypN.
-    move/(_ tm2).
-    move/existsNP.
-  have := bigcup_contiguous_intervals closedZ.
-  rewrite (_: \bigcup_k0 contiguous_intervals Z k0 =
-                \bigcup_(k0 in supp) contiguous_intervals Z k0).
-    rewrite -(setUIDK [set: nat] supp).
-    rewrite setIidr//.
-    rewrite bigcup_setU.
-    rewrite [X in _ `|` X]bigcup0.
-      move=> i /=[_].
-      rewrite /supp /contiguous_intervals_support/=.
-      by move/set0P/negP; rewrite negbK => /eqP.
-    by rewrite setU0.
-  rewrite (_: \bigcup_(k0 in supp) contiguous_intervals Z k0 =
-              \bigcup_k0 contiguous_intervals Z (h1 k0)).
-    have [fh1 ih1 sh1] := @bij _ _ _ _ h1.
-    by rewrite (reindex_bigcup h1 [set: nat] supp _ fh1 sh1).
-  rewrite (_: \bigcup_k0 contiguous_intervals Z (h1 k0) =
-            \bigcup_(k0 < m.+1) contiguous_intervals Z (h1 k0) `|`
-              \bigcup_k0 contiguous_intervals Z (h1 (k0 + m.+1))).
-    rewrite eqEsubset; split => x.
-      move=> [i _ ix].
-      have [im|mi] := ltnP i m.+1.
-        by left; exists i.
-      by right; exists (i - m.+1)%N => //; rewrite natrDE subnK.
-    move=> [[i/= _ ix]|[j _ jm1x]].
-      by exists i.
-    by exists (j + m.+1)%N.
-  move=> chZ_citv.
-  have : [set` Rhull Z]%classic !=set0.
-    exists ((c + d) / 2).
-    rewrite compact_Rhull//= in_itv/=.
-    by rewrite !midf_le// ltW.
-  move=> [x].
-  rewrite -(setUIDK [set` Rhull Z] Z).
-    rewrite setIidr; first exact: sub_Rhull.
-    exists (compact_Rhull.
-  admit.
- *)
 have hullZ_abcd n : [set` Rhull Z] =
      \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic `|`
      \bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic.
@@ -1898,6 +1958,14 @@ have hullZ_abcd n : [set` Rhull Z] =
         have []// := nth_abE n (idx_ord_inv (Ordinal hi_lt)).
         move=> -> ->; rewrite -idxE.
         rewrite !idx_ordE.
+        rewrite [X in (idx_ord X < _)%N](_:_ = (idx_ord_inv (Ordinal hi_lt))).
+          by apply: val_inj => /=.
+        rewrite [X in A_ (idx_ord X)]
+          (_:_ = (idx_ord_inv (Ordinal hi_lt))).
+          by apply: val_inj => /=.
+        rewrite [X in B_ (idx_ord X)]
+          (_:_ = (idx_ord_inv (Ordinal hi_lt))).
+          by apply: val_inj => /=.
         rewrite can_inv_ord.
         rewrite /=.
         move=> _.
@@ -1933,17 +2001,27 @@ have hullZ_abcd n : [set` Rhull Z] =
             exists2 i, (0 <= i < n.+1)%N & b_ n i <= r <= a_ n i.+1.
           have [H2|H2] := leP r (a_ n 0).
             left.
-            admit.
+            rewrite andbT.
+            move: Zr.
+            move/sub_Rhull.
+            rewrite compact_Rhull//=.
+            by rewrite in_itv/= => /andP[].
           rewrite andbF; right.
           have [H3|H3] := ltP r (b_ n n); last first.
             exists n.
               by rewrite leq0n/=.
             rewrite /a_ nth_default ?size_seq_ab//.
             rewrite H3/=.
-            admit.
+            move: Zr.
+            move/sub_Rhull.
+            rewrite compact_Rhull//=.
+            by rewrite in_itv/= => /andP[].
           have H4 : r \in `]a_ n 0, b_ n n[.
-            admit.
+            by rewrite /= in_itv/= H2 H3.
           have H5 : (\bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic) `<=` `]a_ n 0, b_ n n[.
+            apply: bigcup_sub => i /= iltn1.
+            apply: subset_itvW.
+              admit.
             admit.
           admit.
         * exists 0 => //=.
@@ -1959,12 +2037,24 @@ have hullZ_abcd n : [set` Rhull Z] =
           rewrite cbE/=.
           by rewrite daE//.
       suff: (~` (\bigcup_(i < n.+1) `]A_ i, B_ i[%classic)) r.
-        admit.
+        rewrite /bigcup/= => /not_exists2P/(not_notP _).1 => H.
+        have {}H :  forall x : nat, (x < n.+1)%N -> ~ r \in `]A_ x, B_ x[.
+          move=> x xltn1.
+          have := H x.
+          by rewrite orNp; apply.
+        rewrite exists2E; apply/forallNP => i.
+        rewrite -implypN => iltn1.
+        have [[idx_ord idx_inv] /= [idx_ordE ord_inv inv_ord]] := idx_bij n.
+        rewrite anth bnth.
+        have [-> ->] := nth_abE n i iltn1.
+        rewrite -idxE.
+        by move/H.
       rewrite setC_bigcup => k/= kn1.
-      rewrite in_itv/= /A_ /B_.
-      apply/negP.
-      rewrite negb_and -!leNgt.
-      admit.
+      rewrite /A_ /B_ => rAB.
+      have := (@contiguous_ooitv _ Z ubZ lbZ (h1 k)).
+      rewrite eqEsubset => -[_].
+      move/(_ _ rAB).
+      by move/contiguous_intervals_subsetC.
   - move=> [|].
     + move=> Hr.
       (* TODO: needs to distinguish whether r is in a cont. itv with idx > n or not *)
