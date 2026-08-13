@@ -166,7 +166,7 @@ exists (a - b, a + b)%R.
 rewrite inE/= raddfB/= raddfD/=.
 by move: xB; rewrite ball_itv inE.
 Qed.
-
+Import MeasurableR.
 Lemma perfect_set_rm (X : set R) :
   compact X -> mu X < +oo ->
   exists B, [/\ B `<=` X, compact B, isolated B = set0 &
@@ -288,10 +288,9 @@ Qed.
 End perfect_set_rm.
 
 Section lemma3.
-Context {R : realType}.
-Variables a b : R.
+Context {R : realType} (a b : R).
 Hypothesis ab : a < b.
-
+Import MeasurableR.
 Local Notation mu := (@completed_lebesgue_measure R).
 
 (* lemma3 (easy direction) *)
@@ -306,7 +305,9 @@ Lemma Lusin_image_measure0 (f : R -> R) :
 Proof.
 move=> cf ndf lusinNf Z [Zab cZ muZ0].
 have /= mZ : (wlength idfun)^*%mu.-cara.-measurable Z.
-  by apply: sub_caratheodory; exact: compact_measurable.
+  apply: sub_caratheodory.
+  rewrite RGenOpenSets.measurableE//.
+  by apply: compact_measurable => //.
 exact: (lusinNf Z Zab mZ muZ0).
 Qed.
 
@@ -1132,7 +1133,8 @@ have mpreF0 : mu ([set F x | x in Z1] `&` preimages_gt1 `[a, b] [set: R] F) = 0.
   exact: is_countable_preimages_gt1_nondecreasing_fun.
 have e'0 : 0 < e'.
   rewrite /e' measureD//=.
-  - exact: sub_caratheodory.
+  - apply: sub_caratheodory.
+    by rewrite RGenOpenSets.measurableE.
   - apply: sub_caratheodory.
     apply: countable_measurable => //.
     exact: is_countable_preimages_gt1_nondecreasing_fun.
@@ -1367,7 +1369,8 @@ have mpreF0 : mu ([set F x | x in Z1] `&` preimages_gt1 `[a, b] [set: R] F) = 0.
   exact: is_countable_preimages_gt1_nondecreasing_fun.
 have e'0 : 0 < e'.
   rewrite /e' measureD//=.
-  - exact: sub_caratheodory.
+  - apply: sub_caratheodory => //.
+    by rewrite RGenOpenSets.measurableE.
   - apply: sub_caratheodory.
     apply: countable_measurable => //.
     exact: is_countable_preimages_gt1_nondecreasing_fun.

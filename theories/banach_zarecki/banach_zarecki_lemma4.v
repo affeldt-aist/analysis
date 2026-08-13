@@ -262,7 +262,7 @@ rewrite [leRHS](_ : _ =
   exact: subset_itv_oo_cc.
 rewrite measurable_mu_extE/=.
   apply: sub_caratheodory.
-  exact: measurable_itv.
+  exact: MeasurableRocitv.measurable_itv.
 rewrite completed_lebesgue_measure_itv.
 have fab0 : [set f x | x in `[(a_ n), (b_ n)]] !=set0.
   exists (f ((a_ n))) => //.
@@ -449,9 +449,11 @@ rewrite [leLHS](_ : mu^*%mu (f @` `[(xy n).1, (xy n).2]) =
 apply: measurable_mu_extE.
 apply: sub_caratheodory.
 apply: compact_measurable.
-apply: continuous_compact.
-  exact: continuous_subspaceW cf.
-exact: segment_compact.
+  apply: continuous_compact.
+    exact: continuous_subspaceW cf.
+  exact: segment_compact.
+split => /=; first exact: sigma_algebra_measurable.
+by move=> A oA; rewrite RGenOpenSets.measurableE//=; exact: sub_sigma_algebra.
 Qed.
 
 End lemma4_cover.

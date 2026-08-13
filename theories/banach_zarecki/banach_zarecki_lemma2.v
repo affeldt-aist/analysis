@@ -129,6 +129,8 @@ apply: bigcup_sub => r B_nr; apply: subset_itvW.
 by apply: ge_sup; [apply: B_nonempty; case: B_nr|exact: ubb].
 Qed.
 
+Import MeasurableR.
+
 Let finXn n : finite_set (X n).
 Proof.
 apply: contrapT => /infiniteP/pcard_surjP[/= g surjg].
@@ -281,7 +283,7 @@ Qed.
 End image_interval_continuous.
 
 Section lemma2iicontinuous.
-
+Import MeasurableR.
 Lemma measurable_image_ooitv_nondecreasing_fun (x y : R) :
   x < y -> `]x, y[ `<=` `]a, b[ ->
   {within `[x, y] , continuous f} ->

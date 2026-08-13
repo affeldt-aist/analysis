@@ -23,6 +23,13 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Definition set01 {R : realType} (b : bool) (x : R) : set R :=
+  if b then [set x] else set0.
+
+
+Section measure_setU1.
+Import MeasurableR.
+
 Lemma measure_setU1 {R : realType} (a : R) (U : set R) :
   measurable U -> @lebesgue_measure R U = 0 ->
   @lebesgue_measure R (U `|` [set a]) = 0.
@@ -36,9 +43,6 @@ rewrite -subset0 => x [/=] /[swap] ->.
 by move=> /mem_set; apply/negP.
 Qed.
 
-Definition set01 {R : realType} (b : bool) (x : R) : set R :=
-  if b then [set x] else set0.
-
 Lemma measure_bigsetU_set01 {R : realType} n (b : 'I_n -> bool) (x : 'I_n -> R) :
   @lebesgue_measure _ (\big[setU/set0]_(i < n) set01 (b i) (x i)) = 0.
 Proof.
@@ -51,6 +55,8 @@ rewrite big_ord_recr//=; case: (b ord_max) => /=.
   by case: ifPn => //.
 by rewrite setU0.
 Qed.
+
+End measure_setU1.
 
 Section Banach_Zarecki_lemma7.
 Context {R : realType}.
@@ -329,7 +335,7 @@ have imfitv n k : (k < n_ n)%N -> exists b0 b1,
 have mimf n k :(k < n_ n)%N -> (R.-ocitv.-measurable).-sigma.-measurable (f @` `](ab_ n k).1, (ab_ n k).2[%classic).
   move=> knn.
   move: (imfitv n k knn) => [b0 [b1]] ->.
-  exact: measurable_itv.
+  by rewrite RGenOpenSets.measurableE//.
 have mfE : forall i, (R.-ocitv.-measurable).-sigma.-measurable (f @` (E_ i)).
   move=> i.
   rewrite image_E.
