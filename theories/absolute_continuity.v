@@ -811,6 +811,7 @@ End subset_neitv.
 
 Section measurable_squeeze.
 Context {R : realType}.
+Import MeasurableR.
 
 Lemma measure_squeeze_measurable (B A C : set R) :
   measurable A ->
@@ -825,7 +826,7 @@ apply: measurableU => //.
 apply: countable_measurable => //.
 apply: sub_countable cCA.
 apply: subset_card_le.
-by apply: setSD.
+exact: setSD.
 Qed.
 
 End measurable_squeeze.
@@ -1105,7 +1106,7 @@ move=> U [oU finFU].
 rewrite closed_subspaceTI.
 rewrite setI_bigcupr.
 rewrite restr_sets_bigcupIl.
-apply: closed_bigcup.
+apply: bigcup_closed.
   exact: finFU.
 move=> /= A FUA.
 apply: closedI.
@@ -1356,6 +1357,8 @@ rewrite eqEsubset; split.
  (*    pose U n := (ball x (e n)). *)
  (*    poset n_ (i : nat) := proj1_sig ( *)
 Abort.
+
+Import MeasurableR.
 
 Lemma lebesgue_measure_closure_open (A : set R) : open A ->
   mu A = mu (closure A).
@@ -1968,6 +1971,7 @@ End tmp.
 
 Section absolute_continuity_lemmas.
 Context {R : realType}.
+Import MeasurableR.
 
 Lemma abs_cont_der0 a b (f : R^o -> R^o) : a < b ->
   abs_cont a b f -> {ae @lebesgue_measure R, {in `[a, b], f^`() =1 cst 0}} ->
@@ -2408,6 +2412,8 @@ apply/seteqP; split => [x H|x H k].
 by rewrite /= ltnS leqn0 => /eqP ->.
 Qed.
 
+Import MeasurableR.
+
 (* https://heil.math.gatech.edu/6337/spring11/section1.3.pdf *)
 (* Theorem 1.37 (a) => (c) *)
 Lemma lebesgue_measurability_decomp_Gdelta0 (X E : set R):
@@ -2514,11 +2520,16 @@ exists U_, Z; split.
         exact: Elty.
       exact: ltey.
     move=> /= n.
-    by apply: sub_caratheodory; apply: open_measurable; exact: openI.
+    apply: sub_caratheodory; apply: open_measurable.
+      exact: openI.
+    split => /=; first exact: sigma_algebra_measurable.
+    by move=> A oA; rewrite RGenOpenSets.measurableE//=; exact: sub_sigma_algebra.
   rewrite /=.
   apply: sub_caratheodory.
   apply: Gdelta_measurable.
-  by exists U0_ => // n; exact: openI.
+    by exists U0_ => // n; exact: openI.
+  split => /=; first exact: sigma_algebra_measurable.
+  by move=> A oA; rewrite RGenOpenSets.measurableE//=; exact: sub_sigma_algebra.
 - apply/eqP.
   rewrite eq_sym eq_le; apply/andP; split.
     exact: outer_measure_ge0.
@@ -3788,7 +3799,7 @@ rewrite (nth_map 0)//.
   by rewrite /= ltnS ltnW.
 by rewrite (nth_map 0).
 Qed.
-
+Import MeasurableR.
 Lemma lebesgue_measure_setU_eq0 (A B : set R) : measurable A -> measurable B ->
   lebesgue_measure (A `|` B) = 0 -> lebesgue_measure A = 0 /\ lebesgue_measure B = 0.
 Proof.
