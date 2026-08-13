@@ -1205,6 +1205,8 @@ apply: nBx.
 exact: AX.
 Qed.
 
+Import MeasurableR.
+
 (* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
 Lemma lemma6_direct : lusinN `[a, b] H.
 Proof.
@@ -1855,6 +1857,7 @@ have lambda_ge0 n : (0 <= lambda n)%E.
   exact: diam_max_ge0.
 have mcgitv i : mu.-cara.-measurable (contiguous_intervals Z i).
   move=> k; apply: sub_caratheodory.
+  rewrite RGenOpenSets.measurableE.
   apply: open_measurable.
   exact: open_contiguous_intervals.
 have lambda0 : (fine \o lambda) @ \oo --> 0%R.
@@ -2059,9 +2062,11 @@ have cdIcplt_hull (S : set R) : measurable S -> S `<=` `[c, d] ->
   rewrite setIUr.
   rewrite measureU/=.
   - apply: sub_caratheodory.
+    rewrite RGenOpenSets.measurableE.
     apply: measurableI => //.
     exact: compact_measurable.
   - apply: sub_caratheodory.
+    rewrite RGenOpenSets.measurableE.
     apply: measurableI => //.
     apply: measurableD => //.
     exact: compact_measurable.
@@ -2123,6 +2128,7 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
     have -> : mu^*%mu [set f x | x in Zsub n i] = 0.
       rewrite measurable_mu_extE/=.
         apply: sub_caratheodory.
+        rewrite RGenOpenSets.measurableE.
         apply: compact_measurable.
         apply: continuous_compact.
           apply: continuous_subspaceW cf.
