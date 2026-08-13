@@ -608,15 +608,152 @@ exists (x, y) => //=.
 by split; apply: AB.
 Qed.
 
-Lemma diam_itv (x y: R) (b0 b1 : bool) :
-  x <= y ->
+Section diam_itv.
+Implicit Types x y : R.
+
+Let diam_itvcc x y : x < y -> diam [set` `[x, y]] = (y - x)%:E.
+Proof.
+move=> xy; rewrite /diam ifF.
+  by apply/negbTE/set0P; eexists; apply: mid_in_itv => /=; exact: ltW.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  apply: ge_ereal_sup => /= z/= [[z1 z2]]/= [].
+  rewrite !in_itv/= => /andP[xz1 z1y] /andP[xz2 z2y] <-.
+  rewrite lee_fin.
+  have [z12|z12] := leP z1 z2.
+    by rewrite ler0_norm ?subr_le0// opprB lerB.
+  by rewrite gtr0_norm ?subr_gt0// lerB.
+apply: ereal_sup_ubound => /=; exists (y, x) => //=.
+  by rewrite !bound_itvE (ltW xy).
+by rewrite gtr0_norm// subr_gt0.
+Qed.
+
+Let diam_itvoc x y : x < y -> diam [set` `]x, y]] = (y - x)%:E.
+Proof.
+move=> xy; rewrite /diam ifF.
+  by apply/negbTE/set0P; eexists => /=; exact: mid_in_itv.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  apply: ge_ereal_sup => /= z/= [[z1 z2]]/= [].
+  rewrite !in_itv/= => /andP[xz1 z1y] /andP[xz2 z2y] <-.
+  rewrite lee_fin.
+  have [z12|z12] := leP z1 z2.
+    by rewrite ler0_norm ?subr_le0// opprB lerB// ltW.
+  by rewrite gtr0_norm ?subr_gt0// lerB// ltW.
+apply/lee_addgt0Pr => /=e e0.
+rewrite -leeBlDr//; apply: le_ereal_sup_tmp.
+pose d : R := (Num.min e (y - x)) / 2.
+pose a := y.
+pose b := x + d.
+exists `|a - b|%:E.
+  exists (a, b) => //=.
+  rewrite !in_itv//= /a xy/= lexx//=; split => //.
+  rewrite ltrDl; apply/andP; split.
+    by rewrite divr_gt0// lt_min e0/= subr_gt0.
+  rewrite /b -lerBrDl /d ler_pdivrMr// ge_min.
+  by rewrite ler_pMr ?subr_gt0// ler1n orbT.
+rewrite /a /b -EFinB lee_fin ger0_norm.
+  rewrite opprD addrA subr_ge0.
+  rewrite ler_pdivrMr// ge_min.
+  by rewrite ler_pMr ?subr_gt0// ler1n orbT.
+rewrite opprD addrA lerB// /d.
+rewrite ler_pdivrMr// ge_min.
+by rewrite ler_pMr// ler1n.
+Qed.
+
+Let diam_itvco x y : x < y -> diam [set` `[x, y[] = (y - x)%:E.
+Proof.
+move=> xy; rewrite /diam ifF.
+  by apply/negbTE/set0P; eexists => /=; exact: mid_in_itv.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  apply: ge_ereal_sup => /= z/= [[z1 z2]]/= [].
+  rewrite !in_itv/= => /andP[xz1 z1y] /andP[xz2 z2y] <-.
+  rewrite lee_fin.
+  have [z12|z12] := leP z1 z2.
+    by rewrite ler0_norm ?subr_le0// opprB lerB// ltW.
+  by rewrite gtr0_norm ?subr_gt0// lerB// ltW.
+apply/lee_addgt0Pr => /=e e0.
+rewrite -leeBlDr//.
+apply: le_ereal_sup_tmp.
+pose d : R := (Num.min e (y - x)) / 2.
+pose a := x.
+pose b := y - d.
+exists `|a - b|%:E.
+  exists (a, b) => //=.
+  rewrite !in_itv//= /b xy/= lexx//=; split => //.
+  apply/andP; split.
+    rewrite -lerBlDl -lerN2 opprK opprB.
+    rewrite ler_pdivrMr// ge_min.
+    by rewrite ler_pMr ?subr_gt0// ler1n orbT.
+  by rewrite gtrBl divr_gt0// lt_min e0 subr_gt0.
+rewrite /a /b -EFinB lee_fin opprB addrCA.
+rewrite ler0_norm.
+  rewrite -opprB subr_le0.
+  rewrite ler_pdivrMr//.
+  rewrite ge_min.
+  by rewrite ler_pMr ?subr_gt0// ler1n orbT.
+rewrite opprD opprB [leRHS]addrC lerB//.
+rewrite ler_pdivrMr// ge_min.
+by rewrite ler_pMr// ler1n.
+Qed.
+
+Let diam_itvoo (x y : R) : x < y -> diam [set` `]x, y[] = (y - x)%:E.
+Proof.
+move=> xy; rewrite /diam ifF.
+  by apply/negbTE/set0P; eexists => /=; exact: mid_in_itv.
+apply/eqP; rewrite eq_le; apply/andP; split.
+  apply: ge_ereal_sup => /= z/= [[z1 z2]]/= [].
+  rewrite !in_itv/= => /andP[xz1 z1y] /andP[xz2 z2y] <-.
+  rewrite lee_fin.
+  have [z12|z12] := leP z1 z2.
+    by rewrite ler0_norm ?subr_le0// opprB lerB// ltW.
+  by rewrite gtr0_norm ?subr_gt0// lerB// ltW.
+apply/lee_addgt0Pr => /=e e0.
+rewrite -leeBlDr//.
+apply: le_ereal_sup_tmp.
+pose d : R := (Num.min e (y - x)) / 4.
+pose a := x + d.
+pose b := y - d.
+have d0 : 0 < d by rewrite divr_gt0// lt_min e0/= subr_gt0.
+exists `|a - b|%:E.
+  rewrite /=.
+  exists (a, b) => //=.
+  rewrite !in_itv//= ltrDl gtrBl d0 andbT/=; split.
+    rewrite /a -ltrBrDl ltr_pdivrMr// gt_min.
+    by rewrite ltr_pMr ?subr_gt0// ltr1n orbT.
+  rewrite /b.
+  rewrite -ltrBlDr opprK -ltrBrDl ltr_pdivrMr// gt_min.
+  by rewrite ltr_pMr ?subr_gt0// ltr1n orbT.
+rewrite /a /b -EFinB lee_fin opprD opprK addrACA -mulr2n.
+rewrite ler0_norm.
+  rewrite -opprB addrC subr_le0.
+  rewrite -mulr_natr /d (_ : 4 = 2 * 2); first by rewrite -natrM.
+  rewrite -mulrA invfM -mulrA mulVf// mulr1.
+  by rewrite ler_pdivrMr// ge_min ler_pMr ?subr_gt0// ler1n orbT.
+rewrite opprD opprB lerB//.
+rewrite -mulr_natr /d (_ : 4 = 2 * 2); first by rewrite -natrM.
+rewrite -mulrA invfM -mulrA mulVf// mulr1.
+by rewrite ler_pdivrMr// ge_min ler_pMr// ler1n.
+Qed.
+
+Lemma diam_itv (x y : R) (b0 b1 : bool) : x <= y ->
   diam [set` (Interval (BSide b0 x) (BSide b1 y))] = (y - x)%:E.
 Proof.
-move=> xy.
-rewrite /diam.
-rewrite ifF.
-  apply/negP.
-Admitted.
+rewrite le_eqVlt => /predU1P[<-{y}|xy].
+  move: b0 b1 => [|] [|]/=.
+  by rewrite set_itv_ge ?subrr ?diam0// bnd_simp ltxx.
+  rewrite /diam [X in ereal_sup X](_ : _ = [set 0]) ?ereal_sup1//.
+    apply/seteqP; split.
+      move=> /= z [[z1 z2]/=] => -[/itvxxP -> /itvxxP ->].
+      by rewrite subrr normr0.
+    rewrite sub1set inE/=; exists (x, x) => //=.
+      by rewrite !in_itv/= lexx.
+    by rewrite subrr normr0.
+  by rewrite if_same subrr.
+  by rewrite set_itv_ge ?subrr ?diam0// bnd_simp ltxx.
+  by rewrite set_itv_ge ?subrr ?diam0// bnd_simp ltxx.
+by move: b0 b1 => [|] [|]; rewrite !(diam_itvoo,diam_itvcc,diam_itvco,diam_itvoc).
+Qed.
+
+End diam_itv.
 
 Lemma diam_Rhull (A : set R) : diam [set` Rhull A] = diam A.
 Proof.
@@ -1889,7 +2026,7 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
     near=> n.
     transitivity (mu (\bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic)).
       congr mu.
-      rewrite bigcupDr; first by exists 0.
+      rewrite -setD_bigcupr; first by exists 0.
       rewrite (hullZ_abcd n).
       rewrite setDUD.
       have -> : \bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic
@@ -1900,7 +2037,7 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
       admit.
     admit.
   have <- : mu (\bigcap_n ([set` Rhull Z] `\` (contiguous_intervals Z n))) = 0%:E.
-    rewrite bigcupDr//.
+    rewrite -setD_bigcupr//.
     rewrite -bigcup_contiguous_intervals//.
     rewrite setDD.
     rewrite setIidr; first exact: sub_Rhull.
