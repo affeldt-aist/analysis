@@ -2768,7 +2768,7 @@ rewrite [X in _ = X - _]ereal_supEN [in X in _ = _ - X]ereal_infEN.
 by rewrite [RHS]addeC [in RHS]oppeK setNEFin.
 Qed.
 
-Lemma ocsillation_hasNub f A : ~ has_ubound (f @` A) -> oscillation f A = +oo.
+Lemma oscillation_hasNub f A : ~ has_ubound (f @` A) -> oscillation f A = +oo.
 Proof.
 move=> hasNubA.
 rewrite /oscillation; case: ifPn => [/eqP A0|A0].
@@ -2783,9 +2783,9 @@ have := ltry (f x).
 by apply/negP; rewrite -leNgt leye_eq; apply/eqP/fA; exists (f x).
 Qed.
 
-Lemma ocsillation_hasNlb f A : ~ has_lbound (f @` A) -> oscillation f A = +oo.
+Lemma oscillation_hasNlb f A : ~ has_lbound (f @` A) -> oscillation f A = +oo.
 Proof.
-move=> hasNlbA; have /ocsillation_hasNub : ~ has_ubound ((\- f)%R @` A).
+move=> hasNlbA; have /oscillation_hasNub : ~ has_ubound ((\- f)%R @` A).
   move/has_ub_lbN.
   rewrite [X in has_lbound X](_ : _ = f @` A)//.
   rewrite image_comp//= (_ : _ \o _ = f)//=.
