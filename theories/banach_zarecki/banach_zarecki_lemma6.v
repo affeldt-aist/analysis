@@ -53,6 +53,73 @@ by move: bvf; apply: bounded_variationl.
   by move: bvf; apply: bounded_variationl.
 Qed.
 
+(* need *)
+Lemma oscillation_closure (A : set R) (f : R -> R) :
+  {within (closure A), continuous f} ->
+  oscillation f (closure A) = oscillation f A.
+Proof.
+move=> cf.
+have imf_cl : f @` A `<=` f @` (closure A).
+    apply: image_subset.
+    exact: subset_closure.
+have cl_imf : f @` (closure A) `<=` closure (f @` A).
+  admit.
+have Asub : A `<=` f @^-1` closure (f @` A).
+  move=> x Ax /=.
+  apply: subset_closure.
+  by exists x.
+have [hasubfA|hasNubfA] := pselect (has_ubound (f @` A)); last first.
+  rewrite !oscillation_hasNub//.
+  by move/(subset_has_ubound imf_cl).
+have [haslbfA|hasNlbfA] := pselect (has_lbound (f @` A)); last first.
+  rewrite !oscillation_hasNlb//.
+  by move/(subset_has_lbound imf_cl).
+have : has_ubound [set f x | x in closure A].
+  admit.
+rewrite /oscillation.
+have [A0|A0] := eqVneq A set0.
+  by rewrite ifT// A0 closure0.
+rewrite ifF.
+  by apply/negP; move/eqP/closure_eq0/eqP; apply/negP.
+rewrite -image_comp ereal_sup_EFin.
+Admitted.
+
+Lemma closure_Rhull (A : set R) :
+  closure [set` Rhull A] = [set` Rhull (closure A)].
+Proof.
+rewrite /Rhull.
+case: ifP => /asboolP; case: ifP => /asboolP.
+- move=> hasubA haslbA.
+  admit.
+- move=> hasNubA haslbA.
+  admit.
+- move=> hasubA hasNlbA.
+  admit.
+- move=> hasNubA hasNlbA.
+  admit.
+Admitted.
+
+Lemma bounded_set_oscillation_le_total_variations (A : set R) f :
+  bounded_set A ->
+  (oscillation f A <= total_variation (inf A) (sup A) f)%E.
+Proof.
+rewrite Rbounded_setE/= => -[haslbA hasubA].
+apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
+  apply: oscillation_sub.
+  exact: sub_Rhull.
+rewrite -oscillation_closure.
+rewrite compact_Rhull.
+  rewrite Rcompact_boundE; split => //.
+Admitted.
+
+(* need *)
+Lemma sum_oscillation_le_total_variation (a b : R) f (sA : (set R)^nat) :
+  trivIset [set:nat] sA ->
+  (forall n, sA n `<=` `[a, b]) ->
+  (\sum_(i <oo) oscillation f (sA i) <= total_variation a b f)%E.
+Proof.
+Admitted.
+
 Lemma mesh_mem_filter (a b c d : R) (s : seq R) :
   a <= c -> d <= b ->
   mesh c d [seq x <- s | x \in `[c, d]] <= mesh a b s.
@@ -2057,10 +2124,10 @@ have hullZ_abcd n : [set` Rhull Z] =
       by move/contiguous_intervals_subsetC.
   - move=> [|].
     + move=> Hr.
-      (* TODO: needs to distinguish whether r is in a cont. itv with idx > n or not *)
+      rewrite (contiguous_intervals_Rhull clZ).
       admit.
     + move=> Hr.
-      left.
+      rewrite (contiguous_intervals_Rhull clZ).
       admit.
 
 (* for non-increasingness of lambda
@@ -2256,7 +2323,10 @@ have eq4 n : total_variation c d f =
    \sum_(i < n) (total_variation (A_ i) (B_ i) f).
   admit.
 (* (5) *)
-(* have eq5 n : (n0 <= n)%N -> \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E. *)
+have eq5 : \forall n \near \oo,
+  (\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E
+    > \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
+  admit.
 (* (5.5) (between (5) and (6)) *)
 have alphaH n : fine alpha < \sum_(i < n.+1) `|H (d_ n i) - H (c_ n i)|.
   rewrite /alpha.
@@ -2382,9 +2452,9 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
   (* interchenge *)
   have : (\sum_(i < n.+1)
        \big[+%E/0]_(n <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
-       oscillation f `[A_ i0, B_ i0] <=
-  \big[+%E/0]_(n <= i0 <oo)
-(\sum_(i < n.+1 | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
+         oscillation f `[A_ i0, B_ i0] <=
+           \big[+%E/0]_(n <= i0 <oo)
+              (\sum_(i < n.+1 | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
        oscillation f `[A_ i0, B_ i0]))%E.
   under eq_bigr do rewrite eseries_mkcond.
   rewrite -nneseries_sum.
@@ -2399,131 +2469,35 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
   apply: lee_nneseries.
     by move=> i ni _; apply: sume_ge0 => j _; exact: oscillation_ge0.
   move=> j _.
-  (* `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] となる i はunique *)
-(*  have /andP[le1 le2] := @lemma4 _ (c_ n i) (d_ n i) (cled n i) f (Zsub n i)
-                 (itvfcd n i) (cZsub n i) (hull_Zsub n i).
-  apply: (le_trans le1).
-  apply: (le_trans le2).
-  have -> : mu^*%mu [set f x | x in Zsub n i] = 0.
-    rewrite measurable_mu_extE/=; last first.
-      apply: sub_caratheodory.
-      apply: compact_measurable.
-      apply: continuous_compact.
-        apply: continuous_subspaceW cf.
-        by apply: subIset; left.
-      apply: compact_closedI => //.
-      exact: itv_closed.
-    apply/eqP; rewrite -measure_le0/=.
-    have <- : mu (f @` Z) = 0.
-      apply: lusinf => //.
-      apply: sub_caratheodory.
-      exact: compact_measurable.
-    apply: le_outer_measure.
-    apply: image_subset.
-    exact: subIsetl.
-  rewrite add0e.
-
-  have -> : (\big[+%E/0%R]_(n <= j <oo | `[< `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] >])
-   oscillation f `[A_ j, B_ j]
- = \big[+%E/0%R]_(0 <= j <oo | `[< `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] >])
-   oscillation f `[A_ j, B_ j])%E.
-    admit.
-  rewrite [in leRHS]eseries_mkcond.
-  apply: lee_nneseries.
-    admit.
-  rewrite -(@setIidr _ [set` Rhull Z] `[c_ n i, d_ n i]%classic); last first.
-    admit.
-  rewrite -contiguous_intervals_Rhull; last by [].
-  have -> : (mu [set f x | x in (\bigcup_k0 contiguous_intervals Z k0 `|` Z) `&`
-              `[f (c_ n i), d_ n i]] = 0)%E.
-    apply/eqP; rewrite eq_le; apply/andP; split; last first.
-      exact: outer_measure_ge0.
-    have <- : mu^*%mu (f @` Z) = 0.
-      rewrite measurable_mu_extE; last first.
-        apply: sub_caratheodory.
-        apply: compact_measurable.
-        apply: continuous_compact => //.
-        exact: continuous_subspaceW cf.
-      apply: lusinf => //.
-      apply: sub_caratheodory.
-      exact: compact_measurable.
-    rewrite measurable_mu_extE/=; last first.
-      apply: sub_caratheodory.
-      apply: compact_measurable; last first.
-      apply: continuous_compact => //.
-      exact: continuous_subspaceW cf.
-    apply: le_outer_measure.
-    apply: image_subset.
-    apply: subIset; left.
-    
-    
-    apply: bigcup_sub => j.
-    rewrite /abcd/=.
-    move/subset_trans; apply.
-    rewrite /a_ /b_.
-    apply: (subset_trans (contiguous_intervalsS _)).
-    rewrite /a_.
-*)
-    admit.
   admit.
-(*
-rewrite -fine_invr -fineM//; last exact: fin_numV.
-rewrite -lte_fin fineK; last first.
-  apply: fin_numM => //; exact: fin_numV.
+have ineq8 : \forall n \near \oo,
+  (alpha / 2 <= \sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E.
+  admit.
+have eq9 :
+   (\sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E @[n --> \oo] --> 0%:E.
+  apply: nneseries_tail_cvg.
+    apply: (@le_lt_trans _ _ Vcd).
+      (* oscillation_closure *)
+      rewrite (_:(\big[+%E/0%R]_(0 <= k <oo) oscillation f `[A_ k, B_ k] =
+      (\big[+%E/0%R]_(0 <= k <oo) oscillation f `]A_ k, B_ k[))).
+        admit.
+      apply: sum_oscillation_le_total_variation.
+        admit.
+      move=> n.
+      admit.
+    have/(bounded_variationP _ (ltW cd)) := cdbvf.
+    by rewrite ge0_fin_numE// total_variation_ge0// ltW.
+  move=> n _.
+  exact: oscillation_ge0.
+(* last step *)
+have : (alpha / 2 <= 0%:E)%E.
+  have/cvg_lim <- := eq9.
+    exact: ereal_hausdorff.
+  apply: (lime_ge _ ineq8).
+  by apply/cvg_ex; exists 0%:E.
+rewrite pmule_lle0 ?inve_gt0//.
 apply/negP.
-rewrite -leNgt.
-
-(* (7) *)
-have : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
-  \sum_(n <= i <oo) oscillation f `[A_ i, B_ i])%E.
-  apply: lime_ge.
-    apply: ereal_nondecreasing_is_cvgn.
-    apply: ereal_nondecreasing_series => m _ _.
-    exact: oscillation_ge0.
-  near=> m.
-  admit.
-  (* have := lemma4. *)
-move/le_trans; apply.
-have ifcd : is_interval (f @` `[c, d]).
-  by apply: (is_interval_image_cc cf); apply: subset_itv; rewrite bnd_simp;
-    [exact: lb_le_inf|exact: ge_sup].
-have clZ : closed Z by exact: compact_closed.
-have hZE : Rhull Z = `[c, d].
-  congr Interval.
-  - rewrite ifT; last by apply/asboolP; exists a.
-    congr BSide.
-    apply/asboolP.
-    admit.
-  - rewrite ifT; last by apply/asboolP; exists b.
-    congr BSide.
-    apply/asboolPn.
-    rewrite not_notE.
-    admit.
-
-
-have := (@lemma4 _ _ _ (ltW cd) f Z ifcd clZ hZE).
-rewrite measurable_mu_extE/=; last first.
-  apply: sub_caratheodory.
-  apply: image_apply: measurable_imgage_
-  admit.
-have -> : mu (f @` Z) = 0.
-  apply: lusinf => //=.
-  apply: sub_caratheodory.
-  exact: compact_measurable.
-rewrite add0r.
-move/andP=> [H].
-move/(le_trans H).
-have -> : (\big[+%E/0%R]_(0 <= i <oo)
-      oscillation f `[contiguous_intervals1 Z i, contiguous_intervals2 Z i] =
-  \big[+%E/0%R]_(0 <= i <oo) oscillation f
-          `[contiguous_intervals1 Z (h1 i), contiguous_intervals2 Z (h1 i)])%E.
-  admit.
-rewrite /A_ /B_.
-move/le_trans; apply.
-
-admit.
-*)
-
+by rewrite -ltNge.
 Admitted.
 
 End lemma6_direct.
