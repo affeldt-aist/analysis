@@ -1832,17 +1832,17 @@ have Zcd n : Z `<=` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic.
     
     move=> x [hZx].
     rewrite {1}/bigcup/= exists2E; move/forallNP => ncdx.
-     (* x < b_ n k となる最小のk (remark: sorted <=%R (seq_b n)) *)
     have has_b : has (> x) (seq_b n).
       apply/(has_nthP d).
       exists n => //.
        by rewrite size_seq_ab.
-     have := ncdx n.+1.
+    have := ncdx n.+1.
        rewrite ltnSn => /andP; rewrite andTb.
        rewrite in_itv/= negb_andb -!ltNge => /orP[|].
        by rewrite cbE/=.
      rewrite daE /a_ nth_default ?size_seq_ab// ltNge => /negP.
      by have := hZx; rewrite compact_Rhull//= in_itv/= => /andP[].
+    (* x < b_ n k となる最小のk (remark: sorted <=%R (seq_b n)) *)
     pose k := (find (> x) (seq_b n)).
     have kn1 : (k < n.+1)%N.
       by move: has_b; rewrite has_find size_seq_ab.
@@ -2058,78 +2058,24 @@ have hullZ_abcd n : [set` Rhull Z] =
           by apply; rewrite !inE.
         rewrite mem_iota.
         by rewrite add0n leq0n/= -ltnNge ltnS.
-      have [k [kn2 rcd]] := (citvScd (h i) r Zir n nhi).
+      have [k kn2 rcd] := (citvScd (h i) r Zir n nhi).
       by exists k.
     + move=> Zr.
       left.
-      suff: ~ (\bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic) r.
-        move=> H1.
-        have [H2|[i ir]] : c <= r <= a_ n 0 \/
-            exists2 i, (0 <= i < n.+1)%N & b_ n i <= r <= a_ n i.+1.
-          have [H2|H2] := leP r (a_ n 0).
-            left.
-            rewrite andbT.
-            move: Zr.
-            move/sub_Rhull.
-            rewrite compact_Rhull//=.
-            by rewrite in_itv/= => /andP[].
-          rewrite andbF; right.
-          have [H3|H3] := ltP r (b_ n n); last first.
-            exists n.
-              by rewrite leq0n/=.
-            rewrite /a_ nth_default ?size_seq_ab//.
-            rewrite H3/=.
-            move: Zr.
-            move/sub_Rhull.
-            rewrite compact_Rhull//=.
-            by rewrite in_itv/= => /andP[].
-          have H4 : r \in `]a_ n 0, b_ n n[.
-            by rewrite /= in_itv/= H2 H3.
-          have H5 : (\bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic) `<=` `]a_ n 0, b_ n n[.
-            apply: bigcup_sub => i /= iltn1.
-            apply: subset_itvW.
-              admit.
-            admit.
-          admit.
-        * exists 0 => //=.
-          rewrite in_itv/=.
-          rewrite cbE/=.
-          by rewrite daE/=.
-        * move=> q.
-          exists i.+1.
-            rewrite /=.
-            move/andP: ir => [_].
-            by rewrite !ltnS.
-          rewrite /= in_itv/=.
-          rewrite cbE/=.
-          by rewrite daE//.
-      suff: (~` (\bigcup_(i < n.+1) `]A_ i, B_ i[%classic)) r.
-        rewrite /bigcup/= => /not_exists2P/(not_notP _).1 => H.
-        have {}H :  forall x : nat, (x < n.+1)%N -> ~ r \in `]A_ x, B_ x[.
-          move=> x xltn1.
-          have := H x.
-          by rewrite orNp; apply.
-        rewrite exists2E; apply/forallNP => i.
-        rewrite -implypN => iltn1.
-        have [[idx_ord idx_inv] /= [idx_ordE ord_inv inv_ord]] := idx_bij n.
-        rewrite anth bnth.
-        have [-> ->] := nth_abE n i iltn1.
-        rewrite -idxE.
-        by move/H.
-      rewrite setC_bigcup => k/= kn1.
-      rewrite /A_ /B_ => rAB.
-      have := (@contiguous_ooitv _ Z ubZ lbZ (h1 k)).
-      rewrite eqEsubset => -[_].
-      move/(_ _ rAB).
-      by move/contiguous_intervals_subsetC.
-  - move=> [|].
-    + move=> Hr.
-      rewrite (contiguous_intervals_Rhull clZ).
-      admit.
-    + move=> Hr.
-      rewrite (contiguous_intervals_Rhull clZ).
-      admit.
-
+      exact: Zcd.
+  - move=> [[i _]|[i _]]; rewrite (contiguous_intervals_Rhull clZ).
+    + rewrite /= in_itv/= => /andP[cir rdi].
+      rewrite compact_Rhull// in_itv/=; apply/andP; split.
+        apply: le_trans cir.
+        rewrite cbE; case: i rdi => //= i _.
+        exact: (le_trans (clea n i) (aleb n i)).
+      apply: (le_trans rdi).
+      rewrite daE.
+      exact: (le_trans (aleb n i) (bled n i)).
+    + rewrite /= in_itv/= => /andP[/ltW air /ltW rbi].
+      rewrite compact_Rhull// in_itv/=; apply/andP; split.
+        exact: (le_trans (clea n i) air).
+      exact: (le_trans rbi (bled n i)).
 (* for non-increasingness of lambda
 have cdS_split n j : exists k, [/\ (k < n.+1)%N,
   c_ n.+1 k \in `[B_ (idx n k), (A_ (idx n k.+1))],
@@ -2339,6 +2285,15 @@ have eq5 : \forall n \near \oo,
 (* (5.5) (between (5) and (6)) *)
 have alphaH n : (alpha < \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E)%E.
   rewrite /alpha.
+  apply: (@le_lt_trans _ _ (\sum_(i < n.+3) `|H (d_ n.+1 i) - H (c_ n.+1 i)|%:E)).
+    admit.
+  rewrite daE.
+  rewrite (_: \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E =
+               mu (\bigcup_(i < n.+2) (H @` `[c_ n i, d_ n i]))).
+    rewrite bigcup
+    have := measure_semi_additive (fun i => (H @` `[c_ n i, d_ n i]%classic)).
+admit.
+  apply: 
   admit.
 (*
 rewrite addrAC ltrD2r.
