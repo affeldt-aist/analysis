@@ -2177,7 +2177,7 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
     by rewrite sume_ge0.
   - exact: cvg_cst.
   - apply: (@cvg_trans _
-  (mu (\bigcap_(i < n.+1) ([set` Rhull Z] `\` (contiguous_intervals Z i)))
+  (mu (\bigcap_(i < n.+1) ([set` Rhull Z] `\` (contiguous_intervals Z (h1 i))))
              @[n --> \oo])).
     apply: near_eq_cvg.
     near=> n.
@@ -2187,14 +2187,17 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
       rewrite (hullZ_abcd n).
       rewrite setDUD.
       have -> : \bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic
-      `\` \bigcup_(i < n.+1) contiguous_intervals Z i = set0.
+      `\` \bigcup_(i < n.+1) contiguous_intervals Z (h1 i) = set0.
         admit.
       rewrite setU0.
       apply: setDidl.
       admit.
     admit.
-  have <- : mu (\bigcap_n ([set` Rhull Z] `\` (contiguous_intervals Z n))) = 0%:E.
+  have <- : mu (\bigcap_n ([set` Rhull Z] `\` (contiguous_intervals Z (h1 n)))) = 0%:E.
     rewrite -setD_bigcupr//.
+    have [funh1 injh1 surjh1] := @bij _ _ _ _ h1.
+    rewrite -(reindex_bigcup _ _ _ _ funh1 surjh1).
+    rewrite -bigcup_contiguous_intervals_support.
     rewrite -bigcup_contiguous_intervals//.
     rewrite setDD.
     rewrite setIidr; first exact: sub_Rhull.
@@ -2216,9 +2219,9 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
 have construct_x n :
   exists x : seq R, [/\ itv_partition c d (behead x),
     ((mesh c d (behead x))%:E <= lambda n)%E,
-    (forall i : 'I_ n.+1, c_ n i \in x /\ d_ n i \in x),
+    (forall i : 'I_ n.+2, c_ n i \in x /\ d_ n i \in x),
     (n < size x)%N &
-    (forall (i j : 'I_ n.+1), nth d x j \notin `]c_ n i, d_ n i[) ].
+    (forall (i j : 'I_ n.+2), nth d x j \notin `]c_ n i, d_ n i[) ].
   admit.
 pose x := fun n => sval (cid (@construct_x n)).
 have pcdx n : itv_partition c d (behead (x n)).
@@ -2229,9 +2232,10 @@ have max_x n : mesh c d (behead (x n)) <= fine (lambda n).
     admit.
   admit.
 pose S_ n : R := variation c d f (behead (x n)).
-pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
+(* (2) *)
+pose V_ n : \bar R := \sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E +
      (\sum_(i < n) total_variation (A_ i) (B_ i) f).
-pose CD_ n := merge <=%R [tuple c_ n i | i < n.+1] [tuple d_ n i | i < n.+1].
+pose CD_ n := merge <=%R [tuple c_ n i | i < n.+2] [tuple d_ n i | i < n.+2].
 have sub_xcd n : subseq (CD_ n) (x n).
   admit.
 have SV n : ((S_ n)%:E <= V_ n)%E.
@@ -2271,8 +2275,8 @@ have Voo_V : V_ n @[n --> \oo] --> Vcd.
   apply/andP; split.
     exact: SV.
   exact: V_tv.
-have [n0 n00 tvV] : exists2 n0, (0 < n0)%N &
-      forall n, (n0 <= n)%N -> (Vcd - alpha / 2 < V_ n)%E.
+(* (3) *)
+have eq3 : \forall n \near \oo, (Vcd - alpha / 2 < V_ n)%E.
   have alpha20 : 0 < fine (alpha / 2).
     apply: fine_gt0; rewrite mule_gt0//=.
       by rewrite inver ifF; exact/negP/negP.
@@ -2319,27 +2323,22 @@ have [n0 n00 tvV] : exists2 n0, (0 < n0)%N &
 (* (4) *)
 (* total_variationD? *)
 have eq4 n : total_variation c d f =
-  \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E +
-   \sum_(i < n) (total_variation (A_ i) (B_ i) f).
+  \sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E +
+   \sum_(i < n.+1) (total_variation (A_ i) (B_ i) f).
   admit.
 (* (5) *)
 have eq5 : \forall n \near \oo,
-  (\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E
-    > \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
+  (\sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E - (alpha / 2) <
+  \sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E)%E.
+  move: eq3 => [n0 _/= hyp].
+  exists n0 => // n/= n0n.
+  move: (hyp n n0n) => {hyp}.
+  rewrite /V_ -lteBlDr.
+    admit.
   admit.
 (* (5.5) (between (5) and (6)) *)
-have alphaH n : fine alpha < \sum_(i < n.+1) `|H (d_ n i) - H (c_ n i)|.
+have alphaH n : (alpha < \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E)%E.
   rewrite /alpha.
-  have -> : Z = ([set` Rhull Z] `\` cplt_hull Z).
-   admit.
-  rewrite setDE.
-  apply: (@le_lt_trans _ _
-    (fine (mu ((H @` [set` Rhull Z]) `&` (H @` (~` cplt_hull Z)))))).
-    apply: fine_le.
-    - admit.
-    - admit.
-    apply: le_outer_measure.
-    exact: sub_image_setI.
   admit.
 (*
 rewrite addrAC ltrD2r.
@@ -2470,9 +2469,11 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
     by move=> i ni _; apply: sume_ge0 => j _; exact: oscillation_ge0.
   move=> j _.
   admit.
+(* (8), used in the last step *)
 have ineq8 : \forall n \near \oo,
   (alpha / 2 <= \sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E.
   admit.
+(* (9), used in the last step *)
 have eq9 :
    (\sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E @[n --> \oo] --> 0%:E.
   apply: nneseries_tail_cvg.
@@ -2489,7 +2490,7 @@ have eq9 :
     by rewrite ge0_fin_numE// total_variation_ge0// ltW.
   move=> n _.
   exact: oscillation_ge0.
-(* last step *)
+(* the last step *)
 have : (alpha / 2 <= 0%:E)%E.
   have/cvg_lim <- := eq9.
     exact: ereal_hausdorff.
