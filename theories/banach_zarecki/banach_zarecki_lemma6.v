@@ -1409,6 +1409,10 @@ apply: nBx.
 exact: AX.
 Qed.
 
+Lemma ordinal_val (n : nat) (i : 'I_ n.+1) :
+  i = Ordinal (ltn_ord i).
+Proof. by rewrite -(inord_val (Ordinal _))/= inord_val. Qed.
+
 Import MeasurableR.
 
 (* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
@@ -1812,6 +1816,10 @@ have cled n i : c_ n i <= d_ n i.
   rewrite cbE daE.
   case: i => /=[|i]; first exact: clea.
   exact: blea.
+
+have disj_cd n : trivIset setT (fun i : 'I_n.+2 => `[c_ n i, d_ n i]%classic).
+  admit.
+
 (* lemma  *)
 have Zcd n : Z `<=` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic.
   suff : [set` Rhull Z] `\` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic
@@ -1829,7 +1837,6 @@ have Zcd n : Z `<=` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic.
     rewrite daE.
     exact: le_trans (bled n i).
   apply: (@subset_trans _ (\bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic)).
-    
     move=> x [hZx].
     rewrite {1}/bigcup/= exists2E; move/forallNP => ncdx.
     have has_b : has (> x) (seq_b n).
@@ -2133,12 +2140,58 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
       rewrite (hullZ_abcd n).
       rewrite setDUD.
       have -> : \bigcup_(i < n.+1) `]a_ n i, b_ n i[%classic
-      `\` \bigcup_(i < n.+1) contiguous_intervals Z (h1 i) = set0.
-        admit.
+        `\` \bigcup_(i < n.+1) contiguous_intervals Z (h1 i) = set0.
+        rewrite eqEsubset; split => // x/=.
+        apply/not_implyP; apply.
+        move=> [i/= iltn1].
+        rewrite anth bnth.
+        have [-> -> idxltn1] := nth_abE n i iltn1.
+        rewrite -!idxE => xAB.
+        exists (idx n i) => //=.
+          by rewrite idxE.
+        by rewrite contiguous_ooitv.
       rewrite setU0.
       apply: setDidl.
-      admit.
-    admit.
+      rewrite eqEsubset; split => x//=.
+      move=> [[i/= iltn2 xcidi] [j/= jltn1]].
+      rewrite contiguous_ooitv//= -/(A_ j) -/(B_ j).
+      have [[idx_ord idx_inv] /= [idx_ordE inv_ord ord_inv]] := idx_bij n.
+      set j' : 'I_ n.+1 := Ordinal jltn1.
+      have -> : j = nat_of_ord j' by [].
+      rewrite -(ord_inv j').
+      rewrite (ordinal_val (idx_inv j')) -idx_ordE.
+      rewrite idxE.
+      have [] := nth_abE n (idx_inv j'); first by [].
+      move=> <- <- _.
+      rewrite -anth -bnth.
+      rewrite in_itv/= => /andP[aj'x bxj'].
+      move : xcidi.
+      rewrite cbE daE.
+      rewrite in_itv/=; apply/negP; rewrite negb_and -!ltNge; apply/orP.
+      case: i iltn2 => /=.
+        move=> _; right.
+        apply: le_lt_trans aj'x.
+        by rewrite le_sorted_leq_nth// inE size_seq_ab.
+      move=> i.
+      rewrite ltnS => iltn1.
+      have [ji|ij] := leqP (idx_inv j') i.
+        left.
+        apply: (lt_le_trans bxj').
+        by rewrite le_sorted_leq_nth// inE size_seq_ab.
+      right.
+      apply: le_lt_trans aj'x.
+      move: iltn1.
+      rewrite leq_eqVlt => /predU1P[|].
+        move/eq_add_S => eqin.
+        rewrite /a_ !nth_default// size_seq_ab.
+          by rewrite eqin.
+        by rewrite -[ltnLHS]eqin.
+      rewrite ltnS => iltn.
+      by rewrite le_sorted_leq_nth// inE size_seq_ab.
+    rewrite bigcup_mkord.
+    rewrite completed_lebesgue_measureE.
+    rewrite measure_semi_additive_ord//=.
+    exact: bigsetU_measurable.
   have <- : mu (\bigcap_n ([set` Rhull Z] `\` (contiguous_intervals Z (h1 n)))) = 0%:E.
     rewrite -setD_bigcupr//.
     have [funh1 injh1 surjh1] := @bij _ _ _ _ h1.
