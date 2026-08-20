@@ -1816,10 +1816,6 @@ have cled n i : c_ n i <= d_ n i.
   rewrite cbE daE.
   case: i => /=[|i]; first exact: clea.
   exact: blea.
-
-have disj_cd n : trivIset setT (fun i : 'I_n.+2 => `[c_ n i, d_ n i]%classic).
-  admit.
-
 (* lemma  *)
 have Zcd n : Z `<=` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic.
   suff : [set` Rhull Z] `\` \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic
@@ -2107,6 +2103,47 @@ have mcgitv i : mu.-cara.-measurable (contiguous_intervals Z i).
   rewrite RGenOpenSets.measurableE.
   apply: open_measurable.
   exact: open_contiguous_intervals.
+
+(* disjointness of AB and CD *)
+have disj_abcd n : \bigcup_(i < n.+2) `[c_ n i, d_ n i]%classic
+               `&` \bigcup_(i < n.+1) contiguous_intervals Z (h1 i) = set0.
+  rewrite eqEsubset; split => x//=.
+  move=> [[i/= iltn2 xcidi] [j/= jltn1]].
+  rewrite contiguous_ooitv//= -/(A_ j) -/(B_ j).
+  have [[idx_ord idx_inv] /= [idx_ordE inv_ord ord_inv]] := idx_bij n.
+  set j' : 'I_ n.+1 := Ordinal jltn1.
+  have -> : j = nat_of_ord j' by [].
+  rewrite -(ord_inv j').
+  rewrite (ordinal_val (idx_inv j')) -idx_ordE.
+  rewrite idxE.
+  have [] := nth_abE n (idx_inv j'); first by [].
+  move=> <- <- _.
+  rewrite -anth -bnth.
+  rewrite in_itv/= => /andP[aj'x bxj'].
+  move : xcidi.
+  rewrite cbE daE.
+  rewrite in_itv/=; apply/negP; rewrite negb_and -!ltNge; apply/orP.
+  case: i iltn2 => /=.
+    move=> _; right.
+    apply: le_lt_trans aj'x.
+    by rewrite le_sorted_leq_nth// inE size_seq_ab.
+  move=> i.
+  rewrite ltnS => iltn1.
+  have [ji|ij] := leqP (idx_inv j') i.
+    left.
+    apply: (lt_le_trans bxj').
+    by rewrite le_sorted_leq_nth// inE size_seq_ab.
+  right.
+  apply: le_lt_trans aj'x.
+  move: iltn1.
+  rewrite leq_eqVlt => /predU1P[|].
+    move/eq_add_S => eqin.
+    rewrite /a_ !nth_default// size_seq_ab.
+      by rewrite eqin.
+    by rewrite -[ltnLHS]eqin.
+  rewrite ltnS => iltn.
+  by rewrite le_sorted_leq_nth// inE size_seq_ab.
+
 have lambda0 : (fine \o lambda) @ \oo --> 0%R.
   apply: fine_cvg.
   apply (@squeeze_cvge _ _ _ R (cst 0) _
@@ -2152,45 +2189,37 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
         by rewrite contiguous_ooitv.
       rewrite setU0.
       apply: setDidl.
-      rewrite eqEsubset; split => x//=.
-      move=> [[i/= iltn2 xcidi] [j/= jltn1]].
-      rewrite contiguous_ooitv//= -/(A_ j) -/(B_ j).
-      have [[idx_ord idx_inv] /= [idx_ordE inv_ord ord_inv]] := idx_bij n.
-      set j' : 'I_ n.+1 := Ordinal jltn1.
-      have -> : j = nat_of_ord j' by [].
-      rewrite -(ord_inv j').
-      rewrite (ordinal_val (idx_inv j')) -idx_ordE.
-      rewrite idxE.
-      have [] := nth_abE n (idx_inv j'); first by [].
-      move=> <- <- _.
-      rewrite -anth -bnth.
-      rewrite in_itv/= => /andP[aj'x bxj'].
-      move : xcidi.
-      rewrite cbE daE.
-      rewrite in_itv/=; apply/negP; rewrite negb_and -!ltNge; apply/orP.
-      case: i iltn2 => /=.
-        move=> _; right.
-        apply: le_lt_trans aj'x.
-        by rewrite le_sorted_leq_nth// inE size_seq_ab.
-      move=> i.
-      rewrite ltnS => iltn1.
-      have [ji|ij] := leqP (idx_inv j') i.
-        left.
-        apply: (lt_le_trans bxj').
-        by rewrite le_sorted_leq_nth// inE size_seq_ab.
-      right.
-      apply: le_lt_trans aj'x.
-      move: iltn1.
-      rewrite leq_eqVlt => /predU1P[|].
-        move/eq_add_S => eqin.
-        rewrite /a_ !nth_default// size_seq_ab.
-          by rewrite eqin.
-        by rewrite -[ltnLHS]eqin.
-      rewrite ltnS => iltn.
-      by rewrite le_sorted_leq_nth// inE size_seq_ab.
+      exact: disj_abcd.
     rewrite bigcup_mkord.
     rewrite completed_lebesgue_measureE.
     rewrite measure_semi_additive_ord//=.
+      (* lemma? *)
+      case => i iltn2.
+      case => j jltn2 _ _/=.
+      move=> [x/= [xi xj]]/=.
+      rewrite -(inord_val (Ordinal _))/=.
+      rewrite -(inord_val (Ordinal _))/=.
+      apply: ord_inj; rewrite !inordK//.
+      apply/eqP/not_notP => /negP => ij.
+      wlog : i j iltn2 jltn2 x xi xj ij / (i < j)%N.
+        move=> H.
+        move: (ij); rewrite neq_ltn => /orP[iltj|jlti].
+          exact: (H i j _ _ x).
+        apply: (H j i _ _ x) => //.
+        by rewrite eq_sym.
+      move=> {}ij.
+      move: xi xj.
+      rewrite !in_itv/= => /andP[_ +] /andP[+ _].
+      move/[swap]/le_trans => H /H {H}.
+      apply/negP; rewrite -ltNge.
+      rewrite daE cbE.
+      case: j jltn2 ij => //=j.
+      rewrite !ltnS => jn ij.
+      apply: (@le_lt_trans _ _ (a_ n j)).
+        by rewrite le_sorted_leq_nth// inE size_seq_ab// ltnS (leq_trans ij).
+      rewrite anth bnth.
+      have [] := (nth_abE n j); first by [].
+      by move=> -> ->.
     exact: bigsetU_measurable.
   have <- : mu (\bigcap_n ([set` Rhull Z] `\` (contiguous_intervals Z (h1 n)))) = 0%:E.
     rewrite -setD_bigcupr//.
@@ -2221,6 +2250,7 @@ have construct_x n :
     (forall i : 'I_ n.+2, c_ n i \in x /\ d_ n i \in x),
     (n < size x)%N &
     (forall (i j : 'I_ n.+2), nth d x j \notin `]c_ n i, d_ n i[) ].
+  (* use lambda_partition *)
   admit.
 pose x := fun n => sval (cid (@construct_x n)).
 have pcdx n : itv_partition c d (behead (x n)).
@@ -2340,13 +2370,6 @@ have alphaH n : (alpha < \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E)%E.
   rewrite /alpha.
   apply: (@le_lt_trans _ _ (\sum_(i < n.+3) `|H (d_ n.+1 i) - H (c_ n.+1 i)|%:E)).
     admit.
-  rewrite daE.
-  rewrite (_: \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E =
-               mu (\bigcup_(i < n.+2) (H @` `[c_ n i, d_ n i]))).
-    rewrite bigcup
-    have := measure_semi_additive (fun i => (H @` `[c_ n i, d_ n i]%classic)).
-admit.
-  apply: 
   admit.
 (*
 rewrite addrAC ltrD2r.
