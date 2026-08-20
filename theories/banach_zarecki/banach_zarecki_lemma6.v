@@ -53,6 +53,27 @@ by move: bvf; apply: bounded_variationl.
   by move: bvf; apply: bounded_variationl.
 Qed.
 
+(*
+Arguments closed : clear implicits.
+Arguments closure : clear implicits.
+*)
+
+Lemma cl_imf (A : set R) (f : R -> R) :
+  {within (closure A), continuous f} ->
+f @` (closure A) `<=` closure (f @` A).
+Proof.
+move=> cf.
+rewrite image_sub.
+rewrite -(setIid (closure A)).
+rewrite -closure_subspaceW; first exact: subset_closure.
+rewrite closureE; apply: smallest_sub.
+  apply: ((continuous_closedP _).1 cf).
+  exact: closed_closure.
+move=> x Ax.
+apply: subset_closure.
+by exists x.
+Qed.
+
 (* need *)
 Lemma oscillation_closure (A : set R) (f : R -> R) :
   {within (closure A), continuous f} ->
@@ -62,8 +83,6 @@ move=> cf.
 have imf_cl : f @` A `<=` f @` (closure A).
     apply: image_subset.
     exact: subset_closure.
-have cl_imf : f @` (closure A) `<=` closure (f @` A).
-  admit.
 have Asub : A `<=` f @^-1` closure (f @` A).
   move=> x Ax /=.
   apply: subset_closure.
