@@ -2355,6 +2355,65 @@ have eq4 n : total_variation c d f =
   \sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E +
    \sum_(i < n.+1) (total_variation (A_ i) (B_ i) f).
   admit.
+
+have ABbvf n : \sum_(i < n.+1) total_variation (A_ i) (B_ i) f \is a fin_num.
+  apply/sum_fin_numP => /=.
+  case => i iltn _ _.
+  rewrite -(inord_val (Ordinal _))/= !inordK//.
+  apply/bounded_variationP.
+    exact: ltW.
+  have H : `]A_ i, B_ i[ `<=` `[c, d].
+    rewrite -contiguous_ooitv//.
+    rewrite -compact_Rhull//.
+    apply: (subset_trans (@contiguous_intervalsS _ Z (h1 i))).
+    exact: cplt_hull_subset_Rhull.
+  apply: (@bounded_variationr _ c).
+  - (* lemma? *)
+    (* a < b -> `]a, b[ `<=` `[c, d] -> a < c *)
+    rewrite leNgt; apply/negP => cA.
+    move: H.
+    move/disj_setPCl/disj_set2P.
+    apply/eqP/set0P.
+    have [Bc|cB] := leP (B_ i) c.
+      exists (((A_ i) + (B_ i)) / 2) => /=; split.
+        by rewrite in_itv/= !midf_lt -/(A_ i).
+      apply/negP; rewrite in_itv/= negb_and -ltNge; apply/orP; left.
+      rewrite -/c (@splitr _ c).
+      rewrite mulrDl.
+      by rewrite ltr_leD ?ltr_pM2r ?ler_pM2r.
+      exists ((A_ i + c) / 2) => /=; split; rewrite in_itv/=.
+      by rewrite !midf_lt// -/(B_ i) (@splitr _ (B_ i)) mulrDl ltrD ?ltr_pM2r.
+    apply/negP; rewrite negb_and -ltNge; apply/orP; left.
+    by rewrite -/c midf_lt.
+  - exact: ltW.
+    apply: bounded_variationl cdbvf.
+    rewrite leNgt; apply/negP => Bc.
+    move: H.
+    move/disj_setPCl/disj_set2P.
+    apply/eqP/set0P.
+    exists (((A_ i) + (B_ i)) / 2) => /=; split.
+      by rewrite in_itv/= !midf_lt -/(A_ i).
+    apply/negP; rewrite in_itv/= negb_and -ltNge; apply/orP; left.
+    rewrite -/c (@splitr _ c) mulrDl ltrD ?ltr_pM2r//.
+    exact: (lt_trans (AB i)).
+  (* lemma? *)
+  (* a < b -> `]a, b[ `<=` `[c, d] -> b < d *)
+  rewrite leNgt; apply/negP => dB.
+  move: H.
+  move/disj_setPCl/disj_set2P.
+  apply/eqP/set0P.
+  have [Ad|dA] := leP d (A_ i).
+    exists (((A_ i) + (B_ i)) / 2) => /=; split.
+      by rewrite in_itv/= !midf_lt -/(A_ i).
+    apply/negP; rewrite in_itv/= negb_and -!ltNge; apply/orP; right.
+    rewrite (@splitr _ d).
+    rewrite mulrDl.
+    by rewrite ler_ltD ?ltr_pM2r ?ler_pM2r.
+  exists ((d + B_ i) / 2) => /=; split; rewrite in_itv/=.
+    by rewrite !midf_lt// andbT (@splitr _ (A_ i)) mulrDl ltrD ?ltr_pM2r.
+  apply/negP; rewrite negb_and -!ltNge; apply/orP; right.
+  by rewrite midf_lt.
+
 (* (5) *)
 have eq5 : \forall n \near \oo,
   (\sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E - (alpha / 2) <
@@ -2363,8 +2422,14 @@ have eq5 : \forall n \near \oo,
   exists n0 => // n/= n0n.
   move: (hyp n n0n) => {hyp}.
   rewrite /V_ -lteBlDr.
-    admit.
-  admit.
+    case: n n0n => //.
+    by move=> _; rewrite big_ord0.
+  rewrite /Vcd (eq4 n).
+  apply: le_lt_trans.
+  rewrite addeAC leeB// -addeA leeDl// subre_ge0//.
+  apply: (lee_sum_nneg_ord (fun i => total_variation _ _ f) predT) => //.
+  by move=> i _; apply/total_variation_ge0/ltW.
+
 (* (5.5) (between (5) and (6)) *)
 have alphaH n : (alpha < \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E)%E.
   rewrite /alpha.
