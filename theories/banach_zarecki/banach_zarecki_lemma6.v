@@ -2356,22 +2356,23 @@ have eq4 n : total_variation c d f =
    \sum_(i < n.+1) (total_variation (A_ i) (B_ i) f).
   admit.
 
+have ABsubcd i : `]A_ i, B_ i[ `<=` `[c, d].
+  rewrite -contiguous_ooitv//.
+  rewrite -compact_Rhull//.
+  apply: (subset_trans (@contiguous_intervalsS _ Z (h1 i))).
+  exact: cplt_hull_subset_Rhull.
+
 have ABbvf n : \sum_(i < n.+1) total_variation (A_ i) (B_ i) f \is a fin_num.
   apply/sum_fin_numP => /=.
   case => i iltn _ _.
   rewrite -(inord_val (Ordinal _))/= !inordK//.
   apply/bounded_variationP.
     exact: ltW.
-  have H : `]A_ i, B_ i[ `<=` `[c, d].
-    rewrite -contiguous_ooitv//.
-    rewrite -compact_Rhull//.
-    apply: (subset_trans (@contiguous_intervalsS _ Z (h1 i))).
-    exact: cplt_hull_subset_Rhull.
   apply: (@bounded_variationr _ c).
-  - (* lemma? *)
+  - (* generalize incl_itv_lb? *)
     (* a < b -> `]a, b[ `<=` `[c, d] -> a < c *)
     rewrite leNgt; apply/negP => cA.
-    move: H.
+    move: (ABsubcd i).
     move/disj_setPCl/disj_set2P.
     apply/eqP/set0P.
     have [Bc|cB] := leP (B_ i) c.
@@ -2388,7 +2389,7 @@ have ABbvf n : \sum_(i < n.+1) total_variation (A_ i) (B_ i) f \is a fin_num.
   - exact: ltW.
     apply: bounded_variationl cdbvf.
     rewrite leNgt; apply/negP => Bc.
-    move: H.
+    move: (ABsubcd i).
     move/disj_setPCl/disj_set2P.
     apply/eqP/set0P.
     exists (((A_ i) + (B_ i)) / 2) => /=; split.
@@ -2396,10 +2397,10 @@ have ABbvf n : \sum_(i < n.+1) total_variation (A_ i) (B_ i) f \is a fin_num.
     apply/negP; rewrite in_itv/= negb_and -ltNge; apply/orP; left.
     rewrite -/c (@splitr _ c) mulrDl ltrD ?ltr_pM2r//.
     exact: (lt_trans (AB i)).
-  (* lemma? *)
+  (* generalize incl_itv_ub? *)
   (* a < b -> `]a, b[ `<=` `[c, d] -> b < d *)
   rewrite leNgt; apply/negP => dB.
-  move: H.
+  move: (ABsubcd i).
   move/disj_setPCl/disj_set2P.
   apply/eqP/set0P.
   have [Ad|dA] := leP d (A_ i).
@@ -2577,11 +2578,26 @@ have eq9 :
       (* oscillation_closure *)
       rewrite (_:(\big[+%E/0%R]_(0 <= k <oo) oscillation f `[A_ k, B_ k] =
       (\big[+%E/0%R]_(0 <= k <oo) oscillation f `]A_ k, B_ k[))).
-        admit.
+        apply: eq_eseriesr => i _.
+        rewrite -[in RHS]oscillation_closure.
+          rewrite closure_neitv_oo//.
+          apply: (continuous_subspaceW _ cf).
+          apply: subset_neitv_oocc => //.
+          apply: (subset_trans (ABsubcd i)).
+          rewrite -compact_Rhull// -(@RhullK _ `[a, b]%classic).
+            rewrite inE.
+            exact: interval_is_interval.
+          exact: le_Rhull.
+        by rewrite closure_neitv_oo.
       apply: sum_oscillation_le_total_variation.
-        admit.
-      move=> n.
-      admit.
+        rewrite /A_ /B_.
+        rewrite [X in _ _ X](_: _ = (contiguous_intervals Z) \o h1).
+          by apply/funext => i; rewrite -contiguous_ooitv.
+        rewrite trivIset_comp.
+          by apply: set_bij_inj; apply: bij.
+        apply: (@sub_trivIset _ _ _ setT) => //.
+        exact: disjoint_contiguous_intervals.
+      exact: ABsubcd.
     have/(bounded_variationP _ (ltW cd)) := cdbvf.
     by rewrite ge0_fin_numE// total_variation_ge0// ltW.
   move=> n _.
