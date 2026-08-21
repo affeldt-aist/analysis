@@ -53,37 +53,174 @@ by move: bvf; apply: bounded_variationl.
   by move: bvf; apply: bounded_variationl.
 Qed.
 
-(*
-Arguments closed : clear implicits.
-Arguments closure : clear implicits.
-*)
+Lemma cl_imf_tentative (a b : R) (f : R -> R) :
+  let A := `]a, b[%classic in
+  {within (closure A), continuous f} ->
+  f @` (closure A) `<=` closure (f @` A).
+Proof.
+move=> A Af.
+pose C := f @^-1` closure (f @` A).
+suff closedC : closed C.
+  pose B := f @` C.
+  apply: (@subset_trans _ B).
+    rewrite /B.
+    apply: image_subset.
+    rewrite closureE.
+    apply: smallest_sub => //.
+    rewrite /C.
+    rewrite -image_sub.
+    exact: subset_closure.
+  rewrite /B /C.
+  exact: image_preimage_subset.
+move/continuous_closedP : Af.
+move=> /(_ (closure (f @` A)) (@closed_closure _ _)).
+move/closed_subspaceP => /=[C'].
+rewrite-/C => closedC'.
+(* NB: same as above but that fails... keep me, investigate *)
+Abort.
 
 Lemma cl_imf (A : set R) (f : R -> R) :
-  {within (closure A), continuous f} ->
-f @` (closure A) `<=` closure (f @` A).
+    {within (closure A), continuous f} ->
+  f @` (closure A) `<=` closure (f @` A).
 Proof.
 move=> cf.
 rewrite image_sub.
 rewrite -(setIid (closure A)).
+(* NB: trick here! *)
 rewrite -closure_subspaceW; first exact: subset_closure.
-rewrite closureE; apply: smallest_sub.
-  Check ((continuous_closedP _).1 cf).
+rewrite closureE.
+apply: smallest_sub.
   apply: ((continuous_closedP _).1 cf).
   exact: closed_closure.
-move=> x Ax.
+move=> x Ax /=.
 apply: subset_closure.
 by exists x.
 Qed.
 
-(* need *)
+Lemma closure_has_ubound (A : set R) (f : R -> R)
+  (ubfA : has_ubound [set f x | x in A]) : A !=set0 ->
+  has_ubound (closure [set f x | x in A]).
+Proof.
+move=> A0.
+case: ubfA => M fAM.
+exists M => y.
+move/closure_bigcup.in_mem_closedP => H.
+apply/ler_addgt0Pl => /= e e0.
+rewrite -lerBlDl.
+have [x [yex /= [r Ar frx]]] := H (ball y e) (nbhsx_ballx _ _ e0).
+rewrite leNgt; apply/negP => abs.
+have : M < x.
+  rewrite (lt_le_trans abs)//.
+  by move: yex; rewrite /ball/= => /ltr_distlBl/ltW.
+apply/negP; rewrite -leNgt -frx.
+by apply fAM; by exists r.
+Qed.
+
+Lemma closure_has_lbound (A : set R) (f : R -> R)
+  (ubfA : has_lbound [set f x | x in A]) : A !=set0 ->
+  has_lbound (closure [set f x | x in A]).
+Proof.
+move=> A0.
+move/has_lb_ubN : ubfA.
+rewrite image_comp.
+move/closure_has_ubound => /(_ A0) H.
+rewrite has_lb_ubN.
+rewrite -image_comp in H.
+apply: subset_has_ubound H => x /= [r fAr <-{x}].
+by rewrite -closureN in fAr.
+Qed.
+
+Lemma closure_has_sup (A : set R) (f : R -> R)
+  (ubfA : has_ubound [set f x | x in A]) : A !=set0 ->
+  has_sup (closure [set f x | x in A]).
+Proof.
+move=> A0.
+split.
+  have : [set f x | x in A] !=set0.
+    by apply: image_nonempty.
+  apply: subset_nonempty.
+  exact: subset_closure.
+exact: closure_has_ubound.
+Qed.
+
+Lemma closure_has_inf (A : set R) (f : R -> R)
+  (ubfA : has_lbound [set f x | x in A]) : A !=set0 ->
+  has_inf (closure [set f x | x in A]).
+Proof.
+move=> A0.
+split.
+  have : [set f x | x in A] !=set0.
+    by apply: image_nonempty.
+  apply: subset_nonempty.
+  exact: subset_closure.
+exact: closure_has_lbound.
+Qed.
+
+Lemma sup_closure (A : set R) (f : R -> R) :
+  A !=set0 -> has_ubound [set f x | x in closure A] ->
+  sup (closure (f @` A)) = sup (f @` A).
+Proof.
+move=> A0 ubA.
+have ubfA : has_ubound (f @` A).
+  apply: subset_has_ubound ubA.
+  apply: image_subset.
+  exact: subset_closure.
+have clfA0 : closure [set f x | x in A] !=set0.
+  (* TODO: change order of arguments of subset_nonempty *)
+  apply: (@subset_nonempty _ (f @` A)).
+    by apply: subset_closure.
+  by apply: image_nonempty.
+apply/eqP; rewrite eq_le; apply/andP; split; last first.
+  apply: supS.
+  - by apply: image_nonempty.
+  - by apply: closure_has_sup.
+  - by apply: subset_closure.
+set M := sup (f @` A).
+apply: ge_sup => // y.
+move/closure_bigcup.in_mem_closedP => H.
+apply/ler_addgt0Pl => /= e e0.
+rewrite -lerBlDl.
+have [x [yex /= [r Ar frx]]] := H (ball y e) (nbhsx_ballx _ _ e0).
+rewrite leNgt; apply/negP => abs.
+have : M < x.
+  rewrite (lt_le_trans abs)//.
+  move: yex.
+  by rewrite /ball/= => /ltr_distlBl/ltW.
+apply/negP.
+rewrite -leNgt -frx.
+by apply: ub_le_sup => //.
+Qed.
+
+Lemma inf_closure (A : set R) (f : R -> R) :
+  A !=set0 -> has_lbound [set f x | x in closure A] ->
+  inf (closure (f @` A)) = inf (f @` A).
+Proof.
+move=> A0 fA; rewrite /inf; congr (- _).
+rewrite [in RHS]image_comp.
+rewrite -[RHS]sup_closure//.
+  rewrite -(image_comp _ -%R).
+  apply/has_ub_lbN.
+  rewrite !image_comp compA (_ : _ \o f = f )//.
+  by apply/funext => x/=; rewrite opprK.
+congr sup.
+apply/seteqP; split.
+  move=> x/= [r fAr <-{x}].
+  by rewrite -image_comp closureN.
+move=> x /= fAx; exists (- x); last by rewrite opprK.
+by  rewrite -closureN opprK image_comp.
+Qed.
+
 Lemma oscillation_closure (A : set R) (f : R -> R) :
   {within (closure A), continuous f} ->
   oscillation f (closure A) = oscillation f A.
 Proof.
-move=> cf.
+have [A0 cf|A0 cf] := eqVneq A set0.
+  by rewrite A0 closure0.
 have imf_cl : f @` A `<=` f @` (closure A).
-    apply: image_subset.
-    exact: subset_closure.
+  apply: image_subset.
+  exact: subset_closure.
+have cl_imf : f @` (closure A) `<=` closure (f @` A).
+  by apply: cl_imf.
 have Asub : A `<=` f @^-1` closure (f @` A).
   move=> x Ax /=.
   apply: subset_closure.
@@ -94,15 +231,48 @@ have [hasubfA|hasNubfA] := pselect (has_ubound (f @` A)); last first.
 have [haslbfA|hasNlbfA] := pselect (has_lbound (f @` A)); last first.
   rewrite !oscillation_hasNlb//.
   by move/(subset_has_lbound imf_cl).
-have : has_ubound [set f x | x in closure A].
-  admit.
+have ubfA : has_ubound [set f x | x in closure A].
+  apply: (subset_has_ubound cl_imf).
+  apply: closure_has_ubound => //.
+  exact/set0P.
+have lbfA : has_lbound [set f x | x in closure A].
+  apply: (subset_has_lbound cl_imf).
+  apply: closure_has_lbound => //.
+  exact/set0P.
 rewrite /oscillation.
-have [A0|A0] := eqVneq A set0.
-  by rewrite ifT// A0 closure0.
 rewrite ifF.
   by apply/negP; move/eqP/closure_eq0/eqP; apply/negP.
-rewrite -image_comp ereal_sup_EFin.
-Admitted.
+rewrite -image_comp.
+rewrite -[in RHS]image_comp.
+have ? : [set f x | x in closure A] !=set0.
+  apply: image_nonempty.
+  move/set0P : A0.
+  apply: subset_nonempty.
+  exact: subset_closure.
+have fA0 : [set f x | x in A] !=set0.
+  apply: image_nonempty.
+  by move/set0P : A0.
+rewrite (negbTE A0).
+congr (_ - _)%E.
+  rewrite !ereal_sup_EFin//; congr EFin.
+  apply/eqP; rewrite eq_le.
+  apply/andP; split; last exact: supS.
+  apply: (@le_trans _ _ (sup (closure (f @` A)))).
+    apply: supS => //.
+    apply: closure_has_sup => //.
+    exact/set0P.
+  rewrite -sup_closure//.
+  exact/set0P.
+rewrite !ereal_inf_EFin//; congr EFin.
+apply/eqP; rewrite eq_le.
+apply/andP; split; first exact: infS.
+apply: (@le_trans _ _ (inf (closure (f @` A)))); last first.
+  apply: infS => //.
+  apply: closure_has_inf => //.
+  exact/set0P.
+rewrite -inf_closure//.
+exact/set0P.
+Qed.
 
 Lemma closure_Rhull (A : set R) :
   closure [set` Rhull A] = [set` Rhull (closure A)].
