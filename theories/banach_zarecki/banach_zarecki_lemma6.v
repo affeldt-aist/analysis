@@ -67,6 +67,7 @@ rewrite image_sub.
 rewrite -(setIid (closure A)).
 rewrite -closure_subspaceW; first exact: subset_closure.
 rewrite closureE; apply: smallest_sub.
+  Check ((continuous_closedP _).1 cf).
   apply: ((continuous_closedP _).1 cf).
   exact: closed_closure.
 move=> x Ax.
@@ -2451,9 +2452,9 @@ have eq5 : \forall n \near \oo,
   by move=> i _; apply/total_variation_ge0/ltW.
 
 (* (5.5) (between (5) and (6)) *)
-have alphaH n : (alpha < \sum_(i < n.+2) `|H (d_ n i) - H (c_ n i)|%:E)%E.
+have alphaH n : (alpha < \sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E)%E.
   rewrite /alpha.
-  apply: (@le_lt_trans _ _ (\sum_(i < n.+3) `|H (d_ n.+1 i) - H (c_ n.+1 i)|%:E)).
+  apply: (@le_lt_trans _ _ (\sum_(i < n.+3) (H (d_ n.+1 i) - H (c_ n.+1 i))%:E)).
     admit.
   admit.
 (*
@@ -2462,6 +2463,19 @@ move/(@lt_trans _ _ _ (fine alpha / 2)).
 rewrite addrA.
 rewrite ltrBrDl -splitr; move/(_ alphaH).
 *)
+(* (6) *)
+have ineq6 : \forall n \near \oo,
+    (alpha / 2 < \sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E)%E.
+  have [n0 _ /= H5] := eq5.
+  exists n0 => // n/= n0n.
+  apply: lt_trans (H5 n n0n).
+  rewrite lteBrDl.
+    apply: fin_numM => //.
+    exact: fin_numV.
+  rewrite -mule2n -mule_natr.
+  rewrite muleAC -muleA divee// mule1.
+  exact: alphaH.
+
 have cdIcplt_hull (S : set R) : measurable S -> S `<=` `[c, d] ->
                                 mu S = mu (S `&` cplt_hull Z).
   move=> mS Scd.
@@ -2489,23 +2503,16 @@ have cdIcplt_hull (S : set R) : measurable S -> S `<=` `[c, d] ->
     apply: le_outer_measure.
     exact: subIsetr.
 (* (6.5) (between (6) and (7)) *)
-pose ABcd n (i : 'I_ n.+1) := [set k | `]A_ k, B_ k[ `<=` `[c_ n i, d_ n i]].
+pose ABcd n (i : 'I_ n.+2) := [set k | `]A_ k, B_ k[ `<=` `[c_ n i, d_ n i]].
 (* have UABcdE n : \bigcup_(i < n.+1) (ABcd _ i) = [set k | n < k]. *)
-set Zsub := fun n (i : 'I_ n.+1) => Z `&` `[c_ n i, d_ n i].
+set Zsub := fun n (i : 'I_ n.+2) => Z `&` `[c_ n i, d_ n i].
 have cf_cd n i : {within `[c_ n i, d_ n i], continuous f}.
   apply: continuous_subspaceW cf.
   rewrite cbE daE.
   case: i => /=.
     admit.
   admit.
-have clZsub n i : closed (Zsub n i).
-  apply: closedI.
-    exact: clZ.
-  exact: itv_closed.
-have ZsubE n i : Zsub n i =
-      `[c_ n i, d_ n i] `\` \bigcup_(j in ABcd n i) `]A_ j, B_ j[%classic.
-  admit.
-have itvfcd n (i : 'I_ n.+1) : is_interval (f @` `[c_ n i, d_ n i]).
+have itvfcd n (i : 'I_ n.+2) : is_interval (f @` `[c_ n i, d_ n i]).
   apply: (is_interval_image_cc cf).
   apply: subset_itv => //; rewrite bnd_simp.
     apply: (le_trans ac).
@@ -2517,17 +2524,17 @@ have itvfcd n (i : 'I_ n.+1) : is_interval (f @` `[c_ n i, d_ n i]).
 have cZsub n i : closed (Zsub n i).
   apply: closedI => //.
   exact: itv_closed.
-have hull_Zsub n (i : 'I_ n.+1) : Rhull (Zsub n i) = `[c_ n i, d_ n i].
+have hull_Zsub n (i : 'I_ n.+2) : Rhull (Zsub n i) = `[c_ n i, d_ n i].
   admit.
-have Zsub_cover n (i : 'I_ n.+1) :
+have Zsub_cover n (i : 'I_ n.+2) :
     `[c_ n i, d_ n i]%classic `<=` Zsub n i `|` \bigcup_(i0 in
          (fun k : nat => `[A_ (n + k)%N, B_ (n + k)%N] `<=` `[c_ n i, d_ n i]))
   `](A_ (n + i0)%N, B_ (n + i0)%N).1, (A_ (n + i0)%N, B_ (n + i0)%N).2[%classic.
   admit.
 (* (7) *)
-have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
+have ineq7 n : ((\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|)%:E <=
   \sum_(n <= i <oo) oscillation f `[A_ i, B_ i])%E.
-  have prop65 : forall i : 'I_ n.+1, (`|f (d_ n i) - f (c_ n i)|%:E <=
+  have prop65 : forall i : 'I_ n.+2, (`|f (d_ n i) - f (c_ n i)|%:E <=
     \sum_(n <= j <oo | `[< `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] >])
      oscillation f `[A_ j, B_ j])%E.
     move => i.
@@ -2536,6 +2543,7 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
     (fun k : nat => (A_ (n + k)%N, B_ (n + k)%N)) (cf_cd n i)
     (itvfcd n i) (cZsub n i) (hull_Zsub n i)
     (fun k => (ltW (AB (n + k)%N))) (Zsub_cover n i).
+    rewrite /=.
     apply: (le_trans le1); apply: (le_trans le2).
     have -> : mu^*%mu [set f x | x in Zsub n i] = 0.
       rewrite measurable_mu_extE/=.
@@ -2560,16 +2568,16 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
     admit.
   by apply: lee_nneseries => // j _ _; exact: oscillation_ge0.
   apply: (@le_trans _ _
-    (\sum_(i < n.+1)
+    (\sum_(i < n.+2)
       \big[+%E/0%R]_(n <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
           oscillation f `[A_ i0, B_ i0])%E).
   by rewrite -sumEFin; apply: lee_sum => /= i _.
   (* interchenge *)
-  have : (\sum_(i < n.+1)
+  have : (\sum_(i < n.+2)
        \big[+%E/0]_(n <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
          oscillation f `[A_ i0, B_ i0] <=
            \big[+%E/0]_(n <= i0 <oo)
-              (\sum_(i < n.+1 | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
+              (\sum_(i < n.+2 | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
        oscillation f `[A_ i0, B_ i0]))%E.
   under eq_bigr do rewrite eseries_mkcond.
   rewrite -nneseries_sum.
@@ -2588,7 +2596,12 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
 (* (8), used in the last step *)
 have ineq8 : \forall n \near \oo,
   (alpha / 2 <= \sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E.
-  admit.
+  have [n _ H6] := ineq6.
+  exists n => // n0 /= n0n.
+  apply: (le_trans _ (ineq7 n0)).
+  apply: ltW.
+  apply: (lt_le_trans (H6 n0 n0n)).
+  by rewrite sumEFin.
 (* (9), used in the last step *)
 have eq9 :
    (\sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E @[n --> \oo] --> 0%:E.
