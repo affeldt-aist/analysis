@@ -274,20 +274,200 @@ rewrite -inf_closure//.
 exact/set0P.
 Qed.
 
+From mathcomp Require Import convex.
+
+Lemma Monem (x : R) (t : {i01 R}) : (t%:num).~ *: x = x - t%:num *: x.
+Proof. by rewrite /onem [LHS]mulrBl mul1r. Qed.
+
+Lemma convex_interval (i : interval R) : convex_set [set` i].
+Proof.
+move=> /= x y t /[!inE] ix iy.
+wlog : t x y ix iy / x <= y.
+  move=> wlg.
+  have /orP[xy|yx] := le_total x y; first exact: wlg.
+  by rewrite convC/=; exact: wlg.
+move=> xy.
+apply: (@interval_is_interval _ _ _ _ ix iy).
+rewrite /conv/=; apply/andP; split.
+  rewrite -subr_ge0 addrAC -(opprB x) -Monem addrC.
+  by rewrite -[leRHS]mulrBr mulr_ge0 ?subr_ge0.
+rewrite -subr_ge0 opprD addrCA Monem opprB subrKC addrC.
+by rewrite -[leRHS]mulrBr mulr_ge0 ?subr_ge0.
+Qed.
+
+Lemma closed_Rhull (A : set R) : closed A -> closed [set` Rhull A].
+Proof.
+move=> cloA.
+have [->|/set0P A0] := eqVneq A set0.
+  by rewrite Rhull0 set_itv_ge ?bnd_simp//=; exact: closed0.
+set b := sup A.
+have H : has_ubound A -> A b.
+  move=> ubA.
+  have : forall n, exists un, A un /\ b - n.+1%:R^-1 < un <= b.
+    move=> n.
+    have : b - n.+1%:R^-1 < b by rewrite gtrDl.
+    move=> /(sup_gt A0)[un Aun una]; exists un; split => //.
+    by rewrite una/= ub_le_sup.
+  move=> /choice[un Aun].
+  have : un @ \oo --> b.
+    apply/cvgrPdist_le => /= e e0.
+    near=> n.
+    have [_ /andP[bun unb]] := Aun n.
+    rewrite ler_distlC; apply/andP; split.
+      rewrite (le_trans _ (ltW bun))// lerB// invf_ple ?posrE// -nat1r -lerBlDl.
+      by near: n; exact: nbhs_infty_ger.
+    by rewrite (le_trans unb)// lerDl ltW.
+  apply: closed_cvg => //; apply/nearW => n.
+  by have := (Aun n).1.
+rewrite /Rhull.
+have [lbA|lbA] := asboolP (has_lbound A).
+  set a := inf A.
+  have aA : A a.
+    have : forall n, exists un, A un /\ a <= un < a + n.+1%:R^-1.
+      move=> n.
+      have : a < a + n.+1%:R^-1 by rewrite ltrDl.
+      move=> /(inf_lt A0)[un Aun una]; exists un; split => //.
+      by rewrite una andbT ge_inf.
+    move=> /choice[un Aun].
+    have : un @ \oo --> a.
+      apply/cvgrPdist_le => /= e e0.
+      near=> n.
+      have [_ /andP[aun una]] := Aun n.
+      rewrite ler_distlC; apply/andP; split.
+        by rewrite lerBlDr (le_trans aun)// lerDl ltW.
+      rewrite (le_trans (ltW una))// lerD2l invf_ple ?posrE// -nat1r -lerBlDl.
+      by near: n; exact: nbhs_infty_ger.
+    apply: closed_cvg => //; apply/nearW => n.
+    by have := (Aun n).1.
+  have [ubA|ubA] := asboolP (has_ubound A).
+    have Ab := H ubA.
+    by rewrite !asboolT//=; exact: itv_closed_ends_closed.
+  by case: asboolP => // _; exact: itv_closed_ends_closed.
+have [ubA|ubA] := asboolP (has_ubound A); last exact: itv_closed_ends_closed.
+by have bA : A b := H ubA; rewrite !asboolT.
+Unshelve. all: end_near. Qed.
+
+Lemma convex_Rhull (A : set R) : convex_set [set` (Rhull A)].
+Proof. exact: convex_interval. Qed.
+
+Lemma convex_is_inverval (A : set R) : convex_set A -> is_interval A.
+Proof.
+move=> convA x y Ax Ay z.
+have [<-|xy] := eqVneq x y.
+  by rewrite -eq_le => /eqP <-.
+move=> /andP[xz zy].
+have := convA x y.
+pose t := (y - z) / (y - x).
+have t_ge0 : 0 <= t.
+  rewrite divr_ge0 ?subr_ge0//.
+  by rewrite (le_trans xz).
+have t_le1 : t <= 1.
+  rewrite ler_pdivrMr//.
+    by rewrite subr_gt0 lt_neqAle xy/= (le_trans xz).
+  by rewrite mul1r lerB.
+have -> : z = t *: x + t.~ *: y.
+  rewrite /t.
+  rewrite /onem.
+  rewrite -(@divff _ (y - x)) ?subr_eq0 1?eq_sym//.
+  rewrite -mulrBl.
+  rewrite opprB.
+  rewrite (addrC (y - x)) addrA subrK.
+  rewrite -[X in _ = _ + X]mulrA mulrCA.
+  rewrite -[X in _ = X + _]mulrA [X in _ = X + _]mulrCA.
+  rewrite -mulrDr.
+  rewrite 2!mulrBl addrACA (addrC (y * x + _)).
+  rewrite addrA (mulrC y x) subrK (addrC _ (z * y)) -mulrBr mulrCA mulVf ?mulr1//.
+  by rewrite subr_eq0 eq_sym.
+pose T := Itv01 t_ge0 t_le1.
+by move/(_ T (mem_set Ax) (mem_set Ay)) /set_mem.
+Qed.
+
+Lemma smallest_convex_set (A B : set R) : A `<=` B ->
+  convex_set B -> [set` Rhull A] `<=` B.
+Proof.
+move=> AB convB.
+rewrite Rhull_smallest => C.
+apply; split => //.
+exact: convex_is_inverval.
+Qed.
+
+Lemma closure_seq (A : set R) x : x \in closure A <->
+  exists x_ : R^nat, [/\ range x_ `<=` A,
+                         forall n, `|x_ n - x| < n.+1%:R^-1 &
+                         x_ @ \oo --> x].
+Proof.
+split.
+  rewrite inE => Ax.
+  have : forall n, exists un : R, A un /\ `|un - x| < n.+1%:R^-1.
+     move=> n.
+     move: Ax => /(_ (ball x n.+1%:R^-1) (nbhsx_ballx _ _ _)).
+     rewrite invr_gt0 ltr0n => /(_ isT)[un [Aun xn]].
+     exists un; split => //.
+     by move: xn; rewrite /ball/= distrC.
+  move=> /choice[x_ Ax_]; exists x_; split.
+  - by move=> r [m _ <-]; apply Ax_.
+  - by move=> m; apply Ax_.
+  - apply/cvgrPdist_le => /= e e0; near=> n.
+    rewrite distrC (le_trans (ltW (Ax_ _).2))// invf_ple ?posrE// -natr1 -lerBlDr.
+    by near: n; exact: nbhs_infty_ger.
+move=> [x_ [x_A x_x x_oo]].
+rewrite inE closureE => B [cloB AB].
+move: x_oo.
+apply: closed_cvg => //.
+apply/nearW => m.
+exact/AB/x_A/imageT.
+Unshelve. all: end_near. Qed.
+
+Lemma closure_convex_set (A : set R) : convex_set A -> convex_set (closure A).
+Proof.
+move=> convA x y t xA yA; apply/closure_seq.
+have [x_ [x_A x_x x_oo]]:= (closure_seq _ _).1 xA.
+have [y_ [y_A y_y y_oo]]:= (closure_seq _ _).1 yA.
+pose z_ n := conv t (x_ n : R^o) (y_ n).
+exists z_; split.
+- move=> r [n _ <-].
+  apply/set_mem.
+  rewrite convA//; apply/mem_set.
+    by apply: x_A; exact/imageT.
+  by apply: y_A; exact/imageT.
+- move=> n.
+  rewrite /z_ convRE /conv/= opprD addrACA -!mulrBr.
+  rewrite (le_lt_trans (ler_normD _ _))// !normrM.
+  have [->|t0] := eqVneq t%:num 0.
+    by rewrite normr0 mul0r add0r onem0 normr1 mul1r.
+  have [->|t1] := eqVneq t%:num 1.
+    by rewrite onem1 normr0 mul0r addr0 normr1 mul1r.
+  rewrite ger0_norm// (@ger0_norm _ _.~) ?onem_ge0//.
+  rewrite -[ltRHS]mul1r -[X in _ < X * _](add_onemK t%:num) [in ltRHS]mulrDl.
+  rewrite ltrD//.
+    by rewrite ltr_pM2l// lt_neqAle eq_sym t0/=.
+  by rewrite ltr_pM2l// onem_gt0// lt_neqAle t1/=.
+- by apply: cvgD; exact: cvgMl_tmp.
+Qed.
+
 Lemma closure_Rhull (A : set R) :
   closure [set` Rhull A] = [set` Rhull (closure A)].
 Proof.
-rewrite /Rhull.
-case: ifP => /asboolP; case: ifP => /asboolP.
-- move=> hasubA haslbA.
-  admit.
-- move=> hasNubA haslbA.
-  admit.
-- move=> hasubA hasNlbA.
-  admit.
-- move=> hasNubA hasNlbA.
-  admit.
-Admitted.
+apply/seteqP; split.
+  have AA : [set` Rhull A] `<=` [set` Rhull (closure A)].
+    by apply: le_Rhull; exact: subset_closure.
+  have closedA : closed [set` Rhull (closure A)].
+    by apply: closed_Rhull; exact: closed_closure.
+  rewrite closureE => /= r.
+  by move/(_ [set` Rhull (closure A)]); apply.
+set C := [set` Rhull A].
+have convC : convex_set C by exact: convex_interval.
+have convclosureC : convex_set (closure C).
+  exact: closure_convex_set.
+have AcloC : A `<=` closure C.
+  apply: subset_trans; last exact: subset_closure.
+  exact: sub_Rhull.
+have cloAcloC : closure A `<=` closure C.
+  rewrite closureE.
+  apply: smallest_sub => //.
+  exact: closed_closure.
+exact: smallest_convex_set.
+Qed.
 
 Lemma bounded_set_oscillation_le_total_variations (A : set R) f :
   bounded_set A ->
