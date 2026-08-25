@@ -534,29 +534,6 @@ have /nonsubset[/= x [[aex Ax] /eqP xa]] := aAa (PosNum e0).
 by exists x; split => //; exact: aeV.
 Qed.
 
-Lemma limit_point_closed (A : set R) : closed (limit_point A).
-Proof.
-rewrite -openC.
-set U : set R := ~` _.
-rewrite openE/= => a /not_limit_point_set1[e AeAa].
-rewrite /interior /nbhs/= /nbhs_ball_; exists e%:num => //= b bae.
-suff : b \notin limit_point A by rewrite notin_setE.
-have [{}bae aeEa] : nbhs b (ball a e%:num) /\ ball a e%:num `&` A `<=` [set a].
-  have [ab|ab] := eqVneq a b.
-    split=> [|/= r [aer Ar]].
-      by rewrite ab; exact: nbhsx_ballx.
-    exact: AeAa.
-  split => //.
-  rewrite /nbhs/= /nbhs_ball_/=.
-  exists (Num.min `|b - a| (e%:num - `|b - a|)) => //=.
-    by rewrite lt_min/= normr_gt0 subr_eq0 eq_sym ab/= subr_gt0 distrC.
-  move=> x.
-  rewrite /ball /ball_ /= lt_min => /andP[bxba bxe].
-  by rewrite -(subrKA b) (le_lt_trans (ler_normD _ _))// -ltrBrDl (distrC a).
-rewrite notin_setE => /limit_point_infinite_setP/(_ _ bae); apply.
-exact: (sub_finite_set aeEa).
-Qed.
-
 Section checking.
 
 Lemma isolated_id_set1 (x : R) : isolated [set x] = [set x].
@@ -666,19 +643,9 @@ rewrite subset_set1.
 *)
 Abort.
 
-Lemma perfect_set_closedDisolated (A : set R) : closed A ->
-  perfect_set (A `\` isolated A).
-Proof.
-(*
-move=> cA.
-split.
-*)
-Abort.
-
 End checking.
 
 End limit_point_closed.
-Arguments limit_point_closed {R} A.
 
 (* TODO: PR *)
 Section interior_lemmas.
@@ -2442,28 +2409,20 @@ have construct_x n :
     (forall (i j : 'I_ n.+2), nth d x j \notin `]c_ n i, d_ n i[) ].
   (* use lambda_partition *)
   admit.
-pose x := fun n => sval (cid (@construct_x n)).
-have pcdx n : itv_partition c d (behead (x n)).
+pose xs := fun n => sval (cid (@construct_x n)).
+have pcdx n : itv_partition c d (behead (xs n)).
   by have [] := proj2_sig (cid (@construct_x n)).
-have max_x n : mesh c d (behead (x n)) <= fine (lambda n).
+have max_xs n : mesh c d (behead (xs n)) <= fine (lambda n).
   have [_ +] := proj2_sig (cid (construct_x n)).
   rewrite -[X in (_ <= X)%E](@fineK _ (lambda n)); last first.
     admit.
   admit.
-pose S_ n : R := variation c d f (behead (x n)).
+pose S_ n : R := variation c d f (behead (xs n)).
 (* (2) *)
 pose V_ n : \bar R := \sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E +
-     (\sum_(i < n) total_variation (A_ i) (B_ i) f).
+     (\sum_(i < n.+1) total_variation (A_ i) (B_ i) f).
 pose CD_ n := merge <=%R [tuple c_ n i | i < n.+2] [tuple d_ n i | i < n.+2].
-have sub_xcd n : subseq (CD_ n) (x n).
-  admit.
-have SV n : ((S_ n)%:E <= V_ n)%E.
-  rewrite /S_ /V_.
-  rewrite /variation.
-  rewrite /=.
-  admit.
-set Vcd : \bar R := total_variation c d f.
-have V_tv n : (V_ n <= Vcd)%E.
+have sub_xcd n : subseq (CD_ n) (xs n).
   admit.
 have ac : a <= c.
   apply: lb_le_inf; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
@@ -2477,15 +2436,65 @@ have db : d <= b.
   have := HZ; apply/negP.
   rewrite -leNgt le_eqVlt; apply/predU1P; left.
   by rewrite Z0' image_set0 measure0.
+have cdcf : {within `[c, d], continuous f}.
+  apply: continuous_subspaceW cf.
+  by apply: subset_itv; rewrite bnd_simp.
+have SV n : ((S_ n)%:E <= V_ n)%E.
+  rewrite /S_ /V_.
+  apply: (le_trans (lee_tofin
+   (@variation_subseq _ c d f (behead (xs n)) (behead (CD_ n)) _ _ _))).
+  - admit.
+  - admit.
+  - admit.
+  apply: (@le_trans _ _ (\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E +
+                    \sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E )%E).
+    admit.
+  apply: leeD2l.
+  rewrite (_ : (\sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E)%R =
+     (\sum_(i < n.+1) `|f (B_ i) - f (A_ i)|%:E)%R)%E.
+    rewrite (_ : (\sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E)%R =
+       (\sum_(i < n.+1) `|f (b_ n i) - f (a_ n i)|%:E)%R)%E.
+      apply: eq_bigr => i _.
+      by rewrite cbE daE/=.
+    transitivity (\sum_(i0 < n.+1) `|f (B_ (idx n i0)) - f (A_ (idx n i0))|%:E).
+      apply: eq_bigr => i _.
+      rewrite anth bnth.
+      have [-> ->] := nth_abE n i (ltn_ord i).
+      by rewrite -idxE => idxn1.
+    (* idx is bijection *)
+    have [[idx_ord idx_inv] /= [idx_ordE inv_ord ord_inv]] := idx_bij n.
+    transitivity (\sum_(i0 < n.+1) `|f (B_ (idx_ord i0)) - f (A_ (idx_ord i0))|%:E).
+      apply: eq_bigr => i _.
+      by rewrite !idx_ordE -!ordinal_val.
+    rewrite -(@reindex_inj _ _ _ _ idx_ord xpredT
+       (fun k => `|f (B_ k) - f (A_ k)|%:E))//=.
+    by move=> i j; move/(f_equal idx_inv); rewrite !inv_ord.
+  apply: (@le_trans _ _ ((\sum_(i < n.+1) oscillation f `[A_ i, B_ i]))).
+    apply: lee_sum => i _.
+    apply: variation_oscillation.
+    - apply: continuous_subspaceW cdcf.
+      apply: subset_neitv_oocc => //.
+      rewrite /A_ /B_ -contiguous_ooitv//.
+      rewrite -compact_Rhull//.
+      apply: (subset_trans (@contiguous_intervalsS _ _ _)).
+      exact: cplt_hull_subset_Rhull.
+    - by rewrite boundr_in_itv/= bnd_simp ltW.
+    - by rewrite boundl_in_itv/= bnd_simp ltW.
+  apply: lee_sum => i _.
+  rewrite -[X in total_variation X _](inf_itvcc (ltW (AB i))).
+  rewrite -[X in total_variation _ X](sup_itvcc (ltW (AB i))).
+  apply: bounded_set_oscillation_le_total_variations.
+  apply: compact_bounded.
+  exact: segment_compact.
+set Vcd : \bar R := total_variation c d f.
+have V_tv n : (V_ n <= Vcd)%E.
+  admit.
 have cdbvf : bounded_variation c d f.
   apply: (bounded_variationl (ltW cd) db).
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
 have Soo_tv : (S_ n)%:E @[n --> \oo] --> Vcd.
-  have cdcf : {within `[c, d], continuous f}.
-    apply: continuous_subspaceW cf.
-    by apply: subset_itv; rewrite bnd_simp.
-  have := lemma5 cd cdcf pcdx max_x lambda0.
+  have := lemma5 cd cdcf pcdx max_xs lambda0.
   by rewrite /S_ /Vcd.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
   apply: (squeeze_cvge _ Soo_tv); last first.
@@ -2544,6 +2553,7 @@ have eq3 : \forall n \near \oo, (Vcd - alpha / 2 < V_ n)%E.
 have eq4 n : total_variation c d f =
   \sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E +
    \sum_(i < n.+1) (total_variation (A_ i) (B_ i) f).
+  
   admit.
 
 have ABsubcd i : `]A_ i, B_ i[ `<=` `[c, d].
@@ -2613,13 +2623,10 @@ have eq5 : \forall n \near \oo,
   exists n0 => // n/= n0n.
   move: (hyp n n0n) => {hyp}.
   rewrite /V_ -lteBlDr.
-    case: n n0n => //.
-    by move=> _; rewrite big_ord0.
+    by case: n n0n.
   rewrite /Vcd (eq4 n).
   apply: le_lt_trans.
-  rewrite addeAC leeB// -addeA leeDl// subre_ge0//.
-  apply: (lee_sum_nneg_ord (fun i => total_variation _ _ f) predT) => //.
-  by move=> i _; apply/total_variation_ge0/ltW.
+  by rewrite addeAC leeB// -addeA leeDl// subre_ge0.
 
 (* (5.5) (between (5) and (6)) *)
 have alphaH n : (alpha < \sum_(i < n.+2) (H (d_ n i) - H (c_ n i))%:E)%E.
@@ -2695,24 +2702,105 @@ have cZsub n i : closed (Zsub n i).
   apply: closedI => //.
   exact: itv_closed.
 have hull_Zsub n (i : 'I_ n.+2) : Rhull (Zsub n i) = `[c_ n i, d_ n i].
+  rewrite /Zsub.
   admit.
 have Zsub_cover n (i : 'I_ n.+2) :
     `[c_ n i, d_ n i]%classic `<=` Zsub n i `|` \bigcup_(i0 in
-         (fun k : nat => `[A_ (n + k)%N, B_ (n + k)%N] `<=` `[c_ n i, d_ n i]))
-  `](A_ (n + i0)%N, B_ (n + i0)%N).1, (A_ (n + i0)%N, B_ (n + i0)%N).2[%classic.
+    (fun k : nat => `[A_ (n.+1 + k)%N, B_ (n.+1 + k)%N] `<=` `[c_ n i, d_ n i]))
+  `](A_ (n.+1 + i0)%N, B_ (n.+1 + i0)%N).1,
+         (A_ (n.+1 + i0)%N, B_ (n.+1 + i0)%N).2[%classic.
+    move=> x/= cdx.
+    have : [set` Rhull Z] x.
+      rewrite (hullZ_abcd n); left.
+      by exists i => /=.
+    rewrite -(setUIDK [set` Rhull Z] Z).
+    rewrite setIidr -/(cplt_hull Z); first exact: sub_Rhull.
+    move=> [Zx|].
+      by left.
+    rewrite bigcup_contiguous_intervals//.
+    rewrite bigcup_contiguous_intervals_support.
+    have [funh1 injh1 surjh1] := @bij _ _ _ _ h1.
+    rewrite (reindex_bigcup h1 _ _ _ funh1 surjh1).
+    move=> [k _ kx]; right.
+    have nk : (n < k)%N.
+      rewrite ltnNge; apply/negP; rewrite -ltnS => kn1.
+      move: (disj_abcd n).
+      apply/eqP/set0P; exists x; split.
+        by exists i => /=.
+      by exists k.
+    exists (k - n.+1)%N.
+    rewrite subnKC//.
+    apply: subset_neitv_oocc => //.
+    move=> z /[dup] ABkz.
+    rewrite /A_ /B_ -contiguous_ooitv// => kz.
+    have [k' k'n2 cdk'z/=] := citvScd _ _ kz _ nk.
+
+    suff -> : (i = k' :> nat) by [].
+
+    apply/not_notP => /eqP ik'.
+    have [|zx] := leP x z.
+      admit.
+    have zxk : `]z, x[%classic `<=` contiguous_intervals Z (h1 k).
+      admit.
+    have : d_ n k' < c_ n i.
+      admit.
+    rewrite daE cbE.
+    case: i cdx ik'.
+    case.
+      admit.
+    move=> /= i iltn2 cdx ik'.
+    move=> ak'bi.
+    have {k'n2}k'n1 : (k' < n.+1)%N.
+      admit.
+    have zai : z <= a_ n i.
+      move : ik'.
+      rewrite neq_ltn => /orP[i1k'|k'i1].
+        admit.
+      have := @le_sorted_leq_nth _ _ d _ (sorted_a n) k' i.
+      rewrite !inE size_seq_ab.
+      move/(_ k'n1 iltn2 k'i1); rewrite -/(a_ n k') -/(a_ n i).
+      apply: le_trans.
+      move: cdk'z.
+      by rewrite daE in_itv/= => /andP[_].
+    have bix : b_ n i <= x.
+      move: cdx.
+      rewrite cbE /=.
+      by rewrite in_itv/= => /andP[].
+    have : `]a_ n i, b_ n i[ `<=` contiguous_intervals Z (h1 k).
+      apply: (@subset_trans _ `]z, x[%classic).
+      (* by zai and bix *)
+        admit.
+      (* because contiguous_intervals is interval *)
+      admit.
+    rewrite anth bnth.
+    have [-> ->] := nth_abE n i iltn2.
+    rewrite -idxE.
+    move=> idxin1.
+    rewrite /A_ /B_.
+    rewrite -contiguous_ooitv// => citvik.
+    have ik : idx n i = k.
+      admit.
+    (* same for k' *)
+    have k'k : idx n k' = k.
+      admit.
+    move: ik'.
+    admit.
+  admit.
+have disj_cd n : trivIset (`I_ n.+2) (fun i => `[c_ n i, d_ n i]%classic).
+  apply/trivIsetP => i j /= iltn2 jltn2 ij.
   admit.
 (* (7) *)
 have ineq7 n : ((\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|)%:E <=
-  \sum_(n <= i <oo) oscillation f `[A_ i, B_ i])%E.
+  \sum_(n.+1 <= i <oo) oscillation f `[A_ i, B_ i])%E.
   have prop65 : forall i : 'I_ n.+2, (`|f (d_ n i) - f (c_ n i)|%:E <=
-    \sum_(n <= j <oo | `[< `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] >])
+    \sum_(n.+1 <= j <oo | `[< `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] >])
      oscillation f `[A_ j, B_ j])%E.
     move => i.
 (* change to lemma4_cover *)
     have /andP[le1 le2] := @lemma4_cover _ _ _ (cled n i) f _
-    (fun k : nat => (A_ (n + k)%N, B_ (n + k)%N)) (cf_cd n i)
+    (fun k : nat => (A_ (n.+1 + k)%N, B_ (n.+1 + k)%N)) (cf_cd n i)
     (itvfcd n i) (cZsub n i) (hull_Zsub n i)
-    (fun k => (ltW (AB (n + k)%N))) (Zsub_cover n i).
+    (fun k => (ltW (AB (n.+1 + k)%N))) (Zsub_cover n i).
     rewrite /=.
     apply: (le_trans le1); apply: (le_trans le2).
     have -> : mu^*%mu [set f x | x in Zsub n i] = 0.
@@ -2730,23 +2818,29 @@ have ineq7 n : ((\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|)%:E <=
       - admit.
       apply/eqP; rewrite -measure_le0/=.
       by rewrite -Z0; apply: le_outer_measure; apply: subIsetl.
-  rewrite add0r/=.
-  rewrite [leLHS](_: _ =
-  \big[+%E/0%R]_(n <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
+    rewrite add0r/=.
+    rewrite [leLHS](_: _ =
+      \big[+%E/0%R]_(n.+1 <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
       oscillation f `[A_ i0, B_ i0]).
     (* rewrite cvg_shiftn. *)
-    admit.
+      rewrite eseries_mkcond [RHS]eseries_mkcond.
+      rewrite -(nneseries_addn n.+1).
+        by move=> k; case: ifP => // _; apply: oscillation_ge0.
+      apply: eq_eseriesr => k _; case: ifP => /asboolP Hk.
+        by rewrite addnC ifT//; apply/asboolP; rewrite addnC.
+      by rewrite ifF//; apply/asboolP; rewrite addnC.
+  
   by apply: lee_nneseries => // j _ _; exact: oscillation_ge0.
   apply: (@le_trans _ _
     (\sum_(i < n.+2)
-      \big[+%E/0%R]_(n <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
+      \big[+%E/0%R]_(n.+1 <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
           oscillation f `[A_ i0, B_ i0])%E).
   by rewrite -sumEFin; apply: lee_sum => /= i _.
-  (* interchenge *)
+  (* interchange *)
   have : (\sum_(i < n.+2)
-       \big[+%E/0]_(n <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
+       \big[+%E/0]_(n.+1 <= i0 <oo | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
          oscillation f `[A_ i0, B_ i0] <=
-           \big[+%E/0]_(n <= i0 <oo)
+           \big[+%E/0]_(n.+1 <= i0 <oo)
               (\sum_(i < n.+2 | `[< `[A_ i0, B_ i0] `<=` `[c_ n i, d_ n i] >])
        oscillation f `[A_ i0, B_ i0]))%E.
   under eq_bigr do rewrite eseries_mkcond.
@@ -2759,13 +2853,41 @@ have ineq7 n : ((\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|)%:E <=
     by case: ifP => // _; exact: oscillation_ge0.
   - by move=> i _; rewrite -big_mkcond; apply: lee_sum.
   move/le_trans; apply.
+  rewrite eseries_cond [leRHS]eseries_cond/=.
   apply: lee_nneseries.
     by move=> i ni _; apply: sume_ge0 => j _; exact: oscillation_ge0.
-  move=> j _.
-  admit.
+  move=> j nj.
+  have : supp (h1 j).
+    have [+ _ _] := @bij _ _ _ _ h1.
+    exact.
+  move=> [z jz].
+  have := citvScd j z jz n.
+  move/(_ nj).
+  move=> [k kn2 kz].
+  rewrite (bigD1_ord (Ordinal kn2))/=.
+    apply/asboolP.
+    admit.
+  rewrite big1; last by rewrite adde0.
+  move=> i /asboolP ji.
+  exfalso.
+  move: ji.
+  apply/existsNP; exists z.
+  apply/not_implyP; split.
+    admit.
+  rewrite /=.
+  have kj := neq_bump k i.
+  move=> zbump.
+  have/trivIsetP/(_ k (bump k i))/= := disj_cd n.
+  move/(_ kn2).
+  have bumpn2 : (bump k i < n.+2)%N.
+    rewrite /bump -[ltnRHS]add1n -addnS leq_add//.
+    by case: (k <= i)%N.
+  move/(_ bumpn2 kj).
+  by move/eqP; apply/negP/set0P; exists z.
+
 (* (8), used in the last step *)
 have ineq8 : \forall n \near \oo,
-  (alpha / 2 <= \sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E.
+  (alpha / 2 <= \sum_(n.+1 <= j <oo) oscillation f `[A_ j, B_ j])%E.
   have [n _ H6] := ineq6.
   exists n => // n0 /= n0n.
   apply: (le_trans _ (ineq7 n0)).
@@ -2774,7 +2896,8 @@ have ineq8 : \forall n \near \oo,
   by rewrite sumEFin.
 (* (9), used in the last step *)
 have eq9 :
-   (\sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E @[n --> \oo] --> 0%:E.
+   (\sum_(n.+1 <= j <oo) oscillation f `[A_ j, B_ j])%E @[n --> \oo] --> 0%:E.
+  rewrite (cvg_shiftS (fun k => \big[+%E/0]_(k <= j <oo) _)).
   apply: nneseries_tail_cvg.
     apply: (@le_lt_trans _ _ Vcd).
       (* oscillation_closure *)
