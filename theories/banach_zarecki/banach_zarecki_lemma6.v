@@ -469,10 +469,117 @@ have cloAcloC : closure A `<=` closure C.
 exact: smallest_convex_set.
 Qed.
 
+Lemma oscillationE (A : set R) (f : R -> R) :
+  A !=set0 ->
+  let B := [set (EFin \o f) x | x in A] in
+  ereal_sup B \is a fin_num ->
+  ereal_inf B \is a fin_num ->
+  oscillation f A = ereal_sup [set `|f x - f y|%:E | x in A & y in A].
+Proof.
+move=> A0 B Mfin mfin.
+rewrite /oscillation.
+move/set0P : (A0) => /negPf ->.
+apply/eqP; rewrite eq_le; apply/andP; split; last first.
+  apply: ge_ereal_sup => /= _ /= [r Ar [s As] <-].
+  have [frfs|frfs] := leP (f r) (f s).
+    rewrite ler0_norm ?subr_le0// opprB EFinB leeB//.
+      apply/le_ereal_sup_tmp.
+      by exists ((f s)%:E) => //=; exists s.
+    rewrite ge_ereal_inf//.
+    by exists ((f r)%:E) => //=; exists r.
+  rewrite gtr0_norm ?subr_gt0// EFinB leeB//.
+    apply/le_ereal_sup_tmp.
+    by exists ((f r)%:E) => //=; exists r.
+  rewrite ge_ereal_inf//.
+  by exists ((f s)%:E) => //=; exists s.
+apply/lee_addgt0Pr => /= e' e'0.
+have B0 : B !=set0 by exact: image_nonempty.
+set M : \bar R := ereal_sup B.
+set m : \bar R := ereal_inf B.
+have := ereal_inf_sup B0.
+rewrite -/M -/m.
+rewrite le_eqVlt => /predU1P[-> {m}|mM].
+  rewrite subee//.
+  rewrite adde_ge0 ?lee_fin//; last exact: ltW.
+  rewrite -(ereal_sup1 0) ereal_sup_le//.
+  rewrite sub1set inE/=.
+  by case: A0 => x Ax; exists x => //; exists x => //; rewrite subrr normr0.
+pose e := minr e' (fine (M - m)).
+have e20 : 0 < e / 2.
+  rewrite divr_gt0// lt_min e'0/= fine_gt0// sube_gt0 mM/=.
+  rewrite -(@gte0_abs _ (_ - _)%E) ?sube_gt0//.
+  by rewrite -fin_num_abs fin_numB Mfin mfin.
+have [r Ar rMe] : exists2 r, A r & ((f r)%:E > M - (e / 2)%:E)%E.
+  have [x [r Ar] rx Bex] := @ub_ereal_sup_adherent _ B _ e20 Mfin.
+  exists r => //.
+  by rewrite -rx in Bex.
+have [s As sme] : exists2 s, A s & ((f s)%:E < m + (e / 2)%:E)%E.
+  have [y [s As] sy Bey] := @lb_ereal_inf_adherent _ B _ e20 mfin.
+  exists s => //.
+  by rewrite -sy in Bey.
+rewrite (@le_trans _ _ (`|f r - f s|%:E + e'%:E))//.
+  rewrite -leeBlDr//.
+  rewrite (@le_trans _ _ ((M - (e' / 2)%:E) - (m + (e' / 2)%:E))%E)//.
+    by rewrite oppeD// ?fin_num_adde_defl// addeACA -EFinB -opprD -splitr EFinN.
+  rewrite ger0_norm.
+    rewrite subr_ge0.
+    rewrite -lee_fin (le_trans (ltW sme))// (le_trans _ (ltW rMe))//.
+    rewrite leeBrDl// addeCA -EFinD -splitr.
+    rewrite -leeBrDl//.
+    rewrite -[leRHS]fineK ?fin_numB ?Mfin//.
+    rewrite lee_fin.
+    by rewrite /e ge_min lexx orbT.
+  rewrite EFinB leeB// ltW//.
+    rewrite (le_lt_trans _ rMe)//.
+    by rewrite leeB// lee_fin ler_wpM2r// /e ge_min lexx.
+  rewrite (lt_le_trans sme)//.
+  by rewrite leeD2l// lee_fin ler_wpM2r// /e ge_min lexx.
+rewrite leeD2r//.
+apply/le_ereal_sup_tmp.
+exists `|f r - f s|%:E => //=.
+by exists r => //; exists s.
+Qed.
+
 Lemma bounded_set_oscillation_le_total_variations (A : set R) f :
   bounded_set A ->
   (oscillation f A <= total_variation (inf A) (sup A) f)%E.
 Proof.
+move=> boundA.
+have [->|/set0P A0] := eqVneq A set0.
+  rewrite oscillation0.
+  rewrite total_variation_ge0//.
+  by rewrite inf0 sup0.
+rewrite oscillationE//.
+- admit.
+- admit.
+- apply: ge_ereal_sup => /= _ [r Ar [s As <-]].
+  apply: (@le_trans _ _ (total_variation r s f)).
+    apply: le_ereal_sup_tmp.
+    eexists; last exact: lexx.
+    rewrite /=.
+    exists `|f s - f r| => //.
+    rewrite /variations/=.
+    exists [:: s] => //=.
+    red.
+    simpl.
+    admit.
+  rewrite /variation/=.
+  by rewrite big_nat1/=.
+  by rewrite distrC.
+apply: (@le_trans _ _ (total_variation (inf A) s f)).
+  rewrite (@total_variationD _ (inf A) s r)//.
+  admit.
+  admit.
+  rewrite leeDr//.
+  rewrite total_variation_ge0//.
+  admit.
+apply: (@total_variation_nondecreasing _ _ (sup A) f _ _).
+admit.
+admit.
+admit.
+
+
+
 rewrite Rbounded_setE/= => -[haslbA hasubA].
 apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
   apply: oscillation_sub.
