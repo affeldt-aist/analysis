@@ -540,6 +540,134 @@ exists `|f r - f s|%:E => //=.
 by exists r => //; exists s.
 Qed.
 
+From mathcomp Require Import contra.
+
+Lemma total_variationP a b (f : R -> R) : a <= b ->
+  total_variation a b f = +oo%E <->
+  total_variation a b f \isn't a fin_num.
+Proof.
+move=> ab; split => [->//|].
+rewrite fin_numEn => /orP[|/eqP//].
+rewrite -leeNy_eq leNgt => /negP abs.
+absurd.
+apply: abs.
+by rewrite (lt_le_trans _ (total_variation_ge0 _ _)).
+Qed.
+
+Lemma not_bounded_variationP (a b : R) (f : R -> R) :
+  a <= b ->
+  ~ bounded_variation a b f <-> total_variation a b f = +oo%E.
+Proof.
+move=> ab.
+split=> [abf|abf].
+  apply/total_variationP => //.
+  contra: abf.
+  by move/bounded_variationP; apply.
+move/bounded_variationP => /(_ ab).
+apply/negP.
+by apply/total_variationP.
+Qed.
+
+Lemma total_variation_ge_sub (A : set R) (f : R -> R) :
+  bounded_set A ->
+  forall x y, A x -> A y ->
+  (`|f x - f y|%:E <= total_variation (inf A) (sup A) f)%E.
+Proof.
+move=> boundA x y.
+wlog : x y / x < y.
+  move=> wlg Ax Ay.
+  have [xy|yx|xy]:= ltgtP x y.
+  - exact: wlg.
+  - by rewrite distrC wlg.
+  - rewrite xy subrr normr0 total_variation_ge0//.
+    by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+move=> xy Ax Ay.
+have infAx : inf A <= x by apply: ge_inf => //; exact: bounded_has_lbound.
+have ysupA : y <= sup A by apply: ub_le_sup => //; exact: bounded_has_ubound.
+apply: le_ereal_sup_tmp.
+exists (`|f x - f (inf A)| + `|f y - f x| + `|f (sup A) - f y|)%:E.
+  eexists; last reflexivity.
+  move: infAx; rewrite le_eqVlt => /predU1P[<-|infA].
+  - rewrite subrr normr0 add0r.
+    move: ysupA; rewrite le_eqVlt => /predU1P[->|ysupA].
+    + rewrite subrr normr0 addr0.
+      exists [:: sup A].
+        rewrite /itv_partition/=.
+        split => //; rewrite andbT.
+        rewrite (@le_lt_trans _ _ x)//.
+          by rewrite ge_inf//; exact: bounded_has_lbound.
+        rewrite (@lt_le_trans _ _ y)//.
+        by rewrite ub_le_sup//; exact: bounded_has_ubound.
+      by rewrite !variation_recl variation_nil addr0.
+    + exists [:: y; sup A].
+        rewrite /itv_partition/=.
+        split => //; rewrite ysupA !andbT.
+        rewrite (@le_lt_trans _ _ x)//.
+        by rewrite ge_inf//; exact: bounded_has_lbound.
+      by rewrite !variation_recl variation_nil addr0.
+  - move: ysupA; rewrite le_eqVlt => /predU1P[->|ysupA].
+    + rewrite subrr normr0 addr0.
+      exists [:: x; sup A].
+        rewrite /itv_partition/=.
+        split => //; rewrite infA andbT/=.
+        rewrite (@lt_le_trans _ _ y)//.
+        by rewrite ub_le_sup//; exact: bounded_has_ubound.
+      by rewrite !variation_recl variation_nil addr0.
+    + exists [:: x; y; sup A].
+        rewrite /itv_partition/=.
+        by split => //; rewrite infA andbT xy/= ysupA.
+      by rewrite !variation_recl variation_nil addr0 addrA.
+rewrite [in leLHS]distrC.
+by rewrite !EFinD addeC addeA leeDr// adde_ge0.
+Qed.
+
+Lemma sup_not_bounded_variation (A : set R) f :
+  bounded_set A ->
+  ereal_sup [set (EFin \o f) x | x in A] = +oo%E ->
+  ~ bounded_variation (inf A) (sup A) f.
+Proof.
+move=> boundA.
+have [->|/set0P [r Ar] fAy] := eqVneq A set0.
+  by rewrite image_set0 ereal_sup0.
+move/bounded_variationP.
+rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                              exact: bounded_has_ubound|].
+move=> /(_ isT).
+set M := total_variation _ _ _.
+move=> Mfin.
+suff : (ereal_sup ((EFin \o f) @` A) <= (f r)%:E + (M + 1))%E.
+  by rewrite fAy leNgt ltey negbK -(fineK Mfin).
+suff: ((EFin \o f) @` A) `<=` `]-oo, (f r)%:E + (M + 1)%E[.
+  move/ereal_sup_le => /le_trans; apply.
+  apply: ge_ereal_sup => z/=.
+  by rewrite in_itv/= => /ltW.
+move=> _ /= [s As <-].
+rewrite in_itv/= -(fineK Mfin) lte_fin//.
+rewrite (@le_lt_trans _ _ (f r + `|f s - f r|))//.
+  by rewrite -lerBlDl ler_norm.
+rewrite ltrD2l.
+rewrite -ltrBlDr.
+rewrite -lte_fin fineK//.
+rewrite EFinB.
+rewrite (@lt_le_trans _ _ `|f s - f r|%:E)//.
+   by rewrite lteBlDr// lteDl.
+by rewrite total_variation_ge_sub.
+Qed.
+
+Lemma inf_not_bounded_variation (A : set R) f :
+  bounded_set A ->
+  ereal_inf [set (EFin \o f) x | x in A] = -oo%E ->
+  ~ bounded_variation (inf A) (sup A) f.
+Proof.
+move=> boudnA.
+rewrite /ereal_inf => /(congr1 (fun x => - x)%E).
+rewrite oppeK/=.
+rewrite image_comp.
+move/sup_not_bounded_variation => fA.
+by move/bounded_variationN; exact: fA.
+Qed.
+
 Lemma bounded_set_oscillation_le_total_variations (A : set R) f :
   bounded_set A ->
   (oscillation f A <= total_variation (inf A) (sup A) f)%E.
@@ -549,34 +677,61 @@ have [->|/set0P A0] := eqVneq A set0.
   rewrite oscillation0.
   rewrite total_variation_ge0//.
   by rewrite inf0 sup0.
+have [supfin|] := boolP (ereal_sup ((EFin \o f) @` A) \is a fin_num); last first.
+  move=> /fin_numPn[|].
+    move=> /ereal_sup_ninfty/subset_set1[|].
+      move/image_set0_set0/eqP.
+      by move/set0P : A0 => /negbTE ->.
+    rewrite /oscillation => ->.
+    rewrite ereal_sup1 ereal_inf1/=.
+    by move/set0P : A0 => /negPf ->; rewrite leNye.
+  move/sup_not_bounded_variation => /(_ boundA).
+  move/not_bounded_variationP => ->.
+    by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+  by rewrite leey.
+have [inffin|] := boolP (ereal_inf ((EFin \o f) @` A) \is a fin_num); last first.
+  move=> /fin_numPn[|].
+    move/inf_not_bounded_variation => /(_ boundA).
+    move/not_bounded_variationP => ->.
+      by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+    by rewrite leey.
+  move=> /ereal_inf_pinfty/subset_set1[|].
+    move/image_set0_set0/eqP.
+    by move/set0P : A0 => /negbTE ->.
+  rewrite /oscillation => ->.
+  rewrite ereal_sup1 ereal_inf1/=.
+  by move/set0P : A0 => /negPf ->; rewrite leNye.
 rewrite oscillationE//.
-- admit.
-- admit.
-- apply: ge_ereal_sup => /= _ [r Ar [s As <-]].
-  apply: (@le_trans _ _ (total_variation r s f)).
-    apply: le_ereal_sup_tmp.
-    eexists; last exact: lexx.
-    rewrite /=.
-    exists `|f s - f r| => //.
-    rewrite /variations/=.
-    exists [:: s] => //=.
-    red.
-    simpl.
-    admit.
-  rewrite /variation/=.
-  by rewrite big_nat1/=.
-  by rewrite distrC.
+apply: ge_ereal_sup => /= _ [r Ar [s As <-]].
+wlog : r s Ar As / r < s.
+  move=> wlg.
+  have [rs|sr|sr] := ltgtP r s.
+  + exact: wlg.
+  + by rewrite distrC wlg.
+  + rewrite sr subrr normr0 total_variation_ge0//.
+    by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+move=> rs; apply: (@le_trans _ _ (total_variation r s f)).
+  apply: le_ereal_sup_tmp.
+  eexists; last exact: lexx.
+  exists `|f r - f s| => //.
+  exists [:: s] => /=.
+    by rewrite /itv_partition/= andbT.
+  by rewrite /variation/= big_nat1/= distrC.
 apply: (@le_trans _ _ (total_variation (inf A) s f)).
   rewrite (@total_variationD _ (inf A) s r)//.
-  admit.
-  admit.
-  rewrite leeDr//.
-  rewrite total_variation_ge0//.
-  admit.
-apply: (@total_variation_nondecreasing _ _ (sup A) f _ _).
-admit.
-admit.
-admit.
+    by apply: ge_inf => //; exact: bounded_has_lbound.
+    exact: ltW.
+  by rewrite leeDr// total_variation_ge0// ge_inf//; exact: bounded_has_lbound.
+apply: (@total_variation_nondecreasing _ _ (sup A) f).
+- rewrite in_itv/=; apply/andP; split.
+    by apply: ge_inf => //; exact: bounded_has_lbound.
+  by apply: ub_le_sup => //; exact: bounded_has_ubound.
+- rewrite !bound_itvE has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                            exact: bounded_has_ubound].
+- by apply: ub_le_sup => //; exact: bounded_has_ubound.
 (*
 rewrite Rbounded_setE/= => -[haslbA hasubA].
 apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
@@ -584,9 +739,8 @@ apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
   exact: sub_Rhull.
 rewrite -oscillation_closure.
 rewrite compact_Rhull.
-  rewrite Rcompact_boundE; split => //.
-*)
-Admitted.
+  rewrite Rcompact_boundE; split => //.*)
+Qed.
 
 (* need *)
 Lemma sum_oscillation_le_total_variation (a b : R) f (sA : (set R)^nat) :
