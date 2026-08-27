@@ -58,6 +58,14 @@ by exact: mset_is_measurable.
 Qed.
 End mset.
 
+Section to_mset.
+Variable d : measure_display.
+Variable T : measurableType d.
+Variable A : set T.
+Variable m : measurable A.
+Definition result : mset T := MeasurableSet.pack_ (isMeasurableSet.Build _ _ A m).
+End to_mset.
+
 (*********************)
 
 
@@ -320,9 +328,11 @@ Lemma measurable_giry_codensity d2 {T2 : measurableType d2} {R : realType}
   measurable_fun D f.
 Proof.
 move=> mD mf.
-pose G : set_system (giry T2 R) := \bigcup_(B in measurable) preimg_giry_ev B.
+pose G : set_system (giry T2 R) := \bigcup_(B in [set: mset T2]) preimg_giry_ev B.
 apply: (measurability G) => //= _ [_ [C mC [Z mZ] <-] <-].
-by rewrite setTI; exact: mf.
+rewrite setTI.
+apply: mf => //.
+apply: mset_is_measurable.
 Qed.
 
 End measurable_giry_codensity.
@@ -365,8 +375,11 @@ Implicit Type f : {mfun T1 >-> T2}.
 
 Let measurable_giry_map f : measurable_fun [set: giry T1 R] (giry_map f).
 Proof.
-rewrite /giry_map; apply: measurable_giry_codensity => // B mB.
-by apply: measurable_giry_ev; exact: measurable_funPTI.
+rewrite /giry_map; apply: measurable_giry_codensity => // B mB //=.
+rewrite /pushforward.
+rewrite -/(giry_ev T1 ).
+apply: measurable_giry_ev.
+ exact: measurable_funPTI.
 Qed.
 
 HB.instance Definition _ f := isMeasurableFun.Build _ _ _ _
