@@ -451,9 +451,13 @@ Let join (A : set T) : \bar R :=
   if pselect (measurable A) is left H
   then join_mset (mset_of H) else 0%:E.
 
+Lemma measurable_joinE (A : set T) (mA : measurable A) :
+  join A = join_mset (mset_of mA).
+Proof. by rewrite /join; case: pselect. Qed.
+
 Let join0 : join set0 = 0.
 Proof.
-rewrite /join; case: pselect => // ?.
+rewrite (measurable_joinE measurable0).
 by rewrite /join_mset /giry_ev /giry_int/= integral0_eq.
 Qed.
 
@@ -462,15 +466,16 @@ Proof. by rewrite /join; case: pselect => // ?; exact: integral_ge0. Qed.
 
 Let join_semi_sigma_additive : semi_sigma_additive join.
 Proof.
-move=> F mF tF _; rewrite [X in _ --> X](_ : _ =
-    giry_int M (fun x => \sum_(0 <= k <oo) x (F k))).
-
-XXXXX
-
+move=> F mF tF mUF.
+rewrite (measurable_joinE mUF).
+rewrite [X in _ --> X](_ : _ = giry_int M (fun x => \sum_(0 <= k <oo) x (F k))).
   apply: eq_integral => mu _.
   by apply/esym/cvg_lim => //; exact: measure_sigma_additive.
 rewrite [X in X @ _](_ : _ =
     (fun n => giry_int M (fun mu => \sum_(0 <= i < n) mu (F i)))).
+
+XXXXX
+
   apply/funext => n; rewrite -ge0_integral_sum//.
   by move=> ?; exact: measurable_giry_ev.
 apply: cvg_monotone_convergence => //.
