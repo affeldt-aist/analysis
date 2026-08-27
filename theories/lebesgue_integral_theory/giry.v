@@ -57,6 +57,7 @@ split => x //= _.
 by exact: mset_is_measurable.
 Qed.
 End mset.
+
 (*********************)
 
 
@@ -226,33 +227,30 @@ HB.instance Definition _ :=
   @isMeasurable.Build giry_display giry giry_measurable
     giry_measurable0 giry_measurableC giry_measurableU.
 
-Lemma measurable_giry_ev (A : mset T) : measurable A ->
-  measurable_fun [set: giry] (giry_ev A).
+Lemma measurable_giry_ev (A : mset T) : measurable_fun [set: giry] (giry_ev A).
 Proof.
-move=> mS.
 apply: (@measurability giry_display _ giry _ setT (giry_ev A) measurable).
   by rewrite smallest_id//; exact: sigma_algebra_measurable.
 apply: subset_trans; last exact: sub_gen_smallest.
-
-apply: (bigcup_sup mS).
+rewrite -/(preimg_giry_ev _).
+exact: bigcup_sup.
 Qed.
 
 End giry_def.
 Arguments giry_ev {d T R} A mu.
 
+(*
 (* TODO: try with giry_ev *)
 Definition mgiry_ev d (T : measurableType d) (R : realType)
   (A : set T) (mA : measurable A) := @giry_ev _ _ R A.
+*)
 
 Section giry_ev_measurable.
 Context d (T : measurableType d) (R : realType).
-Variables (A : set T) (mA : measurable A).
+Variables (A : mset T).
 
 HB.instance Definition _ := isMeasurableFun.Build _ _ _ _ (@giry_ev _ _ R A)
-  (measurable_giry_ev mA).
-
-(*HB.instance Definition _ := isMeasurableFun.Build _ _ _ _ (@mgiry_ev _ _ R _ mA)
-  (measurable_giry_ev mA).*)
+  (measurable_giry_ev A).
 
 End giry_ev_measurable.
 
@@ -263,6 +261,23 @@ Definition giry_int (mu : giry T R) (f : T -> \bar R) := \int[mu]_x f x.
 
 Import HBNNSimple.
 Import MeasurableR.
+
+Section mset_instances.
+HB.instance Definition _ (r : R) := isMeasurableSet.Build _ _ [set r] (measurable_set1 r).
+
+Section mfun.
+Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
+Variable (f : {mfun T1 >-> T2}) (A : mset T2).
+
+Let mfunP : measurable (f @^-1` A).
+Proof.
+have := measurable_funPT f measurableT A mset_is_measurable.
+by rewrite setTI.
+Qed.
+HB.instance Definition _ := isMeasurableSet.Build _ _ (f @^-1` A) mfunP.
+End mfun.
+
+End mset_instances.
 
 (**md The idea is to reconstruct f from simple functions, then use measurability
   of giry_ev. Reference: Tom Avery. Codensity and the Giry monad.
@@ -280,7 +295,8 @@ have mintgE n : measurable_fun [set: giry T R] (intEg n).
   rewrite /intEg /giry_int/=.
   under eq_fun do rewrite integralT_nnsfun sintegralE.
   apply: emeasurable_fsum => //= r.
-  by apply: measurable_funeM => //=; exact: measurable_giry_ev.
+  apply: measurable_funeM.
+  exact: measurable_giry_ev.
 apply: (emeasurable_fun_cvg _ (giry_int ^~ f) mintgE) => mu _.
 rewrite (_ : giry_int mu f = \int[mu]_x limn (Eg ^~ x)).
   apply: eq_integral => t _.
