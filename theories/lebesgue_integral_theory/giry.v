@@ -40,6 +40,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 Import Order.TTheory GRing.Theory Num.Def Num.Theory.
+Import HBNNSimple MeasurableR.
 
 (*********************)
 HB.mixin Record isMeasurableSet (d : measure_display) (T : measurableType d) (A : set T) :={
@@ -63,8 +64,36 @@ Variable d : measure_display.
 Variable T : measurableType d.
 Variable A : set T.
 Variable m : measurable A.
-Definition result : mset T := MeasurableSet.pack_ (isMeasurableSet.Build _ _ A m).
+Definition mset_of : mset T := MeasurableSet.pack_ (isMeasurableSet.Build _ _ A m).
 End to_mset.
+
+Section mset_instances.
+Local Open Scope classical_set_scope.
+
+HB.instance Definition _ d (T : measurableType d) :=
+  isMeasurableSet.Build _ _ set0 (@measurable0 d T).
+
+HB.instance Definition _ d (T : measurableType d) :=
+  isMeasurableSet.Build _ _ setT (@measurableT d T).
+
+Section mfun.
+Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
+Variable (f : {mfun T1 >-> T2}) (A : set T2) (mA : measurable A).
+
+Let mfunP : measurable (f @^-1` A).
+Proof.
+have := measurable_funPT f measurableT A mA.
+by rewrite setTI.
+Qed.
+HB.instance Definition _ := isMeasurableSet.Build _ _ (f @^-1` A) mfunP.
+End mfun.
+
+Section MeasurableR_mset_instances.
+HB.instance Definition _ (R : realType) (r : R) :=
+  isMeasurableSet.Build _ _ [set r] (measurable_set1 r).
+End MeasurableR_mset_instances.
+
+End mset_instances.
 
 (*********************)
 
@@ -267,56 +296,6 @@ Context {d} {T : measurableType d} {R : realType}.
 
 Definition giry_int (mu : giry T R) (f : T -> \bar R) := \int[mu]_x f x.
 
-Import HBNNSimple.
-Import MeasurableR.
-
-Section mset_instances.
-HB.instance Definition _ (r : R) := isMeasurableSet.Build _ _ [set r] (measurable_set1 r).
-
-Section mfun.
-Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
-Variable (f : {mfun T1 >-> T2}) (A : set T2) (mA : measurable A).
-
-Let mfunP : measurable (f @^-1` A).
-Proof.
-have := measurable_funPT f measurableT A mA.
-by rewrite setTI.
-Qed.
-HB.instance Definition _ := isMeasurableSet.Build _ _ (f @^-1` A) mfunP.
-End mfun.
-
-(*
-Section pushforward.
-Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
-Variable (f : {mfun T1 >-> T2}) (A : mset T2).
-
-  f : {mfun T1 >-> T2}
-  B : set T2
-  mB : d2.-measurable B
-  ============================
-  measurable_fun [set: giry T1 R] (fun x : giry T1 R => pushforward x f B)
-
-
-    (fun x : giry_giry__canonical__measurable_structure_Measurable T1 R =>
-     (fun A : set T2 => x (f @^-1` A)) B)
-*)
-
-(*
-Section mfun.
-Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
-Variable (f : {mfun T1 >-> T2}) (A : mset T2).
-
-Let mfunP : measurable (f @^-1` A).
-Proof.
-have := measurable_funPT f measurableT A mset_is_measurable.
-by rewrite setTI.
-Qed.
-HB.instance Definition _ := isMeasurableSet.Build _ _ (f @^-1` A) mfunP.
-End mfun.
-*)
-
-End mset_instances.
-
 (**md The idea is to reconstruct f from simple functions, then use measurability
   of giry_ev. Reference: Tom Avery. Codensity and the Giry monad.
   https://arxiv.org/pdf/1410.4432.
@@ -466,17 +445,28 @@ Section giry_join.
 Context {d} {T : measurableType d} {R : realType}.
 Variable M : giry (giry T R) R.
 
-Let join A := giry_int M (giry_ev A).
+Let join_mset A := giry_int M (giry_ev A).
+
+Let join (A : set T) : \bar R :=
+  if pselect (measurable A) is left H
+  then join_mset (mset_of H) else 0%:E.
 
 Let join0 : join set0 = 0.
-Proof. by rewrite /join /giry_ev /giry_int/= integral0_eq. Qed.
+Proof.
+rewrite /join; case: pselect => // ?.
+by rewrite /join_mset /giry_ev /giry_int/= integral0_eq.
+Qed.
 
-Let join_ge0 A : 0 <= join A. Proof. by rewrite /join integral_ge0. Qed.
+Let join_ge0 A : 0 <= join A.
+Proof. by rewrite /join; case: pselect => // ?; exact: integral_ge0. Qed.
 
 Let join_semi_sigma_additive : semi_sigma_additive join.
 Proof.
 move=> F mF tF _; rewrite [X in _ --> X](_ : _ =
     giry_int M (fun x => \sum_(0 <= k <oo) x (F k))).
+
+XXXXX
+
   apply: eq_integral => mu _.
   by apply/esym/cvg_lim => //; exact: measure_sigma_additive.
 rewrite [X in X @ _](_ : _ =
