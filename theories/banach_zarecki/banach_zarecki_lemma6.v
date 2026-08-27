@@ -577,9 +577,7 @@ apply: (@total_variation_nondecreasing _ _ (sup A) f _ _).
 admit.
 admit.
 admit.
-
-
-
+(*
 rewrite Rbounded_setE/= => -[haslbA hasubA].
 apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
   apply: oscillation_sub.
@@ -587,6 +585,7 @@ apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
 rewrite -oscillation_closure.
 rewrite compact_Rhull.
   rewrite Rcompact_boundE; split => //.
+*)
 Admitted.
 
 (* need *)
@@ -728,6 +727,94 @@ Abort.
 
 End lemmas.
 
+Section mesh_lemmas.
+Context {R : realType}.
+Implicit Types (a b : R) (f : R -> R).
+Implicit Types (s : seq R) (x : R).
+
+Definition mesh a b s : R := let pnth := nth b (a :: s) in
+  (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
+
+Lemma mesh_ge0 a b s : 0 <= mesh a b s.
+Proof. by rewrite /mesh. Qed.
+
+Lemma mesh_eq_merge_subseq a b s t :
+  path <=%R a s -> path <=%R a t ->
+  subseq t s ->
+  mesh a b (merge <=%R s t) = mesh a b s.
+Proof.
+elim: t s => //=.
+  move=> pas _ _.
+  by rewrite merge0r.
+move=> h t IH s pas /andP[ah pht] subhts.
+rewrite merge_cons_mergel.
+- exact: le_trans.
+- exact: le_path_min.
+rewrite IH.
+- apply: merge_path => //.
+  by rewrite /= ah.
+- apply: (path_le _ ah) => //; exact: le_trans.
+- apply: (@subseq_trans _ s); last exact: subseq_mergel.
+  apply: subseq_trans subhts.
+  exact: subseq_cons.
+rewrite /mesh.
+rewrite size_merge.
+have hs : h \in s.
+  have /mem_subseq/subsetP := subhts.
+(*  move/(_ h); rewrite 2!inE; apply.
+  exact: mem_head.
+set n := index h (s ++ [:: h]).
+have : (n <= size (s ++ [:: h]))%N.
+  by rewrite index_size.
+rewrite size_cat/= addn1 => ns.*)
+(* needs Monoid instance! *)
+(* have : (\big[@Num.max {nonneg R}/_]_(0 <= n0 < (size s).+1)
+      widen_itv `|nth b (merge <=%R s [:: h]) n0 - nth b (a :: merge <=%R s [:: h]) n0|%:itv)%:num = a.
+rewrite big_cat_nat.
+have := (@big_cat_nat {nonneg R} (0%:nng) (@maxr {nonneg R})). (leq0n n) ns).
+*)
+Abort.
+
+Lemma path_merge_ltW a b (s t : seq R) :
+  path <=%R a s -> subseq t s ->
+  mesh a b s = mesh a b (merge <=%R s t).
+Proof.
+Abort.
+
+Lemma mesh_merge1_le a b s x :
+  path <%R a s -> a <= x <= b -> last a s == b ->
+  mesh a b (merge <%R s [:: x]) <= mesh a b s.
+Proof.
+move=> ps /eqP sb.
+have [xs|xs] := boolP (x \in s).
+  (* rewrite itv_partition_max_merge_subseq. *)
+  admit.
+(*
+apply: subseq_itv_partition_max.
+have itv_partition_max_merge :
+*)
+Abort.
+
+Lemma mesh_merge1' a b l s x :
+  path <=%R a s -> last a s == b ->
+  mesh a b s <= l ->
+  mesh a b (merge <=%R s [:: x]) <= l.
+Proof.
+elim: s => //.
+  move=> ? /=.
+  rewrite /mesh/=.
+  rewrite big_nat_recl// big_nil/=.
+rewrite /mesh /=.
+Abort.
+
+Lemma mesh_merge a b l s t :
+  mesh a b s <= l ->
+  mesh a b (merge <=%R s t) <= l.
+Proof.
+Abort.
+
+End mesh_lemmas.
+
 Section preliminaries.
 Context {R : realType}.
 
@@ -754,34 +841,42 @@ Lemma lambda_partition_size0_tmp (a b l : R) :
   (0 < (truncn ((b - a) / l)).+1)%N.
 Proof. by []. Qed.
 
-Lemma lambda_partition_size0 (a b l : R) :
+Lemma size_lambda_partition0 (a b l : R) :
   a < b -> 0 < l ->
   (0 < size (lp a b l))%N.
 Proof.
 move=> ab l0; by rewrite size_map size_iota lambda_partition_size0_tmp.
 Qed.
 
-Lemma lambda_partition_div_width (a b l : R) (i : nat) :
+Lemma lambda_partition_mesh (a b l : R) :
   a < b -> 0 < l ->
-  `|nth b (a :: (lp a b l)) i.+1 - nth b (a :: (lp a b l)) i| < l.
+   mesh a b (lp a b l) < l.
 Proof.
 move=> ab l0.
-have lpw0 := lambda_partition_size0_tmp.
-case: i.
-  rewrite /= mulr1 -addrA subrKC.
-  rewrite gtr0_norm; first by rewrite divr_gt0// subr_gt0.
-  rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
-  exact: truncnS_gt.
-move=> n.
-have [|] := leqP n (truncn ((b - a) / l)).
-  rewrite leq_eqVlt => /predU1P[-> |].
-    rewrite nth_default; first by rewrite /= size_map size_iota.
-    rewrite [lp a b l]lock /=; unlock; rewrite nth_map_iota//.
-    by rewrite -mulrA divff// mulr1 subrKC subrr normr0.
+
+rewrite /mesh.
+have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
+ `|nth b (a :: lp a b l) n.+1 - nth b (a :: lp a b l) n|%:nng < NngNum (ltW l0).
+  move=> n /andP[_ nl]; rewrite -num_lt/=.
+  rewrite /lp nth_map_iota//.
+  case: n nl.
+    move=> _ /=.
+    rewrite mulr1 addrAC subrr add0r ger0_norm.
+      by rewrite mulr_ge0// subr_ge0 ltW.
+    rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
+    exact: truncnS_gt.
+  move=> n.
   admit.
-move=> nsize.
-rewrite 2?nth_default ?subrr ?normr0//.
-Abort.
+have l0_nng  : 0%:nng < NngNum (ltW l0).
+  by rewrite -num_lt.
+admit.
+(*
+rewrite -big_nat_cond.
+move/(bigmax_lt (iota 0 (size (lp a b l))) l0_nng).
+rewrite -num_lt/=; apply.
+Qed.
+*)
+Admitted.
 
 Lemma lambda_partition_partition (a b l : R) :
   a < b -> 0 < l ->
@@ -1391,6 +1486,59 @@ move=> A.
 rewrite seqDU_bigcup_eq.
 Admitted.
 *)
+
+Section interleave.
+
+(*
+Definition interleave {R : realType} (a b : R) (s t : seq R)
+  (ps : itv_partition a b s) (pt : itv_partition a b t)
+  (st : forall n, nth b s n <= nth b t n <= nth b s n.+1)
+:=
+  merge <=%R s t.
+*)
+
+Definition seq_of_pair {T} (s : seq (T * T)) : seq (seq T) :=
+  [seq [:: ab.1; ab.2] | ab <- s].
+
+Definition intlv {T} (s t : seq T) :=
+    flatten (seq_of_pair (zip s t)).
+
+Lemma shape_pairs {T} (s : seq (T * T)) :
+  shape (seq_of_pair s) = nseq (size s) 2.
+Proof. by elim: s => [|[x y] s IH] //=; rewrite IH. Abort.
+
+Lemma size_intlv {T} (s t : seq T) :
+   size (intlv s t) = 2 * size (zip s t).
+Proof.
+(*
+by rewrite size_flatten shape_pairs sumn_nseq.
+*)Abort.
+
+Lemma intlv_cons {T} (x y : T) (s t : seq T) :
+  intlv (x :: s) (y :: t) = x :: y :: intlv s t.
+Proof. by elim: s t. Abort.
+
+Lemma subseq_intlvr {T : eqType} (s t : seq T) :
+  (size s <= size t)%N ->
+   subseq s (intlv s t).
+Proof.
+elim: s t.
+  by move=> ? _; apply: sub0seq.
+move=> s0 s1 IHs.
+case => // t0 t1.
+rewrite [X in X -> _]/= ltnS => st.
+(* rewrite intlv_cons. *)
+Abort.
+
+Lemma interleave_merge {R : realType} (s t : seq R) :
+  size s = size t ->
+  sorted <=%R (intlv s t) ->
+  intlv s t = merge <=%R s t.
+Proof.
+move=> st sintlv.
+Abort.
+
+End interleave.
 
 Module lemma6_direct_new.
 Section lemma6_direct.
@@ -2695,6 +2843,7 @@ have construct_x n :
     (n < size x)%N &
     (forall (i j : 'I_ n.+2), nth d x j \notin `]c_ n i, d_ n i[) ].
   (* use lambda_partition *)
+  
   admit.
 pose xs := fun n => sval (cid (@construct_x n)).
 have pcdx n : itv_partition c d (behead (xs n)).
@@ -2733,7 +2882,18 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   - admit.
   - admit.
   - admit.
+
+(*
   apply: (@le_trans _ _ (\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E +
+               \sum_(i < n.+1)
+                    variation (A_ i) (B_ i) [seq x <- xs | x \in `]A_ i, B_ i[].
+    admit.
+  apply: lee_sum.
+  exact: variation_le_total_variation.
+*)
+  admit.
+(*
+
                     \sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E )%E).
     admit.
   apply: leeD2l.
@@ -2773,6 +2933,7 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   apply: bounded_set_oscillation_le_total_variations.
   apply: compact_bounded.
   exact: segment_compact.
+*)
 set Vcd : \bar R := total_variation c d f.
 have V_tv n : (V_ n <= Vcd)%E.
   admit.
