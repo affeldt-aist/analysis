@@ -1900,6 +1900,19 @@ Qed.
 
 End variation_merge_omega_max.
 
+Section mesh_lemmas.
+Context {R : realType}.
+Implicit Types (a b : R) (f : R -> R).
+Implicit Types (s : seq R) (x : R).
+
+Definition mesh a b s : R := let pnth := nth b (a :: s) in
+  (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
+
+Lemma mesh_ge0 a b s : 0 <= mesh a b s.
+Proof. by rewrite /mesh. Qed.
+
+End mesh_lemmas.
+
 Section variation_merge_tmp.
 Context {R : realType}.
 Variables (a b : R) (f : R -> R).

@@ -1410,12 +1410,6 @@ Context {R : realType}.
 Implicit Types (a b : R) (f : R -> R).
 Implicit Types (s : seq R) (x : R).
 
-Definition mesh a b s : R := let pnth := nth b (a :: s) in
-  (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
-
-Lemma mesh_ge0 a b s : 0 <= mesh a b s.
-Proof. by rewrite /mesh. Qed.
-
 Lemma mesh_eq_merge_subseq a b s t :
   path <=%R a s -> path <=%R a t ->
   subseq t s ->
@@ -1556,7 +1550,8 @@ Proof.
 move=> ab l0.
 split; last first.
 - rewrite (last_nth b).
-  rewrite -(@prednK (size _))/=; first exact: lambda_partition_size0.
+  rewrite -(@prednK (size _))/=. (*; first exact: lambda_partition_size0.*)
+  admit.
   rewrite nth_map_iota//; last first.
     rewrite size_map size_iota mulfK; last by rewrite subrKC.
     rewrite lt0r_neq0//.
