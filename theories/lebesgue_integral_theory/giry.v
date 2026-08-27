@@ -275,6 +275,35 @@ HB.instance Definition _ (r : R) := isMeasurableSet.Build _ _ [set r] (measurabl
 
 Section mfun.
 Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
+Variable (f : {mfun T1 >-> T2}) (A : set T2) (mA : measurable A).
+
+Let mfunP : measurable (f @^-1` A).
+Proof.
+have := measurable_funPT f measurableT A mA.
+by rewrite setTI.
+Qed.
+HB.instance Definition _ := isMeasurableSet.Build _ _ (f @^-1` A) mfunP.
+End mfun.
+
+(*
+Section pushforward.
+Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
+Variable (f : {mfun T1 >-> T2}) (A : mset T2).
+
+  f : {mfun T1 >-> T2}
+  B : set T2
+  mB : d2.-measurable B
+  ============================
+  measurable_fun [set: giry T1 R] (fun x : giry T1 R => pushforward x f B)
+
+
+    (fun x : giry_giry__canonical__measurable_structure_Measurable T1 R =>
+     (fun A : set T2 => x (f @^-1` A)) B)
+*)
+
+(*
+Section mfun.
+Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
 Variable (f : {mfun T1 >-> T2}) (A : mset T2).
 
 Let mfunP : measurable (f @^-1` A).
@@ -284,6 +313,7 @@ by rewrite setTI.
 Qed.
 HB.instance Definition _ := isMeasurableSet.Build _ _ (f @^-1` A) mfunP.
 End mfun.
+*)
 
 End mset_instances.
 
@@ -332,7 +362,20 @@ pose G : set_system (giry T2 R) := \bigcup_(B in [set: mset T2]) preimg_giry_ev 
 apply: (measurability G) => //= _ [_ [C mC [Z mZ] <-] <-].
 rewrite setTI.
 apply: mf => //.
-apply: mset_is_measurable.
+exact: mset_is_measurable.
+Qed.
+
+Lemma mset_giry_codensity d2 {T2 : measurableType d2} {R : realType}
+    (D : set T1) (f : T1 -> giry T2 R) :
+  measurable D ->
+  (forall B : mset T2, measurable_fun D (f ^~ B)) ->
+  measurable_fun D f.
+Proof.
+move=> mD mf.
+pose G : set_system (giry T2 R) := \bigcup_(B in [set: mset T2]) preimg_giry_ev B.
+apply: (measurability G) => //= _ [_ [C mC [Z mZ] <-] <-].
+rewrite setTI.
+exact: mf.
 Qed.
 
 End measurable_giry_codensity.
@@ -375,11 +418,9 @@ Implicit Type f : {mfun T1 >-> T2}.
 
 Let measurable_giry_map f : measurable_fun [set: giry T1 R] (giry_map f).
 Proof.
-rewrite /giry_map; apply: measurable_giry_codensity => // B mB //=.
-rewrite /pushforward.
-rewrite -/(giry_ev T1 ).
+rewrite /giry_map; apply: mset_giry_codensity => // B.
 apply: measurable_giry_ev.
- exact: measurable_funPTI.
+exact: mset_is_measurable.
 Qed.
 
 HB.instance Definition _ f := isMeasurableFun.Build _ _ _ _
