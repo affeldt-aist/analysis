@@ -93,6 +93,13 @@ HB.instance Definition _ (R : realType) (r : R) :=
   isMeasurableSet.Build _ _ [set r] (measurable_set1 r).
 End MeasurableR_mset_instances.
 
+Section msetX.
+Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
+Variable (A : set T1) (mA : measurable A) (B : set T2) (mB : measurable B).
+
+HB.instance Definition _ := isMeasurableSet.Build _ _ (A `*` B) (measurableX mA mB).
+End msetX.
+
 End mset_instances.
 
 (*********************)
@@ -264,6 +271,22 @@ HB.instance Definition _ :=
   @isMeasurable.Build giry_display giry giry_measurable
     giry_measurable0 giry_measurableC giry_measurableU.
 
+(*
+Goal forall (F : nat -> set nat) (G : nat -> nat),
+    F (G 0%N) = \bigcup_(j in [set: nat]) F (G j).
+Proof.
+From mathcomp Require Import ssrmatching.
+move=> F G.
+ssrpattern (0%N in LHS).
+
+move=> F G.
+apply: bigcup_sup.
+rewrite [X in X `<=` _](_ : _ = (fun x => F x) 0%N)//.
+Fail apply: bigmax_sup.
+rewrite [X in X `<=` _](_ : _ = eta (fun x => F x) 0%N)//.
+apply: bigmax_sup.
+*)
+
 Lemma measurable_giry_ev (A : mset T) : measurable_fun [set: giry] (giry_ev A).
 Proof.
 apply: (@measurability giry_display _ giry _ setT (giry_ev A) measurable).
@@ -275,12 +298,6 @@ Qed.
 
 End giry_def.
 Arguments giry_ev {d T R} A mu.
-
-(*
-(* TODO: try with giry_ev *)
-Definition mgiry_ev d (T : measurableType d) (R : realType)
-  (A : set T) (mA : measurable A) := @giry_ev _ _ R A.
-*)
 
 Section giry_ev_measurable.
 Context d (T : measurableType d) (R : realType).
@@ -473,13 +490,12 @@ rewrite [X in _ --> X](_ : _ = giry_int M (fun x => \sum_(0 <= k <oo) x (F k))).
   by apply/esym/cvg_lim => //; exact: measure_sigma_additive.
 rewrite [X in X @ _](_ : _ =
     (fun n => giry_int M (fun mu => \sum_(0 <= i < n) mu (F i)))).
-
-XXXXX
-
-  apply/funext => n; rewrite -ge0_integral_sum//.
-  by move=> ?; exact: measurable_giry_ev.
+  apply/funext => n.
+  under eq_bigr => i do rewrite (measurable_joinE (mF i)).
+  by rewrite -ge0_integral_sum.
 apply: cvg_monotone_convergence => //.
-- by move=> n; apply: emeasurable_sum => m; exact: measurable_giry_ev.
+- move=> n; apply: emeasurable_sum => m.
+  exact: (measurable_giry_ev (mset_of _)).
 - by move=> n x _; rewrite sume_ge0.
 - by move=> x _ m n mn; exact: ereal_nondecreasing_series.
 Qed.
@@ -492,17 +508,22 @@ Proof.
 rewrite (@le_trans _ _ (\int[M]_x `|giry_ev [set: T] x|))//; last first.
   rewrite (le_trans _ (@sprobability_setT _ _ _ M))//.
   rewrite -[leRHS]mul1e integral_le_bound//.
-    exact: measurable_giry_ev.
   by apply/aeW => x _; rewrite gee0_abs// sprobability_setT.
-rewrite ge0_le_integral//=.
-- exact: measurable_giry_ev.
+rewrite measurable_joinE ge0_le_integral//=.
 - by apply: measurableT_comp => //; exact: measurable_giry_ev.
 - by move=> x _; rewrite gee0_abs.
 Qed.
 
 HB.instance Definition _ := Measure_isSubProbability.Build _ _ _ join join_setT.
 
-Definition giry_join : giry T R := join.
+Definition giry_join : giry T R := locked (join : giry T R) .
+
+Lemma giry_joinE (A : set T) (mA : measurable A) :
+  giry_join A = join_mset (mset_of mA).
+Proof. by rewrite /giry_join -lock /= measurable_joinE. Qed.
+
+Lemma giry_joinE0 (A : set T) : ~ measurable A -> giry_join A = 0.
+Proof. by move=> ?; rewrite /giry_join -lock/= /join; case: pselect. Qed.
 
 End giry_join.
 Arguments giry_join {d T R}.
@@ -513,14 +534,13 @@ Context {d} {T : measurableType d} {R : realType}.
 Let measurable_giry_join : measurable_fun [set: giry (giry T R) R] giry_join.
 Proof.
 apply: measurable_giry_codensity => //= B mB.
+under [X in measurable_fun _ X]funext do rewrite giry_joinE.
+rewrite -/(measurable_fun _ _).
 by apply: measurable_giry_int => //; exact: measurable_giry_ev.
 Qed.
 
 HB.instance Definition _ := isMeasurableFun.Build _ _ _ _
   giry_join measurable_giry_join.
-
-Import HBNNSimple.
-Import MeasurableR.
 
 Lemma sintegral_giry_join (M : giry (giry T R) R) (h : {nnsfun T >-> R}) :
   sintegral (giry_join M) h = \int[M]_mu sintegral mu h.
@@ -535,7 +555,8 @@ have := finite_measure_integrable_cst M 1 measurableT.
 apply: le_integrable => //; first exact: measurable_giry_ev.
 move=> mu _ /=.
 rewrite normr1 (le_trans _ (@sprobability_setT _ _ _ mu))// gee0_abs//.
-by rewrite le_measure// ?inE.
+  by rewrite le_measure// ?inE.
+by rewrite giry_joinE.
 Qed.
 
 Lemma giry_int_join (M : giry (giry T R) R) (h : T -> \bar R) :
@@ -610,7 +631,7 @@ Proof.
   rewrite /pushforward.
   rewrite /preimage /=.
   exact.
-Qed.  
+Qed.
 
 (* G (g o f) = G g o G f *)
 Lemma giry_map_comp (x : giry T1 R) :
@@ -632,23 +653,31 @@ Qed.
 Lemma giry_join_natural (x : giry (giry T1 R) R) :
   (giry_join \o giry_map (giry_map f)) x ≡μ
   (giry_map f \o giry_join) x.
-Proof. by move=> X mS/=; rewrite giry_int_map//; exact: measurable_giry_ev. Qed.
+Proof.
+move=> X mS/=; rewrite giry_joinE giry_int_map//.
+rewrite /pushforward giry_joinE//.
+exact: measurable_funPTI.
+Qed.
 
 (* Left unit *)
 Lemma giry_join_Mret (x : giry T1 R) :
   (giry_join \o giry_map giry_ret) x ≡μ x.
 Proof.
 move=> A mA/=.
-rewrite giry_int_map//; first exact: measurable_giry_ev.
+rewrite giry_joinE giry_int_map//.
 by rewrite /giry_int /giry_ev /giry_ret/= /dirac integral_indic// setIT.
 Qed.
 
 (* Right unit *)
 Lemma giry_join_retM (x : giry T1 R) :
   (giry_join \o giry_ret) x ≡μ x.
+Proof. by move=> A mA/=; rewrite giry_joinE giry_int_ret. Qed.
+
+Lemma giry_ev_join (A : mset T1) :
+  giry_ev A \o giry_join = (@giry_int _ _ R)^~ (giry_ev A).
 Proof.
-  move=> A mA/=.
-  rewrite giry_int_ret//; first exact: measurable_giry_ev. 
+apply/funext => ?/=; rewrite /giry_ev/= giry_joinE//.
+exact: mset_is_measurable.
 Qed.
 
 (* Associativity *)
@@ -657,8 +686,7 @@ Lemma giry_joinA (x : giry (giry (giry T1 R) R) R) :
   (giry_join \o giry_join) x.
 Proof.
 move=> A mA/=.
-rewrite giry_int_map//; first exact: measurable_giry_ev.
-by rewrite giry_int_join//; exact: measurable_giry_ev.
+by rewrite giry_joinE giry_int_map// giry_ev_join giry_joinE giry_int_join.
 Qed.
 End giry_monad.
 
@@ -698,9 +726,9 @@ apply: dynkin_induction => /=.
 - move=> _ [A mA [B mB <-]].
   apply: (eq_measurable_fun (fun x : giry T1 R * giry T2 R => x.1 A * x.2 B)).
     by move=> x _; rewrite product_measure1E.
+  rewrite (_ : A = mset_of mA)// (_ : B = mset_of mB)// (lock mset_of).
   by apply: emeasurable_funM;
-    apply: (@measurableT_comp _ _ _ _ _ _ (giry_ev _)) => //;
-    exact: measurable_giry_ev.
+    apply: (@measurableT_comp _ _ _ _ _ _ (giry_ev _)).
 - move=> S mS HS.
   apply: (eq_measurable_fun (fun x : giry T1 R * giry T2 R =>
       x.1 [set: T1] * x.2 [set: T2] - (x.1 \x x.2) S)).
@@ -831,11 +859,10 @@ Lemma giry_join_monoidal (c : giry (giry X R) R * giry (giry Y R) R) :
 Proof.
 case: c => a b.
 move=> U mU.
-rewrite /giry_tensorator /giry_join /giry_join. (* NB: don't /= here*)
+rewrite /giry_tensorator (*/giry_join /giry_join*). (* NB: don't /= here*)
 apply: product_measure_unique => //= A B mA mB.
-rewrite /giry_int /giry_map ge0_integral_pushforward//=.
-  apply: measurable_giry_ev.
-  exact: measurableX.
+have ? := measurableX mA mB.
+rewrite giry_joinE// /giry_int /giry_map ge0_integral_pushforward//=.
 rewrite fubini_tonelli1//=.
 have mAB : measurable (A `*` B) by apply: measurableX.
   (* Check @giry_ev _ _ R (A `*` B) \o giry_tensorator  : {mfun _ >-> _}. *)
@@ -846,11 +873,11 @@ have mAB : measurable (A `*` B) by apply: measurableX.
   apply: measurableT_comp.
     exact: measurable_giry_ev.
   by [].  
+rewrite !giry_joinE.
 rewrite -ge0_integralZr//.
-  exact: measurable_giry_ev.
   exact: integral_ge0.
 apply: eq_integral => /= x _.
-rewrite /fubini_F/= -ge0_integralZl//; first exact: measurable_giry_ev.
+rewrite /fubini_F/= -ge0_integralZl//.
 apply: eq_integral => /= y _.
 by rewrite product_measure1E.
 Qed.
