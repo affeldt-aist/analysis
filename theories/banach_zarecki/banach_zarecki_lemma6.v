@@ -1228,21 +1228,29 @@ Let d := sup Z.
 Let a_ := a_ A_ B_ d.
 Let b_ := b_ A_ B_ d.
 
-Lemma clea_bled : c < d -> compact Z -> Z !=set0 -> (forall i, A_ i < B_ i) ->
+Lemma clea_bled : Z !=set0 -> (forall i, A_ i < B_ i) ->
   (forall n i, c <= a_ n i) /\ (forall n i, b_ n i <= d).
 Proof.
-move=> cd compactZ Z0 AB.
+move=> Z0 AB.
 apply/all_and2 => n; apply/all_and2 => i.
 have [ni|] := leqP n.+1 i.
   rewrite /a_ /b_ /lemmas.a_ /lemmas.b_.
-  by rewrite !nth_default ?size_seq_ab//; split => //; apply: ltW.
+  rewrite !nth_default ?size_seq_ab//; split => //; exact: has_bound_inf_sup.
 move/(nth_abE A_ B_ d) => [+ + _].
 rewrite -/abi_.
 rewrite -anth -bnth -idxE -/a_ -/b_ => -> ->.
 have ABcd : `]A_ (idx A_ B_ n i), B_ (idx A_ B_ n i)[ `<=` `[c, d].
-  rewrite -compact_Rhull// -contiguous_ooitv//.
-  apply: (subset_trans (@contiguous_intervalsS _ _ _)).
-  exact: cplt_hull_subset_Rhull.
+  rewrite -contiguous_ooitv//.
+  apply: (@subset_trans  _ [set` Rhull Z]).
+    apply: (subset_trans (@contiguous_intervalsS _ _ _)).
+    exact: cplt_hull_subset_Rhull.
+  apply: subset_itv.
+    rewrite ifT.
+      exact/asboolP.
+    by have [_|_] := boolP `[< (Z (inf Z)) >]; rewrite bnd_simp.
+  rewrite ifT.
+    exact/asboolP.
+  by have [_|_] := boolP `[< (Z (sup Z)) >]; rewrite bnd_simp.
 split.
   rewrite leNgt; apply/negP => Ac.
   set x := ((A_ (idx A_ B_ n i)) + minr (B_ (idx A_ B_ n i)) c) / 2.
@@ -1281,7 +1289,7 @@ have [ni|iltn] := leqP n i.
   rewrite /a_ /lemmas.a_.
   rewrite nth_default//.
     by rewrite !size_map size_sort size_map size_iota ltnS.
-  exact: (clea_bled cd compactZ Z0 AB).2.
+  exact: (clea_bled Z0 AB).2.
 rewrite leNgt; apply/negP => aibi.
 (* TODO: take out, seems to depend only on sorted_b *)
 have : `]a_ n i, b_ n i[ `&` `]a_ n i.+1, b_ n i.+1[ !=set0.
