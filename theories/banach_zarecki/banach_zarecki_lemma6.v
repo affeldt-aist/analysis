@@ -1990,8 +1990,8 @@ Lemma lambda_partition_mesh (a b l : R) :
    mesh a b (lp a b l) < l.
 Proof.
 move=> ab l0.
-
 rewrite /mesh.
+
 have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
  `|nth b (a :: lp a b l) n.+1 - nth b (a :: lp a b l) n|%:nng < NngNum (ltW l0).
   move=> n /andP[_ nl]; rewrite -num_lt/=.
@@ -2003,17 +2003,33 @@ have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
     rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
     exact: truncnS_gt.
   move=> n.
-  admit.
-have l0_nng  : 0%:nng < NngNum (ltW l0).
+  rewrite ltnS => nbal.
+  rewrite [X in _ - X]
+      (_: _ = a + (b - a) * n.+1%:R / (truncn ((b - a) / l)).+1%:R).
+    transitivity (nth b
+    ([seq a + (b - a) * i.+1%:R /
+     (truncn ((b - a) / l)).+1%:R | i <- iota 0 (truncn ((b - a) / l)).+1])
+    n).
+      done.
+    rewrite nth_map_iota//.
+    by rewrite ltnW// ltnS.
+  rewrite opprD addrACA subrr add0r.
+  rewrite -nat1r mulrDr mulrDl addrK mulr1.
+  rewrite ger0_norm.
+    by rewrite mulr_ge0// subr_ge0 ltW.
+  rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
+  exact: truncnS_gt.
+have l0_nng : 0%:nng < NngNum (ltW l0).
   by rewrite -num_lt.
-admit.
-(*
-rewrite -big_nat_cond.
 move/(bigmax_lt (iota 0 (size (lp a b l))) l0_nng).
-rewrite -num_lt/=; apply.
+rewrite -num_lt//.
+apply: le_lt_trans.
+rewrite num_le.
+rewrite big_nat_cond.
+apply: sub_bigmax.
+move=> n; rewrite andbT => /andP[-> ]/leq_trans; apply.
+by rewrite size_map size_iota.
 Qed.
-*)
-Admitted.
 
 Lemma lambda_partition_partition (a b l : R) :
   a < b -> 0 < l ->
