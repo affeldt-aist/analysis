@@ -43,7 +43,7 @@ Import Order.TTheory GRing.Theory Num.Def Num.Theory.
 Import HBNNSimple MeasurableR.
 
 (*********************)
-HB.mixin Record isMeasurableSet (d : measure_display) (T : measurableType d) (A : set T) :={
+HB.mixin Record isMeasurableSet (d : measure_display) (T : semiRingOfSetsType d) (A : set T) :={
   mset_is_measurable : measurable A
 }.
 
@@ -52,28 +52,29 @@ HB.structure Definition MeasurableSet d T := { A of isMeasurableSet d T A }.
 
 Section mset.
 Local Open Scope classical_set_scope.
-Lemma msetT_measurable (d : measure_display) (T : measurableType d) : [set: mset T] = measurable.
+Lemma msetT_measurable (d : measure_display) (T : semiRingOfSetsType d) :
+  [set: mset T] = measurable.
 apply seteqP.
 split => x //= _.
 by exact: mset_is_measurable.
 Qed.
 End mset.
 
-Section to_mset.
+Section mset_of.
 Variable d : measure_display.
-Variable T : measurableType d.
+Variable T : semiRingOfSetsType d.
 Variable A : set T.
 Variable m : measurable A.
 Definition mset_of : mset T := MeasurableSet.pack_ (isMeasurableSet.Build _ _ A m).
-End to_mset.
+End mset_of.
 
 Section mset_instances.
 Local Open Scope classical_set_scope.
 
-HB.instance Definition _ d (T : measurableType d) :=
+HB.instance Definition _ d (T : semiRingOfSetsType d) :=
   isMeasurableSet.Build _ _ set0 (@measurable0 d T).
 
-HB.instance Definition _ d (T : measurableType d) :=
+HB.instance Definition _ d (T : algebraOfSetsType d) :=
   isMeasurableSet.Build _ _ setT (@measurableT d T).
 
 Section mfun.
@@ -94,7 +95,7 @@ HB.instance Definition _ (R : realType) (r : R) :=
 End MeasurableR_mset_instances.
 
 Section msetX.
-Variables (d1 d2 : measure_display) (T1 : measurableType d1) (T2 : measurableType d2).
+Variables (d1 d2 : measure_display) (T1 : semiRingOfSetsType d1) (T2 : semiRingOfSetsType d2).
 Variable (A : set T1) (mA : measurable A) (B : set T2) (mB : measurable B).
 
 HB.instance Definition _ := isMeasurableSet.Build _ _ (A `*` B) (measurableX mA mB).
@@ -627,26 +628,26 @@ Context d1 d2 d3
 Lemma giry_map_id (x : giry T1 R):
   giry_map idfun x ≡μ @idfun (giry T1 R) x.
 Proof.
-  move => U H /=.
-  rewrite /pushforward.
-  rewrite /preimage /=.
-  exact.
+move => U H /=.
+rewrite /pushforward.
+rewrite /preimage /=.
+exact.
 Qed.
 
 (* G (g o f) = G g o G f *)
 Lemma giry_map_comp (x : giry T1 R) :
-  giry_map (g \o f) x ≡μ (giry_map g \o giry_map f) x.
-  move => U H /=.
-  rewrite /pushforward.
-  by rewrite /preimage /=.
+giry_map (g \o f) x ≡μ (giry_map g \o giry_map f) x.
+move => U H /=.
+rewrite /pushforward.
+by rewrite /preimage /=.
 Qed.
 
 (* Naturality of return *)
 Lemma giry_ret_natural (x : T1) :
   (giry_map f \o (@giry_ret _ _ R)) x ≡μ (giry_ret \o f) x.
 Proof.
-  move => U H /=.
-  by rewrite /dirac /= /pushforward /indic /preimage.
+move => U H /=.
+by rewrite /dirac /= /pushforward /indic /preimage.
 Qed.
 
 (* Naturality of join *)
@@ -841,7 +842,7 @@ End giry_tensorator_axioms.
 Section monoidal_giry_ret_join.
 Context {d1} {d2} {X : measurableType d1} {Y : measurableType d2}
   {R : realType}.
-  
+
 Lemma giry_ret_monoidal (xy : X * Y) :
   (@giry_tensorator _ _ _ _ R \o (giry_ret \X giry_ret)) xy ≡μ giry_ret xy.
 Proof.
@@ -859,23 +860,14 @@ Lemma giry_join_monoidal (c : giry (giry X R) R * giry (giry Y R) R) :
 Proof.
 case: c => a b.
 move=> U mU.
-rewrite /giry_tensorator (*/giry_join /giry_join*). (* NB: don't /= here*)
+rewrite /giry_tensorator/=.
 apply: product_measure_unique => //= A B mA mB.
 have ? := measurableX mA mB.
-rewrite giry_joinE// /giry_int /giry_map ge0_integral_pushforward//=.
+rewrite !giry_joinE// /giry_int /giry_map ge0_integral_pushforward//=.
 rewrite fubini_tonelli1//=.
 have mAB : measurable (A `*` B) by apply: measurableX.
-  (* Check @giry_ev _ _ R (A `*` B) \o giry_tensorator  : {mfun _ >-> _}. *)
-  (* giry X R * giry Y R -> GRing.BaseAddMagma.sort \bar R *)
-  Check (fun z : giry X R * giry Y R => (z.1 \x z.2) (A `*` B)). 
-  rewrite [X in measurable_fun _ X](_ : _ = @giry_ev _ _ R (A `*` B) \o giry_tensorator).
-    by rewrite //.
-  apply: measurableT_comp.
-    exact: measurable_giry_ev.
-  by [].  
-rewrite !giry_joinE.
-rewrite -ge0_integralZr//.
-  exact: integral_ge0.
+  by rewrite [X in measurable_fun _ X](_ : _ = @giry_ev _ _ R (A `*` B) \o giry_tensorator).
+rewrite -ge0_integralZr// ?integral_ge0//.
 apply: eq_integral => /= x _.
 rewrite /fubini_F/= -ge0_integralZl//.
 apply: eq_integral => /= y _.
