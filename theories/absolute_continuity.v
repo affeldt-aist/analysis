@@ -4,7 +4,7 @@ From mathcomp Require Import boot order ssralg ssrnum ssrint interval finmap.
 From mathcomp Require Import interval_inference archimedean.
 #[warning="-warn-library-file-internal-analysis"]
 From mathcomp Require Import unstable.
-From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
+From mathcomp Require Import mathcomp_compat boolp contra classical_sets functions.
 From mathcomp Require Import cardinality fsbigop interval set_interval.
 From mathcomp Require Import reals ereal topology normedtype sequences.
 From mathcomp Require Import real_interval esum measure.
@@ -215,13 +215,13 @@ apply: openI => //.
 by rewrite -bigcap_mkord.
 Qed.
 
-(* TODO: PR *)
-Lemma bigcap_cvg_mu d (T : algebraOfSetsType d) {R : realFieldType}
+(* TODO: PR (generalize cvg_measure_bigcap) *)
+Lemma cvg_measure_bigcap_new d (T : algebraOfSetsType d) {R : realFieldType}
   (mu : {measure set T -> \bar R}) (F : (set T)^nat) :
-(mu (F 0%N) < +oo)%E ->
-(forall i : nat, d.-measurable (F i)) ->
-d.-measurable (\bigcap_n F n) ->
-(mu \o (fun n => (\bigcap_(i < n.+1) F i))) x @[x --> \oo] --> mu (\bigcap_n F n).
+  (mu (F 0%N) < +oo)%E ->
+  (forall i : nat, d.-measurable (F i)) ->
+  d.-measurable (\bigcap_n F n) ->
+  (mu \o (fun n => (\bigcap_(i < n.+1) F i))) x @[x --> \oo] --> mu (\bigcap_n F n).
 Proof.
 move=> Foo mF mFoo.
 have Hcap : \bigcap_n F n = \bigcap_n (\bigcap_(i < n.+1) F i).
@@ -231,11 +231,10 @@ have Hcap : \bigcap_n F n = \bigcap_n (\bigcap_(i < n.+1) F i).
   move=> x Fx n _.
   by apply: (Fx n) => /=.
 rewrite Hcap.
-apply: nonincreasing_cvg_mu.
-      by rewrite bigcap_mkord big_ord1.
-    move=> n.
-    by apply: fin_bigcap_measurable.
-  by rewrite -Hcap.
+apply: nonincreasing_cvg_measure.
+- by rewrite bigcap_mkord big_ord1.
+- by move=> n; exact: fin_bigcap_measurable.
+- by rewrite -Hcap.
 apply/nonincreasing_seqP => n.
 rewrite !bigcap_mkord big_ord_recr/= subsetEset.
 exact: subIsetl.
@@ -2507,15 +2506,14 @@ exists U_, Z; split.
         by rewrite (leq_trans h).
     admit.
   rewrite /U_.
-  apply: (@bigcap_cvg_mu _ _ R completed_lebesgue_measure U0_).
-      apply: (@le_lt_trans _ _ (mue (S0 0%N))).
+  apply: (@cvg_measure_bigcap_new _ _ R completed_lebesgue_measure U0_).
+      apply: (@le_lt_trans _ _ (mue (S0 0))).
         apply: le_outer_measure.
         exact: subIsetl.
-      apply: (@le_lt_trans _ _ (mue E + (delta_0 0%N)%:E)%E).
+      apply: (@le_lt_trans _ _ (mue E + (delta_0 0)%:E)%E).
         rewrite -(setUIDK (S0 0%N) E).
-        apply: (le_trans (outer_measureU2 mue _ _)).
-        rewrite setIidr //.
-        by rewrite leeD2l.
+        rewrite (le_trans (outer_measureU2 mue _ _))//.
+        by rewrite setIidr // leeD2l.
       apply: lte_add_pinfty.
         exact: Elty.
       exact: ltey.
@@ -2746,6 +2744,16 @@ Definition oscillation {R : realType} (f : R -> R) (A : set R) : \bar R :=
      ereal_sup ((EFin \o f) @` A) - ereal_inf ((EFin \o f) @` A))%E.
 
 
+Lemma is_subset1P (T : Type) (A : set T) : is_subset1 A ->
+  A = set0 \/ exists a, A = [set a].
+Proof.
+move=> A1.
+have [|/set0P[x Ax]] := eqVneq A set0; first by left.
+right; exists x.
+apply/seteqP; split => [y|y ->//].
+by move/A1; exact.
+Qed.
+
 Section oscillation_lemma.
 Context (R : realType).
 Local Open Scope ereal_scope.
@@ -2759,6 +2767,12 @@ Proof.
 rewrite /oscillation ifF.
   by apply/negP/negP/set0P; exists a.
 by rewrite !image_set1 ereal_sup1 ereal_inf1 subee.
+Qed.
+
+Lemma is_subset1_oscillation0 f A : is_subset1 A -> oscillation f A = 0.
+Proof.
+move=> /is_subset1P[->|[x ->]]; first by rewrite oscillation0.
+by rewrite oscillation_set1.
 Qed.
 
 Lemma oscillationN f A : oscillation (\- f)%R A = oscillation f A.
@@ -2825,7 +2839,6 @@ rewrite /oscillation (negbTE i0) (negbTE j0) leeB//.
 Qed.
 
 End oscillation_lemma.
-
 
 Section cplt_hull.
 Context {R : realType}.
@@ -3499,7 +3512,7 @@ Qed.
 Lemma contiguous_intervals2_notin' (Z : set R) j l : compact Z ->
   contiguous_intervals Z j !=set0 ->
   j != l ->
-  ((contiguous_intervals2 Z j))
+  (contiguous_intervals2 Z j)
     \notin `]contiguous_intervals1 Z l, contiguous_intervals2 Z l[.
 Proof.
 move=> /[dup] cZ; rewrite Rcompact_boundE/= => -[closeZ uZ lZ] Zj0 j_neq_l.
@@ -3551,7 +3564,7 @@ exact: ltW.
 Qed.
 
 Lemma contiguous_intervals2_notin (Z : set R) : has_ubound Z -> forall j,
-  ((contiguous_intervals2 Z j))
+  (contiguous_intervals2 Z j)
     \notin `]contiguous_intervals1 Z j, contiguous_intervals2 Z j[.
 Proof.
 move=> ubZ j.
@@ -3563,7 +3576,7 @@ Lemma mem_contiguous_intervals2 (Z : set R) j :
   compact Z ->
   Z !=set0 ->
   contiguous_intervals Z j !=set0 ->
-  Z ((contiguous_intervals2 Z j)).
+  Z (contiguous_intervals2 Z j).
 Proof.
 move=> cZ Z0 Zj0.
 move: (cZ); rewrite Rcompact_boundE/= => -[closedZ ubndZ lbndZ].
@@ -3574,7 +3587,7 @@ have H1 : (cplt_hull Z) =
   by rewrite contiguous_ooitv.
 have : (~` (cplt_hull Z)) (sup (contiguous_intervals Z j)).
   move=> H2.
-  have : ((cplt_hull Z)) (sup (contiguous_intervals Z j)).
+  have : (cplt_hull Z) (sup (contiguous_intervals Z j)).
     by [].
   rewrite H1 => -[l _].
   apply/negP.
@@ -3618,7 +3631,7 @@ Proof. by move=> ?; rewrite (nth_map (d1, d2)). Qed.
 Lemma contiguous_intervals1_notin' (Z : set R) j l : compact Z ->
   contiguous_intervals Z j !=set0 ->
   j != l ->
-  ((contiguous_intervals1 Z j))
+  (contiguous_intervals1 Z j)
     \notin `]contiguous_intervals1 Z l, contiguous_intervals2 Z l[.
 Proof.
 move=> /[dup] cZ; rewrite Rcompact_boundE/= => -[closeZ uZ lZ] Zj0 j_neq_l.
@@ -3674,7 +3687,7 @@ Lemma mem_contiguous_intervals1 (Z : set R) j :
   compact Z ->
   Z !=set0 ->
   contiguous_intervals Z j !=set0 ->
-  Z ((contiguous_intervals1 Z j)).
+  Z (contiguous_intervals1 Z j).
 Proof.
 move=> cZ Z0 Zj0.
 move: (cZ); rewrite Rcompact_boundE/= => -[closedZ ubndZ lbndZ].
@@ -3685,7 +3698,7 @@ have H1 : (cplt_hull Z) =
   by rewrite contiguous_ooitv.
 have : (~` (cplt_hull Z)) (inf (contiguous_intervals Z j)).
   move=> H2.
-  have : ((cplt_hull Z)) (inf (contiguous_intervals Z j)).
+  have : (cplt_hull Z) (inf (contiguous_intervals Z j)).
     by [].
   rewrite H1 => -[l _].
   apply/negP.
@@ -3907,38 +3920,40 @@ exists p.
 exact: finite_set_isolated.
 Qed.
 
-Lemma inf_contiguous_intervals1 (P : set R) (p : seq nat) j :
-  P !=set0 ->
-  compact P ->
-  (j < size p)%N ->
-  contiguous_intervals_support P = [set` p] ->
-  inf P <= contiguous_intervals1 P p`_j.
+Lemma inf_contiguous_intervals1 (P : set R) r : P !=set0 -> compact P ->
+  r \in contiguous_intervals_support P -> inf P <= contiguous_intervals1 P r.
 Proof.
-move=> P0 cP pi Pp.
-apply: ge_inf.
+move=> P0 cP rP; apply: ge_inf.
 - by move: cP; rewrite Rcompact_boundE/= => -[].
 - apply: mem_contiguous_intervals1 => //.
-  have : p`_j \in [set` p].
-    rewrite inE/=.
-    by rewrite mem_nth//.
-  by rewrite -Pp inE.
+  by move: rP; rewrite inE.
 Qed.
 
-Lemma sup_contiguous_intervals2 (P : set R) (p : seq nat) j :
-  P !=set0 ->
-  compact P ->
-  (j < size p)%N ->
-  contiguous_intervals_support P = [set` p] ->
-  contiguous_intervals2 P p`_j <= sup P.
+Lemma sup_contiguous_intervals2 (P : set R) r : P !=set0 -> compact P ->
+  r \in contiguous_intervals_support P -> contiguous_intervals2 P r <= sup P.
 Proof.
-move=> P0 cP pi Pp.
-apply: ub_le_sup.
+move=> P0 cP rP; apply: ub_le_sup.
   by move: cP; rewrite Rcompact_boundE/= => -[].
 apply: mem_contiguous_intervals2 => //.
-have : p`_j \in [set` p].
-  rewrite inE/=.
-  by rewrite mem_nth//.
-by rewrite -Pp inE.
+by move: rP; rewrite inE.
+Qed.
+
+Lemma sup_contiguous_intervals1 (P : set R) r : P !=set0 -> compact P ->
+  r \in contiguous_intervals_support P -> contiguous_intervals1 P r <= sup P.
+Proof.
+move=> P0 cP rP.
+rewrite (le_trans _ (sup_contiguous_intervals2 _ _ rP))//.
+by apply: contiguous_intervals1_le_contiguous_intervals2;
+  move: cP; rewrite Rcompact_boundE/= => -[].
+Qed.
+
+Lemma inf_contiguous_intervals2 (P : set R) r : P !=set0 -> compact P ->
+  r \in contiguous_intervals_support P -> inf P <= contiguous_intervals2 P r.
+Proof.
+move=> P0 cP rP.
+rewrite (le_trans (inf_contiguous_intervals1 _ _ rP))//.
+by apply: contiguous_intervals1_le_contiguous_intervals2;
+  move: cP; rewrite Rcompact_boundE/= => -[].
 Qed.
 
 Lemma contiguous_infinite (a b : R) (P : set R) :
@@ -4331,7 +4346,8 @@ have L6 : [/\ inf P = (sorted_bnds`_0).1,
     + have [j jp j0] : exists2 j : nat, (j < size p)%N & unsorted_bnds`_j = sorted_bnds`_0.
         by apply: L3 => //; rewrite lt0n size_eq0.
       rewrite -j0 (nth_map 0)//=.
-      exact: inf_contiguous_intervals1.
+      apply: inf_contiguous_intervals1 => //.
+      by rewrite Pp inE/=; exact/mem_nth.
     + move/lebesgue_measure_setU2_eq0 : muP => /(_ _ )[]//.
       apply: bigsetU_measurable => /= i _.
       exact: measurable_itv.
@@ -4401,7 +4417,8 @@ have L6 : [/\ inf P = (sorted_bnds`_0).1,
     + have [j jp j0] : exists2 j : nat, (j < size p)%N & unsorted_bnds`_j = sorted_bnds`_n.-1.
         by apply: L3 => //; rewrite prednK// lt0n size_eq0.
       rewrite -j0 (nth_map 0)//=.
-      exact: sup_contiguous_intervals2.
+      apply: sup_contiguous_intervals2 => //.
+      by rewrite Pp inE; exact/mem_nth.
     move/lebesgue_measure_setU2_eq0 : muP => /(_ _ )[]//.
     by apply: bigsetU_measurable => /= i _; exact: measurable_itv.
 have {}UE : P = inf P |` \big[setU/set0]_(k < n.-1) [set (sorted_bnds`_k).2] `|` [set sup P].
@@ -4423,8 +4440,7 @@ exact: perfect_set_infinite.
 Qed.
 
 Lemma contiguous_intervals_support0 (Z : set R) :
-  ~ (closed Z) ->
-  contiguous_intervals_support Z = set0.
+  ~ closed Z -> contiguous_intervals_support Z = set0.
 Proof.
 move=> ncZ.
 rewrite /contiguous_intervals_support.
