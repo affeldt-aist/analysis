@@ -2049,30 +2049,27 @@ move=> n; rewrite andbT => /andP[-> ]/leq_trans; apply.
 by rewrite size_map size_iota.
 Qed.
 
+Lemma last_lambda (a b l x : R) :
+  a < b -> 0 < l ->
+  last x (lp a b l) = b.
+Proof.
+move=> ab l0.
+rewrite (last_nth b).
+rewrite -(@prednK (size _))//.
+rewrite /lp (lock (iota 0))/=; unlock; rewrite nth_map_iota.
+  by rewrite size_map size_iota.
+by rewrite size_map size_iota/= -mulrA divff// mulr1 addrCA subrr addr0.
+Qed.
+
 Lemma lambda_partition_partition (a b l : R) :
   a < b -> 0 < l ->
   itv_partition a b (lp a b l).
 Proof.
 move=> ab l0.
-split; last first.
-- rewrite (last_nth b).
-  rewrite -(@prednK (size _))/=. (*; first exact: lambda_partition_size0.*)
-  admit.
-  rewrite nth_map_iota//; last first.
-    rewrite size_map size_iota mulfK; last by rewrite subrKC.
-    rewrite lt0r_neq0//.
-- admit.
-Abort.
+split; last by rewrite last_lambda.
 
-Lemma lambda_mesh (a b l : R) :
-  a < b -> 0 < l ->
-  mesh a b (lp a b l) < l.
-Proof.
-move=> ab l0.
-rewrite /mesh -bigmaxr_morph.
-apply: bigmax_lt => // n _.
-(*exact: lambda_partition_div_width.*)
-Abort.
+Admitted.
+
 
 End preliminaries.
 
