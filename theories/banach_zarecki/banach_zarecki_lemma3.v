@@ -2,7 +2,7 @@ From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import boot order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
-From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
+From mathcomp Require Import boolp classical_sets functions.
 From mathcomp Require Import cardinality.
 From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences measure lebesgue_measure realfun.

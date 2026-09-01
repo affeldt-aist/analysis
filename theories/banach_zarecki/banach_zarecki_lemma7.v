@@ -2,7 +2,7 @@ From HB Require Import structures.
 From Stdlib Require Import Bool.
 From mathcomp Require Import boot order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
-From mathcomp Require Import mathcomp_extra boolp classical_sets functions.
+From mathcomp Require Import boolp classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences.
 From mathcomp Require Import measure lebesgue_measure realfun.
@@ -64,133 +64,6 @@ Variables a b : R.
 Hypothesis ab : a < b.
 
 Local Notation mu := (@completed_lebesgue_measure R).
-
-(* NB(rei): commented out because it looks like sigma-additivity *)
-(*Lemma nondecreasing_fun_image_measure (f : R -> R) (G_ : (set R)^nat) :
-  {in `[a, b] &, {homo f : x y / x <= y}} ->
-  \bigcap_i G_ i `<=` `]a, b[%classic ->
-  mu (\bigcap_i (G_ i)) = \sum_(i \in setT) (mu (G_ i)).
-Proof.
-Abort.*)
-
-(* Remark: p.183 of J. Foran, Fundamentals of real analysis *)
-(* Lemma nondecreasing_set_seq_cvg (A_ : nat -> set R) :
-  (forall k, measurable (A_ k)) -> {homo A_ : n m /~ n <= m) ->
-    mu (\bigcap_i A_ i) = lim (mu (A_ i) @[i --> /oo]).
-*)
-
-(* Lemma fG_cvg (f : R -> R) (G_ : nat -> set R) (A : set R) *)
-(*  : mu (f @` G_ n) @[n --> \oo] --> mu (f @` A). *)
-(*   rewrite (_: mu (f @` A) = mu (\bigcap_i (f @` (G_ i)))); last first. *)
-(*     rewrite mfA0. *)
-(*     apply/esym. *)
-(*     have : (mu (\bigcap_(i < n) (f @` (G_ i))) @[n --> \oo] --> mu (\bigcap_i (f @` (G_ i)))). *)
-(*       admit. *)
-(*     move/cvg_lim => <- //. *)
-(*     apply/cvg_lim => //. *)
-(*     apply/fine_cvgP; split. *)
-(*       admit. *)
-(*     apply/cvgrPdist_le => /= d d0. *)
-(*     near=> n. *)
-(*     rewrite sub0r normrN ger0_norm; last by apply:fine_ge0; rewrite measure_ge0. *)
-(*     have n0 : (0 < n)%N by near: n; apply: (nbhs_infty_gt 0). *)
-
-(*     apply: (@squeeze_cvge _ _ _ _ (cst 0) _ (fun i => (2 ^- i)%:E)). *)
-(*         near=> n. *)
-(*         rewrite measure_ge0 /=. *)
-(*         apply: (@le_trans _ _ (mu (\bigcup_(k in [set j | (n.-1 <= j)%N]) (f @` E_ k)))). *)
-(*           apply: le_measure => /=. *)
-(*               rewrite inE. *)
-(*               apply: sub_caratheodory. *)
-(*               apply: bigcap_measurable. *)
-(*               move=> k _. *)
-(*               rewrite image_G. *)
-(*               apply: bigcup_measurable. *)
-(*               by move=> ? _; apply: mfE. *)
-(*             rewrite inE. *)
-(*             apply: sub_caratheodory. *)
-(*             apply: bigcup_measurable. *)
-(*             by move=> k _; apply: mfE. *)
-(*           rewrite [X in _ `<=` X](_:_= f @` (G_ n.-1)); last by []. *)
-(*           apply: bigcap_inf => /=; first by rewrite ltn_predL. *)
-          
-(*         admit. *)
-(*       by apply: cvg_cst. *)
-(*     rewrite -cvg_shiftS /=. *)
-(*     apply: cvg_EFin. *)
-(*       by near=> n. *)
-(*     have Hgeo : (fun n => 2 ^- n.+1) = @geometric R 2^-1 2^-1. *)
-(*       apply: funext => n. *)
-(*       by rewrite -d_geo. *)
-(*     rewrite [X in X @ _ --> _]Hgeo. *)
-(*     by apply: cvg_geometric. *)
-(*   apply: (@nonincreasing_cvg_mu _ _ R mu (fun i => f @` (G_ i))) => /=. *)
-(*         apply: (@le_lt_trans _ _ (f b - f a)%:E). *)
-(*           rewrite (_:(f b - f a)%:E = mu `[f a, f b]); last first. *)
-(*             rewrite completed_lebesgue_measure_itv. *)
-(*             have : f a <= f b. *)
-(*               by apply: nndf; rewrite ?in_itv/= ?lexx ?ltW. *)
-(*             rewrite le_eqVlt; move/predU1P => [-> |fab]. *)
-(*               by rewrite ltxx subrr. *)
-(*             by rewrite ifT. *)
-(*           apply: le_measure => /=. *)
-(*               rewrite inE. *)
-(*               apply: sub_caratheodory. *)
-(*               rewrite image_G. *)
-(*               apply: bigcup_measurable. *)
-(*               move=> k _. *)
-(*               exact: (mfE k). *)
-(*             rewrite inE. *)
-(*             by apply: sub_caratheodory. *)
-(*           rewrite image_G. *)
-(*           move=> y [n _]. *)
-(*           move=> [x + <-{y}]. *)
-(*           rewrite /E_. *)
-(*           move/mem_set/big_ord_setUP => [k abnkx]. *)
-(*           apply/andP; split. *)
-(*             apply: nndf. *)
-(*                 by rewrite in_itv/= lexx ltW. *)
-(*               apply: (absub n k (ltn_ord k)) => /=. *)
-(*               by rewrite inE in abnkx. *)
-(*             move: abnkx. *)
-(*             rewrite inE /= in_itv/=. *)
-(*             move/andP => [+ _]. *)
-(*             move/ltW; apply: le_trans. *)
-(*             apply: incl_itv_lb_nat. *)
-(*             - exact: ablt. *)
-(*             - exact: absub. *)
-(*             - by []. *)
-(*           apply: nndf. *)
-(*               apply: (absub n k (ltn_ord k)) => /=. *)
-(*               by rewrite inE in abnkx. *)
-(*             by rewrite in_itv/= lexx ltW. *)
-(*           move: abnkx. *)
-(*           rewrite inE /= in_itv/=. *)
-(*           move/andP => [_ +]. *)
-(*           move/ltW; move/le_trans; apply. *)
-(*           apply: incl_itv_ub_nat. *)
-(*           - exact: ablt. *)
-(*           - exact: absub. *)
-(*           - by []. *)
-(*         exact: ltry. *)
-(*       move=> i. *)
-(*       rewrite image_G. *)
-(*       apply: sub_caratheodory. *)
-(*       apply: bigcup_measurable. *)
-(*       by move=> + _. *)
-(*     apply: bigcap_measurable. *)
-(*     move=> k _. *)
-(*     rewrite image_G. *)
-(*     apply: sub_caratheodory. *)
-(*     apply: bigcup_measurable. *)
-(*     by move=> + _. *)
-(*   apply/nonincreasing_seqP. *)
-(*   move=> n. *)
-(*   rewrite !image_G subsetEset. *)
-(*   move=> _ [k /= nk [x] Ekx <-]. *)
-(*   exists k => //. *)
-(*   by apply: ltnW. *)
-(* Admitted. *)
 
 Variable f : R -> R.
 

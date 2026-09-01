@@ -4,7 +4,7 @@ From mathcomp Require Import boot order ssralg ssrnum ssrint interval finmap.
 From mathcomp Require Import interval_inference archimedean.
 #[warning="-warn-library-file-internal-analysis"]
 From mathcomp Require Import unstable.
-From mathcomp Require Import mathcomp_compat boolp contra classical_sets functions.
+From mathcomp Require Import boolp contra classical_sets functions.
 From mathcomp Require Import cardinality fsbigop interval set_interval.
 From mathcomp Require Import reals ereal topology normedtype sequences.
 From mathcomp Require Import real_interval esum measure.
@@ -238,6 +238,24 @@ apply: nonincreasing_cvg_measure.
 apply/nonincreasing_seqP => n.
 rewrite !bigcap_mkord big_ord_recr/= subsetEset.
 exact: subIsetl.
+Qed.
+
+Lemma cvg_measure_bigcap_new_new d (T : algebraOfSetsType d) {R : realFieldType}
+  (mu : {measure set T -> \bar R}) (F : (set T)^nat) :
+  (mu (F 0%N) < +oo)%E ->
+  (forall i : nat, d.-measurable (F i)) ->
+  d.-measurable (\bigcap_n F n) ->
+  (mu \o (fun n => (\bigcap_(i < n) F i))) x @[x --> \oo] --> mu (\bigcap_n F n).
+Proof.
+move=> Foo mF mFoo.
+suff: (mu \o (fun n => (\bigcap_(i < n.+1) F i))) x @[x --> \oo] --> mu (\bigcap_n F n).
+  move=> H.
+  move=> A FA.
+  have [n _ Hn] := H _ FA.
+  exists n.+1 => //= m/= nm.
+  destruct m => //.
+  by apply: Hn.
+exact: cvg_measure_bigcap_new.
 Qed.
 
 Lemma big_nat_setUP T (n : nat) (F : nat -> _) (x : T) :
