@@ -373,9 +373,7 @@ Qed.
 Lemma lemma4_cover (f : R -> R) (P : set R) (xy : nat -> R * R) :
   {within `[a, b], continuous f} ->
   is_interval (f @` `[a, b]) ->
-  (* perfect_set P *) closed P ->
- (*  a = inf P -> b = sup P -> *)
-  Rhull P = `[a, b] ->
+  [set` Rhull P] `<=` `[a, b]%classic ->
   (forall n, (xy n).1 <= (xy n).2)%R ->
  `[a, b]%classic `<=` P `|`
    \bigcup_(i in (fun i => `[(xy i).1, (xy i).2]%classic `<=` `[a, b]))
@@ -385,11 +383,11 @@ Lemma lemma4_cover (f : R -> R) (P : set R) (xy : nat -> R * R) :
         \sum_(0 <= i <oo | `[< `[(xy i).1, (xy i).2]%classic `<=` `[a, b] >])
           oscillation f `[(xy i).1, (xy i).2]%classic.
 Proof.
-move=> cf fab closedP + xy12 abSubPxy.
-move/[dup]/eq_Rhull_itvccP => [[haslbP Pinf infa] [hasubP Psup supa]] Pab.
-have compactP : compact P.
-  apply: Rbounded_closed_compact => //.
-  by rewrite Rbounded_setE.
+move=> cf fab Pab xy12 abSubPxy.
+have ubP : has_ubound P.
+  by exists b => ?; move/(@sub_Rhull _)/Pab => /=; rewrite in_itv/= => /andP[].
+have lbP : has_lbound P.
+  by exists a => ?; move/(@sub_Rhull _)/Pab => /=; rewrite in_itv/= => /andP[].
 have H1 : f @` `[a, b] `<=` (f @` P) `|`
      \bigcup_(i in (fun i => `[(xy i).1, (xy i).2] `<=` `[a, b]))
             f @` `[(xy i).1, (xy i).2].
