@@ -1775,7 +1775,6 @@ Lemma mesh_filter (a b : R) (s : seq R) (P : pred R) :
 Proof.
 Abort.
 
-
 (* deprecating sorted_map *)
 Lemma sort_sorted_fst {T1 T2 : eqType} (le1 : rel T1)
   (p : seq (T1 * T2)) :
@@ -1976,6 +1975,28 @@ Proof.
 Abort.
 
 End mesh_lemmas.
+
+(*
+Section subdivision_of_itv_partition.
+Context {R : realType}.
+Implicit Types (a b : R) (s : seq R).
+Implicit Type (f : R -> R).
+
+Definition itvs_of_seq (df : R) s :=
+let nths := nth df s in
+  [seq (nths n.+1, nths n) | n <- iota 0 (size s).+1].
+
+Lemma variation_seq1 (c : R) a b f :
+  variation a b f [:: c] = `|f c - f a|.
+Proof. by rewrite /variation/= big_nat1/=. Qed.
+
+Lemma variation_subdivition a b f s (ps : itv_partition a b s) :
+  variation a b f s =
+    \sum_(sdiv <- subdivition_of_itv_partition a b s ps)
+   variation sdiv.1 sdiv.2 f [:: sdiv.2].
+
+End subdivision_of_itv_partition.
+*)
 
 Section preliminaries.
 Context {R : realType}.
@@ -3643,12 +3664,23 @@ have cdIcplt_hull (S : set R) : measurable S -> S `<=` `[c, d] ->
 pose ABcd n (i : 'I_ n.+2) := [set k | `]A_ k, B_ k[ `<=` `[c_ n i, d_ n i]].
 (* have UABcdE n : \bigcup_(i < n.+1) (ABcd _ i) = [set k | n < k]. *)
 set Zsub := fun n (i : 'I_ n.+2) => Z `&` `[c_ n i, d_ n i].
+have hull_Zsub n (i : 'I_ n.+2) :
+  [set` Rhull (Zsub n i)] `<=` `[c_ n i, d_ n i]%classic.
+  rewrite Rhull_smallest.
+  apply: smallest_sub; first exact: interval_is_interval.
+  exact: subIsetr.
 have cf_cd n i : {within `[c_ n i, d_ n i], continuous f}.
   apply: continuous_subspaceW cf.
-  rewrite /c_ cbE /d_ daE.
-  case: i => /=.
-    admit.
-  admit.
+  apply: subset_itv; rewrite bnd_simp.
+    apply: (le_trans ac).
+    rewrite /c_ cbE; case: i => //= i.
+    apply: le_trans; last exact: aleb.
+    exact: (proj1 (@clea_bled _ _ _ _ _ _ _)).
+  apply: (le_trans _ db).
+  rewrite /d_ daE.
+  apply: le_trans; first exact: aleb.
+  rewrite /A_ /B_ /d.
+  exact: (proj2 (@clea_bled _ _ _ _ _ _ _)).
 have itvfcd n (i : 'I_ n.+2) : is_interval (f @` `[c_ n i, d_ n i]).
   apply: (is_interval_image_cc cf).
   apply: subset_itv => //; rewrite bnd_simp.
@@ -3660,10 +3692,7 @@ have itvfcd n (i : 'I_ n.+2) : is_interval (f @` `[c_ n i, d_ n i]).
   rewrite /d_ daE.
   apply: le_trans; first exact: aleb.
   by apply clea_bled.
-have cZsub n i : closed (Zsub n i) by apply: closedI => //; exact: itv_closed.
-have hull_Zsub n (i : 'I_ n.+2) : Rhull (Zsub n i) = `[c_ n i, d_ n i].
-  rewrite /Zsub.
-  admit.
+
 have Zsub_cover n (i : 'I_ n.+2) :
     `[c_ n i, d_ n i]%classic `<=` Zsub n i `|` \bigcup_(i0 in
     (fun k : nat => `[A_ (n.+1 + k)%N, B_ (n.+1 + k)%N] `<=` `[c_ n i, d_ n i]))
@@ -3759,7 +3788,7 @@ have ineq7 n : ((\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|)%:E <=
 (* change to lemma4_cover *)
     have /andP[le1 le2] := @lemma4_cover _ _ _ (cled a lbZ ubZ cd cZ Z_nonempty AB n i) f _
     (fun k : nat => (A_ (n.+1 + k)%N, B_ (n.+1 + k)%N)) (cf_cd n i)
-    (itvfcd n i) (cZsub n i) (hull_Zsub n i)
+    (itvfcd n i) (hull_Zsub n i)
     (fun k => (ltW (AB (n.+1 + k)%N))) (Zsub_cover n i).
     rewrite /=.
     apply: (le_trans le1); apply: (le_trans le2).
