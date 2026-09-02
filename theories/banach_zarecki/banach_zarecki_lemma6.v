@@ -2032,11 +2032,182 @@ Abort.
 
 End mesh_lemmas.
 
-(*
+Section adjacent_pairs.
+Context {T : Type}.
+Implicit Types (s : seq T).
+
+Definition adjacent_pairs (s : seq T) := zip s (behead s).
+
+Lemma adjacent_pairs_nil : adjacent_pairs [::] = [::].
+Proof. by []. Qed.
+
+Lemma adjacent_pairs_seq1 (x : T) : adjacent_pairs [:: x] = [::].
+Proof. by []. Qed.
+
+Lemma adjacent_pairs_cons (x y : T) s :
+  adjacent_pairs (x :: y :: s) = (x, y) :: adjacent_pairs (y :: s).
+Proof. by []. Qed.
+
+Lemma adjacent_pairs_rcons (x y : T) s :
+  adjacent_pairs (rcons (rcons s x) y) =
+    rcons (adjacent_pairs (rcons s x)) (x, y).
+Proof.
+elim/last_ind : s x y => //= s0 s1 IH x y.
+rewrite IH.
+Abort.
+
+End adjacent_pairs.
+
+(* generalize *)
+Lemma filter_ocitv_cat {R : realType}
+    (b a c : R) (t : seq R) :
+  (a <= b)%O ->
+  (b <= c)%O ->
+  sorted <=%O t ->
+  [seq x <- t | (a < x <= c)%O]
+  =
+  [seq x <- t | (a < x <= b)%O] ++
+  [seq x <- t | (b < x <= c)%O].
+Proof.
+elim: t b => // t0 t1 IH b ab bc st/=.
+case: ifP; last first.
+  move/negP/negP; rewrite negb_and -!leNgt => /orP[at0|t0c].
+    rewrite !ifF//.
+    - admit.
+    - admit.
+    apply: IH => //.
+    admit.
+  rewrite !ifF//.
+  - admit.
+  - admit.
+  apply: IH => //.
+  admit.
+move=> /andP[at0 t0c].
+have [t0b|bt0]/= := leP t0 b.
+  rewrite at0 (IH b)//.
+  admit.
+rewrite andbF t0c (IH b)//.
+  admit.
+suff -> : [seq x <- t1 | a < x & x <= b] = [::] by rewrite cat0s.
+apply: size0nil.
+apply/eqP; rewrite -leqn0 leqNgt size_filter_gt0.
+apply/hasPn => x xt1.
+rewrite negb_and -ltNge; apply/orP; right.
+apply: (lt_le_trans bt0).
+by have/le_path_min/allP := st; apply.
+Admitted.
+
+Section split_seq.
+
+Definition split_seq d {T : porderType d} (s t : seq T) : seq (seq T) :=
+  [seq [seq x <- t | (p.1 < x <= p.2)%O]
+   | p <- adjacent_pairs s].
+
+Lemma split_0seq d {T : porderType d} (t : seq T) :
+  split_seq [::] t = [::].
+Proof. by []. Qed.
+
+Lemma split_1seq d {T : porderType d} x (t : seq T) :
+  split_seq [:: x] t = [::].
+Proof. by []. Qed.
+
+Lemma split_seq0 d {T : porderType d} (s : seq T) :
+  split_seq s [::] = [::].
+Proof.
+rewrite /split_seq.
+Abort.
+
+Lemma split_seq_cons d {T : porderType d}
+    (x y : T) (s t : seq T) :
+  split_seq (x :: y :: s) t =
+    [seq z <- t | (x < z <= y)%O] ::
+    split_seq (y :: s) t.
+Proof.
+Admitted.
+
+(* generalize *)
+Lemma flatten_split_seq {R : realType}
+    (x : R) (s t : seq R) :
+  sorted <=%O (x :: s) ->
+  sorted <=%O t ->
+  flatten (split_seq (x :: s) t) =
+    [seq y <- t | (x < y <= last x s)%O].
+Proof.
+elim: s x.
+  move=> x _ st.
+  rewrite /=; apply/esym.
+  apply: size0nil.
+  apply/eqP; rewrite -leqn0 leqNgt size_filter_gt0.
+  apply/hasPn => y ty.
+  by rewrite negb_and -ltNge orb_negb_l.
+move=> s0; elim.
+  by move=> ?//= ? ? _; rewrite cats0.
+move=> s1 s2 IH0 IH1 x sorted_s sorted_t.
+rewrite split_seq_cons -cat1s flatten_cat.
+rewrite IH1//.
+  by have/andP[] := sorted_s.
+rewrite /= cats0.
+rewrite -filter_ocitv_cat//.
+  by have/andP[] := sorted_s.
+have := sorted_s.
+rewrite (lock (s1 :: s2))/= le_path_sortedE; unlock.
+move/and3P => [_ /allP + _]; apply.
+exact: mem_last.
+Qed.
+
+(* generalize *)
+Lemma split_seqK {R : realType} (s t : seq R) (d0 d1 : R) :
+  s != [::] ->
+  sorted <=%O s ->
+  sorted <=%O t ->
+  (head d0 s < head d0 t)%O ->
+  (last d1 t <= last d1 s)%O ->
+  t = flatten (split_seq s t).
+Proof.
+case: s => // s0 s1 _.
+elim/last_ind : s1 => //=.
+  move=> _.
+  elim: t => // t0 t1 IH/=.
+  rewrite le_path_sortedE => /andP[/allP t0t1 _].
+  move/lt_le_trans => H.
+  have : (t0 <= last t0 t1)%O.
+    elim/last_ind : t1 IH t0t1 => // t1 t2 IH0 IH1; apply.
+    by rewrite last_rcons mem_rcons mem_head.
+  by move/le_trans => H' /H' /H; rewrite ltxx.
+move=> s1 s2 _.
+
+  rewrite last_nil.
+Lemma split_seqK d {T : orderType d} (s t : seq T) (d0 d1 : T) :
+  s != [::] ->
+  sorted <=%O s ->
+  sorted <=%O t ->
+  (head d0 s < head d0 t)%O ->
+  (last d1 t <= last d1 s)%O ->
+  t = flatten (split_seq s t).
+Proof.
+Abort.
+
+End split_seq.
+
+
 Section subdivision_of_itv_partition.
 Context {R : realType}.
 Implicit Types (a b : R) (s : seq R).
 Implicit Type (f : R -> R).
+
+Definition split_seq d {T : porderType d} (s t : seq T) :
+  [seq [seq t0 <- t | (s0 < t <= s1)%O] | s1 = next s s0].
+
+Lemma subseq_variationE a b f (s t : seq R) :
+  itv_partition a b t ->
+  subseq s t ->
+let nths := nth b (a :: s ++ [:: b]) in
+  variation a b f t =
+    \sum_(i < (size s).+1)
+       variation a b f [seq y <- t | nths i < y <= nths i.+1].
+Proof.
+
+Admitted.
 
 Definition itvs_of_seq (df : R) s :=
 let nths := nth df s in
@@ -2674,7 +2845,7 @@ Proof.
 by rewrite /diam_max big_nil.
 Qed.
 
-Lemma diam_maxS (s t : seq (set R)) :
+Lemma diam_s t : seq (set R)) :
  (forall A, A \in s -> exists2 B, B \in t & A `<=` B) ->
   (diam_max s <= diam_max t)%E.
 Proof.
@@ -3459,6 +3630,7 @@ have cdcf : {within `[c, d], continuous f}.
   by apply: subset_itv; rewrite bnd_simp.
 have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite /S_ /V_.
+  rewrite variation_subdivition
   apply: (le_trans (lee_tofin
    (@variation_subseq _ c d f (behead (xs n)) (behead (CD_ n)) _ _ _))).
   - admit.
