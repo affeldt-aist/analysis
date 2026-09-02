@@ -2175,8 +2175,9 @@ elim/last_ind : s1 => //=.
     by rewrite last_rcons mem_rcons mem_head.
   by move/le_trans => H' /H' /H; rewrite ltxx.
 move=> s1 s2 _.
+Admitted.
 
-  rewrite last_nil.
+(*
 Lemma split_seqK d {T : orderType d} (s t : seq T) (d0 d1 : T) :
   s != [::] ->
   sorted <=%O s ->
@@ -2186,6 +2187,7 @@ Lemma split_seqK d {T : orderType d} (s t : seq T) (d0 d1 : T) :
   t = flatten (split_seq s t).
 Proof.
 Abort.
+*)
 
 End split_seq.
 
@@ -2195,6 +2197,7 @@ Context {R : realType}.
 Implicit Types (a b : R) (s : seq R).
 Implicit Type (f : R -> R).
 
+(*
 Definition split_seq d {T : porderType d} (s t : seq T) :
   [seq [seq t0 <- t | (s0 < t <= s1)%O] | s1 = next s s0].
 
@@ -2222,8 +2225,10 @@ Lemma variation_subdivition a b f s (ps : itv_partition a b s) :
     \sum_(sdiv <- subdivition_of_itv_partition a b s ps)
    variation sdiv.1 sdiv.2 f [:: sdiv.2].
 
-End subdivision_of_itv_partition.
 *)
+
+End subdivision_of_itv_partition.
+
 
 Section preliminaries.
 Context {R : realType}.
@@ -2845,7 +2850,7 @@ Proof.
 by rewrite /diam_max big_nil.
 Qed.
 
-Lemma diam_s t : seq (set R)) :
+Lemma diam_maxS (s t : seq (set R)) :
  (forall A, A \in s -> exists2 B, B \in t & A `<=` B) ->
   (diam_max s <= diam_max t)%E.
 Proof.
@@ -3591,22 +3596,23 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
   rewrite cd.
   by rewrite -EFinB ltry.
 have construct_x n :
-  exists x : seq R, [/\ itv_partition c d (behead x),
-    ((mesh c d (behead x))%:E <= lambda n)%E,
-    (forall i : 'I_ n.+1, c_ n i \in x /\ d_ n i \in x),
-    (n <= size x)%N &
+  exists x : seq R, [/\ itv_partition c d x,
+    ((mesh c d x)%:E <= lambda n)%E,
+    (forall i : 'I_ n.+1, c_ n i \in c :: x /\ d_ n i \in x),
+    (n.+1.*2 <= size x)%N &
     (forall (i j : 'I_ n.+1), nth d x j \notin `]c_ n i, d_ n i[) ].
   (* use lambda_partition *)
+  
   admit.
 pose xs := fun n => sval (cid (@construct_x n)).
-have pcdx n : itv_partition c d (behead (xs n)).
+have pcdx n : itv_partition c d (xs n).
   by have [] := proj2_sig (cid (@construct_x n)).
-have max_xs n : mesh c d (behead (xs n)) <= fine (lambda n).
+have max_xs n : mesh c d (xs n) <= fine (lambda n).
   have [_ +] := proj2_sig (cid (construct_x n)).
   rewrite -[X in (_ <= X)%E](@fineK _ (lambda n)); last first.
     admit.
   admit.
-pose S_ n : R := variation c d f (behead (xs n)).
+pose S_ n : R := variation c d f (xs n).
 (* (2) *)
 pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
      (\sum_(i < n) total_variation (A_ i) (B_ i) f).
@@ -3630,9 +3636,9 @@ have cdcf : {within `[c, d], continuous f}.
   by apply: subset_itv; rewrite bnd_simp.
 have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite /S_ /V_.
-  rewrite variation_subdivition
+(*  rewrite variation_subdivision. *)
   apply: (le_trans (lee_tofin
-   (@variation_subseq _ c d f (behead (xs n)) (behead (CD_ n)) _ _ _))).
+   (@variation_subseq _ c d f (xs n) (CD_ n) _ _ _))).
   - admit.
   - admit.
   - admit.
