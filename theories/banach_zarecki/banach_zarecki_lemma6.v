@@ -1190,20 +1190,17 @@ exact: qin iq.
 Qed.
 
 (* TODO: rename *)
-Lemma clea_bled_new def (Z : set R) : has_lbound Z -> has_ubound Z ->
-  let c := inf Z in
-  let d := sup Z in
-  c <= def -> def <= d ->
+Lemma clea_bled_new def c d : c <= def -> def <= d ->
   (forall i, A_ i < B_ i) ->
   (forall i, c <= A_ i) ->
   (forall i, B_ i <= d) ->
   (forall n i, c <= a_ def n i) /\ (forall n i, b_ def n i <= d).
 Proof.
-move=> lbZ ubZ c d cdef ddef AB cA_ B_d.
+move=> cdef ddef AB cA_ B_d.
 apply/all_and2 => n; apply/all_and2 => i.
 have [ni|] := leqP n i.
   rewrite /a_ /b_.
-  by rewrite !nth_default ?size_seq_ab//; split => //.
+  by rewrite !nth_default ?size_seq_ab.
 move/(nth_abE def) => [+ + _].
 rewrite -/abi_.
 rewrite -anth -bnth -idxE -/a_ -/b_ => -> ->.
@@ -1211,8 +1208,8 @@ have ABcd : `]A_ (idx n i), B_ (idx n i)[ `<=` `[c, d].
   move=> x/=.
   rewrite !in_itv/= => /andP[Ax xB].
   apply/andP; split.
-    by rewrite (le_trans _ (ltW Ax))//.
-  by rewrite (le_trans (ltW xB))//.
+    by rewrite (le_trans _ (ltW Ax)).
+  by rewrite (le_trans (ltW xB)).
 split.
   rewrite leNgt; apply/negP => Ac.
   set x := ((A_ (idx n i)) + minr (B_ (idx n i)) c) / 2.
@@ -1242,7 +1239,8 @@ rewrite leNgt; apply/negP => Bd.
 Qed.
 
 Lemma sorted_abi_A_idxs n :
-  sorted (fun x y : R * R * nat => x.1.1 <= y.1.1) (abi_ n) -> sorted <=%R [seq A_ i | i <- idxs n].
+  sorted (fun x y : R * R * nat => x.1.1 <= y.1.1) (abi_ n) ->
+  sorted <=%R [seq A_ i | i <- idxs n].
 Proof.
 set d : R := 0.
 rewrite /abi_.
@@ -1271,8 +1269,8 @@ by [].
 Qed.
 
 Lemma sort_keep_trivIset def n :
-   trivIset [set: nat] (fun i => `]A_ i, B_ i[%classic) ->
-   trivIset `I_n (fun i => `]a_ def n i, b_ def n i[%classic).
+  trivIset [set: nat] (fun i => `]A_ i, B_ i[%classic) ->
+  trivIset `I_n (fun i => `]a_ def n i, b_ def n i[%classic).
 Proof.
 move=> AB.
 apply/trivIsetP => /= i j ni nj ij.
@@ -1283,9 +1281,9 @@ move=> /(_ (@subset_refl _ `I_n)) => H.
 have : trivIset `I_n [eta nth set0 [seq `]A_ i0, B_ i0[%classic | i0 <- iota 0 n]].
   apply/trivIsetP => /= a b na nb ab.
   rewrite !nth_map_iota//.
-  by move/trivIsetP : AB; apply => //.
+  by move/trivIsetP : AB; apply.
 move/H => /trivIsetP => /(_ _ _ ni nj ij).
-by rewrite !nth_map_iota//.
+by rewrite !nth_map_iota.
 Qed.
 
 Lemma sort_keep_lt def n :
@@ -1314,8 +1312,7 @@ by rewrite nth_iota/=.
 Qed.
 
 (* TODO: rename *)
-Lemma contiguous_intervals_sort'_gen def n i j :
-  (i < n)%N -> (j < n)%N ->
+Let contiguous_intervals_sort'_gen def n i j : (i < n)%N -> (j < n)%N ->
   (forall i, A_ i < B_ i) ->
   trivIset [set: nat] (fun i => `]A_ i, B_ i[%classic) ->
   a_ def n i <= a_ def n j ->
@@ -1326,9 +1323,8 @@ have [->//|ij] := eqVneq i j.
 have H2 := a_b_ j nj.
 rewrite leNgt; apply/negP => abs.
 have /trivIsetP/(_ i j ni nj ij) := @sort_keep_trivIset def n trab.
-pose x := (a_ def n j + b_ def n j)/2.
-rewrite -subset0.
-move=> /(_ x)[].
+pose x := (a_ def n j + b_ def n j) / 2.
+rewrite -subset0 => /(_ x)[].
 split.
   rewrite /= in_itv/= /x.
   apply/andP; split.
@@ -1337,14 +1333,10 @@ split.
   rewrite (le_lt_trans _ abs)//.
   by rewrite midf_le// ltW.
 rewrite /= in_itv/= /x.
-apply/andP; split.
-  by rewrite midf_lt//.
-by rewrite midf_lt.
+by rewrite !midf_lt.
 Qed.
 
-(* TODO: rename *)
-Lemma contiguous_intervals_sort_gen n :
-  (forall i, A_ i < B_ i) ->
+Lemma sorted_B_idxs n : (forall i, A_ i < B_ i) ->
   trivIset [set: nat] (fun i => `]A_ i, B_ i[%classic) ->
   sorted <=%R [seq B_ j | j <- idxs n].
 Proof.
@@ -1363,8 +1355,7 @@ have : a_ 0 n i <= a_ 0 n i.+1.
   rewrite /seq_a.
   rewrite /a_ /seq_a.
   by rewrite !size_map size_sort size_map size_iota => /(_ ti).
-have ni : (i < n)%N.
-  by rewrite (leq_trans _ ti).
+have ni : (i < n)%N by rewrite (leq_trans _ ti).
 move/(@contiguous_intervals_sort'_gen 0 n i i.+1 ni ti a_b_ trab).
 rewrite /b_ (seq_b_nth_iota_idxs 0).
 rewrite [in X in _ <= X -> _](nth_map 0)//.
@@ -1379,56 +1370,41 @@ have ? : (((idxs n)`_i)%R < n)%N.
   by rewrite nn.
 rewrite nth_map_iota//.
 rewrite nth_map_iota//.
-  rewrite /idx.
-  rewrite qin//.
-  apply/(nthP 0).
-  exists i.+1 => //.
-  by rewrite nn.
+rewrite /idx.
+rewrite qin//.
+apply/(nthP 0).
+exists i.+1 => //.
+by rewrite nn.
 Qed.
 
-(* TODO: rename *)
-Lemma sorted_B_idxs_gen n :
-  (forall i : nat, A_ i < B_ i) ->
-  trivIset [set: nat] (fun i : nat => `]A_ i, B_ i[%classic) ->
-  sorted <=%R [seq B_ i | i <- idxs n].
-Proof.
-move=> AB trAB.
-by apply: contiguous_intervals_sort_gen => //.
-Qed.
-
-(* TODO: rename *)
-Lemma sorted_b_gen n :
-  (forall i : nat, A_ i < B_ i) ->
-  trivIset [set: nat] (fun i : nat => `]A_ i, B_ i[%classic) ->
+Lemma sorted_b n : (forall i, A_ i < B_ i) ->
+  trivIset [set: nat] (fun i => `]A_ i, B_ i[%classic) ->
   sorted <=%R (seq_b n).
 Proof.
-move=> ? ?.
+move=> AB trAB.
 rewrite (seq_b_nth_iota_idxs 0).
 rewrite [X in sorted _ X](_ : _ = [seq B_ i | i <- idxs n]).
-  rewrite -seq_b_idxs.
-  by rewrite (seq_b_nth_iota_idxs 0).
-by apply: sorted_B_idxs_gen.
+  by rewrite -seq_b_idxs (seq_b_nth_iota_idxs 0).
+exact: sorted_B_idxs.
 Qed.
 
-Lemma blea_new (Z : set R) : has_lbound Z -> has_ubound Z ->
-  let c := inf Z in
-  let d := sup Z in
+(* TODO: rename *)
+Lemma blea_new c d : c <= d ->
   (forall i, A_ i < B_ i) ->
-  trivIset [set: nat] (fun i0 : nat => `]A_ i0, B_ i0[%classic) ->
+  trivIset [set: nat] (fun i => `]A_ i, B_ i[%classic) ->
   (forall i, c <= A_ i) ->
   (forall i, B_ i <= d) ->
   forall n i, b_ d n i <= a_ d n i.+1.
 Proof.
 (* disjoint_contiguous_intervals *)
-move=> lbZ ubZ c d AB trAB cA B_d.
+move=> cd AB trAB cA B_d.
 move=> n i.
 have [ni|iltn] := leqP n.-1 i.
   rewrite /a_.
   rewrite nth_default//.
     rewrite !size_map size_sort size_map size_iota.
     by destruct n => //.
-  apply clea_bled_new => //.
-  by apply: has_bound_inf_sup => //.
+  apply (@clea_bled_new d c d) => // .
 rewrite leNgt; apply/negP => aibi.
 (* TODO: take out, seems to depend only on sorted_b *)
 have : `]a_ d n i, b_ d n i[ `&` `]a_ d n i.+1, b_ d n i.+1[ !=set0.
@@ -1449,12 +1425,12 @@ have : `]a_ d n i, b_ d n i[ `&` `]a_ d n i.+1, b_ d n i.+1[ !=set0.
     rewrite meet_l//.
     rewrite bnd_simp.
     rewrite sorted_leq_nth ?inE//.
-        exact: le_trans.
-        by apply: sorted_b_gen => //.
-      rewrite !size_map size_sort size_map size_iota.
+    - exact: le_trans.
+    - exact: sorted_b.
+    - rewrite !size_map size_sort size_map size_iota.
       by rewrite (leq_trans iltn)// leq_pred.
-    rewrite !size_map size_sort size_map size_iota.
-    by destruct n.
+    - rewrite !size_map size_sort size_map size_iota.
+      by destruct n.
   exists ((a_ d n i.+1 + b_ d n i) / 2) => /=.
   by rewrite in_itv/= midf_lt//= midf_lt.
 rewrite /a_ /b_ /seq_a /seq_b.
@@ -1551,18 +1527,6 @@ have [_ + _] := @bij _ _ _ _ h1.
 by apply => //; rewrite in_setT.
 Qed.
 
-(* TODO: obtained as an instance of a more generic lemma -> rm *)
-Lemma sorted_B_idxs n : sorted <=%R [seq B_ i | i <- idxs A_ B_ n].
-Proof.
-by apply: sorted_B_idxs_gen => //.
-Qed.
-
-(* TODO: obtained as an instance of a more generic lemma -> rm *)
-Lemma sorted_b (d : R) n : sorted <=%R (seq_b n).
-Proof.
-by apply: sorted_b_gen.
-Qed.
-
 Let c := inf Z.
 Let d := sup Z.
 Let a_ := a_ A_ B_ d.
@@ -1626,23 +1590,22 @@ Proof.
 (* disjoint_contiguous_intervals *)
 move=> cd compactZ Z0 AB.
 move=> n i.
-apply (@blea_new) => //.
+apply (@blea_new _ _ c d) => //.
+- exact: ltW.
 - move=> j.
-  rewrite /A_.
   apply: inf_contiguous_intervals1 => //.
   have : h1 j \in supp.
     apply/mem_set.
     have [+ _ _] := @bij _ _ _ _ h1.
-    by apply.
-  by rewrite inE /supp.
+    exact.
+  by rewrite inE.
 - move=> j.
-  rewrite /B_.
   apply: sup_contiguous_intervals2 => //.
   have : h1 j \in supp.
     apply/mem_set.
     have [+ _ _] := @bij _ _ _ _ h1.
-    by apply.
-  by rewrite inE /supp.
+    exact.
+  by rewrite inE.
 Qed.
 
 Lemma cled : c < d -> compact Z -> Z !=set0 -> (forall i, A_ i < B_ i) ->
@@ -1971,7 +1934,7 @@ rewrite ltnS => iltn1.
 have [ji|ij] := leqP (idx_inv j') i.
   left.
   rewrite (lt_le_trans bxj')//.
-  by rewrite le_sorted_leq_nth// ?sorted_b// inE size_seq_ab.
+  by rewrite le_sorted_leq_nth ?sorted_b// inE size_seq_ab.
 right.
 apply: le_lt_trans aj'x.
 move: iltn1.
@@ -2204,24 +2167,19 @@ rewrite /itv_partition; split.
         rewrite -uphalfE.
         rewrite -addn1 addnC.
         by rewrite -/(nat_of_bool true) -oddi1 -uphalf_half.
-      apply blea_new => //.
-      move=> j.
-      rewrite (inf_itvcc (ltW ab))//.
-      suff: A j \in `[a, b].
-        by move/itvP ->.
-      apply/(Iab j).
-      by rewrite /= bound_itvE ltW.
-      move=> j.
       rewrite (sup_itvcc (ltW ab))//.
-      suff: B j \in `[a, b].
-        by move/itvP ->.
-      apply/(Iab j).
-      by rewrite /= bound_itvE ltW.
+      apply (@blea_new _ _ a b (ltW ab)) => //.
+      move=> j.
+      suff: A j \in `[a, b] by move/itvP ->.
+      by apply/(Iab j); rewrite /= bound_itvE ltW.
+      move=> j.
+      suff: B j \in `[a, b] by move/itvP ->.
+      by apply/(Iab j); rewrite /= bound_itvE ltW.
     rewrite (_ : odd i = odd i.-1.+1).
       by rewrite prednK// lt0n.
     rewrite oddS eveni1/=.
-    have -> : (Ordinal (ltn_div2 i.-1 (ltn_ord (Ordinal (leq_ltn_trans (leq_pred i) ni))))) =
-           (Ordinal (ltn_div2 i (ltn_ord (Ordinal ni)))).
+    have -> : Ordinal (ltn_div2 i.-1 (ltn_ord (Ordinal (leq_ltn_trans (leq_pred i) ni)))) =
+        Ordinal (ltn_div2 i (ltn_ord (Ordinal ni))).
       apply/val_inj => /=.
       have := uphalf_half i.-1.
       rewrite (negbTE eveni1) add0n => <-.
@@ -4568,7 +4526,7 @@ have Zsub_cover n (i : 'I_ n.+1) :
     move=> [k _ kx]; right.
     have nk : (n <= k)%N.
       rewrite leqNgt; apply/negP => kn1.
-      move: (disj_abcd d lbZ ubZ h1 n).
+      move: (disj_abcd lbZ ubZ h1 n).
       apply/eqP/set0P; exists x; split.
         by exists i => /=.
       by exists k => /=.
