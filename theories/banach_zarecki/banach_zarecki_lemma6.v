@@ -1189,6 +1189,57 @@ rewrite nth_map_iota//.
 exact: qin iq.
 Qed.
 
+Lemma clea_bled_new def (Z : set R) : has_lbound Z -> has_ubound Z ->
+  let c := inf Z in
+  let d := sup Z in
+  c <= def -> def <= d ->
+  (forall i, A_ i < B_ i) ->
+  (forall i, c <= A_ i) ->
+  (forall i, B_ i <= d) ->
+  (forall n i, c <= a_ def n i) /\ (forall n i, b_ def n i <= d).
+Proof.
+move=> lbZ ubZ c d cdef ddef AB cA_ B_d.
+apply/all_and2 => n; apply/all_and2 => i.
+have [ni|] := leqP n i.
+  rewrite /a_ /b_.
+  by rewrite !nth_default ?size_seq_ab//; split => //.
+move/(nth_abE def) => [+ + _].
+rewrite -/abi_.
+rewrite -anth -bnth -idxE -/a_ -/b_ => -> ->.
+have ABcd : `]A_ (idx n i), B_ (idx n i)[ `<=` `[c, d].
+  move=> x/=.
+  rewrite !in_itv/= => /andP[Ax xB].
+  apply/andP; split.
+    by rewrite (le_trans _ (ltW Ax))//.
+  by rewrite (le_trans (ltW xB))//.
+split.
+  rewrite leNgt; apply/negP => Ac.
+  set x := ((A_ (idx n i)) + minr (B_ (idx n i)) c) / 2.
+  have : x < c.
+    rewrite /x [in ltRHS](splitr c) mulrDl ltr_leD// ?ltr_pM2r ?ler_pM2r//.
+    by rewrite ge_min lexx orbT.
+  apply/negP; rewrite -leNgt.
+  have : x \in `]A_ (idx n i), B_ (idx n i)[.
+    rewrite in_itv/=; apply/andP; split.
+      by rewrite midf_lt// lt_min AB Ac.
+    rewrite (splitr (B_ _)) /x mulrDl ltr_leD// ?ltr_pM2r ?ler_pM2r//.
+    by rewrite ge_min lexx.
+  move/(ABcd x) => /=.
+  by rewrite in_itv/= => /andP[].
+rewrite leNgt; apply/negP => Bd.
+  set y := (maxr (A_ (idx n i)) d + B_ (idx n i)) / 2.
+  have : d < y.
+    rewrite /y [in ltLHS](splitr d) mulrDl ler_ltD// ?ltr_pM2r ?ler_pM2r//.
+    by rewrite le_max lexx orbT.
+  apply/negP; rewrite -leNgt.
+  have : y \in `]A_ (idx n i), B_ (idx n i)[.
+    rewrite in_itv/=; apply/andP; split.
+      rewrite (splitr (A_ _)) /y mulrDl ler_ltD// ?ltr_pM2r ?ler_pM2r//.
+      by rewrite le_max lexx.
+    by rewrite midf_lt// gt_max Bd AB.
+  by move/(ABcd y) => /= /itvP ->.
+Qed.
+
 End interval_bounds.
 
 Lemma subspace_setCS (X A B : set R) : A `<=` X -> B `<=` X ->
@@ -1291,18 +1342,12 @@ Let d := sup Z.
 Let a_ := a_ A_ B_ d.
 Let b_ := b_ A_ B_ d.
 
+(* TODO: remove? *)
 Lemma clea_bled : Z !=set0 -> (forall i, A_ i < B_ i) ->
   (forall n i, c <= a_ n i) /\ (forall n i, b_ n i <= d).
 Proof.
 move=> Z0 AB.
-apply/all_and2 => n; apply/all_and2 => i.
-have [ni|] := leqP n i.
-  rewrite /a_ /b_ /lemmas.a_ /lemmas.b_.
-  rewrite !nth_default ?size_seq_ab//; split => //; exact: has_bound_inf_sup.
-move/(nth_abE A_ B_ d) => [+ + _].
-rewrite -/abi_.
-rewrite -anth -bnth -idxE -/a_ -/b_ => -> ->.
-have ABcd : `]A_ (idx A_ B_ n i), B_ (idx A_ B_ n i)[ `<=` `[c, d].
+have ABcd i : `]A_ i, B_ i[ `<=` `[c, d].
   rewrite -contiguous_ooitv//.
   apply: (@subset_trans  _ [set` Rhull Z]).
     apply: (subset_trans (@contiguous_intervalsS _ _ _)).
@@ -1314,32 +1359,39 @@ have ABcd : `]A_ (idx A_ B_ n i), B_ (idx A_ B_ n i)[ `<=` `[c, d].
   rewrite ifT.
     exact/asboolP.
   by have [_|_] := boolP `[< (Z (sup Z)) >]; rewrite bnd_simp.
-split.
-  rewrite leNgt; apply/negP => Ac.
-  set x := ((A_ (idx A_ B_ n i)) + minr (B_ (idx A_ B_ n i)) c) / 2.
-  have : x < c.
-    rewrite /x [in ltRHS](splitr c) mulrDl ltr_leD// ?ltr_pM2r ?ler_pM2r//.
-    by rewrite ge_min lexx orbT.
-  apply/negP; rewrite -leNgt.
-  have : x \in `]A_ (idx A_ B_ n i), B_ (idx A_ B_ n i)[.
-    rewrite in_itv/=; apply/andP; split.
-      by rewrite midf_lt// lt_min AB Ac.
-    rewrite (splitr (B_ _)) /x mulrDl ltr_leD// ?ltr_pM2r ?ler_pM2r//.
-    by rewrite ge_min lexx.
-  move/(ABcd x) => /=.
-  by rewrite in_itv/= => /andP[].
-rewrite leNgt; apply/negP => Bd.
-  set y := (maxr (A_ (idx A_ B_ n i)) d + B_ (idx A_ B_ n i)) / 2.
-  have : d < y.
-    rewrite /y [in ltLHS](splitr d) mulrDl ler_ltD// ?ltr_pM2r ?ler_pM2r//.
-    by rewrite le_max lexx orbT.
-  apply/negP; rewrite -leNgt.
-  have : y \in `]A_ (idx A_ B_ n i), B_ (idx A_ B_ n i)[.
-    rewrite in_itv/=; apply/andP; split.
-      rewrite (splitr (A_ _)) /y mulrDl ler_ltD// ?ltr_pM2r ?ler_pM2r//.
-      by rewrite le_max lexx.
-    by rewrite midf_lt// gt_max Bd AB.
-  by move/(ABcd y) => /= /itvP ->.
+have [|subZ] := pselect (is_subset1 Z); last first.
+  apply: clea_bled_new => //.
+  - exact: has_bound_inf_sup.
+  - move=> i; rewrite -/c.
+    suff: `[c, d]%classic (A_ i).
+      by rewrite /= => /itvP[->//].
+    have /closureS := ABcd i.
+    rewrite closure_neitv_oo// closure_neitv_cc//.
+      by apply: has_bound_not_subset1_inf_sup => //.
+    apply => /=.
+    by rewrite bound_itvE ltW.
+  - move=> i; rewrite -/c.
+    suff: `[c, d]%classic (B_ i).
+      by rewrite /= => /itvP[->//].
+    have /closureS := ABcd i.
+    rewrite closure_neitv_oo// closure_neitv_cc//.
+      by apply: has_bound_not_subset1_inf_sup => //.
+    apply => /=.
+    by rewrite bound_itvE ltW.
+move/is_subset1P => -[Z0'|[z Zz]].
+  absurd.
+  by apply/eqP/set0P : Z0'.
+have := ABcd O.
+rewrite /c /d Zz sup1 inf1 set_itv1 => /subset_set1[abs|abs].
+  absurd : abs.
+  apply/set0P.
+  exists ((A_ 0 + B_ 0)/2).
+  by rewrite /= !in_itv/= !midf_lt.
+absurd.
+suff: open `]A_ 0, B_ 0[%classic.
+  rewrite abs.
+  exact: set1_not_open.
+exact: itv_open.
 Qed.
 
 Lemma blea : c < d -> compact Z -> Z !=set0 -> (forall i, A_ i < B_ i) ->
@@ -1918,10 +1970,104 @@ apply: variation_le_total_variation.
 rewrite /itv_partition; split.
   rewrite /s.
   rewrite rcons_path; apply/andP; split.
-    admit.
-  admit.
+    apply/(pathP b) => i.
+    rewrite size_tuple => ni.
+    have [i0|i0] := eqVneq i 0.
+      rewrite i0/=.
+      rewrite (@lt_le_trans _ _ (xy ord0).1)//.
+        have [+ _ _ _] := Hxy ord0.
+        rewrite /i_/= in_itv/= => /andP[+ _].
+        apply: le_lt_trans.
+        rewrite /a_ anth.
+        rewrite (and3proj1 (nth_abE _ _ _ _))//.
+        have /= := Iab (nth (b, b, 0%N) (lemmas.abi_ A B n.+1) 0).2.
+        have /itvP ->// : A (nth (b, b, 0%N) (lemmas.abi_ A B n.+1) 0).2 \in `[a, b].
+        rewrite inE.
+        apply: (Iab ((nth (b, b, 0%N) (lemmas.abi_ A B n.+1) 0).2)) => /=.
+        rewrite in_itv/= lexx/=.
+        by rewrite ltW//=.
+      rewrite (nth_map ord0)//.
+        by rewrite size_enum_ord//.
+      rewrite /s0/=.
+      rewrite (@nth_ord_enum n.+1.*2 ord0 ord0)//=.
+      rewrite (_ : Ordinal _ = ord0)//.
+      exact/val_inj.
+    rewrite (nth_map ord0) ?size_tuple//=.
+    rewrite (nth_ord_enum ord0 (Ordinal ni))/=.
+    rewrite nth_cons lt0n i0.
+    rewrite (nth_map ord0).
+      rewrite (@leq_trans i)//.
+        by rewrite prednK// lt0n.
+      by rewrite size_enum_ord ltnW.
+    rewrite (nth_ord_enum ord0 (Ordinal (leq_ltn_trans (leq_pred i) ni)))/=.
+    rewrite /s0/=.
+    have [oddi1|eveni1] := boolP (odd i.-1) => /=.
+      rewrite (_ : odd i = odd i.-1.+1).
+        by rewrite prednK// lt0n.
+      rewrite oddS oddi1//=.
+      rewrite (@le_lt_trans _ _ (nth (b, b, 0%N) (lemmas.abi_ A B n.+1) i.-1./2).1.2)//.
+        set i1 := Ordinal _.
+        have [_ + _ _] := Hxy i1.
+        rewrite /i_/= in_itv/= => /andP[_].
+        move/ltW => /le_trans; apply.
+        rewrite /b_.
+        by rewrite bnth//.
+      have [+ _ _ _] := Hxy (Ordinal (ltn_div2 i (ltn_ord (Ordinal ni)))).
+      rewrite /= /i_/= in_itv/= => /andP[+ _].
+      apply: le_lt_trans.
+      rewrite -bnth.
+      rewrite -/b_.
+
+
+
+
+      admit.
+    rewrite (_ : odd i = odd i.-1.+1).
+      by rewrite prednK// lt0n.
+    rewrite oddS eveni1/=.
+    have -> : (Ordinal (ltn_div2 i.-1 (ltn_ord (Ordinal (leq_ltn_trans (leq_pred i) ni))))) =
+           (Ordinal (ltn_div2 i (ltn_ord (Ordinal ni)))).
+      apply/val_inj => /=.
+      have := uphalf_half i.-1.
+      rewrite (negbTE eveni1) add0n => <-.
+      by rewrite uphalfE prednK// lt0n.
+    exact: (and4proj3 (Hxy _)).
+  pose n1 := @ord_max n.
+  rewrite (@le_lt_trans _ _ (xy n1).2)//.
+    rewrite [leLHS](_ : _ = s0 ord_max).
+      rewrite -nth_last /s0.
+      rewrite size_map size_enum_ord.
+      rewrite ifF.
+        by rewrite /= odd_double /=.
+      rewrite (nth_map ord0) ?size_tuple ?predn1K//.
+      have tmp : (n.+1.*2.-1 < n.+1.*2)%N.
+        by rewrite prednK//.
+      rewrite (nth_ord_enum ord0 (Ordinal tmp))//.
+      rewrite [~~ _]/= odd_double.
+      congr (xy _).2.
+      apply/val_inj => /=.
+      by rewrite uphalf_half odd_double add0n//=.
+    rewrite /s0.
+    rewrite ifF.
+      by rewrite /= odd_double /=.
+    rewrite (_ : Ordinal _ = n1)//.
+    apply/val_inj => //=.
+    rewrite uphalf_half odd_double add0n//=.
+    by rewrite -[RHS](half_bit_double _ false)// add0n.
+  have [_ + _ _] := Hxy n1.
+  rewrite /i_/= in_itv/= => /andP[_].
+  move/lt_le_trans; apply.
+  rewrite /b_ bnth.
+  rewrite (and3proj2 (nth_abE _ _ _ _))//.
+  have /= := Iab (nth (b, b, 0%N) (lemmas.abi_ A B n.+1) n1).2.
+  have : B (nth (b, b, 0%N) (lemmas.abi_ A B n.+1) n1).2 \in `[a, b].
+    rewrite inE.
+    apply: (Iab ((nth (b, b, 0%N) (lemmas.abi_ A B n.+1) n1).2)) => /=.
+    rewrite in_itv/= lexx andbT.
+    by rewrite ltW//=.
+  by move=> /itvP ->.
 by rewrite /s last_rcons.
-Admitted.
+Unshelve. all: end_near. Admitted.
 
 Lemma mesh_mem_filter (a b c d : R) (s : seq R) :
   a <= c -> d <= b ->
