@@ -1754,6 +1754,27 @@ Qed.
 
 End contiguous_intervals.
 
+Lemma ltn_div2 n j : (j < n.+1.*2)%N -> (j./2 < n.+1)%N.
+Proof. by move=> jm; rewrite ltn_half_double. Qed.
+
+Lemma ltn_mul2 n j : (j < n.+1)%N -> (j.*2 < n.+1.*2)%N .
+Proof. by move=> jm; rewrite ltn_double. Qed.
+
+Lemma bigop_mul2 n (f : nat -> R) :
+  \sum_(0 <= i < n) `|f i.*2.+1 - f i.*2| =
+  \sum_(0 <= i < n.*2 | ~~ odd i) `|f i.+1 - f i|.
+Proof.
+elim: n => [|n ih].
+  by rewrite double0 !big_mkord !big_ord0.
+rewrite big_nat_recr//= ih.
+rewrite [in RHS]doubleS.
+rewrite [in RHS]big_mkcond/=.
+rewrite !big_mkord/=.
+rewrite 2![in RHS]big_ord_recr//=.
+rewrite -big_mkcond/= !negbK -addrA; congr +%R.
+by rewrite odd_double/= addr0.
+Qed.
+
 (* need *)
 Lemma sum_oscillation_le_total_variation (a b : R) (f : R -> R) (A B : R^nat) :
   a < b ->
@@ -1854,24 +1875,17 @@ pose s := rcons [tuple s0 x | x < n.+1.*2] b.
 rewrite (@le_trans _ _ (variation a b f s)%:E)//.
   rewrite /variation/=.
   rewrite big_mkord size_rcons size_map/= size_enum_ord.
-  rewrite [in leRHS]big_ord_recr/= nth_rcons size_map size_enum_ord ltnn
-    eqxx.
+  rewrite [in leRHS]big_ord_recl/=.
   rewrite sumEFin lee_fin.
-  rewrite ler_wpDr//.
-  rewrite doubleS.
-  rewrite [in leRHS]big_ord_recr/=.
-  rewrite ler_wpDr//.
-  rewrite [in leRHS]big_ord_recl.
   rewrite ler_wpDl//.
-  under [in leRHS]eq_bigr do rewrite lift0.
-  rewrite -[leRHS](big_mkord xpredT (fun i => `|f (nth b s i.+1) - f (nth b (a :: s) i.+1)|)).
+  rewrite -[leRHS](big_mkord xpredT (fun i => `|f (nth b s i.+1) - f (nth b s i)|)).
   rewrite [in leRHS](bigID [pred n | ~~ odd n] xpredT)//=.
   rewrite ler_wpDr//.
     by rewrite sumr_ge0//.
   rewrite le_eqVlt; apply/orP; left; apply/eqP.
   transitivity (
       \sum_(0 <= i < n.+1) `|f (nth b s i.*2.+1) - f (nth b s i.*2)| ); last first.
-    admit.
+    by rewrite (bigop_mul2 _ (fun i => f (nth b s i))).
   rewrite big_mkord.
   apply: eq_bigr => i _.
   rewrite /s.
