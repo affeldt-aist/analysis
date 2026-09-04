@@ -3874,44 +3874,27 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
   rewrite cd.
   by rewrite -EFinB ltry.
 pose CD_ n := merge <=%R [tuple c_ n i | i < n.+1] [tuple d_ n i | i < n.+1].
-have construct_x n :
-  let x := c :: flatten (intlv
+set xs := fun n => c :: flatten (intlv
 [seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n.+1]
-  (reshape (nseq (size (seq_d n)) 1%N) (seq_d n)))
-  in [/\ itv_partition c d x,
-    ((mesh c d x)%:E <= lambda n)%E,
-    (forall i : 'I_ n.+1, c_ n i \in c :: x /\ d_ n i \in x),
-    (n.+1.*2 <= size x)%N &
-    (forall (i j : 'I_ n.+1), nth d x j \notin `]c_ n i, d_ n i[) ].
-  (* use lambda_partition *)
-  move=> xs; split.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  move=> i.
-  case; case.
-    move=> ?/=.
-    admit.
-  move=> j/=.
-  rewrite ltnS => jn.
-  rewrite nth_flatten.
-  
+  (reshape (nseq (size (seq_d n)) 1%N) (seq_d n))).
+have pcdxs n : itv_partition c d (xs n).
   admit.
-pose xs := fun n => sval (cid (@construct_x n)).
-have pcdx n : itv_partition c d (xs n).
-  by have [] := proj2_sig (cid (@construct_x n)).
-have max_xs n : mesh c d (xs n) <= fine (lambda n).
-  have [_ +] := proj2_sig (cid (construct_x n)).
-  rewrite -[X in (_ <= X)%E](@fineK _ (lambda n)); last first.
-    admit.
+have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
+  admit.
+have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
+               forall (i : 'I_ n.+1), d_ n i \in (xs n)).
+  admit.
+have size_xs n : (n.+1.*2 <= size (xs n))%N.
+  admit.
+have cd_xs n :
+    (forall (i j : 'I_ n.+1), nth d (xs n) j \notin `]c_ n i, d_ n i[).
+  admit.
+have sub_xcd n : subseq (CD_ n) (xs n).
   admit.
 pose S_ n : R := variation c d f (xs n).
 (* (2) *)
 pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
      (\sum_(i < n) total_variation (A_ i) (B_ i) f).
-have sub_xcd n : subseq (CD_ n) (xs n).
-  admit.
 have ac : a <= c.
   apply: lb_le_inf; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
   apply/set0P/negP; move/eqP => Z0'.
@@ -3996,8 +3979,7 @@ have cdbvf : bounded_variation c d f.
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
 have Soo_tv : (S_ n)%:E @[n --> \oo] --> Vcd.
-  have := lemma5 cd cdcf pcdx max_xs lambda0.
-  by rewrite /S_ /Vcd.
+  exact: lemma5 lambda0.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
   apply: (squeeze_cvge _ Soo_tv); last first.
     exact: cvg_cst.
