@@ -3151,6 +3151,21 @@ rewrite /contiguous_intervals; case: pselect => cA//.
 exact: trivIset_set0.
 Qed.
 
+Lemma contiguous_intervals_not_nested A m n : contiguous_intervals A m !=set0 ->
+  ~ contiguous_intervals A m `<` contiguous_intervals A n.
+Proof.
+move=> m0.
+have [->|mn] := eqVneq m n.
+  exact: properxx.
+rewrite properEneq.
+apply/not_andP.
+have /trivIsetP/(_ m n Logic.I Logic.I mn) mn0 := @disjoint_contiguous_intervals A.
+right.
+move/setIidPl.
+rewrite mn0 => /esym/eqP.
+exact/negP/set0P.
+Qed.
+
 Lemma bigcup_contiguous_intervals A :
   closed A -> cplt_hull A = \bigcup_k (contiguous_intervals A) k.
 Proof.
@@ -3514,7 +3529,7 @@ Proof. by rewrite openE/= interior_set1 => /(_ x); exact. Qed.
 Lemma contiguous_intervals1_lt_contiguous_intervals2 (A : set R) n :
   has_lbound A ->
   has_ubound A ->
-   contiguous_intervals A n !=set0 ->
+  contiguous_intervals A n !=set0 ->
   (contiguous_intervals1 A n < contiguous_intervals2 A n)%R.
 Proof.
 move=> ? ? A0.
@@ -4504,29 +4519,6 @@ move/(is_subset1_set1) => H /H {}H.
 apply: (@set1_not_open _ (xget point (contiguous_intervals Z n))).
 rewrite -H.
 exact: open_contiguous_intervals.
-Qed.
-
-Lemma contiguous_support_bnd_lt (Z : set R) (i : nat) :
-  compact Z ->
-  contiguous_intervals_support Z i ->
-  contiguous_intervals1 Z i < contiguous_intervals2 Z i.
-Proof.
-move=> cZ.
-rewrite /contiguous_intervals_support/= => cgiZ0.
-have [Z0|Z0] := pselect (Z !=set0); last first.
-  have {}Z0 : Z = set0 by apply/eqP/not_notP; move/negP/set0P.
-  move: cgiZ0; rewrite Z0 contiguous_intervals_set0.
-  by move/set0P/negP.
-apply: has_bound_not_subset1_inf_sup.
-- apply: (@subset_has_lbound _ _ _ ([set` Rhull Z])).
-    apply: (subset_trans (@contiguous_intervalsS _ _ _)).
-    exact: cplt_hull_subset_Rhull.
-- rewrite (compact_Rhull cZ Z0).
-  exact: has_lbound_itv.
-- move: cZ; rewrite Rcompact_boundE => -[_ ubZ lbZ].
-  rewrite (contiguous_ooitv ubZ lbZ).
-  exact: has_ubound_itv.
-exact: contiguous_intervals_support_not_subset1.
 Qed.
 
 End contiguous_intervals_support.
