@@ -2582,7 +2582,7 @@ by rewrite odd_double/= addr0.
 Qed.
 
 (* for ereal *)
-Lemma esum_mul2 {T : pzSemiRingType} n (f : nat -> \bar T) :
+Lemma esum_mul2_even {T : pzSemiRingType} n (f : nat -> \bar T) :
   \sum_(0 <= i < n) f i.*2 =
   \sum_(0 <= i < n.*2 | ~~ odd i) f i.
 Proof.
@@ -2595,6 +2595,21 @@ rewrite !big_mkord/=.
 rewrite 2![in RHS]big_ord_recr//=.
 rewrite -big_mkcond/= !negbK -addrA; congr +%R.
 by rewrite odd_double/= addr0.
+Qed.
+
+Lemma esum_mul2_odd {T : pzSemiRingType} n (f : nat -> \bar T) :
+  \sum_(0 <= i < n) f i.*2.+1 =
+  \sum_(0 <= i < n.*2 | odd i) f i.
+Proof.
+elim: n => [|n ih].
+  by rewrite double0 !big_mkord !big_ord0.
+rewrite big_nat_recr//= ih.
+rewrite [in RHS]doubleS.
+rewrite [in RHS]big_mkcond/=.
+rewrite !big_mkord/=.
+rewrite 2![in RHS]big_ord_recr//=.
+rewrite -big_mkcond/= -addrA; congr +%R.
+by rewrite odd_double/= add0r.
 Qed.
 
 Lemma sum_oscillation_le_total_variation (a b : R) (f : R -> R) (A B : R^nat) :
@@ -3069,7 +3084,7 @@ Lemma total_variation_intlv_split (A B : seq R) (d0 d1 : R) :
   total_variation a b f =
    \sum_(i < (minn (size A) (size B)))
        total_variation (nth d0 (a :: B) i) (nth d1 A i) f +
-   \sum_(i < (minn (size A) (size B)).+1)
+   \sum_(i < (minn (size A) (size B)))
        total_variation (nth d1 A i) (nth d0 B i) f.
 Proof.
 move=> ab pAB.
@@ -3081,7 +3096,7 @@ rewrite -(big_mkord xpredT
  (fun i => total_variation (nth a (a :: intlv A B) i) (nth b (intlv A B) i) f)).
 rewrite [LHS](bigID [pred n | ~~ odd n] xpredT)//=.
 congr +%E.
-  rewrite -(esum_mul2 _
+  rewrite -(esum_mul2_even _
  (fun i => total_variation (nth a (a :: intlv A B) i) (nth b (intlv A B) i) f)).
   rewrite big_mkord.
   apply: eq_bigr => i _.
@@ -3109,27 +3124,41 @@ congr +%E.
     exact: (ltn_ord i).
   rewrite /n/minn; case: ifP => //.
   by move/negP/negP; rewrite -leqNgt.
+have : n = minn (size A) (size B) by [].
 case: n.
-(*
   by rewrite double0 big_mkord !big_ord0.
-move=> n.
-rewrite doubleS.
-transitivity (\sum_(0 <= i < n.*2.+1 | ~~ odd i)
-  total_variation (nth a (a :: intlv A B) i.+1) (nth b (intlv A B) i.+1) f).
-  rewrite big_mkcond big_nat_recl//= add0e.
-  under eq_bigr do rewrite negbK.
-  by rewrite -big_mkcond/=.
-transitivity (\sum_(0 <= i < n.*2 | ~~ odd i)
-  total_variation (nth a (a :: intlv A B) i.+1) (nth b (intlv A B) i.+1) f).
-  rewrite odd_double.
-rewrite -esum_mul2.
-pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
-     (\sum_(i < n) total_variation (A_ i) (B_ i) f).
-*)
-Admitted.
+move=> n nE.
+rewrite big_mkcond/=.
+under [LHS]eq_bigr do rewrite negbK.
+rewrite -big_mkcond/=.
+rewrite -esum_mul2_odd.
+rewrite big_mkord.
+apply: eq_bigr => i _/=.
+rewrite !nth_intlvE size_intlv size_zip oddS odd_double/=.
+congr total_variation.
+  rewrite ifT.
+    rewrite -nE -mul2n ltn_pmul2l//.
+  rewrite doubleK.
+  apply: set_nth_default.
+  apply: (leq_trans (ltn_ord i)).
+  rewrite -ltnS nE /minn; case: ifP => //.
+  by move/negP/negP; rewrite -leqNgt.
+case: ifP.
+  move=> H.
+  rewrite uphalf_double.
+  apply: set_nth_default.
+  apply: (leq_trans (ltn_ord i)).
+  rewrite -ltnS nE /minn; case: ifP => //.
+  rewrite -ltnS.
+  by move/(leq_trans _); apply.
+move/negP/negP; rewrite -leqNgt -nE.
+rewrite (_ : (2 * n.+1)%R = n.*2.+2); first by rewrite -doubleS -mul2n.
+rewrite ltnS.
+rewrite ltn_double.
+by have := ltn_ord i; rewrite ltnNge => /negP.
+Qed.
 
 End total_variation_sum.
-
 
 Section preliminaries.
 Context {R : realType}.
