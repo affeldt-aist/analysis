@@ -28,6 +28,557 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+Section preliminaries_all2_nthP.
+
+Context {S T : Type}.
+Implicit Types (a : S -> T -> bool).
+Implicit Types (s : seq S) (t : seq T).
+
+Fixpoint count2 a s t : nat :=
+  if s is x :: s' then
+    if t is y :: t' then
+         a x y + count2 a s' t' else 0 else 0.
+
+Lemma eq_count2 a1 a2 : a1 =2 a2 -> count2 a1 =2 count2 a2.
+Proof.
+move=> a12 s t.
+elim: s t => // s0 s1 IH.
+by case => //= t0 t1; rewrite a12 IH.
+Qed.
+
+Lemma count2_le_minn a s t :
+  (count2 a s t <= minn (size s) (size t))%N.
+Proof.
+elim: s t => [|x s IH] [|y t] //=.
+case: (a x y) => /=.
+- by rewrite minnSS; exact: IH t.
+- rewrite minnSS.
+  exact: leq_trans (IH t) (leqnSn _).
+Qed.
+
+Lemma all2_count2 a s t :
+  all2 a s t =
+    (size s == size t) &&
+    (count2 a s t == minn (size s) (size t)).
+Proof.
+elim: s t => [|x s IH] [|y t] //=.
+rewrite minnSS.
+case: (a x y) => /=.
+  by rewrite IH.
+case: ((size s).+1 == (size t).+1) => //=; rewrite add0n.
+apply: esym; apply: ltn_eqF.
+rewrite ltnS.
+exact: (count2_le_minn a s t).
+Qed.
+
+Lemma eq_all2 a1 a2 :
+  a1 =2 a2 -> all2 a1 =2 all2 a2.
+Proof.
+by move=> Ea s t; rewrite !all2_count2 (eq_count2 Ea).
+Qed.
+
+Lemma all2_predC a s t :
+  all2 (curry (predC (uncurry a))) s t =
+      (size s == size t) && ~~ has (uncurry a) (zip s t).
+Proof.
+elim: s t.
+  case => //.
+move=> s0 s1 IH.
+case => //= t0 t1.
+by rewrite IH eqSS negb_or andbCA.
+Qed.
+
+End preliminaries_all2_nthP.
+
+Section all2_nthP.
+Context {S T : eqType}.
+Implicit Types (a : S -> T -> bool).
+Implicit Types (s : seq S) (t : seq T).
+
+Lemma all2_nthP a s t (ds : S) (dt : T) :
+reflect (size s = size t /\
+  (forall i : nat, (i < size (zip s t))%N -> a (nth ds s i) (nth dt t i)))
+ (all2 a s t).
+Proof.
+rewrite all2E.
+case st : (size s == size t) => /=; last first.
+  apply: ReflectF.
+  apply/not_andP; left.
+  by move/eqP : st.
+apply: (@iffP _ _ _ (all_nthP (ds, dt))) => [H|[st' H]].
+  split.
+    by apply/eqP.
+  move=> i /H.
+  by rewrite nth_zip => //; apply/eqP.
+move=> i /H.
+by rewrite nth_zip.
+Qed.
+
+End all2_nthP.
+
+Section adjacent_pairs.
+Context {T : Type}.
+Implicit Types (s : seq T).
+
+Definition adjacent_pairs (s : seq T) := zip s (behead s).
+
+Lemma adjacent_pairs_nil : adjacent_pairs [::] = [::].
+Proof. by []. Qed.
+
+Lemma adjacent_pairs_seq1 (x : T) : adjacent_pairs [:: x] = [::].
+Proof. by []. Qed.
+
+Lemma adjacent_pairs_cons (x y : T) s :
+  adjacent_pairs (x :: y :: s) = (x, y) :: adjacent_pairs (y :: s).
+Proof. by []. Qed.
+
+Lemma adjacent_pairs_rcons (x y : T) s :
+  adjacent_pairs (rcons (rcons s x) y) =
+    rcons (adjacent_pairs (rcons s x)) (x, y).
+Proof.
+elim/last_ind : s x y => //= s0 s1 IH x y.
+rewrite IH.
+Abort.
+
+End adjacent_pairs.
+
+(* generalize *)
+Lemma filter_ocitv_cat {R : realType}
+    (b a c : R) (t : seq R) :
+  (a <= b)%O ->
+  (b <= c)%O ->
+  sorted <=%O t ->
+  [seq x <- t | (a < x <= c)%O]
+  =
+  [seq x <- t | (a < x <= b)%O] ++
+  [seq x <- t | (b < x <= c)%O].
+Proof.
+elim: t b => // t0 t1 IH b ab bc st/=.
+case: ifP; last first.
+  move/negP/negP; rewrite negb_and -!leNgt => /orP[at0|t0c].
+    rewrite !ifF//.
+    - admit.
+    - admit.
+    apply: IH => //.
+    admit.
+  rewrite !ifF//.
+  - admit.
+  - admit.
+  apply: IH => //.
+  admit.
+move=> /andP[at0 t0c].
+have [t0b|bt0]/= := leP t0 b.
+  rewrite at0 (IH b)//.
+  admit.
+rewrite andbF t0c (IH b)//.
+  admit.
+suff -> : [seq x <- t1 | a < x & x <= b] = [::] by rewrite cat0s.
+apply: size0nil.
+apply/eqP; rewrite -leqn0 leqNgt size_filter_gt0.
+apply/hasPn => x xt1.
+rewrite negb_and -ltNge; apply/orP; right.
+apply: (lt_le_trans bt0).
+by have/le_path_min/allP := st; apply.
+Admitted.
+
+Section split_seq.
+
+Definition split_seq d {T : porderType d} (s t : seq T) : seq (seq T) :=
+  [seq [seq x <- t | (p.1 < x <= p.2)%O]
+   | p <- adjacent_pairs s].
+
+Lemma split_0seq d {T : porderType d} (t : seq T) :
+  split_seq [::] t = [::].
+Proof. by []. Qed.
+
+Lemma split_1seq d {T : porderType d} x (t : seq T) :
+  split_seq [:: x] t = [::].
+Proof. by []. Qed.
+
+Lemma split_seq0 d {T : porderType d} (s : seq T) :
+  split_seq s [::] = [::].
+Proof.
+rewrite /split_seq.
+Abort.
+
+Lemma split_seq_cons d {T : porderType d}
+    (x y : T) (s t : seq T) :
+  split_seq (x :: y :: s) t =
+    [seq z <- t | (x < z <= y)%O] ::
+    split_seq (y :: s) t.
+Proof.
+Admitted.
+
+(* generalize *)
+Lemma flatten_split_seq {R : realType}
+    (x : R) (s t : seq R) :
+  sorted <=%O (x :: s) ->
+  sorted <=%O t ->
+  flatten (split_seq (x :: s) t) =
+    [seq y <- t | (x < y <= last x s)%O].
+Proof.
+elim: s x.
+  move=> x _ st.
+  rewrite /=; apply/esym.
+  apply: size0nil.
+  apply/eqP; rewrite -leqn0 leqNgt size_filter_gt0.
+  apply/hasPn => y ty.
+  by rewrite negb_and -ltNge orb_negb_l.
+move=> s0; elim.
+  by move=> ?//= ? ? _; rewrite cats0.
+move=> s1 s2 IH0 IH1 x sorted_s sorted_t.
+rewrite split_seq_cons -cat1s flatten_cat.
+rewrite IH1//.
+  by have/andP[] := sorted_s.
+rewrite /= cats0.
+rewrite -filter_ocitv_cat//.
+  by have/andP[] := sorted_s.
+have := sorted_s.
+rewrite (lock (s1 :: s2))/= le_path_sortedE; unlock.
+move/and3P => [_ /allP + _]; apply.
+exact: mem_last.
+Qed.
+
+(* generalize *)
+Lemma split_seqK {R : realType} (s t : seq R) (d0 d1 : R) :
+  s != [::] ->
+  sorted <=%O s ->
+  sorted <=%O t ->
+  (head d0 s < head d0 t)%O ->
+  (last d1 t <= last d1 s)%O ->
+  t = flatten (split_seq s t).
+Proof.
+case: s => // s0 s1 _.
+elim/last_ind : s1 => //=.
+  move=> _.
+  elim: t => // t0 t1 IH/=.
+  rewrite le_path_sortedE => /andP[/allP t0t1 _].
+  move/lt_le_trans => H.
+  have : (t0 <= last t0 t1)%O.
+    elim/last_ind : t1 IH t0t1 => // t1 t2 IH0 IH1; apply.
+    by rewrite last_rcons mem_rcons mem_head.
+  by move/le_trans => H' /H' /H; rewrite ltxx.
+move=> s1 s2 _.
+Admitted.
+
+(*
+Lemma split_seqK d {T : orderType d} (s t : seq T) (d0 d1 : T) :
+  s != [::] ->
+  sorted <=%O s ->
+  sorted <=%O t ->
+  (head d0 s < head d0 t)%O ->
+  (last d1 t <= last d1 s)%O ->
+  t = flatten (split_seq s t).
+Proof.
+Abort.
+*)
+
+End split_seq.
+
+Section interleave.
+
+Definition seq_of_pair {T} (s : seq (T * T)) : seq (seq T) :=
+  [seq [:: ab.1; ab.2] | ab <- s].
+
+Definition intlv {T} (s t : seq T) :=
+    flatten (seq_of_pair (zip s t)).
+
+Lemma shape_pairs {T} (s : seq (T * T)) :
+  shape (seq_of_pair s) = nseq (size s) 2.
+Proof. by elim: s => [|[x y] s IH] //=; rewrite IH. Qed.
+
+Lemma size_intlv {T} (s t : seq T) :
+   size (intlv s t) = 2 * size (zip s t).
+Proof. by rewrite size_flatten shape_pairs sumn_nseq. Qed.
+
+Lemma intlv0s {T} (t : seq T) :
+  intlv [::] t = [::].
+Proof. by elim: t. Qed.
+
+Lemma intlvs0 {T} (s : seq T) :
+  intlv s [::] = [::].
+Proof. by elim: s. Qed.
+
+Lemma intlv_cons {T} (x y : T) (s t : seq T) :
+  intlv (x :: s) (y :: t) = x :: y :: intlv s t.
+Proof. by elim: s t. Qed.
+
+Lemma subseq_intlvr {T : eqType} (s t : seq T) :
+  (size s <= size t)%N ->
+   subseq s (intlv s t).
+Proof.
+elim: s t.
+  by move=> ? _; apply: sub0seq.
+move=> s0 s1 IHs.
+case => // t0 t1; rewrite [X in X -> _]/= ltnS => st.
+rewrite intlv_cons -(cat1s s0) -(cat1s s0 (t0 :: _)) subseq_cat2l.
+apply: (@subseq_trans _ (intlv s1 t1)).
+  exact: IHs.
+exact: cons_subseq.
+Qed.
+
+Lemma subseq_intlvl {T : eqType} (s t : seq T) :
+  (size t <= size s)%N ->
+   subseq t (intlv s t).
+Proof.
+elim: s t; first by case.
+move=> s0 s1 IHs.
+case => // t0 t1; rewrite [X in X -> _]/= ltnS => ts.
+rewrite intlv_cons.
+apply: (@subseq_trans _ (t0 :: (intlv s1 t1))).
+  by rewrite /= ifT//; apply: IHs.
+exact: cons_subseq.
+Qed.
+
+Lemma mem_intlvr {T : eqType} (s t : seq T) :
+  (size s <= size t)%N ->
+  forall x, x \in s -> x \in intlv s t.
+Proof.
+elim: s t => //=.
+move=> s0 s1 IHs.
+case => // t0 t1; rewrite [X in X -> _]/= ltnS => s1t1 x.
+rewrite intlv_cons !in_cons => /predU1P[->|xs1].
+  by apply/orP; left.
+by apply/orP; right; apply/orP; right; apply: IHs.
+Qed.
+
+Lemma mem_intlvl {T : eqType} (s t : seq T) :
+  (size t <= size s)%N ->
+  forall x, x \in t -> x \in intlv s t.
+Proof.
+elim: t s => //=.
+move=> t0 t1 IHt.
+case => // s0 s1; rewrite [X in X -> _]/= ltnS => t1s1 x.
+rewrite intlv_cons !in_cons => /predU1P[->|xs1].
+  by apply/orP; right; apply/orP; left.
+by apply/orP; right; apply/orP; right; apply: IHt.
+Qed.
+
+Lemma perm_intlv {T : eqType} (s t : seq T) :
+  size s = size t ->
+  perm_eq (intlv s t) (s ++ t).
+Proof.
+elim: s t.
+  move=> t /=/esym/size0nil ->.
+  by rewrite intlv0s.
+move=> s0 s1 IHs.
+case => // t0 t1.
+rewrite [X in X -> _]/= => /eq_add_S s1t1.
+rewrite intlv_cons /= perm_cons.
+rewrite -[X in _ _ (_ ++ X)]cat1s perm_sym perm_catCA cat1s perm_cons perm_sym.
+exact: IHs.
+Qed.
+
+Lemma mem_intlv {T : eqType} (s t : seq T) :
+  size s = size t ->
+  intlv s t =i s ++ t.
+Proof.
+move=> st; apply: perm_mem.
+exact: perm_intlv.
+Qed.
+
+Lemma le_sorted_intlvl d {T : orderType d} (s t : seq T) :
+  (size s <= size t)%N ->
+   sorted <=%O (intlv s t) -> sorted <=%O s.
+Proof.
+elim: s t => // s0 s1 IH; case => // t0 t1.
+rewrite [X in X -> _]/= ltnS => s1t1; rewrite intlv_cons/= => /andP[s0t0].
+rewrite !le_path_sortedE => /andP[/allP t0st sst]; apply/andP; split.
+  by apply/allP => ? ?; apply: (le_trans s0t0); apply: t0st; apply: mem_intlvr.
+exact: (IH _ s1t1).
+Qed.
+
+Lemma le_sorted_intlvr d {T : orderType d} (s t : seq T) :
+  (size t <= size s)%N ->
+   sorted <=%O (intlv s t) -> sorted <=%O t.
+Proof.
+elim: t s => // t0 t1 IH; case => // s0 s1.
+rewrite [X in X -> _]/= ltnS => t1s1; rewrite intlv_cons/= => /andP[s0t0].
+rewrite !le_path_sortedE => /andP[/allP t0st sst]; apply/andP; split.
+  by apply/allP => ? ?; apply: t0st; apply: mem_intlvl.
+exact: (IH _ t1s1).
+Qed.
+
+Lemma le_sorted_intlvP {R : realType} (s t : seq R) :
+  size s = size t ->
+  (sorted <=%R (intlv s t)) <->
+    [/\ (forall i d, nth d s i <= nth d t i) &
+     (forall i d, (i.+1 < (size s))%N -> nth d t i <= nth d s i.+1)].
+Proof.
+move=> st; split.
+  move=> sorted_st; split.
+  - elim: s t st sorted_st.
+      by move => t/= /esym /size0nil ->.
+    move=> s0 s1 IHs.
+    case => // t0 t1.
+    rewrite [X in X -> _]/= =>  /eq_add_S st.
+    rewrite intlv_cons/= => /andP[s0t0 /path_sorted sorted_st].
+    case => //= i d.
+    exact: IHs.
+  elim: s t st sorted_st => // s0 s1 IHs.
+  case => // t0 t1.
+  rewrite [X in X -> _]/= =>  /eq_add_S st.
+  rewrite intlv_cons/= => /andP[s0t0 path_st].
+  case => //=.
+  move=> d; rewrite ltnS => s10.
+    have/le_path_min/allP := path_st; apply.
+    apply: mem_intlvr.
+      exact: eq_leq.
+    by rewrite mem_nth.
+  move=> n d; rewrite ltnS => n1s1.
+  apply: IHs => //.
+  exact: (path_sorted path_st).
+elim: s t st.
+  by move=> t/= /esym /size0nil ->.
+move=> s0 s1 IHs.
+case => // t0 t1.
+rewrite intlv_cons [X in X -> _]/= => /eq_add_S st.
+move=> /=[slet tles1].
+apply/andP; split.
+  have -> : s0 = nth 0 (s0 :: s1) 0 by [].
+  have -> : t0 = nth 0 (t0 :: t1) 0 by [].
+  exact: slet.
+have sorted_t : sorted <=%R t1.
+  apply: (le_sorted_intlvr (eq_leq (esym st))).
+  apply: (IHs t1 st).
+  split; first by move=> j d; apply: (slet j.+1 d).
+  by move=> j d /(tles1 j.+1 d); apply.
+rewrite le_path_sortedE; apply/andP; split.
+  apply/allP => x.
+  rewrite mem_intlv// mem_cat => /orP[|xt].
+    move: x.
+    apply/allP/(all_nthP s0)  => i iles1.
+    apply: (le_trans _ (tles1 i s0 _)); last by rewrite ltnS.
+    case: i iles1.
+      by [].
+    move=> i i1les.
+    rewrite /=.
+    have {}s11 : (0.+1 < (size s1).+1)%N.
+      by rewrite ltnS (leq_ltn_trans _ i1les).
+    have/le_trans := (tles1 0 s0 s11).
+    apply.
+    have/=/le_trans := (slet 1 s0); apply.
+    case: t1 st slet tles1 sorted_t => //=.
+      by move/size0nil => -> // _ _ _; rewrite nth_default.
+    move=> t1 t2 s1t2 _ _.
+    case: i i1les => // i; rewrite s1t2 ltnS => i1t2.
+    by move/le_path_min/all_nthP; apply; apply: (leq_trans _ i1t2).
+  case: t1 st slet tles1 sorted_t xt => //t1 t2 st slet tles1 sorted_t1 xt.
+  have : (1 < (size s1).+1)%N.
+    by rewrite st.
+  move/(tles1 0 t0)/le_trans; apply.
+  apply: (le_trans (slet 1 _)) => /=.
+  move: xt; rewrite in_cons => /predU1P[->//|xt2].
+  by move/le_path_min/allP : sorted_t1; apply.
+apply: IHs => //; split.
+- by move=> i d; apply: (slet i.+1).
+by move=> i d i1s1; apply: (tles1 i.+1); rewrite ltnS.
+Qed.
+
+Lemma lt_sorted_intlvP {R : realType} (s t : seq R) :
+  size s = size t ->
+  (sorted <%R (intlv s t)) <->
+   (forall (i : nat) d, (i < (size s))%N -> nth d s i < nth d t i) /\
+     (forall i d, (i.+1 < (size s))%N -> nth d t i < nth d s i.+1).
+Proof.
+move=> st; split.
+  move=> sorted_st; split.
+  - elim: s t st sorted_st.
+      by move => t/= /esym /size0nil ->.
+    move=> s0 s1 IHs.
+    case => // t0 t1.
+    rewrite [X in X -> _]/= =>  /eq_add_S st.
+    rewrite intlv_cons/= => /andP[s0t0 /path_sorted sorted_st].
+    case => //= i d.
+    exact: IHs.
+  elim: s t st sorted_st => // s0 s1 IHs.
+  case => // t0 t1.
+  rewrite [X in X -> _]/= =>  /eq_add_S st.
+  rewrite intlv_cons/= => /andP[s0t0 path_st].
+  case => //=.
+  move=> d; rewrite ltnS => s10.
+    have/lt_path_min/allP := path_st; apply.
+    apply: mem_intlvr.
+      exact: eq_leq.
+    by rewrite mem_nth.
+  move=> n d; rewrite ltnS => n1s1.
+  apply: IHs => //.
+  exact: (path_sorted path_st).
+elim: s t st.
+  by move=> t/= /esym /size0nil ->.
+move=> s0 s1 IHs.
+case => // t0 t1.
+rewrite intlv_cons [X in X -> _]/= => /eq_add_S st.
+move=> /=[slet tles1].
+apply/andP; split.
+  have -> : s0 = nth 0 (s0 :: s1) 0 by [].
+  have -> : t0 = nth 0 (t0 :: t1) 0 by [].
+  exact: slet.
+have sorted_s1 : sorted <=%R s1.
+  apply: (le_sorted_intlvl (eq_leq st)).
+  apply: sorted_ltW.
+  apply: (IHs t1 st).
+  split; first by move=> j d; apply: (slet j.+1 d).
+  by move=> j d /(tles1 j.+1 d); apply.
+have sorted_t : sorted <=%R t1.
+  apply: (le_sorted_intlvr (eq_leq (esym st))).
+  apply: sorted_ltW.
+  apply: (IHs t1 st).
+  split; first by move=> j d; apply: (slet j.+1 d).
+  by move=> j d /(tles1 j.+1 d); apply.
+rewrite lt_path_sortedE; apply/andP; split.
+  apply/allP => x.
+  rewrite mem_intlv// mem_cat => /orP[|xt].
+    move: x.
+    apply/allP/(all_nthP s0).
+    case => //= [|i i1s1].
+      by move/(tles1 0 s0).
+    have : (0 < size s1)%N.
+      exact: (leq_ltn_trans _ i1s1).
+    move/(tles1 0 s0) => /=/lt_le_trans; apply.
+    move: sorted_s1; rewrite le_sorted_pairwise.
+    by move/pairwiseP; apply => //; apply: (leq_ltn_trans _ i1s1).
+  case: t1 st slet tles1 sorted_t xt => //t1 t2 st slet tles1 sorted_t1 xt.
+  have : (1 < (size s1).+1)%N.
+    by rewrite st.
+  move/(tles1 0 t0)/lt_le_trans; apply; apply: ltW.
+  have: (0 < size s1)%N by rewrite st.
+  move/(slet 1 t0)/lt_le_trans; apply => /=.
+  move: xt; rewrite in_cons => /predU1P[->//|xt2].
+  by move/le_path_min/allP : sorted_t1; apply.
+apply: IHs => //; split.
+  by move=> i d; move/(slet i.+1); apply.
+by move=> i d; move/(tles1 i.+1); apply.
+Qed.
+
+Lemma intlv_merge {R : realType} (s t : seq R) :
+  size s = size t ->
+  sorted <=%R (intlv s t) ->
+  intlv s t = merge <=%R s t.
+Proof.
+move=> st /[dup]sorted_st.
+have srts : sorted <=%R s by exact: (le_sorted_intlvl (eq_leq st)).
+have srtt : sorted <=%R t by exact: (le_sorted_intlvr (eq_leq (esym st))).
+move/le_sorted_intlvP => []// slet tles1.
+apply: le_sorted_eq => //.
+  apply: merge_sorted => //.
+  exact: le_total.
+rewrite perm_sym perm_merge perm_sym.
+exact: perm_intlv.
+Qed.
+
+Lemma nth_intlvE {T} (d : T) (s t : seq T) n :
+  nth d (intlv s t) n =
+    if (n < size (intlv s t))%N then
+      if odd n then nth d t n./2 else nth d s n./2
+    else d.
+Proof.
+elim: s t n => [|x s IH] [|y t] [|[|n]] //=.
+by rewrite negbK; exact: IH _ n.
+Qed.
+
+End interleave.
+
 Section lemmas.
 Context {R : realType}.
 Local Notation mu := (@completed_lebesgue_measure R).
@@ -1955,9 +2506,25 @@ Proof. by move=> jm; rewrite ltn_half_double. Qed.
 Lemma ltn_mul2 n j : (j < n.+1)%N -> (j.*2 < n.+1.*2)%N .
 Proof. by move=> jm; rewrite ltn_double. Qed.
 
-Lemma bigop_mul2 n (f : nat -> R) :
-  \sum_(0 <= i < n) `|f i.*2.+1 - f i.*2| =
-  \sum_(0 <= i < n.*2 | ~~ odd i) `|f i.+1 - f i|.
+Lemma bigop_mul2 {T : numDomainType} n (f : nat -> T) :
+  \sum_(0 <= i < n) f i.*2 =
+  \sum_(0 <= i < n.*2 | ~~ odd i) f i.
+Proof.
+elim: n => [|n ih].
+  by rewrite double0 !big_mkord !big_ord0.
+rewrite big_nat_recr//= ih.
+rewrite [in RHS]doubleS.
+rewrite [in RHS]big_mkcond/=.
+rewrite !big_mkord/=.
+rewrite 2![in RHS]big_ord_recr//=.
+rewrite -big_mkcond/= !negbK -addrA; congr +%R.
+by rewrite odd_double/= addr0.
+Qed.
+
+(* for ereal *)
+Lemma esum_mul2 {T : pzSemiRingType} n (f : nat -> \bar T) :
+  \sum_(0 <= i < n) f i.*2 =
+  \sum_(0 <= i < n.*2 | ~~ odd i) f i.
 Proof.
 elim: n => [|n ih].
   by rewrite double0 !big_mkord !big_ord0.
@@ -2080,7 +2647,7 @@ rewrite (@le_trans _ _ (variation a b f s)%:E)//.
   rewrite le_eqVlt; apply/orP; left; apply/eqP.
   transitivity (
       \sum_(0 <= i < n.+1) `|f (nth b s i.*2.+1) - f (nth b s i.*2)| ); last first.
-    by rewrite (bigop_mul2 _ (fun i => f (nth b s i))).
+    by rewrite (bigop_mul2 _ (fun i => `|f (nth b s i.+1) - f (nth b s i)|)).
   rewrite big_mkord.
   apply: eq_bigr => i _.
   rewrite /s.
@@ -2434,202 +3001,94 @@ Abort.
 
 End mesh_lemmas.
 
-Section adjacent_pairs.
-Context {T : Type}.
-Implicit Types (s : seq T).
+Section total_variation_sum.
+Context {R : realType}.
+Variables (a b : R) (f : R -> R).
 
-Definition adjacent_pairs (s : seq T) := zip s (behead s).
-
-Lemma adjacent_pairs_nil : adjacent_pairs [::] = [::].
-Proof. by []. Qed.
-
-Lemma adjacent_pairs_seq1 (x : T) : adjacent_pairs [:: x] = [::].
-Proof. by []. Qed.
-
-Lemma adjacent_pairs_cons (x y : T) s :
-  adjacent_pairs (x :: y :: s) = (x, y) :: adjacent_pairs (y :: s).
-Proof. by []. Qed.
-
-Lemma adjacent_pairs_rcons (x y : T) s :
-  adjacent_pairs (rcons (rcons s x) y) =
-    rcons (adjacent_pairs (rcons s x)) (x, y).
+Lemma total_variation_sum (s : seq R) :
+  itv_partition a b s ->
+  total_variation a b f =
+    \sum_(i < size s)
+      total_variation (nth a (a :: s) i) (nth b s i) f.
 Proof.
-elim/last_ind : s x y => //= s0 s1 IH x y.
-rewrite IH.
-Abort.
-
-End adjacent_pairs.
-
-(* generalize *)
-Lemma filter_ocitv_cat {R : realType}
-    (b a c : R) (t : seq R) :
-  (a <= b)%O ->
-  (b <= c)%O ->
-  sorted <=%O t ->
-  [seq x <- t | (a < x <= c)%O]
-  =
-  [seq x <- t | (a < x <= b)%O] ++
-  [seq x <- t | (b < x <= c)%O].
-Proof.
-elim: t b => // t0 t1 IH b ab bc st/=.
-case: ifP; last first.
-  move/negP/negP; rewrite negb_and -!leNgt => /orP[at0|t0c].
-    rewrite !ifF//.
-    - admit.
-    - admit.
-    apply: IH => //.
-    admit.
-  rewrite !ifF//.
-  - admit.
-  - admit.
-  apply: IH => //.
-  admit.
-move=> /andP[at0 t0c].
-have [t0b|bt0]/= := leP t0 b.
-  rewrite at0 (IH b)//.
-  admit.
-rewrite andbF t0c (IH b)//.
-  admit.
-suff -> : [seq x <- t1 | a < x & x <= b] = [::] by rewrite cat0s.
-apply: size0nil.
-apply/eqP; rewrite -leqn0 leqNgt size_filter_gt0.
-apply/hasPn => x xt1.
-rewrite negb_and -ltNge; apply/orP; right.
-apply: (lt_le_trans bt0).
-by have/le_path_min/allP := st; apply.
-Admitted.
-
-Section split_seq.
-
-Definition split_seq d {T : porderType d} (s t : seq T) : seq (seq T) :=
-  [seq [seq x <- t | (p.1 < x <= p.2)%O]
-   | p <- adjacent_pairs s].
-
-Lemma split_0seq d {T : porderType d} (t : seq T) :
-  split_seq [::] t = [::].
-Proof. by []. Qed.
-
-Lemma split_1seq d {T : porderType d} x (t : seq T) :
-  split_seq [:: x] t = [::].
-Proof. by []. Qed.
-
-Lemma split_seq0 d {T : porderType d} (s : seq T) :
-  split_seq s [::] = [::].
-Proof.
-rewrite /split_seq.
-Abort.
-
-Lemma split_seq_cons d {T : porderType d}
-    (x y : T) (s t : seq T) :
-  split_seq (x :: y :: s) t =
-    [seq z <- t | (x < z <= y)%O] ::
-    split_seq (y :: s) t.
-Proof.
-Admitted.
-
-(* generalize *)
-Lemma flatten_split_seq {R : realType}
-    (x : R) (s t : seq R) :
-  sorted <=%O (x :: s) ->
-  sorted <=%O t ->
-  flatten (split_seq (x :: s) t) =
-    [seq y <- t | (x < y <= last x s)%O].
-Proof.
-elim: s x.
-  move=> x _ st.
-  rewrite /=; apply/esym.
-  apply: size0nil.
-  apply/eqP; rewrite -leqn0 leqNgt size_filter_gt0.
-  apply/hasPn => y ty.
-  by rewrite negb_and -ltNge orb_negb_l.
-move=> s0; elim.
-  by move=> ?//= ? ? _; rewrite cats0.
-move=> s1 s2 IH0 IH1 x sorted_s sorted_t.
-rewrite split_seq_cons -cat1s flatten_cat.
-rewrite IH1//.
-  by have/andP[] := sorted_s.
-rewrite /= cats0.
-rewrite -filter_ocitv_cat//.
-  by have/andP[] := sorted_s.
-have := sorted_s.
-rewrite (lock (s1 :: s2))/= le_path_sortedE; unlock.
-move/and3P => [_ /allP + _]; apply.
-exact: mem_last.
+move: a; elim: s => [a'|x s IH a' ps].
+  move/itv_partition_nil ->.
+  by rewrite total_variationxx big_ord0.
+rewrite big_ord_recl/=.
+have pxs := itv_partition_cons ps.
+have a'x : a' <= x by apply: ltW; have [/andP[]] := ps.
+have xb : x <= b by exact: (@itv_partition_nth_le _ _ _ _ s 0).
+rewrite (total_variationD f a'x xb).
+congr +%E; rewrite (IH x)//.
+by apply: eq_bigr => /= i _; rewrite add0n (set_nth_default x a')// ltnW//= ltnS.
 Qed.
 
-(* generalize *)
-Lemma split_seqK {R : realType} (s t : seq R) (d0 d1 : R) :
-  s != [::] ->
-  sorted <=%O s ->
-  sorted <=%O t ->
-  (head d0 s < head d0 t)%O ->
-  (last d1 t <= last d1 s)%O ->
-  t = flatten (split_seq s t).
+Lemma total_variation_intlv_split (A B : seq R) (d0 d1 : R) :
+  a < b ->
+  itv_partition a b (intlv A B) ->
+  total_variation a b f =
+   \sum_(i < (minn (size A) (size B)))
+       total_variation (nth d0 (a :: B) i) (nth d1 A i) f +
+   \sum_(i < (minn (size A) (size B)).+1)
+       total_variation (nth d1 A i) (nth d0 B i) f.
 Proof.
-case: s => // s0 s1 _.
-elim/last_ind : s1 => //=.
-  move=> _.
-  elim: t => // t0 t1 IH/=.
-  rewrite le_path_sortedE => /andP[/allP t0t1 _].
-  move/lt_le_trans => H.
-  have : (t0 <= last t0 t1)%O.
-    elim/last_ind : t1 IH t0t1 => // t1 t2 IH0 IH1; apply.
-    by rewrite last_rcons mem_rcons mem_head.
-  by move/le_trans => H' /H' /H; rewrite ltxx.
-move=> s1 s2 _.
+move=> ab pAB.
+rewrite (total_variation_sum pAB).
+rewrite size_intlv size_zip.
+set n := minn (size A) (size B).
+rewrite (_:(2 * n)%R = n.*2); first by rewrite -mul2n.
+rewrite -(big_mkord xpredT
+ (fun i => total_variation (nth a (a :: intlv A B) i) (nth b (intlv A B) i) f)).
+rewrite [LHS](bigID [pred n | ~~ odd n] xpredT)//=.
+congr +%E.
+  rewrite -(esum_mul2 _
+ (fun i => total_variation (nth a (a :: intlv A B) i) (nth b (intlv A B) i) f)).
+  rewrite big_mkord.
+  apply: eq_bigr => i _.
+  have i2AB : (i.*2 < size (intlv A B))%N.
+    rewrite size_intlv size_zip -/n; case: i; case => /=.
+      rewrite double0 (_ : (2 * n)%R = n.*2); first by rewrite -mul2n.
+      by rewrite double_gt0.
+    move=> i.
+    case: n => // n.
+    by move/ltn_mul2; rewrite -!mul2n.
+  congr total_variation.
+  case: i i2AB; case => //= i i1ltn i12AB.
+    rewrite nth_intlvE ifT//=.
+      by apply: leq_ltn_trans i12AB; rewrite doubleS.
+    rewrite odd_double/=.
+    rewrite uphalf_double.
+    apply: set_nth_default.
+    apply: (@ltn_leq_trans n).
+      exact: (ltn_trans _ i1ltn).
+    by rewrite /n/minn; case: ifP => //; apply: ltnW.
+  rewrite nth_intlvE ifT//.
+  rewrite odd_double doubleK.
+  apply: set_nth_default.
+  apply: (@ltn_leq_trans n).
+    exact: (ltn_ord i).
+  rewrite /n/minn; case: ifP => //.
+  by move/negP/negP; rewrite -leqNgt.
+case: n.
+(*
+  by rewrite double0 big_mkord !big_ord0.
+move=> n.
+rewrite doubleS.
+transitivity (\sum_(0 <= i < n.*2.+1 | ~~ odd i)
+  total_variation (nth a (a :: intlv A B) i.+1) (nth b (intlv A B) i.+1) f).
+  rewrite big_mkcond big_nat_recl//= add0e.
+  under eq_bigr do rewrite negbK.
+  by rewrite -big_mkcond/=.
+transitivity (\sum_(0 <= i < n.*2 | ~~ odd i)
+  total_variation (nth a (a :: intlv A B) i.+1) (nth b (intlv A B) i.+1) f).
+  rewrite odd_double.
+rewrite -esum_mul2.
+pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
+     (\sum_(i < n) total_variation (A_ i) (B_ i) f).
+*)
 Admitted.
 
-(*
-Lemma split_seqK d {T : orderType d} (s t : seq T) (d0 d1 : T) :
-  s != [::] ->
-  sorted <=%O s ->
-  sorted <=%O t ->
-  (head d0 s < head d0 t)%O ->
-  (last d1 t <= last d1 s)%O ->
-  t = flatten (split_seq s t).
-Proof.
-Abort.
-*)
-
-End split_seq.
-
-
-Section subdivision_of_itv_partition.
-Context {R : realType}.
-Implicit Types (a b : R) (s : seq R).
-Implicit Type (f : R -> R).
-
-(*
-Definition split_seq d {T : porderType d} (s t : seq T) :
-  [seq [seq t0 <- t | (s0 < t <= s1)%O] | s1 = next s s0].
-
-Lemma subseq_variationE a b f (s t : seq R) :
-  itv_partition a b t ->
-  subseq s t ->
-let nths := nth b (a :: s ++ [:: b]) in
-  variation a b f t =
-    \sum_(i < (size s).+1)
-       variation a b f [seq y <- t | nths i < y <= nths i.+1].
-Proof.
-
-Admitted.
-
-Definition itvs_of_seq (df : R) s :=
-let nths := nth df s in
-  [seq (nths n.+1, nths n) | n <- iota 0 (size s).+1].
-
-Lemma variation_seq1 (c : R) a b f :
-  variation a b f [:: c] = `|f c - f a|.
-Proof. by rewrite /variation/= big_nat1/=. Qed.
-
-Lemma variation_subdivition a b f s (ps : itv_partition a b s) :
-  variation a b f s =
-    \sum_(sdiv <- subdivition_of_itv_partition a b s ps)
-   variation sdiv.1 sdiv.2 f [:: sdiv.2].
-
-*)
-
-End subdivision_of_itv_partition.
+End total_variation_sum.
 
 
 Section preliminaries.
@@ -3328,216 +3787,6 @@ move=> A.
 rewrite seqDU_bigcup_eq.
 Admitted.
 *)
-
-Section interleave.
-
-Definition seq_of_pair {T} (s : seq (T * T)) : seq (seq T) :=
-  [seq [:: ab.1; ab.2] | ab <- s].
-
-Definition intlv {T} (s t : seq T) :=
-    flatten (seq_of_pair (zip s t)).
-
-Lemma shape_pairs {T} (s : seq (T * T)) :
-  shape (seq_of_pair s) = nseq (size s) 2.
-Proof. by elim: s => [|[x y] s IH] //=; rewrite IH. Qed.
-
-Lemma size_intlv {T} (s t : seq T) :
-   size (intlv s t) = 2 * size (zip s t).
-Proof. by rewrite size_flatten shape_pairs sumn_nseq. Qed.
-
-Lemma intlv0s {T} (t : seq T) :
-  intlv [::] t = [::].
-Proof. by elim: t. Qed.
-
-Lemma intlvs0 {T} (s : seq T) :
-  intlv s [::] = [::].
-Proof. by elim: s. Qed.
-
-Lemma intlv_cons {T} (x y : T) (s t : seq T) :
-  intlv (x :: s) (y :: t) = x :: y :: intlv s t.
-Proof. by elim: s t. Qed.
-
-Lemma subseq_intlvr {T : eqType} (s t : seq T) :
-  (size s <= size t)%N ->
-   subseq s (intlv s t).
-Proof.
-elim: s t.
-  by move=> ? _; apply: sub0seq.
-move=> s0 s1 IHs.
-case => // t0 t1; rewrite [X in X -> _]/= ltnS => st.
-rewrite intlv_cons -(cat1s s0) -(cat1s s0 (t0 :: _)) subseq_cat2l.
-apply: (@subseq_trans _ (intlv s1 t1)).
-  exact: IHs.
-exact: cons_subseq.
-Qed.
-
-Lemma subseq_intlvl {T : eqType} (s t : seq T) :
-  (size t <= size s)%N ->
-   subseq t (intlv s t).
-Proof.
-elim: s t; first by case.
-move=> s0 s1 IHs.
-case => // t0 t1; rewrite [X in X -> _]/= ltnS => ts.
-rewrite intlv_cons.
-apply: (@subseq_trans _ (t0 :: (intlv s1 t1))).
-  by rewrite /= ifT//; apply: IHs.
-exact: cons_subseq.
-Qed.
-
-Lemma mem_intlvr {T : eqType} (s t : seq T) :
-  (size s <= size t)%N ->
-  forall x, x \in s -> x \in intlv s t.
-Proof.
-elim: s t => //=.
-move=> s0 s1 IHs.
-case => // t0 t1; rewrite [X in X -> _]/= ltnS => s1t1 x.
-rewrite intlv_cons !in_cons => /predU1P[->|xs1].
-  by apply/orP; left.
-by apply/orP; right; apply/orP; right; apply: IHs.
-Qed.
-
-Lemma mem_intlvl {T : eqType} (s t : seq T) :
-  (size t <= size s)%N ->
-  forall x, x \in t -> x \in intlv s t.
-Proof.
-elim: t s => //=.
-move=> t0 t1 IHt.
-case => // s0 s1; rewrite [X in X -> _]/= ltnS => t1s1 x.
-rewrite intlv_cons !in_cons => /predU1P[->|xs1].
-  by apply/orP; right; apply/orP; left.
-by apply/orP; right; apply/orP; right; apply: IHt.
-Qed.
-
-Lemma perm_intlv {T : eqType} (s t : seq T) :
-  size s = size t ->
-  perm_eq (intlv s t) (s ++ t).
-Proof.
-elim: s t.
-  move=> t /=/esym/size0nil ->.
-  by rewrite intlv0s.
-move=> s0 s1 IHs.
-case => // t0 t1.
-rewrite [X in X -> _]/= => /eq_add_S s1t1.
-rewrite intlv_cons /= perm_cons.
-rewrite -[X in _ _ (_ ++ X)]cat1s perm_sym perm_catCA cat1s perm_cons perm_sym.
-exact: IHs.
-Qed.
-
-Lemma mem_intlv {T : eqType} (s t : seq T) :
-  size s = size t ->
-  intlv s t =i s ++ t.
-Proof.
-move=> st; apply: perm_mem.
-exact: perm_intlv.
-Qed.
-
-Lemma le_sorted_intlvl d {T : orderType d} (s t : seq T) :
-  (size s <= size t)%N ->
-   sorted <=%O (intlv s t) -> sorted <=%O s.
-Proof.
-elim: s t => // s0 s1 IH; case => // t0 t1.
-rewrite [X in X -> _]/= ltnS => s1t1; rewrite intlv_cons/= => /andP[s0t0].
-rewrite !le_path_sortedE => /andP[/allP t0st sst]; apply/andP; split.
-  by apply/allP => ? ?; apply: (le_trans s0t0); apply: t0st; apply: mem_intlvr.
-exact: (IH _ s1t1).
-Qed.
-
-Lemma le_sorted_intlvr d {T : orderType d} (s t : seq T) :
-  (size t <= size s)%N ->
-   sorted <=%O (intlv s t) -> sorted <=%O t.
-Proof.
-elim: t s => // t0 t1 IH; case => // s0 s1.
-rewrite [X in X -> _]/= ltnS => t1s1; rewrite intlv_cons/= => /andP[s0t0].
-rewrite !le_path_sortedE => /andP[/allP t0st sst]; apply/andP; split.
-  by apply/allP => ? ?; apply: t0st; apply: mem_intlvl.
-exact: (IH _ t1s1).
-Qed.
-
-Lemma sorted_intlvP {R : realType} (s t : seq R) :
-  size s = size t ->
-  (sorted <=%R (intlv s t)) <->
-    [/\ sorted <=%R s, sorted <=%R t,
-     (forall i d, nth d s i <= nth d t i) &
-     (forall i d, (i.+1 < (size s))%N -> nth d t i <= nth d s i.+1)].
-Proof.
-move=> st; split.
-  move=> sorted_st; split.
-  - exact: (le_sorted_intlvl (eq_leq st)).
-  - exact: (le_sorted_intlvr (eq_leq (esym st))).
-  - elim: s t st sorted_st.
-      by move => t/= /esym /size0nil ->.
-    move=> s0 s1 IHs.
-    case => // t0 t1.
-    rewrite [X in X -> _]/= =>  /eq_add_S st.
-    rewrite intlv_cons/= => /andP[s0t0 /path_sorted sorted_st].
-    case => //= i d.
-    exact: IHs.
-  elim: s t st sorted_st => // s0 s1 IHs.
-  case => // t0 t1.
-  rewrite [X in X -> _]/= =>  /eq_add_S st.
-  rewrite intlv_cons/= => /andP[s0t0 path_st].
-  case => //=.
-  move=> d; rewrite ltnS => s10.
-    have/le_path_min/allP := path_st; apply.
-    apply: mem_intlvr.
-      exact: eq_leq.
-    by rewrite mem_nth.
-  move=> n d; rewrite ltnS => n1s1.
-  apply: IHs => //.
-  exact: (path_sorted path_st).
-elim: s t st.
-  by move=> t/= /esym /size0nil ->.
-move=> s0 s1 IHs.
-case => // t0 t1.
-rewrite intlv_cons [X in X -> _]/= => /eq_add_S st.
-move=> /=[path_s path_t slet tles1].
-apply/andP; split.
-  have -> : s0 = nth 0 (s0 :: s1) 0 by [].
-  have -> : t0 = nth 0 (t0 :: t1) 0 by [].
-  exact: slet.
-rewrite le_path_sortedE; apply/andP; split.
-  apply/allP => x.
-  rewrite mem_intlv// mem_cat => /orP[|xt].
-    move: x.
-    apply/allP/(all_nthP s0)  => i iles1.
-    apply: (le_trans _ (tles1 i s0 _)); last by rewrite ltnS.
-    case: i iles1 => //= i iles1.
-    have/le_path_min/allP := path_t; apply; apply: mem_nth.
-    by rewrite -ltnS; apply: (ltn_trans iles1); rewrite st.
-  by have/le_path_min/allP := path_t; apply.
-apply: IHs => //; split.
-- exact: (path_sorted path_s).
-- exact: (path_sorted path_t).
-- by move=> i d; have := slet i.+1 d.
-move=> i d i1les1.
-exact: (tles1 i.+1 d i1les1).
-Qed.
-
-Lemma intlv_merge {R : realType} (s t : seq R) :
-  size s = size t ->
-  sorted <=%R (intlv s t) ->
-  intlv s t = merge <=%R s t.
-Proof.
-move=> st /[dup]sorted_st.
-move/sorted_intlvP => []// sorted_s sorted_t slet tles1.
-apply: le_sorted_eq => //.
-  apply: merge_sorted => //.
-  exact: le_total.
-rewrite perm_sym perm_merge perm_sym.
-exact: perm_intlv.
-Qed.
-
-Lemma nth_intlvE {T} (d : T) (s t : seq T) n :
-  nth d (intlv s t) n =
-    if (n < size (intlv s t))%N then
-      if odd n then nth d t n./2 else nth d s n./2
-    else d.
-Proof.
-elim: s t n => [|x s IH] [|y t] [|[|n]] //=.
-by rewrite negbK; exact: IH _ n.
-Qed.
-
-End interleave.
 
 Module lemma6_direct_new.
 Section lemma6_direct.
@@ -4272,6 +4521,7 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
 *)
 set Vcd : \bar R := total_variation c d f.
 have V_tv n : (V_ n <= Vcd)%E.
+  rewrite /V_.
   admit.
 have cdbvf : bounded_variation c d f.
   apply: (bounded_variationl (ltW cd) db).
@@ -4508,7 +4758,7 @@ have itvfcd n (i : 'I_ n.+1) : is_interval (f @` `[c_ n i, d_ n i]).
 
 have Zsub_cover n (i : 'I_ n.+1) :
     `[c_ n i, d_ n i]%classic `<=` Zsub n i `|` \bigcup_(i0 in
-    (fun k : nat => `[A_ (n + k)%N, B_ (n + k)%N] `<=` `[c_ n i, d_ n i]))
+    [set k | `[A_ (n + k)%N, B_ (n + k)%N] `<=` `[c_ n i, d_ n i]])
   `](A_ (n + i0)%N, B_ (n + i0)%N).1,
          (A_ (n + i0)%N, B_ (n + i0)%N).2[%classic.
     move=> x/= cdx.
@@ -4531,38 +4781,39 @@ have Zsub_cover n (i : 'I_ n.+1) :
         by exists i => /=.
       by exists k => /=.
     exists (k - n)%N.
-    rewrite subnKC//.
+    rewrite /= subnKC//.
     apply: subset_neitv_oocc => //.
     move=> z /[dup] ABkz.
     rewrite /A_ /B_ -contiguous_ooitv// => kz.
-    have [k' k'n2 cdk'z/=] := citvScd lbZ ubZ cZ Z_nonempty AB kz nk.
+    have [j jn2 cdjz/=] := citvScd lbZ ubZ cZ Z_nonempty AB kz nk.
+    
+    suff -> : i = j :> nat by [].
 
-    suff -> : i = k' :> nat by [].
-
-    apply/not_notP => /eqP ik'.
+    apply/not_notP => /eqP ij.
+    (* wlog *)
     have [|zx] := leP x z.
       admit.
     have zxk : `]z, x[%classic `<=` contiguous_intervals Z (h1 k).
       admit.
-    have : d_ n k' < c_ n i.
+    have : d_ n j < c_ n i.
       admit.
     rewrite /d_ daE /c_ cbE.
-    case: i cdx ik'.
+    case: i cdx ij.
     case.
       admit.
-    move=> /= i iltn2 cdx ik'.
+    move=> /= i iltn2 cdx ij.
     move=> ak'bi.
-    have {k'n2}k'n1 : (k' < n)%N.
+    have {jn2}jn1 : (j < n)%N.
       admit.
     have zai : z <= a_ n i.
-      move : ik'.
-      rewrite neq_ltn => /orP[i1k'|k'i1].
+      move : ij.
+      rewrite neq_ltn => /orP[i1j|ji1].
         admit.
-      have := @le_sorted_leq_nth _ _ d _ (sorted_a A_ B_ n) k' i.
+      have := @le_sorted_leq_nth _ _ d _ (sorted_a A_ B_ n) j i.
       rewrite !inE size_seq_ab.
-      move/(_ k'n1 iltn2 k'i1); rewrite -/(a_ n k') -/(a_ n i).
+      move/(_ jn1 iltn2 ji1); rewrite -/(a_ n j) -/(a_ n i).
       apply: le_trans.
-      move: cdk'z.
+      move: cdjz.
       by rewrite /d_ daE in_itv/= => /andP[_].
     have bix : b_ n i <= x.
       move: cdx.
@@ -4582,12 +4833,13 @@ have Zsub_cover n (i : 'I_ n.+1) :
     rewrite -contiguous_ooitv// => citvik.
     have ik : idx n i = k.
       admit.
-    (* same for k' *)
-    have k'k : idx n k' = k.
+    (* same for j *)
+    have jk : idx n j = k.
       admit.
-    move: ik'.
+    move: ij.
     admit.
   admit.
+
 have disj_cd n : trivIset (`I_ n.+1) (fun i => `[c_ n i, d_ n i]%classic).
   apply/trivIsetP => i j /= iltn2 jltn2 ij.
   admit.
