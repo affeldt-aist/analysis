@@ -2679,6 +2679,55 @@ apply/sorted_leq_nth => //.
 - by rewrite -ltnS prednK// lt0n.
 Qed.
 
+Lemma disj_cd n :
+  trivIset [set: nat] (fun i1 : nat => `]A i1, B i1[%classic) ->
+  trivIset (`I_ n.+1) (fun i => `[c_ n i, d_ n i]%classic).
+Proof.
+move=> trAB.
+apply/trivIsetP => i j /= in1 jn1 ij.
+wlog : i j in1 jn1 ij / (i < j)%N.
+  move=> wlg.
+  move: ij; rewrite neq_lt => /orP[|] ij.
+    by rewrite wlg// lt_eqF.
+  by rewrite setIC wlg// lt_eqF.
+move=> {}ij.
+rewrite !cbE !daE.
+case: ifPn => [/eqP ->|i0].
+  rewrite ifF.
+    by contra: ij => ->.
+  rewrite -subset0 => x [/=] /[!in_itv]/= /andP[cx xai] /andP[j1x xaj].
+  have : b_ n j.-1 <= a_ n 0.
+    by rewrite (le_trans _ xai).
+  apply/negP; rewrite -ltNge.
+  rewrite (@le_lt_trans _ _ (a_ n j.-1))//.
+    apply/sorted_leq_nth => //.
+    exact: le_trans.
+    by apply: sorted_a.
+    rewrite inE !(size_map,size_sort,size_iota).
+    by rewrite (@ltn_leq_trans j)// (leq_ltn_trans _ ij)//.
+    rewrite inE !(size_map,size_sort,size_iota).
+    by rewrite prednK// (leq_ltn_trans _ ij).
+  apply: altb => //.
+  by rewrite prednK// (leq_ltn_trans _ ij).
+rewrite ifF.
+  contra: i0 => j0.
+  by move: ij; rewrite j0.
+rewrite -subset0 => x [/=] /[!in_itv]/= /andP[bi1x xai] /andP[j1x xaj].
+have : b_ n j.-1 <= a_ n i by rewrite (le_trans _ xai).
+apply/negP; rewrite -ltNge.
+rewrite (@lt_le_trans _ _ (b_ n i))//.
+  apply: altb => //.
+  by rewrite (ltn_leq_trans ij).
+apply/sorted_leq_nth => //.
+exact: le_trans.
+apply: sorted_b => //.
+rewrite inE !(size_map,size_sort,size_iota).
+by rewrite (ltn_leq_trans ij).
+rewrite inE !(size_map,size_sort,size_iota).
+by rewrite prednK// (leq_ltn_trans _ ij).
+by rewrite -ltnS prednK// (leq_ltn_trans _ ij).
+Qed.
+
 End contiguous_intervals.
 
 Lemma ltn_div2 n j : (j < n.+1.*2)%N -> (j./2 < n.+1)%N.
@@ -5288,8 +5337,8 @@ have Zsub_cover n (i : 'I_ n.+1) : `[c_ n i, d_ n i]%classic `<=`
   move: kx.
   by rewrite contiguous_ooitv.
 have disj_cd n : trivIset (`I_ n.+1) (fun i => `[c_ n i, d_ n i]%classic).
-  apply/trivIsetP => i j /= iltn2 jltn2 ij.
-  admit.
+  apply: disj_cd => //.
+  exact: trivIsetAB.
 (* (7) *)
 have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
   \sum_(n <= i <oo) oscillation f `[A_ i, B_ i])%E.
