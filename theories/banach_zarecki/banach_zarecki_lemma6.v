@@ -4562,11 +4562,47 @@ pose CD_ n := merge <=%R [tuple c_ n i | i < n.+1] [tuple d_ n i | i < n.+1].
  *    [:: d_ n n]]
  *  [remark]: c_ n 0 = c, d_ n n = d, k_ i = number of points between (d_ n i) and (c_ n i.+1)
  *)
-set xs := fun n => flatten (intlv
-[seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n.+1]
-  (reshape (nseq (size (seq_d n)) 1%N) (seq_d n))).
-have pcdxs n : itv_partition c d (xs n).
+
+have Hsplit_ab : forall n (i : 'I_n), exists xs,
+    itv_partition (a_ n i) (b_ n i) (rcons xs (b_ n i)) /\
+    (`|head (b_ n i) xs - a_ n i|%:E < lambda n)%E /\
+    (`|b_ n i - last (a_ n i) xs |%:E < lambda n)%E /\
+    (forall k, ((nth d xs k.+1 - nth d xs k)%:E < lambda n)%E).
+  move=> n i.
+  pose xs' := @lambda_partition R (a_ n i) (b_ n i) (fine (lambda n)).
+  have [u [v uv]] : exists h t, xs' = h :: t.
+    admit. (* use size_lambda_partition0 *)
+  exists (belast u v).
   split.
+    have H1 : b_ n i = last u v.
+      admit. (* use last_lambda *)
+    rewrite [X in rcons _ X]H1.
+    rewrite -lastI.
+    rewrite -uv.
+    apply: lambda_partition_partition.
+    by apply: altb => // i0; apply: contiguous_intervals1_lt_contiguous_intervals2.
+    admit.
+  split.
+    (* lambda_partition_mesh *) admit.
+  split.
+    (* lambda_partition_mesh *) admit.
+  move=> i0.
+  (* lambda_partition_mesh *) admit.
+pose split_ab n i := sval (cid (Hsplit_ab n i)).
+pose xs n : seq R := flatten [tuple (c_ n i :: d_ n i :: split_ab n i) | i < n].
+have xs_prop1 n : forall k, (`|nth d (xs n) k.+1 - nth d (xs n) k|%:E < lambda n)%E.
+  admit. (* use Hsplit_ab *)
+have xs_prop2 n : forall k l, nth d (xs n) k \notin `]c_ n l, d_ n l[.
+  (* since points besides ci di are comming from ]ai,bi[ *)
+  admit.
+
+(*set xs := fun n => flatten (intlv
+  [seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n.+1]
+    (reshape (nseq (size (seq_d n)) 1%N) (seq_d n))).
+*)
+
+have pcdxs n : itv_partition c d (xs n).
+(*  split.
     apply/(pathP d); case => //.
       move=> /(mem_nth d).
       rewrite nth_flatten_intlvE.
@@ -4620,7 +4656,7 @@ have pcdxs n : itv_partition c d (xs n).
     rewrite ifT.
       admit.
     admit.
-  admit.
+  admit.*) admit.
 have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   admit.
 have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
