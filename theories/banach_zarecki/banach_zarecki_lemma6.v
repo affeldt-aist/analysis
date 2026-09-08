@@ -623,25 +623,78 @@ move=> ix.
 rewrite /reshape_index/= ifT//.
 Qed.
 
-Lemma le_sorted_flatten (ss : seq (seq R)) :
-  (forall i, (i < size ss)%N -> nth [::] ss i != [::]) ->
-  (forall i, sorted <=%R (nth [::] ss i)) ->
-  (forall i, (i.+1 < size ss)%N ->
-last 0 (nth [::] ss i) <= head 0 (nth [::] ss i.+1)) ->
-sorted <=%R (flatten ss).
+Lemma sorted_cat (d : R) (s t : seq R) :
+  s != [::] -> t != [::] ->
+  sorted <=%R s -> sorted <=%R t ->
+  last d s <= head d t ->
+  sorted <=%R (s ++ t).
 Proof.
-move=> ss_no_nil sorted_ss last_le_next_head.
-Admitted.
+case: s => // s0 s1 _; case: t => // t0 t1 _ /=.
+move=> s01 t01 s1t0.
+by rewrite cat_path; apply/andP; split => //=; apply/andP; split.
+Qed.
 
-Lemma lt_sorted_flatten (ss : seq (seq R)) :
-  (forall i, (i < size ss)%N -> nth [::] ss i != [::]) ->
-  (forall i, sorted <%R (nth [::] ss i)) ->
-  (forall i, (i.+1 < size ss)%N ->
-last 0 (nth [::] ss i) <= head 0 (nth [::] ss i.+1)) ->
-sorted <%R (flatten ss).
+Lemma le_sorted_flatten (d : R) (ss : seq (seq R)) :
+  all (fun s => s != [::]) ss ->
+  all (sorted <=%R) ss ->
+  sorted (fun s t => last d s <= head d t) ss ->
+  sorted <=%R (flatten ss).
 Proof.
-move=> ss_no_nil sorted_ss last_le_next_head.
-Admitted.
+elim: ss => //= s0.
+case => //=.
+  move=> _ _ + _.
+  by rewrite andbT cats0.
+case => //=.
+  by rewrite andbF.
+move=> hs1 s1 ss1 IH.
+move=> /andP[s00 s10Ass10] /andP[sorted_s0 sorted_s1Asorted_ss1].
+move=> /andP[s0s1 lh_s1ss1].
+rewrite sorted_cat_cons; apply/andP; split.
+  rewrite le_sorted_rconsE sorted_s0/=.
+  apply/allP => x xs0.
+  apply: le_trans s0s1.
+  move/(nthP d) : xs0 => [n ns0 <-].
+  rewrite -nth_last.
+  apply: le_sorted_leq_nth => //.
+    rewrite inE.
+    rewrite prednK//.
+    exact: leq_trans ns0.
+  apply: ltnSE; rewrite prednK//.
+  exact: leq_trans ns0.
+exact: IH.
+Qed.
+
+Lemma lt_sorted_flatten (d : R) (ss : seq (seq R)) :
+  all (fun s => s != [::]) ss ->
+  all (sorted <%R) ss ->
+  sorted (fun s t => last d s < head d t) ss ->
+  sorted <%R (flatten ss).
+Proof.
+elim: ss => //= s0.
+case => //=.
+  move=> _ _ + _.
+  by rewrite andbT cats0.
+case => //=.
+  by rewrite andbF.
+move=> hs1 s1 ss1 IH.
+move=> /andP[s00 s10Ass10] /andP[sorted_s0 sorted_s1Asorted_ss1].
+move=> /andP[s0s1 lh_s1ss1].
+rewrite sorted_cat_cons; apply/andP; split.
+  rewrite lt_sorted_rconsE sorted_s0/=.
+  apply/allP => x xs0.
+  apply: le_lt_trans s0s1.
+  move/(nthP d) : xs0 => [n ns0 <-].
+  rewrite -nth_last.
+  rewrite le_sorted_leq_nth//.
+  - exact: sorted_ltW.
+  - rewrite inE.
+    rewrite prednK//.
+    exact: leq_trans ns0.
+  apply: ltnSE; rewrite prednK//.
+  rewrite ltnNge leqn0; apply/negP => /eqP/size0nil/eqP.
+  by move/negP: s00.
+exact: IH.
+Qed.
 
 End checking_flatten_lemmas.
 
@@ -4583,8 +4636,8 @@ have pcdxs n : itv_partition c d (xs n).
     rewrite [ltLHS]/=.
     move: i i1xs.
     apply/sortedP.
-    apply: lt_sorted_flatten.
-    - move=> i iltn.
+    apply: (@lt_sorted_flatten _ d).
+    - apply/all_nthP => i iltn.
       rewrite nth_intlvE; rewrite iltn.
       case: ifP => _.
         rewrite reshape_nseq1.
@@ -4594,7 +4647,7 @@ have pcdxs n : itv_partition c d (xs n).
         rewrite size_intlv size_zip size_map size_iota size_reshape size_nseq.
         by rewrite size_seq_cd minnn mul2n ltn_half_double.
       admit.
-    - move=> i.
+    - apply/all_nthP => i.
       rewrite nth_intlvE; case: ifP => //iltn.
         case: ifP => _.
           rewrite reshape_nseq1.
@@ -4612,7 +4665,7 @@ have pcdxs n : itv_partition c d (xs n).
       have := (@lt_path_lambda _ (d_ n i./2) (c_ n i./2.+1) _
                  (dltc lbZ ubZ _ Hi0 Hi1) lambda_gt0).
       by rewrite lt_path_sortedE => /andP[].
-    move=> i iltn.
+    apply/(sortedP [::]) => i iltn.
     rewrite !nth_intlvE iltn.
     rewrite ifT.
       admit.
