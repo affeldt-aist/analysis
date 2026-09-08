@@ -464,15 +464,16 @@ move=> ix.
 rewrite /reshape_index/= ifT//.
 Qed.
 
-Lemma sorted_cat (d : R) (s t : seq R) :
+Lemma sorted_catP (d : R) (s t : seq R) :
   s != [::] -> t != [::] ->
-  sorted <=%R s -> sorted <=%R t ->
-  last d s <= head d t ->
+  [/\ sorted <=%R s, sorted <=%R t & last d s <= head d t] <->
   sorted <=%R (s ++ t).
 Proof.
 case: s => // s0 s1 _; case: t => // t0 t1 _ /=.
-move=> s01 t01 s1t0.
-by rewrite cat_path; apply/andP; split => //=; apply/andP; split.
+split.
+  move=> [s01 t01 s1t0].
+  by rewrite cat_path; apply/andP; split => //=; apply/andP; split.
+by rewrite cat_path/= => /and3P[s01 s1t0 t01]; split.
 Qed.
 
 Lemma le_sorted_flatten (d : R) (ss : seq (seq R)) :
@@ -2990,6 +2991,65 @@ Context {R : realType}.
 Implicit Types (a b : R) (f : R -> R).
 Implicit Types (s : seq R) (x : R).
 
+Lemma mesh0 a b : mesh a b [::] = 0.
+Proof.
+by rewrite /mesh/= big_mkord big_ord0.
+Qed.
+
+Lemma mesh_seq1 (a b x : R) : mesh a b [:: x] = `|x - a|.
+Proof.
+rewrite /mesh big_nat1_id /=.
+rewrite widen_itvE.
+(* note: _%:num := num _ *)
+rewrite num_max/=.
+rewrite max_l//.
+Qed.
+
+Lemma mesh_cons (a b x : R) (s : seq R) :
+  mesh a b (x :: s) = maxr `|x - a| (mesh x b s).
+Proof.
+by rewrite /mesh -!bigmaxr_morph/= big_nat_recl.
+Qed.
+
+Lemma mesh_cat (a b : R) (s t : seq R) :
+  mesh a b (s ++ t) = maxr (mesh a b s) (mesh (last a s) b t).
+Proof.
+elim: s a.
+  by move=> ?; rewrite mesh0 max_r// mesh_ge0.
+move=> s0 s1 IH a.
+by rewrite !mesh_cons IH maxA.
+Qed.
+
+Lemma mesh_flatten a b (ss : seq (seq R)) :
+  all (fun s => s != [::]) ss ->
+  all (fun x => a <= x <= b) (flatten ss) ->
+  sorted <=%R (flatten ss) ->
+  mesh a b (flatten ss) =
+  \big[maxr/0%R]_(i < size ss)
+    mesh
+     (nth b [seq last b s | s <- [:: a] :: ss] i)
+     (nth b [seq last b s | s <- ss] i)
+     (nth [::] ss i).
+Proof.
+elim: ss a => //.
+  move=> a.
+  by rewrite mesh0/= big_ord0.
+move=> s0.
+  admit.
+(*  apply/flattenP.
+have/andP[s00] := s0ss0.
+rewrite mesh_cat.
+rewrite /mesh/= -bigmaxr_morph.
+rewrite size_cat.
+(* need monoid law *)
+
+rewrite [RHS]big_ord_recl/=.
+rewrite (@big_cat_nat _ _ _ (size s0)).
+rewrite (@big_cat_nat _ _ _ (size s0) 0 (size s0 + size (flatten ss))%N xpredT).
+rewrite [RHS]big_ord_recl/=.
+*)
+Admitted.
+
 Lemma mesh_eq_merge_subseq a b s t :
   path <=%R a s -> path <=%R a t ->
   subseq t s ->
@@ -4658,6 +4718,17 @@ have pcdxs n : itv_partition c d (xs n).
     admit.
   admit.*) admit.
 have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
+  rewrite /xs.
+  rewrite mesh_flatten.
+  - admit.
+  - admit.
+  - admit.
+  rewrite size_intlv size_zip size_map size_iota.
+  rewrite size_reshape size_nseq size_seq_cd minnn.
+  apply: bigmax_le.
+    by rewrite -lee_fin fineK.
+  move=> i _.
+  rewrite nth_intlvE.
   admit.
 have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
                forall (i : 'I_ n.+1), d_ n i \in (xs n)).
