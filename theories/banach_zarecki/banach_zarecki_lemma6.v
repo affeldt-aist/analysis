@@ -4724,8 +4724,7 @@ have cdbvf : bounded_variation c d f.
 have Soo_tv : (S_ n)%:E @[n --> \oo] --> Vcd.
   exact: lemma5 lambda0.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
-  apply: (squeeze_cvge _ Soo_tv); last first.
-    exact: cvg_cst.
+  apply: (squeeze_cvge _ _ _ _ _ Soo_tv) => //.
   apply: nearW => n.
   apply/andP; split.
     exact: SV.
