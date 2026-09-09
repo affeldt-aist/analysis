@@ -4938,6 +4938,42 @@ have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
   admit.
 have size_xs n : (n.+1.*2 <= size (xs n))%N.
   admit.
+have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
+  rewrite /xs.
+  rewrite mesh_flatten.
+  - admit.
+  - admit.
+  - admit.
+  rewrite size_intlv size_map size_iota.
+  rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
+  apply: bigmax_le.
+    by rewrite -lee_fin fineK.
+  case; case.
+    move=> n0 _.
+    rewrite /=.
+    admit.
+  move=> i i1ltn2 _.
+  rewrite (_ : nat_of_ord (Ordinal i1ltn2) = i.+1)//.
+  rewrite (_ : (nth d [seq last d s | s <- [:: c] :: xs' n] i.+1) =
+                 (nth d [seq last d s | s <- xs' n] i))//.
+  rewrite nth_intlvE.
+  rewrite size_intlv size_map size_iota.
+  rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
+  rewrite i1ltn2.
+  case: ifP => [eveni|].
+    rewrite (_ : n.+1.-1 = n)//.
+    admit.
+  rewrite oddS => /negP/negP => oddi.
+  rewrite nth_map_iota.
+    admit.
+  rewrite (_ : (nth d [seq last d s | s <- xs' n] i) = d_ n (uphalf i)).
+    admit.
+  rewrite (_ : (nth d [seq last d s | s <- xs' n] i.+1) = c_ n (uphalf i).+1).
+    admit.
+  rewrite -(odd_uphalfK oddi) half_double.
+  rewrite ltW// lambda_partition_mesh//.
+  apply: (dltc lbZ ubZ) => //.
+  by rewrite -ltn_double odd_uphalfK.
 have cd_xs n :
     (forall (i j : 'I_ n.+1), nth d (xs n) j \notin `]c_ n i, d_ n i[).
   admit.
@@ -5071,7 +5107,7 @@ have cdbvf : bounded_variation c d f.
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
 have Soo_tv : (S_ n)%:E @[n --> \oo] --> Vcd.
-  exact: lemma5 lambda0.
+  apply: lemma5 lambda0 => //.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
   apply: (squeeze_cvge _ _ _ _ _ Soo_tv) => //.
   apply: nearW => n.
