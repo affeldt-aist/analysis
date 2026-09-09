@@ -4842,9 +4842,9 @@ have lambda_gt0 n : 0 < (fine (lambda n)).
   admit.
 
 set xs' := fun n => (intlv
-[seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n]
+  [seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n]
     (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n)))).
-set xs := fun n => flatten (xs' n).
+set xs := fun n => d_ n 0 :: flatten (xs' n).
 
 have pcdxs n : itv_partition c d (xs n).
 (*  split.
@@ -4918,6 +4918,8 @@ have allNnil_xs n : all (fun s : seq R => s != [::]) (xs' n).
   by rewrite (nth_map d).
 have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
   apply/allP => x.
+  rewrite /xs in_cons => /predU1P[->|].
+    admit.
   move/flattenP => /=[s].
   rewrite mem_intlv// mem_cat => /orP[|].
     move/mapP => [i + ->]; rewrite mem_iota add0n => /andP[_ iltn1].
@@ -4939,7 +4941,11 @@ have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
 have size_xs n : (n.+1.*2 <= size (xs n))%N.
   admit.
 have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
-  rewrite /xs.
+  rewrite /xs mesh_cons.
+  rewrite (_ : c = c_ n 0).
+    admit.
+  rewrite /maxr; case : ifP => _; last first.
+    admit.
   rewrite mesh_flatten.
   - admit.
   - admit.
@@ -4950,11 +4956,31 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     by rewrite -lee_fin fineK.
   case; case.
     move=> n0 _.
-    rewrite /=.
+    rewrite (_ : nat_of_ord (Ordinal n0) = 0)//.
+    rewrite (_ : nth d [seq last d s | s <- [:: d_ n 0] :: xs' n] 0 = d_ n 0)//.
+    rewrite (_ : nth d [seq last d s | s <- xs' n] 0 =
+       last d (lambda_partition (d_ n 0) (c_ n 1) (fine (lambda n)))).
+      rewrite (nth_map [::]).
+        admit.
+      rewrite nth_intlvE.
+      rewrite ifT.
+        admit.
+      rewrite nth_map_iota//.
+      by rewrite ltn_half_double.
+    rewrite nth_intlvE.
+    rewrite ifT.
+      rewrite size_intlv size_map size_iota.
+      by rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
+    rewrite nth_map_iota.
+      by rewrite ltn_half_double.
+    rewrite last_lambda//.
+      admit.
+    apply: ltW.
+    apply: lambda_partition_mesh => //.
     admit.
   move=> i i1ltn2 _.
   rewrite (_ : nat_of_ord (Ordinal i1ltn2) = i.+1)//.
-  rewrite (_ : (nth d [seq last d s | s <- [:: c] :: xs' n] i.+1) =
+  rewrite (_ : (nth d [seq last d s | s <- [:: _] :: xs' n] i.+1) =
                  (nth d [seq last d s | s <- xs' n] i))//.
   rewrite nth_intlvE.
   rewrite size_intlv size_map size_iota.
@@ -4982,7 +5008,7 @@ have sub_xcd n : subseq (CD_ n) (xs n).
 pose S_ n : R := variation c d f (xs n).
 (* (2) *)
 pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
-     (\sum_(i < n) total_variation (A_ i) (B_ i) f).
+     (\sum_(i < n) total_variation (a_ n i) (b_ n i) f).
 have ac : a <= c.
   apply: lb_le_inf; last by move=> ? /Zab /=; rewrite in_itv/= => /andP[].
   apply/set0P/negP; move/eqP => Z0'.
@@ -5001,61 +5027,89 @@ have cdcf : {within `[c, d], continuous f}.
 have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite /S_ /V_.
   rewrite /xs.
-  rewrite variation_flatten_intlv_split.
-    rewrite /=.
-(*
-  apply: (@le_trans _ _ (\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E +
-               \sum_(i < n.+1)
-                    variation (A_ i) (B_ i) [seq x <- xs | x \in `]A_ i, B_ i[].
+  rewrite variation_recl big_ord_recl EFinD -addeA.
+  apply: leeD.
+    by rewrite /= /c_ cbE/=.
+  rewrite variation_flatten_intlv_split//.
+    rewrite all_cat; apply/andP; split => //.
+      apply/all_nthP => i iltn.
+      rewrite nth_map_iota.
+        admit.
+      rewrite -size_eq0 -lt0n.
+      apply: size_lambda_partition0 => //.
+      admit.
+    rewrite reshape_nseq1.
+    apply/all_nthP => i.
+    rewrite size_map size_behead size_seq_cd/= => iltn.
+    rewrite (nth_map d)//.
+    by rewrite size_behead size_seq_cd.
+  rewrite size_map size_iota.
+  rewrite reshape_nseq1 size_map size_behead size_seq_cd minnn.
+  rewrite EFinD addrC leeD//.
+    rewrite -sumEFin; apply: lee_sum => /= i _. 
+    rewrite (_ : nth d
+            [seq last d s
+               | s <- [seq lambda_partition (d_ n i0)
+                             (c_ n i0.+1) (fine (lambda n))
+                         | i0 <- iota 0 n]] i = b_ n i).
+    rewrite (nth_map [::]).
+      rewrite size_map size_iota//.
+    rewrite nth_map_iota => //.
+      rewrite last_lambda//.
+        admit.
+      by rewrite /c_ cbE.
+    rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
+                                  x <- behead (seq_d n)]] i) = a_ n i.+1).
+      rewrite (nth_map [::]).
+        by rewrite size_map size_behead size_seq_cd.
+      rewrite (nth_map d)/=.
+        by rewrite size_behead size_seq_cd.
+      rewrite nth_behead.
+      rewrite /seq_d.
+      by rewrite -/(banach_zarecki_lemma6.d_ _ _ _ _ n i.+1) daE.
+    rewrite (nth_map d).
+      by rewrite size_behead size_seq_cd.
+    rewrite /bump/= add1n.
+    rewrite /c_ /d_ cbE daE/=.
+    rewrite /variation/=.
+    rewrite big_nat1//=.
+    rewrite nth_behead.
+    by rewrite /seq_d -/(banach_zarecki_lemma6.d_ _ _ _ _ n i.+1) daE.
+  rewrite -sumEFin; apply: lee_sum => /= i _.
+  rewrite (_ : nth d
+         [seq last d s
+            | s <- [seq lambda_partition (d_ n i0) (c_ n i0.+1)
+                          (fine (lambda n))
+                      | i0 <- iota 0 n]] i = b_ n i).
+    rewrite (nth_map [::]).
+      by rewrite !size_map size_iota.
+    rewrite nth_map_iota//.
+    rewrite last_lambda//.
+      admit.
+    by rewrite /c_ cbE.
+  case: i; case => //.
+    rewrite /= => n0.
+    rewrite nth_map_iota//.
+    rewrite /c_ /d_ cbE daE/=.
+    apply: variation_le_total_variation.
+    apply: lambda_partition_partition => //.
+    apply: altb => //.
     admit.
-  apply: lee_sum.
-  exact: variation_le_total_variation.
-*)
+  move=> i/= i1ltn.
+  rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
+                              x <- behead (seq_d n)]] i) = a_ n i.+1).
+    rewrite (nth_map [::]).
+      by rewrite size_map size_behead size_seq_cd ltnW.
+    rewrite (nth_map d)/=.
+      by rewrite size_behead size_seq_cd ltnW.
+    rewrite nth_behead/=.
+    by rewrite /seq_d -/(banach_zarecki_lemma6.d_ _ _ _ _ n i.+1) daE.
+  apply: variation_le_total_variation.
+  rewrite nth_map_iota//.
+  rewrite /c_ /d_ cbE daE//=.
+  apply: lambda_partition_partition => //.
+  apply: altb => //.
   admit.
-(*
-
-                    \sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E )%E).
-    admit.
-  apply: leeD2l.
-  rewrite (_ : (\sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E)%R =
-     (\sum_(i < n.+1) `|f (B_ i) - f (A_ i)|%:E)%R)%E.
-    rewrite (_ : (\sum_(i < n.+1) `|f (c_ n i.+1) - f (d_ n i)|%:E)%R =
-       (\sum_(i < n.+1) `|f (b_ n i) - f (a_ n i)|%:E)%R)%E.
-      apply: eq_bigr => i _.
-      by rewrite cbE daE/=.
-    transitivity (\sum_(i0 < n.+1) `|f (B_ (idx n i0)) - f (A_ (idx n i0))|%:E).
-      apply: eq_bigr => i _.
-      rewrite /a_ /b_ anth bnth.
-      have [-> ->] := nth_abE A_ B_ d (ltn_ord i).
-      by rewrite -idxE => idxn1.
-    (* idx is bijection *)
-    have [[idx_ord idx_inv] /= [idx_ordE inv_ord ord_inv]] := idx_bij A_ B_ n.
-    rewrite -/idx in idx_ordE.
-    transitivity (\sum_(i0 < n.+1) `|f (B_ (idx_ord i0)) - f (A_ (idx_ord i0))|%:E).
-      apply: eq_bigr => i _.
-      by rewrite !idx_ordE -!ordinal_val.
-    rewrite -(@reindex_inj _ _ _ _ idx_ord xpredT
-       (fun k => `|f (B_ k) - f (A_ k)|%:E))//=.
-    by move=> i j; move/(f_equal idx_inv); rewrite !inv_ord.
-  apply: (@le_trans _ _ ((\sum_(i < n.+1) oscillation f `[A_ i, B_ i]))).
-    apply: lee_sum => i _.
-    apply: variation_oscillation.
-    - apply: continuous_subspaceW cdcf.
-      apply: subset_neitv_oocc => //.
-      rewrite /A_ /B_ -contiguous_ooitv//.
-      rewrite -compact_Rhull//.
-      apply: (subset_trans (@contiguous_intervalsS _ _ _)).
-      exact: cplt_hull_subset_Rhull.
-    - by rewrite boundr_in_itv/= bnd_simp ltW.
-    - by rewrite boundl_in_itv/= bnd_simp ltW.
-  apply: lee_sum => i _.
-  rewrite -[X in total_variation X _](inf_itvcc (ltW (AB i))).
-  rewrite -[X in total_variation _ X](sup_itvcc (ltW (AB i))).
-  apply: bounded_set_oscillation_le_total_variations.
-  apply: compact_bounded.
-  exact: segment_compact.
-*)
-admit.
 set Vcd : \bar R := total_variation c d f.
 
 (*
@@ -5107,7 +5161,7 @@ have cdbvf : bounded_variation c d f.
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
 have Soo_tv : (S_ n)%:E @[n --> \oo] --> Vcd.
-  apply: lemma5 lambda0 => //.
+  exact: lemma5 lambda0.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
   apply: (squeeze_cvge _ _ _ _ _ Soo_tv) => //.
   apply: nearW => n.
@@ -5140,7 +5194,8 @@ have eq3 : \forall n \near \oo, (Vcd - alpha / 2 < V_ n)%E.
         exact: sume_ge0.
       apply: sume_ge0 => ? _.
       apply: total_variation_ge0.
-      exact: contiguous_intervals1_le_contiguous_intervals2.
+      apply: aleb.
+      admit.
     exact: (le_lt_trans (V_tv n)).
   have al2fin : (alpha / 2)%E \is a fin_num.
     rewrite inver ifF; first exact/negP/negP.
@@ -5166,80 +5221,97 @@ have eq4 n : total_variation c d f =
    \sum_(i < n) (total_variation (A_ i) (B_ i) f).
   admit.
 
-have ABsubcd i : `[A_ i, B_ i] `<=` `[c, d].
+have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
+  move=> iltn.
   rewrite -[in X in X `<=` _]setU_1itvob ?bnd_simp//.
-    exact: contiguous_intervals1_le_contiguous_intervals2.
+    apply: aleb => k.
+    exact: contiguous_intervals1_lt_contiguous_intervals2.
   rewrite -[in X in X `<=` _]setU_itvob1 ?bnd_simp//.
+    apply: altb => // k.
     exact: contiguous_intervals1_lt_contiguous_intervals2.
   rewrite 2!subUset; split.
     rewrite sub1set inE/= in_itv/=; apply/andP; split.
+      apply: clea_new => //.
+      - admit.
+      - by move=> k; apply: contiguous_intervals1_lt_contiguous_intervals2.
+      move=> k.
       by apply: inf_contiguous_intervals1 => //; rewrite inE/=; exact: ne_cgitvs.
-    by apply: sup_contiguous_intervals1 => //; rewrite inE/=; exact: ne_cgitvs.
+    admit.
   split; last first.
     rewrite sub1set inE/= in_itv/=; apply/andP; split.
-      by apply: inf_contiguous_intervals2 => //; rewrite inE/=; exact: ne_cgitvs.
-      by apply: sup_contiguous_intervals2 => //; rewrite inE/=; exact: ne_cgitvs.
+      admit.
+    admit.
+  (*
   rewrite -contiguous_ooitv//.
   rewrite -compact_Rhull//.
   apply: (subset_trans (@contiguous_intervalsS _ Z (h1 i))).
   exact: cplt_hull_subset_Rhull.
-
-have ABbvf n : \sum_(i < n) total_variation (A_ i) (B_ i) f \is a fin_num.
+  *)
+  admit.
+have ABbvf n : \sum_(i < n) total_variation (a_ n i) (b_ n i) f \is a fin_num.
   apply/sum_fin_numP => /=.
-  case => i iltn _ _.
+  case => i iltn1 _ _.
   destruct n => //.
   rewrite -(inord_val (Ordinal _))/= !inordK//.
   apply/bounded_variationP.
-    exact: contiguous_intervals1_le_contiguous_intervals2.
+    apply: aleb => ?.
+    exact: contiguous_intervals1_lt_contiguous_intervals2.
   apply: (@bounded_variationr _ c).
   - (* generalize incl_itv_lb? *)
     (* a < b -> `]a, b[ `<=` `[c, d] -> a < c *)
     rewrite leNgt; apply/negP => cA.
-    move: (ABsubcd i).
+    move: (absubcd n.+1 i iltn1).
     move/disj_setPCl/disj_set2P.
     apply/eqP/set0P.
-    have [Bc|cB] := leP (B_ i) c.
-      exists (((A_ i) + (B_ i)) / 2) => /=; split.
-        by rewrite in_itv/= !midf_le -/(A_ i)//;
-          exact: contiguous_intervals1_le_contiguous_intervals2.
+    have [bc|cb] := leP (b_ n.+1 i) c.
+      exists (((a_ n.+1 i) + (b_ n.+1 i)) / 2) => /=; split.
+        rewrite in_itv/= !midf_le -/(a_ n.+1 i)//.
+          apply: aleb => k.
+          exact: contiguous_intervals1_lt_contiguous_intervals2.
+        rewrite aleb// => k.
+        exact: contiguous_intervals1_lt_contiguous_intervals2.
       apply/negP; rewrite in_itv/= negb_and -ltNge; apply/orP; left.
       rewrite -/c (@splitr _ c).
       rewrite mulrDl.
       by rewrite ltr_leD ?ltr_pM2r ?ler_pM2r.
-      exists ((A_ i + c) / 2) => /=; split; rewrite in_itv/=.
-      rewrite !midf_le// -/(B_ i) ?ltW// (@splitr _ (B_ i)) mulrDl ltrD ?ltr_pM2r//.
+    exists ((a_ n.+1 i + c) / 2) => /=; split; rewrite in_itv/=.
+      rewrite !midf_le// ?ltW// (@splitr _ (b_ n.+1 i)) mulrDl ltrD ?ltr_pM2r//.
+      apply: altb => // k.
       exact: contiguous_intervals1_lt_contiguous_intervals2.
     apply/negP; rewrite negb_and -ltNge; apply/orP; left.
     by rewrite -/c midf_lt.
-  - exact: contiguous_intervals1_le_contiguous_intervals2.
-    apply: bounded_variationl cdbvf.
-    rewrite leNgt; apply/negP => Bc.
-    move: (ABsubcd i).
-    move/disj_setPCl/disj_set2P.
-    apply/eqP/set0P.
-    exists (((A_ i) + (B_ i)) / 2) => /=; split.
-      by rewrite in_itv/= !midf_le -/(A_ i)//;
-        exact: contiguous_intervals1_le_contiguous_intervals2.
+  - apply: aleb => k.
+    exact: contiguous_intervals1_lt_contiguous_intervals2.
+  apply: bounded_variationl cdbvf.
+  rewrite leNgt; apply/negP => Bc.
+  move: (absubcd n.+1 i iltn1).
+  move/disj_setPCl/disj_set2P.
+  apply/eqP/set0P.
+  exists (((a_ n.+1 i) + (b_ n.+1 i)) / 2) => /=; split.
+    rewrite in_itv/= !midf_le// aleb// => k;
+      exact: contiguous_intervals1_lt_contiguous_intervals2.
     apply/negP; rewrite in_itv/= negb_and -ltNge; apply/orP; left.
     rewrite -/c (@splitr _ c) mulrDl ltrD ?ltr_pM2r//.
     rewrite (le_lt_trans _ Bc)//.
-    exact: contiguous_intervals1_le_contiguous_intervals2.
+    apply: aleb => k.
+    exact: contiguous_intervals1_lt_contiguous_intervals2.
   (* generalize incl_itv_ub? *)
   (* a < b -> `]a, b[ `<=` `[c, d] -> b < d *)
   rewrite leNgt; apply/negP => dB.
-  move: (ABsubcd i).
+  move: (absubcd n.+1 i iltn1).
   move/disj_setPCl/disj_set2P.
   apply/eqP/set0P.
-  have [Ad|dA] := leP d (A_ i).
-    exists (((A_ i) + (B_ i)) / 2) => /=; split.
-      by rewrite in_itv/= !midf_le -/(A_ i)//;
-        exact: contiguous_intervals1_le_contiguous_intervals2.
+  have [ad|da] := leP d (a_ n.+1 i).
+    exists (((a_ n.+1 i) + (b_ n.+1 i)) / 2) => /=; split.
+      by rewrite in_itv/= !midf_le// aleb// => k;
+        exact: contiguous_intervals1_lt_contiguous_intervals2.
     apply/negP; rewrite in_itv/= negb_and -!ltNge; apply/orP; right.
     rewrite (@splitr _ d).
     rewrite mulrDl.
     by rewrite ler_ltD ?ltr_pM2r ?ler_pM2r.
-  exists ((d + B_ i) / 2) => /=; split; rewrite in_itv/=.
-    rewrite !midf_le// ?ltW// (@splitr _ (A_ i)) mulrDl ltrD ?ltr_pM2r//.
+  exists ((d + b_ n.+1 i) / 2) => /=; split; rewrite in_itv/=.
+    rewrite !midf_le// ?ltW// (@splitr _ (a_ n.+1 i)) mulrDl ltrD ?ltr_pM2r//.
+    rewrite altb// => k.
     exact: contiguous_intervals1_lt_contiguous_intervals2.
   apply/negP; rewrite negb_and -!ltNge; apply/orP; right.
   by rewrite midf_lt.
@@ -5255,8 +5327,11 @@ have eq5 : \forall n \near \oo,
     by case: n n0n.
   rewrite /Vcd (eq4 n).
   apply: le_lt_trans.
-  by rewrite addeAC leeB// -addeA leeDl// subre_ge0.
-
+  rewrite addeAC leeB// -addeA leeDl// subre_ge0.
+  (* by reindex,  \sum_(i < n) total_variation (A_ i) (B_ i) f =
+     \sum_(i < n) total_variation (a_ n i) (b_ n i) f *)
+    admit.
+  admit.
 (* (5.5) (between (5) and (6)) *)
 have alphaH n : (alpha < \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
   rewrite /alpha.
@@ -5681,11 +5756,12 @@ have eq9 :
           rewrite closure_neitv_oo//.
           exact: contiguous_intervals1_lt_contiguous_intervals2.
           apply: (continuous_subspaceW _ cf).
-          apply: (subset_trans (ABsubcd i)).
+          (* apply: (subset_trans (absubcd i)).
           rewrite -compact_Rhull// -(@RhullK _ `[a, b]%classic).
             rewrite inE.
             exact: interval_is_interval.
           exact: le_Rhull.
+          *) admit.
         rewrite closure_neitv_oo//.
         exact: contiguous_intervals1_lt_contiguous_intervals2.
       apply: sum_oscillation_le_total_variation.
@@ -5699,7 +5775,8 @@ have eq9 :
           by apply: set_bij_inj; apply: bij.
         apply: (@sub_trivIset _ _ _ setT) => //.
         exact: disjoint_contiguous_intervals.
-        exact: ABsubcd.
+        (* exact: absubcd. *)
+        admit.
     have/(bounded_variationP _ (ltW cd)) := cdbvf.
     by rewrite ge0_fin_numE// total_variation_ge0// ltW.
   move=> n _.
