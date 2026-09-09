@@ -416,7 +416,18 @@ elim: s t n => [|x s IH] [|y t] [|[|n]] //=.
 by rewrite negbK; exact: IH _ n.
 Qed.
 
+
 End interleave.
+
+Section reshape_lemmas.
+
+Lemma reshape_nseq1 {T} (s : seq T) :
+  reshape (nseq (size s) 1) s = [seq [:: x] | x <- s].
+Proof.
+by elim: s => // s0 s1/= <-; congr cons => //; rewrite ?take0 ?drop0.
+Qed.
+
+End reshape_lemmas.
 
 Section checking_flatten_lemmas.
 Context {R : realType}.
@@ -3020,6 +3031,37 @@ move=> s0 s1 IH a.
 by rewrite !mesh_cons IH maxA.
 Qed.
 
+(* need change of definition of mesh? *)
+Lemma mesh_default (a b c : R) (s : seq R) :
+  mesh a b s = mesh a c s.
+Proof.
+elim: s a.
+  by move=> ?; rewrite !mesh0.
+move=> s0 s1 IH a.
+by rewrite !mesh_cons IH.
+Qed.
+
+Lemma all_andbP {T} (a b : pred T) (s : seq T) :
+  all (fun x : T => a x && b x) s <->
+(all (fun x : T => a x) s) && (all (fun x : T => b x) s).
+Proof.
+Admitted.
+
+Lemma cons_flatten_neq_nil {T : eqType} (s : seq T) (ss : seq (seq T)) :
+  s != [::] -> flatten (s :: ss) != [::].
+Proof. by case: s. Qed.
+
+Lemma head_cat {T : eqType} d (s t : seq T) :
+  s != [::] ->
+  head d (s ++ t) = head d s.
+Proof. by elim: s. Qed.
+
+Lemma head_flatten {T : eqType} d (s : seq T) (ss : seq (seq T)) :
+  s != [::] ->
+  head d (flatten (s :: ss)) = head d s.
+Proof.
+by move=> s0; rewrite head_cat. Qed.
+
 Lemma mesh_flatten a b (ss : seq (seq R)) :
   all (fun s => s != [::]) ss ->
   all (fun x => a <= x <= b) (flatten ss) ->
@@ -3031,23 +3073,34 @@ Lemma mesh_flatten a b (ss : seq (seq R)) :
      (nth b [seq last b s | s <- ss] i)
      (nth [::] ss i).
 Proof.
-elim: ss a => //.
-  move=> a.
-  by rewrite mesh0/= big_ord0.
-move=> s0.
-  admit.
-(*  apply/flattenP.
-have/andP[s00] := s0ss0.
-rewrite mesh_cat.
-rewrite /mesh/= -bigmaxr_morph.
-rewrite size_cat.
-(* need monoid law *)
-
-rewrite [RHS]big_ord_recl/=.
-rewrite (@big_cat_nat _ _ _ (size s0)).
-rewrite (@big_cat_nat _ _ _ (size s0) 0 (size s0 + size (flatten ss))%N xpredT).
-rewrite [RHS]big_ord_recl/=.
-*)
+elim: ss a.
+  by move=> ?; rewrite mesh0 big_ord0.
+move=> s.
+case => //.
+  rewrite /= => IH a.
+  rewrite cats0 andbT => s0 abs ss.
+  (* rewrite big_ord1. *)
+  rewrite big_ord_recl big_ord0/= max_l.
+    exact: mesh_ge0.
+  exact: mesh_default.
+move=> s' ss IH a/=.
+move=> /andP[s0 /andP[s'0 ss0]].
+rewrite all_cat => /andP[abs abss].
+have last_s : last a s = last 0 s.
+  by apply: set_last_default; case: s s0 abs.
+have : flatten (s' :: ss) != [::] by exact: cons_flatten_neq_nil.
+move/(sorted_catP b s0) => [_ Hsorted2].
+move/Hsorted2 => [sorted_s sorted_s'ss ls_hs'].
+rewrite big_ord_recl/=.
+  under eq_bigr do rewrite add0n.
+rewrite -IH//.
+- admit.
+- admit.
+rewrite mesh_cat; congr maxr.
+  exact: mesh_default.
+congr mesh.
+apply: set_last_default.
+by case: s s0 abs last_s Hsorted2 sorted_s ls_hs'.
 Admitted.
 
 Lemma mesh_eq_merge_subseq a b s t :
@@ -3126,6 +3179,95 @@ Proof.
 Abort.
 
 End mesh_lemmas.
+
+Section variation_flatten_sum.
+Context {R : realType}.
+Implicit Types (a b c : R) (f : R -> R).
+
+(* b0 and b1 is just default values of nth in sum *)
+Lemma variation_ub a b0 b1 f (s : seq R) :
+  variation a b0 f s = variation a b1 f s.
+Proof.
+elim: s a => //.
+  move=> a.
+  by rewrite !variation_nil.
+move=> s0 s1 IH a.
+by rewrite !variation_recl IH.
+Qed.
+
+Lemma variation_cat_new c a b f (s t : seq R) :
+  variation a b f (s ++ t) =
+  variation a b f s + variation (last a s) b f t.
+Proof.
+elim: s a.
+  by move=> ?; rewrite variation_nil add0r.
+by move=> ? ? IH ?; rewrite !variation_recl IH addrA.
+Qed.
+
+Lemma variation_flatten_sum a b f (ss : seq (seq R)) :
+  all (fun s => s != [::]) ss ->
+  (variation a b f (flatten ss) =
+  \sum_(i < size ss)
+    variation
+     (nth b [seq last b s | s <- [:: a] :: ss] i)
+     (nth b [seq last b s | s <- ss] i)
+     f
+     (nth [::] ss i)).
+Proof.
+elim: ss a.
+  move=> ?.
+  by rewrite variation_nil big_ord0.
+move=> s.
+case => //.
+  rewrite /= => IH a.
+  rewrite andbT => s0.
+  (* rewrite big_ord1. *)
+  rewrite big_ord_recl big_ord0/= addr0 cats0.
+  exact: variation_ub.
+move=> s' ss IH a/=.
+move=> /andP[s0 /andP[s'0 ss0]].
+have last_s : last a s = last b s.
+  by apply: set_last_default; case: s s0.
+have s'ssNnil : flatten (s' :: ss) != [::] by exact: cons_flatten_neq_nil.
+rewrite big_ord_recl/=.
+  under eq_bigr do rewrite add0n.
+rewrite -IH//.
+  by rewrite /=; apply/andP.
+rewrite variation_cat_new// last_s.
+congr +%R => //=.
+exact: variation_ub.
+Qed.
+
+Lemma variation_flatten_intlv_split a b f (A B : seq (seq R)) :
+  all (fun s => s != [::]) (A ++ B) ->
+  variation a b f (flatten (intlv A B)) =
+    \sum_(i < minn (size A) (size B))
+      variation
+        (nth b [seq last b s | s <- [:: a] :: B] i)
+        (nth b [seq last b s | s <- A] i)
+        f
+        (nth [::] A i) +
+    \sum_(i < minn (size A) (size B))
+      variation
+        (nth b [seq last b s | s <- A] i)
+        (nth b [seq last b s | s <- B] i)
+        f
+        (nth [::] B i).
+Proof.
+Admitted.
+
+Lemma variation_intlv_split a b f (A B : seq R) (d0 d1 : R) :
+  a < b ->
+  itv_partition a b (intlv A B) ->
+  variation a b f (intlv A B) =
+   \sum_(i < (minn (size A) (size B)))
+       variation (nth d0 (a :: B) i) (nth d1 A i) f A +
+   \sum_(i < (minn (size A) (size B)))
+       variation (nth d1 A i) (nth d0 B i) f B.
+Proof.
+Admitted.
+
+End variation_flatten_sum.
 
 Section total_variation_sum.
 Context {R : realType}.
@@ -4613,7 +4755,7 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
   rewrite cd.
   by rewrite -EFinB ltry.
 pose CD_ n := merge <=%R [tuple c_ n i | i < n.+1] [tuple d_ n i | i < n.+1].
-(* xs :=
+(* xs := flatten
  * [:: [:: d_ n 0 + 1 * (c_ n 1 - d_ n 0) / k_ i, c + 2 * (c_ n 1 - d_ n 0) / k_ i, ... , c_ n 1],
  *    [:: d_ n 1],
  *    [:: d_ n 1 + 1 * (c_ n 2 - d_ n 1) / k_ i, ... , c_ n 2],
@@ -4668,10 +4810,12 @@ have pcdxs n : itv_partition c d (xs n).
       rewrite nth_flatten_intlvE.
         by rewrite /= size_map size_iota size_reshape size_nseq size_seq_cd.
       rewrite size_seq_cd /reshape_index/= => _.
-      admit.
-    have reshape_nseq1 : (reshape (nseq (size (seq_d n)) 1%N) (seq_d n))
-                       = [seq [:: x] | x <- seq_d n].
+      apply: (@le_lt_trans _ _ (d_ n 0)).
+        rewrite /d_ daE (clea_new (ltW cd))//.
+          move=> i.
           admit.
+        admit.
+      admit.
     move=> i i1xs.
     rewrite [ltLHS]/=.
     move: i i1xs.
@@ -4761,13 +4905,17 @@ have cdcf : {within `[c, d], continuous f}.
   by apply: subset_itv; rewrite bnd_simp.
 have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite /S_ /V_.
+  rewrite /xs.
+  rewrite variation_flatten_intlv_split.
+    rewrite /=.
+  
 (*  rewrite variation_subdivision. *)
   apply: (le_trans (lee_tofin
    (@variation_subseq _ c d f (xs n) (CD_ n) _ _ _))).
   - admit.
   - admit.
   - admit.
-
+  rewrite bigop_mul2
 (*
   apply: (@le_trans _ _ (\sum_(i < n.+2) `|f (d_ n i) - f (c_ n i)|%:E +
                \sum_(i < n.+1)
