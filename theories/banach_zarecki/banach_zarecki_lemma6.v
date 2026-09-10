@@ -4552,14 +4552,6 @@ Qed.
 
 From mathcomp Require Import esum.
 
-Lemma completed_lebesgue_measure_eq_itv (A : set R) (x y : itv_bound R) :
-  (x < y)%E ->
-  A = [set` Interval x y] ->
-  (mu A = ereal_of_itv_bound y - ereal_of_itv_bound x)%E.
-Proof.
-by move=> xy ->; rewrite completed_lebesgue_measure_itv xy.
-Qed.
-
 Lemma zip_nthE {A B : Type} (dx : A) (dy : B)
     (xs : seq A) (ys : seq B) :
   size xs = size ys ->
@@ -5333,9 +5325,36 @@ have eq5 : \forall n \near \oo,
     admit.
   admit.
 (* (5.5) (between (5) and (6)) *)
-have alphaH n : (alpha < \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
+have alphaH n : (alpha <= \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
   rewrite /alpha.
-  apply: (@le_lt_trans _ _ (\sum_(i < n.+2) (H (d_ n.+1 i) - H (c_ n.+1 i))%:E)).
+  apply: (@le_trans _ _ (mu (H @` (\bigcup_(i < n.+1) `[c_ n i, d_ n i]%classic)))).
+    apply: le_outer_measure.
+    apply: image_subset.
+    exact: Zcd.
+  rewrite image_bigcup.
+  rewrite bigcup_mkord.
+  rewrite [leRHS](_ : _ = \sum_(i < n.+1) mu `[H (c_ n i), H (d_ n i)]).
+    apply: eq_bigr => i _.
+    have : H (c_ n i) <= H (d_ n i).
+      apply: ndH.
+      - admit.
+      - admit.
+      - exact: cled.
+    rewrite le_eqVlt => /predU1P[->|Hcd].
+      by rewrite subrr completed_lebesgue_measure_itv/= ltxx.
+    by rewrite completed_lebesgue_measure_itv/= lte_fin Hcd EFinD.
+  apply: (@le_trans _ _
+    (\sum_(i < n.+1) mu [set H x | x in `[c_ n i, d_ n i]])).
+    exact: (outer_measure_subadditive mu
+       (fun i => [set H x | x in `[c_ n i, d_ n i]])).
+  apply: lee_sum => i _.
+  apply: le_outer_measure.
+  apply: continuous_nondecreasing_image_itvcc.
+  - exact: cled.
+  - apply: continuous_subspaceW cH.
+    admit.
+  move=> x y xcd ycd xy.
+  apply: (nondecreasing_total_variation bvf _ _ xy).
     admit.
   admit.
 (*
@@ -5349,8 +5368,8 @@ have ineq6 : \forall n \near \oo,
     (alpha / 2 < \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E)%E.
   have [n0 _ /= H5] := eq5.
   exists n0 => // n/= n0n.
-  apply: lt_trans (H5 n n0n).
-  rewrite lteBrDl.
+  apply: le_lt_trans (H5 n n0n).
+  rewrite leeBrDl.
     apply: fin_numM => //.
     exact: fin_numV.
   rewrite -mule2n -mule_natr.
