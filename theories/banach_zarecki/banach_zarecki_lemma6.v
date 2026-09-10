@@ -4950,9 +4950,9 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
     admit.
   rewrite reshape_nseq1.
   admit.
-have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
+(*have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
                forall (i : 'I_ n.+1), d_ n i \in (xs n)).
-  admit.
+  admit.*)
 have size_xs n : (n.+1.*2 <= size (xs n))%N.
   admit.
 have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
@@ -5015,11 +5015,11 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   rewrite ltW// lambda_partition_mesh//.
   apply: (dltc lbZ ubZ) => //.
   by rewrite -ltn_double odd_uphalfK.
-have cd_xs n :
+(*have cd_xs n :
     (forall (i j : 'I_ n.+1), nth d (xs n) j \notin `]c_ n i, d_ n i[).
-  admit.
-have sub_xcd n : subseq (CD_ n) (xs n).
-  admit.
+  admit.*)
+(*have sub_xcd n : subseq (CD_ n) (xs n).
+  admit.*)
 pose S_ n : R := variation c d f (xs n).
 (* (2) *)
 pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +
