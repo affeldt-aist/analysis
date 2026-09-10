@@ -5104,46 +5104,53 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   admit.
 set Vcd : \bar R := total_variation c d f.
 
+pose c' n := [tuple c_ n i | i < n.+1].
+pose d' n := [tuple d_ n i | i < n.+1].
+have : forall n, exists u v, c' n = u :: v :> seq _.
+  admit.
+move/choice => [u /choice[v c'_uv]].
+have : forall n, exists u' v', d' n = u' :: v' :> seq _.
+  admit.
+move/choice => [u' /choice[v' d'_uv]].
+have size_v'v n : minn (size (belast (u' n) (v' n))) (size (v n)) = n.
+  rewrite size_belast.
+  rewrite (_ : size (v' n) = (size (u' n :: (v' n))).-1)//.
+  rewrite (_ : size (v n) = (size (u n :: (v n))).-1)//.
+  by rewrite -c'_uv -d'_uv !size_tuple minnn.
+have pc'd' n : itv_partition c (c_ n n) (intlv (belast (u' n) (v' n)) (v n)).
+  split.
+    rewrite lt_path_sortedE; apply/andP; split.
+      rewrite (eq_all_r (mem_intlv _)).
+        rewrite size_belast.
+        admit.
+      rewrite all_cat; apply/andP; split.
+        admit.
+      admit.
+    apply/lt_sorted_intlvP.
+      admit.
+    split.
+      admit.
+    admit.
+  rewrite last_intlv.
+    admit.
+  admit.
 (*
  * c = c0, d0, c1, d1, ... cn, dn = d
 *)
 have V_tv n : (V_ n <= Vcd)%E.
   rewrite /V_ /Vcd.
-  pose c' := [tuple c_ n i | i < n.+1].
-  pose d' := [tuple d_ n i | i < n.+1].
-  have [u [v c'uv]]: exists u v, c' = u :: v :> seq _.
-    admit.
-  have [u' [v' d'uv]]: exists u' v', d' = u' :: v' :> seq _.
-    admit.
-  have size_v'v : minn (size (belast u' v')) (size v) = n.
-    admit.
   rewrite (@total_variationD _ _ _ (c_ n n)).
   - admit.
   - admit.
-
   rewrite (@total_variation_intlv_split _ _ _ f
-    (belast u' v') v d d).
-  - admit.
-  - split.
-      rewrite lt_path_sortedE; apply/andP; split.
-        rewrite (eq_all_r (mem_intlv _)).
-          rewrite size_belast.
-          admit.
-        rewrite all_cat; apply/andP; split.
-          admit.
-        admit.
-      apply/lt_sorted_intlvP.
-        admit.
-      split.
-        admit.
-      admit.
-    rewrite last_intlv.
-      admit.
+    (belast (u' n) (v' n)) (v n) d d)//.
     admit.
   rewrite addrAC leeD//.
     rewrite big_ord_recr/= leeD//.
       rewrite size_v'v.
       apply: lee_sum => i _.
+      rewrite (_ : nth d (belast (u' n) (v' n)) i = nth d (d' n) i).
+        admit.
       admit.
     admit.
   rewrite size_v'v lee_sum// => i _.
@@ -5187,7 +5194,7 @@ have eq3 : \forall n \near \oo, (Vcd - alpha / 2 < V_ n)%E.
       apply: sume_ge0 => ? _.
       apply: total_variation_ge0.
       apply: aleb.
-      admit.
+      move=> i; exact: contiguous_intervals1_lt_contiguous_intervals2.
     exact: (le_lt_trans (V_tv n)).
   have al2fin : (alpha / 2)%E \is a fin_num.
     rewrite inver ifF; first exact/negP/negP.
@@ -5210,9 +5217,14 @@ have eq3 : \forall n \near \oo, (Vcd - alpha / 2 < V_ n)%E.
 (* total_variationD? *)
 have eq4 n : total_variation c d f =
   \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E +
-   \sum_(i < n) (total_variation (A_ i) (B_ i) f).
+   \sum_(i < n) (total_variation (a_ n i) (b_ n i) f).
+  rewrite (@total_variationD _ _ _ (c_ n n)).
+  - admit.
+  - admit.
+  rewrite (@total_variation_intlv_split _ _ _ f
+    (belast (u' n) (v' n)) (v n) d d)//.
+    admit.
   admit.
-
 have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
   move=> iltn.
   rewrite -[in X in X `<=` _]setU_1itvob ?bnd_simp//.
