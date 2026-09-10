@@ -2166,6 +2166,13 @@ suff: open `]A 0, B 0[%classic.
 exact: itv_open.
 Qed.
 
+Lemma infleb n i : Z !=set0 -> c <= b_ n i.
+Proof.
+move=> Z0; rewrite (@le_trans _ _ (a_ n i))//.
+  by apply clea_bled.
+by apply: aleb; exact: A_lt_B.
+Qed.
+
 Lemma blea : compact Z -> Z !=set0 ->
   forall n i, b_ n i <= a_ n i.+1.
 Proof.
@@ -2193,6 +2200,14 @@ rewrite cbE daE.
 case: i => /=[|i].
   by apply clea_bled.
 by rewrite blea.
+Qed.
+
+Lemma clesup : compact Z -> Z !=set0 ->
+  forall n i, c_ n i <= d.
+Proof.
+move=> compactZ Z0 n i.
+rewrite cbE; case: ifPn => [_|i0]; first exact: has_bound_inf_sup.
+by apply clea_bled.
 Qed.
 
 Lemma Zcd n : c < d -> compact Z -> Z !=set0 ->
@@ -2547,6 +2562,14 @@ apply/sorted_leq_nth => //.
 - by rewrite inE !size_map size_sort size_map size_iota.
 - by rewrite inE !size_map size_sort size_map size_iota.
 - by rewrite -ltnS prednK// lt0n.
+Qed.
+
+Lemma inflec n i : Z !=set0 -> c <= c_ n i.
+Proof.
+move=> Z0; rewrite cbE; case: ifPn => // i0.
+rewrite (@le_trans _ _ (a_ n i.-1))//.
+  by apply clea_bled.
+by apply: aleb; exact: A_lt_B.
 Qed.
 
 Lemma disj_cd n :
@@ -3318,7 +3341,7 @@ by apply: eq_bigr => /= i _; rewrite add0n (set_nth_default x a')// ltnW//= ltnS
 Qed.
 
 Lemma total_variation_intlv_split (A B : seq R) (d0 d1 : R) :
-  a < b ->
+  a <= b ->
   itv_partition a b (intlv A B) ->
   total_variation a b f =
    \sum_(i < (minn (size A) (size B)))
@@ -5107,22 +5130,26 @@ set Vcd : \bar R := total_variation c d f.
 pose c' n := [tuple c_ n i | i < n.+1].
 pose d' n := [tuple d_ n i | i < n.+1].
 have : forall n, exists u v, c' n = u :: v :> seq _.
-  admit.
+  move=> n; have : (0 < size (c' n))%N by rewrite size_tuple.
+  by case: c' => -[//|u v/= _ _]; exists u, v.
 move/choice => [u /choice[v c'_uv]].
 have : forall n, exists u' v', d' n = u' :: v' :> seq _.
-  admit.
+  move=> n; have : (0 < size (d' n))%N by rewrite size_tuple.
+  by case: d' => -[//|u' v'/= _ _]; exists u', v'.
 move/choice => [u' /choice[v' d'_uv]].
 have size_v'v n : minn (size (belast (u' n) (v' n))) (size (v n)) = n.
   rewrite size_belast.
-  rewrite (_ : size (v' n) = (size (u' n :: (v' n))).-1)//.
-  rewrite (_ : size (v n) = (size (u n :: (v n))).-1)//.
+  rewrite -[size (v' n)]/(size (u' n :: v' n)).-1 -[size (v n)]/(size (u n :: v n)).-1.
   by rewrite -c'_uv -d'_uv !size_tuple minnn.
 have pc'd' n : itv_partition c (c_ n n) (intlv (belast (u' n) (v' n)) (v n)).
   split.
     rewrite lt_path_sortedE; apply/andP; split.
       rewrite (eq_all_r (mem_intlv _)).
         rewrite size_belast.
-        admit.
+        apply: succn_inj.
+        rewrite -[size (v' n)]/((size (u' n :: v' n)).-1).
+        rewrite -[size (v n)]/((size (u n :: v n)).-1).
+        by rewrite -c'_uv -d'_uv !size_tuple.
       rewrite all_cat; apply/andP; split.
         admit.
       admit.
@@ -5140,11 +5167,10 @@ have pc'd' n : itv_partition c (c_ n n) (intlv (belast (u' n) (v' n)) (v n)).
 have V_tv n : (V_ n <= Vcd)%E.
   rewrite /V_ /Vcd.
   rewrite (@total_variationD _ _ _ (c_ n n)).
-  - admit.
-  - admit.
-  rewrite (@total_variation_intlv_split _ _ _ f
-    (belast (u' n) (v' n)) (v n) d d)//.
-    admit.
+  - by rewrite /c_ cbE; case: ifPn => // n0; apply infleb.
+  - by apply clesup.
+  rewrite (@total_variation_intlv_split _ _ _ f (belast (u' n) (v' n)) (v n) d d)//.
+    by apply inflec.
   rewrite addrAC leeD//.
     rewrite big_ord_recr/= leeD//.
       rewrite size_v'v.
@@ -5555,8 +5581,8 @@ have Zsub_cover n (i : 'I_ n.+1) : `[c_ n i, d_ n i]%classic `<=`
         by rewrite (leq_ltn_trans _ ij).
         done.
       have xzk : `[x, z]%classic `<=` contiguous_intervals Z (h1 k).
-        move=> u/= uxz.
-        have := @is_interval_contiguous_intervals _ Z (h^-1%FUN k) _ _ kx kz u.
+        move=> t/= uxz.
+        have := @is_interval_contiguous_intervals _ Z (h^-1%FUN k) _ _ kx kz t.
         by rewrite !(itvP uxz) => /(_ isT).
       have : `]a_ n l, b_ n l[ `<` contiguous_intervals Z (h1 k).
         apply: (proper_subset_trans _ xzk).
@@ -5638,8 +5664,8 @@ have Zsub_cover n (i : 'I_ n.+1) : `[c_ n i, d_ n i]%classic `<=`
       by rewrite (leq_ltn_trans _ ij).
       done.
     have xzk : `[z, x]%classic `<=` contiguous_intervals Z (h1 k).
-      move=> u/= uxz.
-      have := @is_interval_contiguous_intervals _ Z (h^-1%FUN k) _ _ kz kx u.
+      move=> t/= uxz.
+      have := @is_interval_contiguous_intervals _ Z (h^-1%FUN k) _ _ kz kx t.
       by rewrite !(itvP uxz) => /(_ isT).
     have : `]a_ n l, b_ n l[ `<` contiguous_intervals Z (h1 k).
       apply: (proper_subset_trans _ xzk).
