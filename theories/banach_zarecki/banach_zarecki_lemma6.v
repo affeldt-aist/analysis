@@ -492,6 +492,16 @@ move=> ix.
 rewrite /reshape_index/= ifT//.
 Qed.
 
+Lemma mem_flatten {T : eqType} (s t : seq (seq T)) :
+  s =i t -> flatten s =i flatten t.
+Proof.
+move=> st x.
+apply: (sameP flattenP).
+apply: (equivP flattenP); split.
+  by move=> [u us xu]; exists u => //; rewrite st.
+by move=> [u ut xu]; exists u => //; rewrite -st.
+Qed.
+
 Lemma sorted_catP (d : R) (s t : seq R) :
   s != [::] -> t != [::] ->
   [/\ sorted <=%R s, sorted <=%R t & last d s <= head d t] <->
@@ -3060,7 +3070,7 @@ rewrite (@le_trans _ _ (variation a b f s)%:E)//.
   apply/val_inj => /=.
   by rewrite (half_bit_double _ false)//.
 apply: variation_le_total_variation.
-rewrite /itv_partition; split.
+  apply: path_ltW.
   rewrite /s.
   rewrite rcons_path; apply/andP; split.
     apply/(pathP b) => i.
@@ -5167,12 +5177,18 @@ have lambda_gt0 n : 0 < (fine (lambda n)).
 set xs' := fun n => (intlv
   [seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n]
     (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n)))).
-set xs := fun n => d_ n 0 :: flatten (xs' n).
+set xs := fun n => (d_ n 0) :: flatten (xs' n).
+have size_eq_xs' n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
+   (fine (lambda n)) | i <- iota 0 n] =
+    size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
+  by rewrite size_map size_iota size_reshape size_behead size_nseq size_seq_cd.
 
 have pcdxs n : itv_partition c d (xs n).
-(*  split.
-    apply/(pathP d); case => //.
-      move=> /(mem_nth d).
+(*
+  split.
+    rewrite lt_path_sortedE; apply/andP; split.
+
+    apply/(pathP d) => i.
       rewrite nth_flatten_intlvE.
         by rewrite /= size_map size_iota size_reshape size_nseq size_seq_cd.
       rewrite size_seq_cd /reshape_index/= => _.
@@ -5224,7 +5240,7 @@ have pcdxs n : itv_partition c d (xs n).
     rewrite ifT.
       admit.
     admit.
-  admit.*) admit.
+  admit. *) admit.
 have eq_size_lp_nseq n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
              (fine (lambda n)) | i <- iota 0 n] =
        size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
@@ -5419,10 +5435,12 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
     rewrite /= => n0.
     rewrite nth_map_iota//.
     rewrite /c_ /d_ cbE daE/=.
-    apply: variation_le_total_variation.
-    apply: lambda_partition_partition => //.
-    apply: altb => //.
-    admit.
+    have A_lt_B k : A_ k < B_ k.
+      exact: contiguous_intervals1_lt_contiguous_intervals2.
+    have[] := (lambda_partition_partition (altb d A_lt_B n0) (lambda_gt0 n)).
+    move=> /path_ltW pl llb.
+    apply: variation_le_total_variation => //.
+    by rewrite (eqP llb).
   move=> i/= i1ltn.
   rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
                               x <- behead (seq_d n)]] i) = a_ n i.+1).
@@ -5432,12 +5450,12 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
       by rewrite size_behead size_seq_cd ltnW.
     rewrite nth_behead/=.
     by rewrite /seq_d -/(banach_zarecki_lemma6.d_ _ _ _ _ n i.+1) daE.
-  apply: variation_le_total_variation.
-  rewrite nth_map_iota//.
-  rewrite /c_ /d_ cbE daE//=.
-  apply: lambda_partition_partition => //.
-  apply: altb => //.
-  admit.
+  have A_lt_B k : A_ k < B_ k.
+    exact: contiguous_intervals1_lt_contiguous_intervals2.
+  have[] := (lambda_partition_partition (altb d A_lt_B i1ltn) (lambda_gt0 n)).
+  move=> /path_ltW pl llb.
+  apply: variation_le_total_variation; rewrite nth_map_iota// /c_ /d_ cbE daE//.
+  by rewrite (eqP llb).
 set Vcd : \bar R := total_variation c d f.
 
 pose c' n := [tuple c_ n i | i < n.+1].
