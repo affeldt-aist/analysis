@@ -2883,152 +2883,73 @@ apply: contiguous_intervals_not_nested.
 have [+ _ _] := @bij _ _ _ _ h1; exact.
 Qed.
 
+(* TODO: weaken hypothesis, without (perfect_set Z)? *)
 Lemma cltd n i : Z !=set0 -> perfect_set Z ->
   (i < n.+1)%N -> c_ n i < d_ n i.
 Proof.
-move=> Z0 /[dup]pZ /perfectP[cZ iZ0].
+move=> Z0 /[dup]pZ /perfectP[cZ iZ0] iltn1.
 have compactZ : compact Z by rewrite Rcompact_boundE.
-have Zc : Z c.
-  rewrite ((closure_id _).1 cZ) .
-  exact: closure_inf.
-have Zd : Z d.
-  rewrite ((closure_id _).1 cZ) .
-  exact: closure_sup.
-move=> iltn1.
-rewrite lt_neqAle.
-apply/andP; split; last exact: cled.
+have Zc : Z c by rewrite ((closure_id _).1 cZ); exact: closure_inf.
+have Zd : Z d by rewrite ((closure_id _).1 cZ); exact: closure_sup.
+have citvE p q : (q < p)%N ->
+  contiguous_intervals Z (h1 (idx A B p q)) = `]a_ p q, b_ p q[%classic.
+  rewrite contiguous_ooitv// (idxE A B d p q) -/(A _) -/(B _) => pq.
+  by have [<- <- _] := (nth_abE A B d pq); rewrite -anth -bnth.
+rewrite lt_neqAle cled// andbT.
 have inf_lt_sup : c < d.
-  rewrite lt_neqAle; apply/andP; split; last exact: has_bound_inf_sup.
-  apply/negP => /eqP c_eq_d.
-  have := @sub_Rhull _ Z.
-  rewrite compact_Rhull// -/c -/d c_eq_d set_itv1.
-  move/subset_set1 => [|].
-    by move/set0P/eqP : Z0.
-  move=> {}Zd; move: pZ.
-  rewrite Zd.
-  exact: perfect_set1.
-rewrite cbE daE.
-case: i iltn1 => //=.
+  apply: has_bound_not_subset1_inf_sup => //; move/is_subset1P => [|[x Z1]].
+    by apply/eqP/set0P.
+  by move: iZ0; rewrite Z1 is_subset1_isolated; apply/eqP/set0P; exists x.
+rewrite cbE daE; case: i iltn1 => //=[|i].
   case: n => //[_|n _].
-    rewrite /lemmas'.a_.
-    rewrite nth_default//.
-    by rewrite neq_lt; apply/orP; left.
+    by rewrite /lemmas'.a_ nth_default// neq_lt; apply/orP; left.
   apply/negP => /eqP inf_eq_a.
-  move: iZ0.
-  move/eqP; apply/negP/set0P; exists c; split; rewrite ?inE//.
+  move/eqP : iZ0; apply/negP/set0P; exists c; split; rewrite ?inE//.
   exists `]c - 1, b_ n.+1 0[%classic => //.
     rewrite nbhsE/=; exists `]c - 1, b_ n.+1 0[%classic => //; split => //=.
-    rewrite in_itv/=; apply/andP; split.
-      by rewrite gtrBl.
-    rewrite inf_eq_a.
-    exact: altb.
+    by rewrite in_itv/= inf_eq_a altb// gtrBl andbT.
   rewrite eqEsubset; split.
     move=> x/=[+ Zx]; rewrite in_itv/= => /andP[c1x xb0].
-    apply/eqP; rewrite eq_le; apply/andP; split.
-      rewrite leNgt; apply/negP => cx.
-      have := Zx.
-      apply: (@contiguous_intervals_subsetC _ _ (h1 (idx A B n.+1 0))).
-      rewrite contiguous_ooitv//.
-      rewrite (idxE A B d n.+1 0).
-      rewrite -/(A _) -/(B _).
-      have iltn1 : (0 < n.+1)%N by [].
-      have [<- <- _] := (nth_abE A B d iltn1).
-      rewrite -anth -bnth.
-      by rewrite /= in_itv/= -inf_eq_a cx xb0.
-    have/sub_Rhull := Zx.
-    rewrite compact_Rhull//.
-    by rewrite /= in_itv/= => /andP[].
-  rewrite sub1set inE; split => //=.
-  rewrite in_itv/=; apply/andP; split; first by rewrite gtrBl.
-  rewrite /b_.
-  rewrite inf_eq_a.
-  exact: altb.
-move=> i.
-rewrite ltnS leq_eqVlt => /predU1P[i1n|].
-  rewrite i1n /lemmas'.a_ nth_default.
-    by rewrite size_seq_ab.
-  apply/negP => /eqP b_eq_sup.
-  move: iZ0.
-  move/eqP; apply/negP/set0P; exists d; split; rewrite ?inE//.
-  exists `]a_ n i, d + 1[%classic => //.
+    apply/eqP; rewrite eq_le leNgt.
+    have/sub_Rhull := Zx; rewrite compact_Rhull//= in_itv/= => /andP[-> _].
+    rewrite andbT; apply/negP => cx; move: Zx.
+    apply: (@contiguous_intervals_subsetC _ _ (h1 (idx A B n.+1 0))).
+    by rewrite citvE//= in_itv/= /a_ -inf_eq_a cx xb0.
+  by rewrite sub1set inE/= in_itv/= gtrBl /b_ {1}inf_eq_a altb ?andbT.
+rewrite ltnS leq_eqVlt => /predU1P[i1n|i1n].
+  rewrite i1n /lemmas'.a_ nth_default ?size_seq_ab//.
+  apply/negP => /eqP b_eq_sup; move/eqP: iZ0; apply/negP/set0P.
+  exists d; split; rewrite ?inE//; exists `]a_ n i, d + 1[%classic => //.
     rewrite nbhsE/=; exists `]a_ n i, d + 1[%classic => //; split => //=.
-    rewrite in_itv/=; apply/andP; split.
-      rewrite -b_eq_sup.
-      by rewrite altb// i1n.
-    by rewrite ltrDl.
+    by rewrite in_itv/= ltrDl -b_eq_sup altb ?i1n/=.
   rewrite eqEsubset; split.
     move=> x/=[+ Zx]; rewrite in_itv/= => /andP[aix xd1].
-    apply/eqP; rewrite eq_le; apply/andP; split.
-      have/sub_Rhull := Zx.
-      rewrite compact_Rhull//.
-      by rewrite /= in_itv/= => /andP[].
-    rewrite leNgt; apply/negP => xd.
-    have := Zx.
+    apply/eqP; rewrite eq_le; have/sub_Rhull := Zx; rewrite compact_Rhull//=.
+    rewrite in_itv/= (leNgt d) => /andP[_ ->]; apply/negP => xd; have := Zx.
     apply: (@contiguous_intervals_subsetC _ _ (h1 (idx A B n i))).
-    rewrite contiguous_ooitv//.
-    rewrite (idxE A B d n i).
-    rewrite -/(A _) -/(B _).
-    have iltn1 : (i < n)%N by rewrite i1n.
-    have [<- <- _] := (nth_abE A B d iltn1).
-    rewrite -anth -bnth.
-    by rewrite /= in_itv/= b_eq_sup aix xd.
-  rewrite sub1set inE; split => //=.
-  rewrite in_itv/=; apply/andP; split; last by rewrite ltrDl.
-  rewrite /a_.
-  rewrite -{2}b_eq_sup.
-  apply: altb => //.
-  by rewrite -i1n.
-move=> i1n.
+    by rewrite citvE -i1n//= in_itv/= i1n /b_ b_eq_sup aix xd.
+  by rewrite sub1set inE/= in_itv/= ltrDl /a_ -{2}b_eq_sup altb ?i1n/=.
 apply/negP => /eqP b_eq_a.
-move: iZ0.
-move/eqP; apply/negP/set0P; exists (a_ n i.+1); split.
-  rewrite /a_ anth.
-  have [-> _] := nth_abE A B d i1n.
-  rewrite -idxE inE => idxi1n.
-  apply: mem_contiguous_intervals1 => //.
-  have [+ _ _] := @bij _ _ _ _ h1.
-  exact.
+move/eqP: iZ0; apply/negP/set0P; exists (a_ n i.+1); split.
+  rewrite /a_ anth; have [-> _ _] := nth_abE A B d i1n; rewrite inE.
+  by apply: mem_contiguous_intervals1; have [+ _ _] := @bij _ _ _ _ h1; exact.
 exists `]a_ n i, b_ n i.+1[%classic => //.
-  rewrite nbhsE/=.
-  exists `]a_ n i, b_ n i.+1[%classic => //; split => //=.
-  rewrite in_itv/=; apply/andP; split.
-    by rewrite /a_ -b_eq_a altb// ltnW.
-  by rewrite altb// ltnW.
-rewrite eqEsubset; split.
-  move=> x => -[/= + Zx].
+  rewrite nbhsE/=; exists `]a_ n i, b_ n i.+1[%classic => //; split => //=.
+  by rewrite in_itv/= /a_  -{1}b_eq_a !altb// ltnW.
+rewrite eqEsubset; split=> [x [/= + Zx]|].
   rewrite in_itv/= => /andP[aix xbi1].
   apply/eqP; rewrite eq_le -(negbK (_ && _)) negb_and -!ltNge; apply/negP.
   move=> /orP[ai1x|].
-    move: Zx.
-    apply: cplt_hull_complement.
+    move: Zx; apply: cplt_hull_complement.
     apply: (@contiguous_intervalsS _ _ (h1 (idx A B n i.+1))).
-    rewrite contiguous_ooitv//.
-    rewrite (idxE A B d n i.+1).
-    rewrite -/(A _) -/(B _).
-    have [<- <- _] := (nth_abE A B d i1n).
-    rewrite -anth -bnth.
-    by rewrite /= in_itv/= ai1x xbi1.
-  rewrite /a_ -b_eq_a => xbi.
-  move: Zx.
+    by rewrite citvE//= in_itv/= ai1x xbi1.
+  rewrite /a_ -b_eq_a => xbi; move: Zx.
   apply: cplt_hull_complement.
   apply: (@contiguous_intervalsS _ _ (h1 (idx A B n i))).
-  rewrite contiguous_ooitv//.
-  rewrite (idxE A B d n i).
-  rewrite -/(A _) -/(B _).
-  have [<- <- _] := (nth_abE A B d (ltnW i1n)).
-  rewrite -anth -bnth.
-  by rewrite /= in_itv/= aix xbi.
-rewrite sub1set inE/=; split.
-  rewrite in_itv/=; apply/andP; split.
-    rewrite /a_ -b_eq_a.
-    by apply: altb => //; rewrite ltnW.
-  exact: altb.
-rewrite /a_ anth.
-have [-> _] := nth_abE A B d i1n.
-rewrite -idxE => idxi1n.
-apply: mem_contiguous_intervals1 => //.
-have [+ _ _] := @bij _ _ _ _ h1.
-exact.
+  by rewrite citvE//= ?in_itv/= ?aix ?xbi// ltnW.
+rewrite sub1set inE/= in_itv/= /a_ -b_eq_a altb ?b_eq_a ?altb//= ?(ltnW i1n)//.
+split => //; rewrite /a_ anth; have [-> _ _] := nth_abE A B d i1n.
+by apply: mem_contiguous_intervals1; have [+ _ _] := @bij _ _ _ _ h1; exact.
 Qed.
 
 End contiguous_intervals.
