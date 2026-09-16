@@ -576,6 +576,14 @@ rewrite sorted_cat_cons; apply/andP; split.
 exact: IH.
 Qed.
 
+Lemma nth0_flatten_intlv d (ss tt : (seq (seq R))) :
+  all (fun s => s != [::]) ss ->
+  all (fun s => s != [::]) tt ->
+  tt != [::] ->
+  nth d (flatten (intlv ss tt)) 0 = nth d (nth [::] ss 0) 0.
+Proof.
+Admitted.
+
 End checking_flatten_lemmas.
 
 Section lemmas.
@@ -5278,10 +5286,73 @@ have size_eq_xs' n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
   by rewrite size_map size_iota size_reshape size_behead size_nseq size_seq_cd.
 
 have pcdxs n : itv_partition c d (xs n).
-(*
+  case: n.
+    rewrite /xs/=.
+    split => /=.
+      rewrite andbT.
+      by apply: (le_lt_trans (inflec _ _ _ _ _ _ )) => //; apply: cltd.
+    rewrite /d_ daE.
+    rewrite /banach_zarecki_lemma6.a_.
+    rewrite nth_default//.
   split.
+    apply/(pathP d); case.
+      move=> _.
+      rewrite (_ : c = c_ n.+1 0).
+        by rewrite /c_ cbE.
+      exact: cltd.
+    move=> i.
+    rewrite ltnS -/(size _).
+    rewrite nth_cons.
+    rewrite (ltn0Sn i) succnK.
+    case: i.
+      move=> xs'n10.
+      rewrite nth_cons.
+      rewrite ltnn.
+      rewrite nth_cons (ltn0Sn 0) succnK.
+      rewrite nth0_flatten_intlv.
+      - admit.
+      - admit.
+      - admit.
+      rewrite nth_map_iota.
+        admit.
+      rewrite ltrDl.
+      admit.
+    apply/sortedP.
+    apply: (@lt_sorted_flatten _ d) => //.
+    - admit.
+    - admit.
+    admit.
+(*
+        rewrite [X in X < _]/=.
+        rewrite nth_flatten_intlvE.
+          exact: size_eq_xs'.
+        set r := (shape
+      (intlv [seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n]
+               (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))))).
+        rewrite ifT.
+          rewrite reshape_nseq1.
+          .
+        rewrite [X in _ < X]/=.
+        rewrite nth_flatten_intlvE.
+          admit.
+        rewrite /reshape_index.
+        rewrite [X in odd X]/=.
+      move=> i.
+      rewrite [X in _ -> X < _]/=.
+      case: i
+    case: i.
     rewrite lt_path_sortedE; apply/andP; split.
-
+      rewrite /xs.
+      apply/andP; split.
+        rewrite (_ : c = c_ n 0).
+          by rewrite /c_ cbE.
+        exact: cltd.
+      rewrite -/(all _ _).
+      apply/(all_nthP d) => i ixs'.
+      rewrite nth_flatten_intlvE.
+        by rewrite reshape_nseq1 !size_map size_iota size_behead size_seq_cd.
+      rewrite nth_intlvE.
+      rewrite /shape.
     apply/(pathP d) => i.
       rewrite nth_flatten_intlvE.
         by rewrite /= size_map size_iota size_reshape size_nseq size_seq_cd.
@@ -5334,7 +5405,8 @@ have pcdxs n : itv_partition c d (xs n).
     rewrite ifT.
       admit.
     admit.
-  admit. *) admit.
+*)
+  admit.
 have eq_size_lp_nseq n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
              (fine (lambda n)) | i <- iota 0 n] =
        size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
