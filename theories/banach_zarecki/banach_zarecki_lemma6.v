@@ -3107,7 +3107,7 @@ apply: variation_le_total_variation.
       exact/val_inj.
     rewrite (nth_map ord0) ?size_tuple//=.
     rewrite (nth_ord_enum ord0 (Ordinal ni))/=.
-    rewrite nth_cons lt0n i0.
+   rewrite nth_cons lt0n i0.
     rewrite (nth_map ord0).
       rewrite (@leq_trans i)//.
         by rewrite prednK// lt0n.
@@ -4469,6 +4469,22 @@ rewrite seqDU_bigcup_eq.
 Admitted.
 *)
 
+Section mv_to_constructive_ereal.
+Context {R : realDomainType}.
+Implicit Types (x y z u a b : \bar R) (r : R).
+
+(* replace the bigmaxe_fin_num in MCA *)
+Lemma bigmaxe_fin_num def (s : seq (\bar R)) : s != [::] ->
+  {in s, forall x, (def <= x)%E /\ x \is a fin_num} ->
+  \big[maxe/def]_(i <- s) i \is a fin_num.
+Proof.
+elim: s => // h [_ _ /(_ h)|h' t ih _ /forall_cons[[defh hfin] h'tfin]].
+  rewrite mem_seq1 => /(_ (eqxx _))[/max_idPl defh hfin].
+  by rewrite big_seq1_id defh.
+by rewrite big_cons -fine_max// ih.
+Qed.
+
+End mv_to_constructive_ereal.
 
 Module lemma6_direct_new.
 Section lemma6_direct.
@@ -5297,13 +5313,28 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
   by rewrite daE -/a_; apply aled.
 have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   rewrite /xs mesh_cons.
-  rewrite (_ : c = c_ n 0).
-    admit.
+  rewrite (_ : c = c_ n 0); first by rewrite /c_ cbE eqxx.
   rewrite /maxr; case : ifP => _; last first.
+    rewrite /lambda -lee_fin fineK.
+      rewrite diam_defaultE//.
+      rewrite -(big_map_id _ _ diam _ xpredT).
+      rewrite bigmaxe_fin_num// => x /mapP[i /mapP[j]].
+      rewrite mem_iota leq0n add0n/= => jn ->{i} ->{x}.
+      rewrite diam_ge0; split => //.
+      by rewrite diam_itv//= cled.
+    rewrite (le_trans _ (diam_max_cons _ _))//.
+    rewrite diam_itv; first exact: cled.
+    by rewrite ger0_norm// subr_ge0 cled.
+  rewrite mesh_flatten => //.
+  - apply/allP => /= i /flattenP[j ].
+    rewrite /xs'.
+    rewrite mem_intlv.
+      by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_cd.
+    rewrite mem_cat => /orP[/mapP[k]|].
+      rewrite mem_iota add0n leq0n/= => kn ->.
+      (*itv_partition_le_ub*)
+      admit.
     admit.
-  rewrite mesh_flatten.
-  - admit.
-  - admit.
   - admit.
   rewrite size_intlv size_map size_iota.
   rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
@@ -5313,26 +5344,25 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     move=> n0 _.
     rewrite (_ : nat_of_ord (Ordinal n0) = 0)//.
     rewrite (_ : nth d [seq last d s | s <- [:: d_ n 0] :: xs' n] 0 = d_ n 0)//.
+    have ? : (0 < size (xs' n))%N.
+      rewrite size_intlv size_map size_iota size_reshape size_nseq.
+      by rewrite size_behead size_seq_cd/= minnn.
     rewrite (_ : nth d [seq last d s | s <- xs' n] 0 =
        last d (lambda_partition (d_ n 0) (c_ n 1) (fine (lambda n)))).
-      rewrite (nth_map [::]).
-        admit.
+      rewrite (nth_map [::])//.
       rewrite nth_intlvE.
-      rewrite ifT.
-        admit.
+      rewrite ifT//.
       rewrite nth_map_iota//.
       by rewrite ltn_half_double.
     rewrite nth_intlvE.
-    rewrite ifT.
-      rewrite size_intlv size_map size_iota.
-      by rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
+    rewrite ifT//.
     rewrite nth_map_iota.
       by rewrite ltn_half_double.
     rewrite last_lambda//.
-      admit.
+      by apply: dltc => //=; rewrite -double_gt0.
     apply: ltW.
     apply: lambda_partition_mesh => //.
-    admit.
+    by apply: dltc => //=; rewrite -double_gt0.
   move=> i i1ltn2 _.
   rewrite (_ : nat_of_ord (Ordinal i1ltn2) = i.+1)//.
   rewrite (_ : (nth d [seq last d s | s <- [:: _] :: xs' n] i.+1) =
@@ -5346,7 +5376,7 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     admit.
   rewrite oddS => /negP/negP => oddi.
   rewrite nth_map_iota.
-    admit.
+    by rewrite ltn_half_double.
   rewrite (_ : (nth d [seq last d s | s <- xs' n] i) = d_ n (uphalf i)).
     admit.
   rewrite (_ : (nth d [seq last d s | s <- xs' n] i.+1) = c_ n (uphalf i).+1).
@@ -5389,12 +5419,9 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
     by rewrite /= /c_ cbE/=.
   rewrite variation_flatten_intlv_split//.
     rewrite all_cat; apply/andP; split => //.
-      apply/all_nthP => i iltn.
-      rewrite nth_map_iota.
-        admit.
-      rewrite -size_eq0 -lt0n.
-      apply: size_lambda_partition0 => //.
-      admit.
+      apply/(all_nthP [::]) => i.
+      rewrite size_map size_iota => ni.
+      by rewrite nth_map_iota.
     rewrite reshape_nseq1.
     apply/all_nthP => i.
     rewrite size_map size_behead size_seq_cd/= => iltn.
@@ -5403,7 +5430,7 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite size_map size_iota.
   rewrite reshape_nseq1 size_map size_behead size_seq_cd minnn.
   rewrite EFinD addrC leeD//.
-    rewrite -sumEFin; apply: lee_sum => /= i _. 
+    rewrite -sumEFin; apply: lee_sum => /= i _.
     rewrite (_ : nth d
             [seq last d s
                | s <- [seq lambda_partition (d_ n i0)
@@ -5413,7 +5440,7 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
       rewrite size_map size_iota//.
     rewrite nth_map_iota => //.
       rewrite last_lambda//.
-        admit.
+        by rewrite dltc//=.
       by rewrite /c_ cbE.
     rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
                                   x <- behead (seq_d n)]] i) = a_ n i.+1).
@@ -5442,7 +5469,7 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
       by rewrite !size_map size_iota.
     rewrite nth_map_iota//.
     rewrite last_lambda//.
-      admit.
+      by rewrite dltc//=.
     by rewrite /c_ cbE.
   case: i; case => //.
     rewrite /= => n0.
@@ -5485,25 +5512,26 @@ have size_v'v n : minn (size (belast (u' n) (v' n))) (size (v n)) = n.
   rewrite size_belast.
   rewrite -[size (v' n)]/(size (u' n :: v' n)).-1 -[size (v n)]/(size (u n :: v n)).-1.
   by rewrite -c'_uv -d'_uv !size_tuple minnn.
+have sz_v'v n : size (v' n) = size (v n).
+  apply: succn_inj.
+  rewrite -[LHS]/(size (u' n :: v' n)) -d'_uv.
+  rewrite -[RHS]/(size (u n :: v n)) -c'_uv.
+  by rewrite !size_tuple.
 have pc'd' n : itv_partition c (c_ n n) (intlv (belast (u' n) (v' n)) (v n)).
   split.
     rewrite lt_path_sortedE; apply/andP; split.
       rewrite (eq_all_r (mem_intlv _)).
-        rewrite size_belast.
-        apply: succn_inj.
-        rewrite -[size (v' n)]/((size (u' n :: v' n)).-1).
-        rewrite -[size (v n)]/((size (u n :: v n)).-1).
-        by rewrite -c'_uv -d'_uv !size_tuple.
+        by rewrite size_belast.
       rewrite all_cat; apply/andP; split.
         admit.
       admit.
     apply/lt_sorted_intlvP.
-      admit.
+      by rewrite size_belast.
     split.
       admit.
     admit.
   rewrite last_intlv.
-    admit.
+    by rewrite size_belast sz_v'v.
   admit.
 (*
  * c = c0, d0, c1, d1, ... cn, dn = d
@@ -5589,11 +5617,12 @@ have eq4 n : total_variation c d f =
   \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E +
    \sum_(i < n) (total_variation (a_ n i) (b_ n i) f).
   rewrite (@total_variationD _ _ _ (c_ n n)).
-  - admit.
-  - admit.
+  - by apply inflec => //.
+  - by apply clesup => //.
   rewrite (@total_variation_intlv_split _ _ _ f
     (belast (u' n) (v' n)) (v n) d d)//.
-    admit.
+    by apply inflec => //.
+  rewrite !size_belast sz_v'v minnn.
   admit.
 have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
   move=> iltn.
@@ -5606,22 +5635,24 @@ have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
   rewrite 2!subUset; split.
     rewrite sub1set inE/= in_itv/=; apply/andP; split.
       apply: clea_new => //.
-      - admit.
+      - exact: has_bound_inf_sup.
       - by move=> k; apply: contiguous_intervals1_lt_contiguous_intervals2.
       move=> k.
       by apply: inf_contiguous_intervals1 => //; rewrite inE/=; exact: ne_cgitvs.
-    admit.
+    by apply: aled.
   split; last first.
     rewrite sub1set inE/= in_itv/=; apply/andP; split.
-      admit.
-    admit.
+      by apply infleb.
+    by apply clea_bled.
+  apply: subset_itv; rewrite bnd_simp.
+    by apply clea_bled.
+  by apply clea_bled.
   (*
   rewrite -contiguous_ooitv//.
   rewrite -compact_Rhull//.
   apply: (subset_trans (@contiguous_intervalsS _ Z (h1 i))).
   exact: cplt_hull_subset_Rhull.
   *)
-  admit.
 have ABbvf n : \sum_(i < n) total_variation (a_ n i) (b_ n i) f \is a fin_num.
   apply/sum_fin_numP => /=.
   case => i iltn1 _ _.
@@ -5719,8 +5750,18 @@ have alphaH n : (alpha <= \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
     apply: eq_bigr => i _.
     have : H (c_ n i) <= H (d_ n i).
       apply: ndH.
-      - admit.
-      - admit.
+      - rewrite in_itv/=; apply/andP; split.
+          rewrite (le_trans ac)//.
+          by apply: inflec.
+        rewrite (le_trans _ db)//.
+        by apply: clesup.
+      - rewrite in_itv/=; apply/andP; split.
+          rewrite (le_trans ac)//.
+          rewrite /d_ daE -/(a_ _).
+          by apply clea_bled.
+        rewrite (le_trans _ db)//.
+        rewrite /d_ daE -/(a_ _).
+        by apply: aled.
       - exact: cled.
     rewrite le_eqVlt => /predU1P[->|Hcd].
       by rewrite subrr completed_lebesgue_measure_itv/= ltxx.
