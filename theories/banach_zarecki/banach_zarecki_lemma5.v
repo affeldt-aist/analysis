@@ -438,16 +438,14 @@ have [ns|ns] := ltnP n (size s).
 by rewrite nth_default.
 Qed.
 
-Lemma itv_partition_le_ub a b s :
-  itv_partition a b s -> forall n, (nth b s n <= b)%O.
+Lemma itv_partition_le_ub def a b s :
+  itv_partition a b s -> forall n, (n < size s)%N -> (nth def s n <= b)%O.
 Proof.
-move=> ps n.
-have [ns|ns] := ltnP n (size s).
-  suff : nth b s n \in `]a, b].
-    by rewrite in_itv/= => /andP[].
-  apply: (itv_partition_in_itv ps).
-  exact: mem_nth.
-by rewrite nth_default.
+move=> ps n ns.
+suff : nth def s n \in `]a, b].
+  by rewrite in_itv/= => /andP[].
+apply: (itv_partition_in_itv ps).
+by apply/mem_nth.
 Qed.
 
 Lemma itv_partition_lt_ub a b s :
@@ -1295,7 +1293,7 @@ have H2 : variation x b f (itv_partitionR s' x) =
   + variation x_k1 b f (itv_partitionR s x_k1).
   rewrite -variation_cat.
     exact: ltW.
-    by apply: (itv_partition_le_ub abs).
+    by apply: (itv_partition_le_ub _ abs) => //.
     rewrite /itv_partition/=.
     by rewrite xxk1.
     move: ks.
@@ -1311,7 +1309,7 @@ have H2 : variation x b f (itv_partitionR s' x) =
         apply/negbTE.
         rewrite -leNgt.
         move/(nthP b) : rs => [m ms <-].
-        by apply: (itv_partition_le_ub abs).
+        by apply: (itv_partition_le_ub _ abs) => //.
       by rewrite sxk1 /itv_partition xk1b/=.
     apply: (@itv_partitionRP _ _ a) => //.
       by rewrite (le_lt_trans axk)// (lt_trans xkx).
@@ -1320,7 +1318,7 @@ have H2 : variation x b f (itv_partitionR s' x) =
     rewrite (@lt_le_trans _ _ (nth b [:: a, s0 & s1] k.+2))//.
       case: abs => /pathP /[swap]/eqP asb.
       by apply => //.
-    by move/itv_partition_le_ub : abs => /(_ k.+1)/=.
+    by move/itv_partition_le_ub : abs => /(_ b _ k1s)/=.
   congr variation.
   rewrite s'E.
   rewrite [LHS]filter_cat.
@@ -1389,7 +1387,7 @@ rewrite leeD//.
       apply/negbTE.
       rewrite -leNgt.
       move/(nthP b) : rs => [m ms <-].
-      by apply: (itv_partition_le_ub abs).
+      by apply: (itv_partition_le_ub _ abs) => //.
     rewrite sxk1.
     rewrite variation_nil addr0.
     rewrite lee_fin.
@@ -1405,7 +1403,8 @@ rewrite leeD//.
     by rewrite (le_trans axk)// (le_trans (ltW xkx))// ltW.
     rewrite /x_k1.
     rewrite /=.
-    exact: (@itv_partition_le_ub _ _ a).
+    apply: (@itv_partition_le_ub _ _ _ a) => //.
+    by rewrite (leq_trans _ k1s).
     apply: itv_partitionLP (abs) => //.
     rewrite /x_k1/=.
     exact: itv_partition_gt_lb => //.
@@ -1425,14 +1424,14 @@ rewrite leeD//.
   apply: (@variation_oscillation _ _ _ _ f).
   apply: continuous_subspaceW cf.
   apply: subset_itv; rewrite bnd_simp//.
-  by apply: (itv_partition_le_ub abs).
+  by apply: (itv_partition_le_ub _ abs) => //.
   by rewrite in_itv/= (ltW xkx) (ltW xxk1).
   by rewrite in_itv/= lexx (ltW (lt_trans xkx _)).
 rewrite /variation/= big_nat_recr//= big_nil add0r.
 apply: (@variation_oscillation _ _ _ _ f).
 apply: continuous_subspaceW cf.
 apply: subset_itv; rewrite bnd_simp//.
-by apply: (itv_partition_le_ub abs).
+by apply: (itv_partition_le_ub _ abs).
 rewrite in_itv/= lexx ltW//.
 by rewrite (lt_trans xkx).
 by rewrite in_itv/= (ltW xkx) (ltW xxk1).
@@ -1479,7 +1478,7 @@ rewrite mem_iota add0n subn0 leq0n/= => ns.
 apply: oscillation_sub.
 apply: subset_itvScc; rewrite bnd_simp//.
   by apply: itv_partition_nth_ge => //; rewrite ltnS ltnW.
-exact: (itv_partition_le_ub ps).
+exact: (itv_partition_le_ub _ ps).
 Qed.
 
 Lemma omega_max_cons a b f s x :
@@ -2888,7 +2887,7 @@ have : compact (f @` `[(nth b (a :: p) n), (nth b p n)]).
     apply: subset_itv; rewrite bnd_simp//.
       case: n => //= ? in np *.
       exact/ltW/itv_partition_gt_lb.
-    exact: (itv_partition_le_ub pabp).
+    exact: (itv_partition_le_ub _ pabp).
   exact: segment_compact.
 rewrite Rcompact_boundE/= => -[cimg ubimg lbimg].
 have nonempty_img : [set f x | x in `[(nth b (a :: p) n), (nth b p n)]] !=set0.
@@ -2923,12 +2922,12 @@ have : forall x y, x \in `[(nth b (a :: p) n), (nth b p n)] ->
     apply: subset_itv Hx; rewrite bnd_simp.
       case: n cimg ubimg lbimg nonempty_img Hy => //=n _ _ _ _ _ in np *.
       exact/ltW/itv_partition_gt_lb.
-    exact: (itv_partition_le_ub pabp).
+    exact: (itv_partition_le_ub _ pabp).
   rewrite /=; split.
     apply: subset_itv Hy; rewrite bnd_simp.
       case: n cimg ubimg lbimg nonempty_img Hx => //=n _ _ _ _ _ in np *.
       exact/ltW/itv_partition_gt_lb.
-    exact: (itv_partition_le_ub pabp).
+    exact: (itv_partition_le_ub _ pabp).
   rewrite /ball/=.
   apply: (@le_lt_trans _ _ `|nth b p n - nth b (a :: p) n|).
     rewrite [in leRHS]distrC.

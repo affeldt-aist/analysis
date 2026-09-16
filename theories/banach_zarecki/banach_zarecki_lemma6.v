@@ -2256,6 +2256,15 @@ Qed.
 Local Notation c_ := (c_ A B c d).
 Local Notation d_ := (d_ A B c d).
 
+Lemma aled : Z !=set0 ->
+  forall n i, a_ n i <= d.
+Proof.
+move=> Z0 n i.
+rewrite (@le_trans _ _ (b_ n i))//.
+  by apply: aleb; exact: A_lt_B.
+by apply clea_bled.
+Qed.
+
 Lemma cled : compact Z -> Z !=set0 ->
   forall n i, c_ n i <= d_ n i.
 Proof.
@@ -5258,30 +5267,34 @@ have allNnil_xs n : all (fun s : seq R => s != [::]) (xs' n).
 have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
   apply/allP => x.
   rewrite /xs in_cons => /predU1P[->|].
-    admit.
+    apply/andP; split.
+      by rewrite /d_ daE -/a_; apply clea_bled.
+    by rewrite /d_ daE -/a_; apply: aled.
   move/flattenP => /=[s].
   rewrite mem_intlv// mem_cat => /orP[|].
     move/mapP => [i + ->]; rewrite mem_iota add0n => /andP[_ iltn1].
     move=> xlp.
     apply/andP; split.
-      apply: (@le_trans _ _ (d_ n i)).
-        admit.
+      rewrite (@le_trans _ _ (d_ n i))//.
+        by rewrite /d_ daE -/a_; apply clea_bled.
       apply: (ltW (@lb_lambda _ (d_ n i) (c_ n i.+1) _ _ _ _ xlp)).
         rewrite /c_ /d_ cbE daE/=; apply: altb => //.
         move=> j.
         exact: contiguous_intervals1_lt_contiguous_intervals2.
       exact: lambda_gt0.
-    admit.
-  rewrite reshape_nseq1.
-  admit.
-(*have cdxs n : (forall (i : 'I_ n.+1), c_ n i \in c :: (xs n) /\
-               forall (i : 'I_ n.+1), d_ n i \in (xs n)).
-  admit.
-*)
-(*
-have size_xs n : (n.+1.*2 <= size (xs n))%N.
-  admit.
-*)
+    rewrite (@le_trans _ _ (c_ n i.+1))//; last by apply clesup.
+    move/(nthP d) : xlp => [j Hj <-{x}].
+    apply: (@itv_partition_le_ub _ _ _ (d_ n i)) => //.
+    apply: lambda_partition_partition => //.
+    by apply: dltc => //.
+  rewrite reshape_nseq1 => /mapP[r rdn] ->.
+  rewrite mem_seq1 => /eqP ->{x}.
+  move/mem_behead : rdn.
+  move/(nthP d) => -[i id <-{r}].
+  rewrite (_ : nth _ _ _ = banach_zarecki_lemma6.d_ A_ B_ c d n i)//.
+  apply/andP; split.
+    by rewrite daE -/a_; apply clea_bled.
+  by rewrite daE -/a_; apply aled.
 have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   rewrite /xs mesh_cons.
   rewrite (_ : c = c_ n 0).
