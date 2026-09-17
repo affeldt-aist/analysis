@@ -2282,6 +2282,19 @@ rewrite (@le_trans _ _ (b_ n i))//.
 by apply clea_bled.
 Qed.
 
+Lemma sorted_c n : Z !=set0 -> sorted <=%R (seq_c A B c d n).
+Proof.
+move=> Z0; apply/(sortedP d) => j; rewrite size_seq_c ltnS => jn.
+rewrite -!/(c_ _ _) !cbE -/b_/=.
+case: ifPn => j0.
+  exact: infleb.
+apply/le_sorted_leq_nth => //=; rewrite ?inE/= ?size_seq_b//.
+apply: sorted_b => //.
+exact: trivIsetAB.
+by rewrite prednK ? lt0n// ltnW.
+by rewrite leq_pred.
+Qed.
+
 Lemma sorted_d n : Z !=set0 -> sorted <=%R (seq_d A B c d n).
 Proof.
 move=> Z0; apply/(sortedP d) => j; rewrite size_seq_d ltnS => jn.
@@ -5818,37 +5831,91 @@ have : forall n, exists u v, c' n = u :: v :> seq _.
   move=> n; have : (0 < size (c' n))%N by rewrite size_tuple.
   by case: c' => -[//|u v/= _ _]; exists u, v.
 move/choice => [u /choice[v c'_uv]].
-have : forall n, exists u' v', d' n = u' :: v' :> seq _.
+have : forall n, exists u' v', d' n = rcons u' v' :> seq _.
   move=> n; have : (0 < size (d' n))%N by rewrite size_tuple.
-  by case: d' => -[//|u' v'/= _ _]; exists u', v'.
+  case: d' => -[//|u' v'/= _ _].
+  exists (belast u' v').
+  exists (last u' v').
+  by rewrite lastI.
 move/choice => [u' /choice[v' d'_uv]].
-have size_v'v n : minn (size (belast (u' n) (v' n))) (size (v n)) = n.
-  rewrite size_belast.
-  rewrite -[size (v' n)]/(size (u' n :: v' n)).-1 -[size (v n)]/(size (u n :: v n)).-1.
-  by rewrite -c'_uv -d'_uv !size_tuple minnn.
-have sz_v'v n : size (v' n) = size (v n).
+have size_v'v n : minn (size ((u' n))) (size (v n)) = n.
+  rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
+    by rewrite size_rcons.
+  rewrite -d'_uv.
+  rewrite (_ : size (v n) = (size ((u n) :: (v n))).-1) //.
+  by rewrite -c'_uv !size_tuple minnn.
+have sz_v'v n : size (u' n) = size (v n).
   apply: succn_inj.
-  rewrite -[LHS]/(size (u' n :: v' n)) -d'_uv.
   rewrite -[RHS]/(size (u n :: v n)) -c'_uv.
-  by rewrite !size_tuple.
-have pc'd' n : itv_partition c (c_ n n) (intlv (belast (u' n) (v' n)) (v n)).
+  rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
+    by rewrite size_rcons.
+  by rewrite size_tuple -d'_uv size_tuple.
+have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
   split.
     rewrite lt_path_sortedE; apply/andP; split.
-      rewrite (eq_all_r (mem_intlv _)).
-        by rewrite size_belast.
+      rewrite (eq_all_r (mem_intlv _))//.
       rewrite all_cat; apply/andP; split.
-        apply/allP => z zv'.
+        apply/allP => z zc'.
         rewrite (@le_lt_trans _ _ (c_ n 0))//.
-          by rewrite inflec//.
-        admit.
-      admit.
-    apply/lt_sorted_intlvP.
-      by rewrite size_belast.
+          by rewrite /c_ cbE eqxx.
+        move/(nthP d) : zc' => -[i].
+        rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
+          by rewrite size_rcons.
+        rewrite -d'_uv size_tuple/= => ni <-{z}.
+        rewrite [ltRHS](_ : _ = nth d (rcons (u' n) (v' n)) i).
+          rewrite nth_rcons.
+          rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
+            by rewrite size_rcons.
+          by rewrite -d'_uv size_tuple ni.
+        rewrite -d'_uv.
+        rewrite [ltRHS](_ : _ = d_ n i).
+          rewrite (nth_map 0) ?size_tuple//.
+            exact: ltnW.
+          congr (d_ n) => /=.
+          have {}ni : (i < n.+1)%N.
+            exact: ltnW.
+          by rewrite (nth_ord_enum _ (Ordinal ni))//.
+        rewrite (@le_lt_trans _ _ (c_ n i))//.
+          apply/le_sorted_leq_nth => //.
+          by apply: sorted_c => //.
+          by rewrite inE size_seq_c//.
+          by rewrite inE size_seq_c// ltnW.
+        by rewrite cltd// ltnW.
+      apply/allP => z zvn.
+      rewrite (@le_lt_trans _ _ (c_ n 0))//.
+        by rewrite /c_ cbE eqxx.
+      rewrite (@lt_le_trans _ _ (d_ n 0))//.
+        by rewrite cltd//.
+      move/(nthP d) : zvn => -[i].
+      rewrite (_ : size (v n) = (size ((u n) :: (v n))).-1)//.
+      rewrite -c'_uv size_tuple/= => ni <-{z}.
+      rewrite -[leRHS]/(nth d (((u n) :: (v n))) i.+1).
+      rewrite -c'_uv.
+      rewrite (nth_map 0) ?size_tuple//.
+      have {}ni : (i.+1 < n.+1)%N by [].
+      rewrite (nth_ord_enum _ (Ordinal ni))//.
+      rewrite /d_ daE -/(a_ _ _).
+      rewrite /c_ cbE/= -/(b_ _ _).
+      rewrite (@le_trans _ _ (b_ n 0)).
+        rewrite aleb//.
+        by move=> i0; exact: contiguous_intervals1_lt_contiguous_intervals2.
+      apply/le_sorted_leq_nth.
+      apply: sorted_b => //.
+      by move=> i0; exact: contiguous_intervals1_lt_contiguous_intervals2.
+      exact: trivIsetAB.
+      rewrite inE/= size_seq_b.
+      rewrite ltnS in ni.
+      by rewrite (leq_trans _ ni).
+      rewrite inE/= size_seq_b.
+      by rewrite ltnS in ni.
+      exact: leq0n.
+      done.
+    apply/lt_sorted_intlvP => //.
     split.
       admit.
     admit.
   rewrite last_intlv.
-    by rewrite size_belast sz_v'v.
+    by rewrite sz_v'v.
   admit.
 (*
  * c = c0, d0, c1, d1, ... cn, dn = d
@@ -5858,14 +5925,12 @@ have V_tv n : (V_ n <= Vcd)%E.
   rewrite (@total_variationD _ _ _ (c_ n n)).
   - by rewrite /c_ cbE; case: ifPn => // n0; apply infleb.
   - by apply clesup.
-  rewrite (@total_variation_intlv_split _ _ _ f (belast (u' n) (v' n)) (v n) d d)//.
+  rewrite (@total_variation_intlv_split _ _ _ f ((u' n)) (v n) d d)//.
     by apply inflec.
   rewrite addrAC leeD//.
     rewrite big_ord_recr/= leeD//.
       rewrite size_v'v.
       apply: lee_sum => i _.
-      rewrite (_ : nth d (belast (u' n) (v' n)) i = nth d (d' n) i).
-        admit.
       admit.
     admit.
   rewrite size_v'v lee_sum// => i _.
@@ -5937,9 +6002,9 @@ have eq4 n : total_variation c d f =
   - by apply inflec => //.
   - by apply clesup => //.
   rewrite (@total_variation_intlv_split _ _ _ f
-    (belast (u' n) (v' n)) (v n) d d)//.
+    ((*belast*) (u' n) (*(v' n)*)) (v n) d d)//.
     by apply inflec => //.
-  rewrite !size_belast sz_v'v minnn.
+  rewrite sz_v'v minnn.
   admit.
 have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
   move=> iltn.
