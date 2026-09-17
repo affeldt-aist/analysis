@@ -536,11 +536,8 @@ rewrite sorted_cat_cons; apply/andP; split.
   move/(nthP d) : xs0 => [n ns0 <-].
   rewrite -nth_last.
   apply: le_sorted_leq_nth => //.
-    rewrite inE.
-    rewrite prednK//.
-    exact: leq_trans ns0.
-  apply: ltnSE; rewrite prednK//.
-  exact: leq_trans ns0.
+    by rewrite inE prednK// (leq_trans _ ns0).
+  by rewrite ltnSE// prednK// (leq_trans _ ns0).
 exact: IH.
 Qed.
 
@@ -567,12 +564,8 @@ rewrite sorted_cat_cons; apply/andP; split.
   rewrite -nth_last.
   rewrite le_sorted_leq_nth//.
   - exact: sorted_ltW.
-  - rewrite inE.
-    rewrite prednK//.
-    exact: leq_trans ns0.
-  apply: ltnSE; rewrite prednK//.
-  rewrite ltnNge leqn0; apply/negP => /eqP/size0nil/eqP.
-  by move/negP: s00.
+  - by rewrite inE prednK// (leq_trans _ ns0).
+  - by rewrite ltnSE// prednK// (leq_trans _ ns0).
 exact: IH.
 Qed.
 
@@ -1528,17 +1521,29 @@ Definition seq_a n := unzip1 (unzip1 (Intervals.abi_ A B n)).
 
 Definition seq_b n := unzip2 (unzip1 (Intervals.abi_ A B n)).
 
-Lemma size_seq_ab {T} (mp : R * R -> T) n :
+Let size_seq_ab {T} (mp : R * R -> T) n :
   size (map mp (unzip1 (Intervals.abi_ A B n))) = n.
 Proof.
 by rewrite !size_map size_sort size_map size_iota.
 Qed.
 
+Lemma size_seq_a n : size (seq_a n) = n.
+Proof. by rewrite size_seq_ab. Qed.
+
+Lemma size_seq_b n : size (seq_b n) = n.
+Proof. by rewrite size_seq_ab. Qed.
+
 Definition idxs n := unzip2 (Intervals.abi_ A B n).
 
 Definition a_ def n := nth def (seq_a n).
 
+Lemma a_default def m n : (m >= n)%N -> a_ def n m = def.
+Proof. by move=> mn; rewrite /a_ nth_default// size_seq_a. Qed.
+
 Definition b_ def n := nth def (seq_b n).
+
+Lemma b_default def m n : (m >= n)%N -> b_ def n m = def.
+Proof. by move=> mn; rewrite /b_ nth_default// size_seq_b. Qed.
 
 Definition idx n := nth 0 (idxs n) : nat -> nat.
 
@@ -1730,9 +1735,8 @@ Lemma aleb def n i : (forall i, A i < B i) ->
   a_ def n i <= b_ def n i.
 Proof.
 move=> AB.
-have [ni|ni ] := leqP n i.
-  rewrite /a_ /b_.
-  by rewrite !nth_default ?size_seq_ab.
+have [ni|ni] := leqP n i.
+  by rewrite a_default// b_default.
 exact/ltW/altb.
 Qed.
 
@@ -1899,9 +1903,7 @@ Lemma clea_new def c : c <= def ->
   (forall n i, c <= a_ def n i).
 Proof.
 move=> cdef AB cA_ n i.
-have [ni|] := leqP n i.
-  rewrite /a_ /b_.
-  by rewrite !nth_default ?size_seq_ab.
+have [ni|] := leqP n i; first by rewrite a_default.
 move/(nth_abE def) => [+ _ _].
 rewrite -anth -idxE -/a_ => ->.
 rewrite leNgt; apply/negP => Ac.
@@ -1926,9 +1928,7 @@ Lemma bled_new def d : def <= d ->
   (forall n i, b_ def n i <= d).
 Proof.
 move=> ddef AB B_d n i.
-have [ni|] := leqP n i.
-  rewrite /a_ /b_.
-  by rewrite !nth_default ?size_seq_ab.
+have [ni|] := leqP n i; first by rewrite b_default.
 move/(nth_abE def) => [_ + _].
 rewrite -bnth -idxE -/b_ => ->.
 rewrite leNgt; apply/negP => Bd.
@@ -1987,11 +1987,9 @@ Proof.
 move=> AB trAB B_d.
 move=> n i.
 have [ni|iltn] := leqP n.-1 i.
-  rewrite /a_.
-  rewrite nth_default//.
-    rewrite !size_map size_sort size_map size_iota.
-    by destruct n => //.
-  by apply: bled_new.
+  rewrite a_default.
+    by move: ni; rewrite -subn1 leq_subLR add1n.
+ exact: bled_new.
 rewrite leNgt; apply/negP => aibi.
 (* TODO: take out, seems to depend only on sorted_b *)
 have : `]a_ d n i, b_ d n i[ `&` `]a_ d n i.+1, b_ d n i.+1[ !=set0.
@@ -2078,7 +2076,7 @@ Abort.
 
 Definition cd_ c d n := zip (c :: seq_b n) (rcons (seq_a n) d).
 
-Lemma size_seq_cd {T} (mp : R * R -> T) c d n : size (map mp (cd_ c d n)) = n.+1.
+Let size_seq_cd {T} (mp : R * R -> T) c d n : size (map mp (cd_ c d n)) = n.+1.
 Proof.
 rewrite size_map size_zip size_rcons/= !size_map minnn.
 by rewrite size_sort size_map size_iota.
@@ -2088,7 +2086,16 @@ Definition seq_c c d n := unzip1 (cd_ c d n).
 
 Definition seq_d c d n := unzip2 (cd_ c d n).
 
+Lemma size_seq_c c d n : size (seq_c c d n) = n.+1.
+Proof. by rewrite size_seq_cd. Qed.
+
+Lemma size_seq_d c d n : size (seq_d c d n) = n.+1.
+Proof. by rewrite size_seq_cd. Qed.
+
 Definition c_ c d n j := nth d (seq_c c d n) j.
+
+Lemma c_default c d m n : (m > n)%N -> c_ c d n m = d.
+Proof. by move=> mn; rewrite /c_ nth_default// size_seq_c. Qed.
 
 Lemma cbE c d n j : c_ c d n j = if j == 0 then c else b_ d n j.-1.
 Proof.
@@ -2097,7 +2104,7 @@ case: j => [|j/=].
   rewrite /c_ /seq_c unzip1_zip//=.
   by rewrite size_rcons !size_map.
 have [nj|jn] := leqP n.+1 j.+1.
-  rewrite /c_ /seq_c.
+  rewrite c_default//.
   rewrite bnth !nth_default ?size_seq_cd//.
   by rewrite size_sort size_map size_iota -ltnS.
 rewrite /c_ /seq_c.
@@ -2106,6 +2113,9 @@ Qed.
 
 Definition d_ c d n j := nth d (seq_d c d n) j.
 
+Lemma d_default c d m n : (m > n)%N -> d_ c d n m = d.
+Proof. by move=> mn; rewrite /d_ nth_default// size_seq_d. Qed.
+
 Lemma daE c d n j : d_ c d n j = a_ d n j.
 Proof.
 rewrite /d_ /seq_d.
@@ -2113,8 +2123,7 @@ rewrite unzip2_zip; first by rewrite size_rcons/= !size_map.
 rewrite nth_rcons !size_map size_sort size_map size_iota.
 case: ifPn => [//|].
 rewrite if_same /a_ -leqNgt => nj.
-rewrite /a_.
-by rewrite nth_default// size_seq_ab.
+by rewrite -/(a_ _ _ _) a_default.
 Qed.
 
 End interval_bounds.
@@ -2273,6 +2282,18 @@ rewrite (@le_trans _ _ (b_ n i))//.
 by apply clea_bled.
 Qed.
 
+Lemma sorted_d n : Z !=set0 -> sorted <=%R (seq_d A B c d n).
+Proof.
+move=> Z0; apply/(sortedP d) => j; rewrite size_seq_d ltnS => jn.
+rewrite -!/(d_ _ _) !daE -/a_.
+have [{}jn|j1n] := eqVneq j.+1 n.
+  rewrite jn [leRHS]a_default//.
+  by apply aled.
+apply/le_sorted_leq_nth => //=; rewrite ?inE/= ?size_seq_a//.
+exact: sorted_a.
+by rewrite ltn_neqAle j1n.
+Qed.
+
 Lemma cled : compact Z -> Z !=set0 ->
   forall n i, c_ n i <= d_ n i.
 Proof.
@@ -2322,19 +2343,19 @@ apply: (@subset_trans _ (\bigcup_(i < n) `]a_ n i, b_ n i[%classic)).
   have has_b : has (> x) (seq_b n.+1).
     apply/(has_nthP d).
     exists n => //.
-      by rewrite size_seq_ab.
-  have := ncdx n.+1.
-     rewrite ltnSn => /andP; rewrite andTb.
-     rewrite in_itv/= negb_andb -!ltNge => /orP[|].
-     by rewrite cbE.
-   rewrite daE.
-   rewrite /lemmas'.a_.
-   rewrite nth_default ?size_seq_ab// ltNge => /negP.
-   by have := hZx; rewrite compact_Rhull//= in_itv/= => /andP[].
+      by rewrite size_seq_b.
+    have := ncdx n.+1.
+      rewrite ltnSn => /andP; rewrite andTb.
+      rewrite in_itv/= negb_andb -!ltNge => /orP[|].
+      by rewrite cbE.
+    rewrite daE.
+    rewrite -/(a_ n.+1 n.+1) /a_ a_default//.
+    rewrite ltNge => /negP.
+    by have := hZx; rewrite compact_Rhull//= in_itv/= => /andP[].
   (* x < b_ n k となる最小のk (remark: sorted <=%R (seq_b n)) *)
   pose k := find (> x) (seq_b n.+1).
   have kn1 : (k < n.+1)%N.
-    by move: has_b; rewrite has_find size_seq_ab.
+    by move: has_b; rewrite has_find size_seq_b.
   exists k => //=.
   rewrite in_itv/=; apply/andP; split; last by rewrite nth_find.
   have [k0|] := eqVneq k 0.
@@ -2376,18 +2397,14 @@ have hasxd : has (> x) (seq_d A B c d m).
   apply/hasP.
   exists d.
     have {1}<- : d_ m m = d.
-    rewrite daE /lemmas'.a_ nth_default//.
-      by rewrite size_seq_ab.
-    rewrite mem_nth//.
-    by rewrite size_seq_cd.
+      by rewrite daE a_default//.
+    by rewrite mem_nth// size_seq_d.
   have := xn.
   move/contiguous_intervalsS.
   by move/cplt_hull_lt_sup => /(_ ubZ).
 set p := find (> x) (seq_d A B c d m).
 have pE : p = find (> x) (seq_d A B c d m) by [].
-have pltm2 : (p < m.+1)%N.
-  rewrite -(size_seq_cd A B snd c d m).
-  by rewrite -has_find.
+have pltm2 : (p < m.+1)%N by rewrite -[ltnRHS](size_seq_d A B c d) -has_find.
 exists p => //.
 rewrite in_itv/=; apply/andP; split; last first.
   exact/ltW/nth_find.
@@ -2607,23 +2624,22 @@ rewrite in_itv/=; apply/negP; rewrite negb_and -!ltNge; apply/orP.
 case: i iltn2 => /=.
   move=> _; right.
   apply: le_lt_trans aj'x.
-  by rewrite le_sorted_leq_nth// ?sorted_a// inE size_seq_ab.
+  by rewrite le_sorted_leq_nth// ?sorted_a// inE size_seq_a.
 move=> i.
 rewrite ltnS => iltn1.
 have [ji|ij] := leqP (idx_inv j') i.
   left.
   rewrite (lt_le_trans bxj')//.
-  by rewrite le_sorted_leq_nth ?(sorted_b _ _ trivIsetAB)// inE size_seq_ab.
+  by rewrite le_sorted_leq_nth ?(sorted_b _ _ trivIsetAB)// inE size_seq_b.
 right.
 apply: le_lt_trans aj'x.
 move: iltn1.
 rewrite leq_eqVlt => /predU1P[|].
   move/eq_add_S => eqin.
-  rewrite /lemmas'.a_ !nth_default// size_seq_ab.
-    by rewrite eqin.
-  by rewrite -[ltnLHS]eqin.
+  rewrite -!/(a_ _ _) /a_ eqin a_default//.
+  by rewrite a_default// -[ltnLHS]eqin.
 rewrite ltnS => iltn.
-by rewrite le_sorted_leq_nth// ?sorted_a// inE size_seq_ab.
+by rewrite le_sorted_leq_nth// ?sorted_a// inE size_seq_a.
 Qed.
 
 Lemma dltc n i j : (j.-1 < n)%N -> (i < j)%N -> d_ n i < c_ n j.
@@ -2824,10 +2840,10 @@ have {}ij : (j < i)%N.
     - exact: le_trans.
     - exact: sorted_a.
     - rewrite inE (ltn_leq_trans ji)//.
-      rewrite size_seq_ab.
+      rewrite size_seq_a.
       by rewrite ?lt0n// -ltnS.
     - rewrite inE -ltnS prednK// ?lt0n//.
-      by rewrite size_seq_ab.
+      by rewrite size_seq_a.
     by rewrite -ltnS prednK ?lt0n.
   have cjdi : c_ n j <= d_ n i.
     move: cdix cdjz; rewrite !in_itv/= => /andP[cix xdi] /andP[cjz zdj].
@@ -2910,7 +2926,7 @@ have inf_lt_sup : c < d.
   by move: iZ0; rewrite Z1 is_subset1_isolated; apply/eqP/set0P; exists x.
 rewrite cbE daE; case: i iltn1 => //=[|i].
   case: n => //[_|n _].
-    by rewrite /lemmas'.a_ nth_default// neq_lt; apply/orP; left.
+    by rewrite a_default// lt_eqF.
   apply/negP => /eqP inf_eq_a.
   move/eqP : iZ0; apply/negP/set0P; exists c; split; rewrite ?inE//.
   exists `]c - 1, b_ n.+1 0[%classic => //.
@@ -2925,7 +2941,7 @@ rewrite cbE daE; case: i iltn1 => //=[|i].
     by rewrite citvE//= in_itv/= /a_ -inf_eq_a cx xb0.
   by rewrite sub1set inE/= in_itv/= gtrBl /b_ {1}inf_eq_a altb ?andbT.
 rewrite ltnS leq_eqVlt => /predU1P[i1n|i1n].
-  rewrite i1n /lemmas'.a_ nth_default ?size_seq_ab//.
+  rewrite i1n a_default//.
   apply/negP => /eqP b_eq_sup; move/eqP: iZ0; apply/negP/set0P.
   exists d; split; rewrite ?inE//; exists `]a_ n i, d + 1[%classic => //.
     rewrite nbhsE/=; exists `]a_ n i, d + 1[%classic => //; split => //=.
@@ -4562,6 +4578,18 @@ Qed.
 
 End mv_to_constructive_ereal.
 
+
+(* TODO: upd itv_partition_nth_ge *)
+Lemma itv_partition_nth_ge {d} {T : porderType d} (def a b : T) s m :
+  (m < (size s).+1)%N ->
+  itv_partition a b s -> (a <= nth def (a :: s) m)%O.
+Proof.
+elim: m s a b def => [s a b ? _//|n ih [//|h t] a b def].
+rewrite ltnS => nh [/= /andP[ah ht] lb].
+rewrite (le_trans (ltW ah))//.
+exact: (ih _ _ b).
+Qed.
+
 Module lemma6_direct_new.
 Section lemma6_direct.
 Context {R : realType}.
@@ -5152,7 +5180,7 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
       case: j jltn2 ij => //=j.
       rewrite !ltnS => jn ij.
       apply: (@le_lt_trans _ _ (a_ n.+1 j)).
-        rewrite le_sorted_leq_nth// ?sorted_a// inE size_seq_ab//.
+        rewrite le_sorted_leq_nth// ?sorted_a// inE size_seq_a//.
         by rewrite (leq_ltn_trans ij).
       rewrite /a_ anth /b_ bnth.
       have : (j < n.+1)%N by rewrite ltnS.
@@ -5283,7 +5311,7 @@ set xs := fun n => (d_ n 0) :: flatten (xs' n).
 have size_eq_xs' n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
    (fine (lambda n)) | i <- iota 0 n] =
     size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
-  by rewrite size_map size_iota size_reshape size_behead size_nseq size_seq_cd.
+  by rewrite size_map size_iota size_reshape size_behead size_nseq size_seq_d.
 
 have pcdxs n : itv_partition c d (xs n).
   case: n.
@@ -5292,8 +5320,7 @@ have pcdxs n : itv_partition c d (xs n).
       rewrite andbT.
       by apply: (le_lt_trans (inflec _ _ _ _ _ _ )) => //; apply: cltd.
     rewrite /d_ daE.
-    rewrite /banach_zarecki_lemma6.a_.
-    rewrite nth_default//.
+    rewrite a_default//.
   split.
     apply/(pathP d); case.
       move=> _.
@@ -5410,7 +5437,7 @@ have pcdxs n : itv_partition c d (xs n).
 have eq_size_lp_nseq n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
              (fine (lambda n)) | i <- iota 0 n] =
        size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
-  by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_cd.
+  by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_d.
 have allNnil_xs n : all (fun s : seq R => s != [::]) (xs' n).
   rewrite (eq_all_r (mem_intlv _))//.
   rewrite all_cat; apply/andP; split.
@@ -5470,15 +5497,40 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   - apply/allP => /= i /flattenP[j ].
     rewrite /xs'.
     rewrite mem_intlv.
-      by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_cd.
+      by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_d.
     rewrite mem_cat => /orP[/mapP[k]|].
       rewrite mem_iota add0n leq0n/= => kn ->.
-      (*itv_partition_le_ub*)
-      admit.
-    admit.
+      move=> /(nthP d)[l lsz] <-{i}.
+      apply/andP; split.
+        set p := lambda_partition _ _ _.
+        rewrite (@le_trans _ _ (d_ n k))//.
+          rewrite /d_ !daE -/(a_ _).
+          apply/le_sorted_leq_nth => //; [|by rewrite inE/= size_seq_a (leq_trans _ kn)..].
+          exact: sorted_a.
+        rewrite -[leRHS]/(nth d (d_ n k :: p) l.+1).
+        apply: itv_partition_nth_ge => //.
+        apply: lambda_partition_partition => //.
+        by rewrite dltc.
+      rewrite (@le_trans _ _ (c_ n k.+1))//.
+        apply/(@itv_partition_le_ub _ _ _ (d_ n k)) => //.
+        apply: lambda_partition_partition => //.
+        by apply: dltc.
+      by apply clesup.
+    rewrite reshape_nseq1 => /mapP[k].
+    move=> /(nthP d)[l].
+    rewrite size_behead size_seq_d => /= ln <-{k} ->{j}.
+    rewrite mem_seq1 => /eqP ->{i}.
+    rewrite -[X in _ <= X <= _]/(nth d [tuple of (thead (seq_d n) :: behead (seq_d n))] l.+1).
+    rewrite -tuple_eta.
+    apply/andP; split.
+      apply/le_sorted_leq_nth => //=; [|by rewrite inE size_seq_d..].
+      exact: sorted_d.
+    rewrite -[leLHS]/(d_ _ _).
+    rewrite /d_.
+    by rewrite daE aled.
   - admit.
   rewrite size_intlv size_map size_iota.
-  rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
+  rewrite size_reshape size_nseq size_behead size_seq_d minnn.
   apply: bigmax_le.
     by rewrite -lee_fin fineK.
   case; case.
@@ -5487,7 +5539,7 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     rewrite (_ : nth d [seq last d s | s <- [:: d_ n 0] :: xs' n] 0 = d_ n 0)//.
     have ? : (0 < size (xs' n))%N.
       rewrite size_intlv size_map size_iota size_reshape size_nseq.
-      by rewrite size_behead size_seq_cd/= minnn.
+      by rewrite size_behead size_seq_d/= minnn.
     rewrite (_ : nth d [seq last d s | s <- xs' n] 0 =
        last d (lambda_partition (d_ n 0) (c_ n 1) (fine (lambda n)))).
       rewrite (nth_map [::])//.
@@ -5510,7 +5562,7 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
                  (nth d [seq last d s | s <- xs' n] i))//.
   rewrite nth_intlvE.
   rewrite size_intlv size_map size_iota.
-  rewrite size_reshape size_nseq size_behead size_seq_cd minnn.
+  rewrite size_reshape size_nseq size_behead size_seq_d minnn.
   rewrite i1ltn2.
   case: ifP => [eveni|].
     rewrite (_ : n.+1.-1 = n)//.
@@ -5565,11 +5617,10 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
       by rewrite nth_map_iota.
     rewrite reshape_nseq1.
     apply/all_nthP => i.
-    rewrite size_map size_behead size_seq_cd/= => iltn.
-    rewrite (nth_map d)//.
-    by rewrite size_behead size_seq_cd.
+    rewrite size_map size_behead size_seq_d/= => iltn.
+    by rewrite (nth_map d)// size_behead size_seq_d.
   rewrite size_map size_iota.
-  rewrite reshape_nseq1 size_map size_behead size_seq_cd minnn.
+  rewrite reshape_nseq1 size_map size_behead size_seq_d minnn.
   rewrite EFinD addrC leeD//.
     rewrite -sumEFin; apply: lee_sum => /= i _.
     rewrite (_ : nth d
@@ -5586,14 +5637,14 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
     rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
                                   x <- behead (seq_d n)]] i) = a_ n i.+1).
       rewrite (nth_map [::]).
-        by rewrite size_map size_behead size_seq_cd.
+        by rewrite size_map size_behead size_seq_d.
       rewrite (nth_map d)/=.
-        by rewrite size_behead size_seq_cd.
+        by rewrite size_behead size_seq_d.
       rewrite nth_behead.
       rewrite /seq_d.
       by rewrite -/(banach_zarecki_lemma6.d_ _ _ _ _ n i.+1) daE.
     rewrite (nth_map d).
-      by rewrite size_behead size_seq_cd.
+      by rewrite size_behead size_seq_d.
     rewrite /bump/= add1n.
     rewrite /c_ /d_ cbE daE/=.
     rewrite /variation/=.
@@ -5626,9 +5677,9 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
                               x <- behead (seq_d n)]] i) = a_ n i.+1).
     rewrite (nth_map [::]).
-      by rewrite size_map size_behead size_seq_cd ltnW.
+      by rewrite size_map size_behead size_seq_d ltnW.
     rewrite (nth_map d)/=.
-      by rewrite size_behead size_seq_cd ltnW.
+      by rewrite size_behead size_seq_d ltnW.
     rewrite nth_behead/=.
     by rewrite /seq_d -/(banach_zarecki_lemma6.d_ _ _ _ _ n i.+1) daE.
   have A_lt_B k : A_ k < B_ k.
