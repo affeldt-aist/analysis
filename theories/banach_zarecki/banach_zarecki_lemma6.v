@@ -5624,20 +5624,82 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   rewrite size_intlv size_map size_iota.
   rewrite size_reshape size_nseq size_behead size_seq_d minnn.
   rewrite i1ltn2.
-  case: ifP => [eveni|].
+  have size_xs' m : size (xs' m) = m.*2.
+    by rewrite size_intlv size_map size_iota reshape_nseq1 size_map size_behead size_seq_d minnn.
+  case: ifPn => [eveni|oddi].
     rewrite (_ : n.+1.-1 = n)//.
-    admit.
-  rewrite oddS => /negP/negP => oddi.
+    rewrite (nth_map [::])//.
+      by rewrite size_xs' ltnW.
+    rewrite (nth_map [::])//.
+      by rewrite size_xs'.
+    rewrite [X in nseq X](_ : _ = size (behead (seq_d n))).
+      by rewrite size_behead size_seq_d.
+    rewrite reshape_nseq1.
+    rewrite (nth_map d).
+      rewrite size_behead size_seq_d.
+      by rewrite ltn_half_double.
+    rewrite mesh_seq1.
+    rewrite nth_intlvE size_xs' (ltnW i1ltn2).
+    rewrite oddS in eveni.
+    rewrite (negPf eveni).
+    rewrite nth_map_iota.
+      by rewrite ltn_half_double ltnW.
+    rewrite last_lambda.
+      by rewrite dltc// ltn_half_double ltnW.
+      by rewrite lambda_gt0.
+    rewrite -[nth _ _ _]/(nth d [tuple of (thead (seq_d n) :: behead (seq_d n))] i.+1./2.+1).
+    rewrite -tuple_eta.
+    rewrite -[nth _ _ _]/(d_ n (uphalf i).+1).
+    rewrite uphalf_half (negPf eveni) add0n.
+    rewrite -lee_fin fineK.
+      exact: lambda_fin.
+    rewrite /lambda distrC.
+    rewrite diam_defaultE//.
+    rewrite ler0_norm.
+      by rewrite subr_le0 cled.
+    rewrite opprB.
+    rewrite -(diam_itv true false).
+      by rewrite cled.
+    apply: le_bigmax_seq => //.
+    apply/mapP.
+    exists i./2.+1 => //.
+    by rewrite mem_iota add0n leq0n/= ltnS ltn_half_double ltnW.
+  rewrite (nth_map [::])//.
+    by rewrite size_xs' ltnW.
+  rewrite (nth_map [::])//.
+    by rewrite size_xs'.
   rewrite nth_map_iota.
     by rewrite ltn_half_double.
-  rewrite (_ : (nth d [seq last d s | s <- xs' n] i) = d_ n (uphalf i)).
-    admit.
-  rewrite (_ : (nth d [seq last d s | s <- xs' n] i.+1) = c_ n (uphalf i).+1).
-    admit.
-  rewrite -(odd_uphalfK oddi) half_double.
-  rewrite ltW// lambda_partition_mesh//.
-  apply: (dltc lbZ ubZ) => //.
-  by rewrite -ltn_double odd_uphalfK.
+  rewrite nth_intlvE size_xs' (ltnW i1ltn2).
+  rewrite oddS negbK in oddi.
+  rewrite oddi.
+  rewrite reshape_nseq1.
+  rewrite (nth_map d).
+    by rewrite size_behead size_seq_d ltn_half_double ltnW.
+  rewrite /=.
+  rewrite -[nth _ _ _]/(nth d [tuple of (thead (seq_d n) :: behead (seq_d n))] i./2.+1).
+  rewrite -tuple_eta.
+  rewrite -[nth _ _ _]/(d_ n (i./2).+1).
+  rewrite uphalf_half oddi add1n.
+  (* *)
+  rewrite nth_intlvE size_xs' i1ltn2.
+  rewrite oddS oddi/=.
+  rewrite nth_map_iota.
+    by rewrite ltn_uphalf_double.
+  rewrite last_lambda//.
+    rewrite dltc//.
+    by rewrite ltn_uphalf_double.
+  rewrite uphalf_half oddi add1n ltW//.
+  rewrite lambda_partition_mesh.
+  rewrite dltc//=.
+  rewrite -ltn_half_double in i1ltn2.
+  rewrite (leq_trans _ i1ltn2)//.
+  rewrite ltnS.
+  rewrite ltn_half_double.
+  have := odd_double_half i.+1.
+  by rewrite oddS oddi add0n => ->.
+  exact: lambda_gt0.
+  done.
 (*
 have cd_xs n :
     (forall (i j : 'I_ n.+1), nth d (xs n) j \notin `]c_ n i, d_ n i[).
@@ -5775,6 +5837,9 @@ have pc'd' n : itv_partition c (c_ n n) (intlv (belast (u' n) (v' n)) (v n)).
       rewrite (eq_all_r (mem_intlv _)).
         by rewrite size_belast.
       rewrite all_cat; apply/andP; split.
+        apply/allP => z zv'.
+        rewrite (@le_lt_trans _ _ (c_ n 0))//.
+          by rewrite inflec//.
         admit.
       admit.
     apply/lt_sorted_intlvP.
