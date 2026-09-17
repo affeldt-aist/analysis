@@ -5838,35 +5838,29 @@ have : forall n, exists u' v', d' n = rcons u' v' :> seq _.
   exists (last u' v').
   by rewrite lastI.
 move/choice => [u' /choice[v' d'_uv]].
-have size_v'v n : minn (size ((u' n))) (size (v n)) = n.
-  rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
-    by rewrite size_rcons.
-  rewrite -d'_uv.
-  rewrite (_ : size (v n) = (size ((u n) :: (v n))).-1) //.
-  by rewrite -c'_uv !size_tuple minnn.
-have sz_v'v n : size (u' n) = size (v n).
+have sz_u' n : size (u' n) = n.
   apply: succn_inj.
-  rewrite -[RHS]/(size (u n :: v n)) -c'_uv.
   rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
     by rewrite size_rcons.
-  by rewrite size_tuple -d'_uv size_tuple.
+  by rewrite -d'_uv size_tuple.
+have sz_v n : size (v n) = n.
+  apply: succn_inj.
+  rewrite (_ : size (v n) = (size ((u n) :: (v n))).-1) //.
+  by rewrite -c'_uv size_tuple.
+have size_v'v n : minn (size ((u' n))) (size (v n)) = n.
+  by rewrite sz_u' sz_v minnn.
 have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
   split.
     rewrite lt_path_sortedE; apply/andP; split.
-      rewrite (eq_all_r (mem_intlv _))//.
+      rewrite (eq_all_r (mem_intlv _)) ?sz_u' ?sz_v//.
       rewrite all_cat; apply/andP; split.
         apply/allP => z zc'.
         rewrite (@le_lt_trans _ _ (c_ n 0))//.
           by rewrite /c_ cbE eqxx.
         move/(nthP d) : zc' => -[i].
-        rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
-          by rewrite size_rcons.
-        rewrite -d'_uv size_tuple/= => ni <-{z}.
+        rewrite sz_u' => ni <-{z}.
         rewrite [ltRHS](_ : _ = nth d (rcons (u' n) (v' n)) i).
-          rewrite nth_rcons.
-          rewrite (_ : size (u' n) = (size (rcons (u' n) (v' n))).-1).
-            by rewrite size_rcons.
-          by rewrite -d'_uv size_tuple ni.
+          by rewrite nth_rcons sz_u' ni.
         rewrite -d'_uv.
         rewrite [ltRHS](_ : _ = d_ n i).
           rewrite (nth_map 0) ?size_tuple//.
@@ -5887,8 +5881,7 @@ have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
       rewrite (@lt_le_trans _ _ (d_ n 0))//.
         by rewrite cltd//.
       move/(nthP d) : zvn => -[i].
-      rewrite (_ : size (v n) = (size ((u n) :: (v n))).-1)//.
-      rewrite -c'_uv size_tuple/= => ni <-{z}.
+      rewrite sz_v => ni <-{z}.
       rewrite -[leRHS]/(nth d (((u n) :: (v n))) i.+1).
       rewrite -c'_uv.
       rewrite (nth_map 0) ?size_tuple//.
@@ -5910,13 +5903,52 @@ have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
       by rewrite ltnS in ni.
       exact: leq0n.
       done.
-    apply/lt_sorted_intlvP => //.
+    apply/lt_sorted_intlvP; rewrite ?sz_v ?sz_u'//.
     split.
-      admit.
-    admit.
+      move=> i d0 ni.
+      rewrite [ltLHS](_ : _ = nth d0 (d' n) i).
+        by rewrite d'_uv nth_rcons sz_u' ni.
+      rewrite [ltRHS](_ : _ = nth d0 (c' n) i.+1).
+        by rewrite c'_uv/=.
+      rewrite (nth_map 0) ?size_tuple//.
+        exact: ltnW.
+      have niW : (i < n.+1)%N by rewrite ltnW.
+      rewrite (nth_ord_enum _ (Ordinal niW))//.
+      rewrite [in ltRHS](nth_map 0) ?size_tuple//.
+      rewrite -ltnS in ni.
+      rewrite (nth_ord_enum _ (Ordinal ni))//=.
+      by rewrite dltc//.
+    move=> i d0 ni.
+    rewrite [ltLHS](_ : _ = nth d0 (c' n) i.+1).
+      by rewrite c'_uv/=.
+    rewrite [ltRHS](_ : _ = nth d0 (d' n) i.+1).
+      by rewrite d'_uv/= nth_rcons sz_u' ni.
+    rewrite (nth_map 0) ?size_tuple//.
+      exact: ltnW.
+    have niW : (i.+1 < n.+1)%N by rewrite ltnW.
+    rewrite (nth_ord_enum _ (Ordinal niW))//.
+    rewrite [in ltRHS](nth_map 0) ?size_tuple//.
+    rewrite (nth_ord_enum _ (Ordinal niW))//=.
+    by rewrite cltd//.
   rewrite last_intlv.
-    by rewrite sz_v'v.
-  admit.
+    by rewrite sz_v sz_u'.
+  rewrite /c_.
+  rewrite cbE.
+  case: ifPn => [/eqP n0|n0].
+    have /eqP -> : v n == [::].
+      rewrite -size_eq0.
+      rewrite -[eqbLHS]/((size (u n :: v n)).-1).
+      by rewrite -c'_uv size_tuple n0.
+    by [].
+  apply/eqP.
+  transitivity (last c (c' n)).
+    rewrite c'_uv last_cons.
+    apply: set_last_default.
+    by rewrite sz_v lt0n.
+  rewrite -nth_last size_tuple.
+  rewrite (nth_map 0) ?size_tuple//.
+  rewrite (nth_ord_enum _ (Ordinal (ltnSn n)))//=.
+  by rewrite /c_ cbE (negPf n0)//.
 (*
  * c = c0, d0, c1, d1, ... cn, dn = d
 *)
