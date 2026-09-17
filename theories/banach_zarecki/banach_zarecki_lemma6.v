@@ -3942,7 +3942,7 @@ Qed.
 
 Lemma lb_lambda (a b l : R) :
   a < b -> 0 < l ->
-  forall x : R, x \in (lp a b l) ->
+  forall x : R, x \in lp a b l ->
   a < x.
 Proof.
 move=> ab l0 /= x slp.
@@ -5528,7 +5528,67 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     rewrite -[leLHS]/(d_ _ _).
     rewrite /d_.
     by rewrite daE aled.
-  - admit.
+  - apply/(@le_sorted_flatten _ d).
+    + (* all (fun s : seq R => s != [::]) (xs' n) *)
+      apply/allP => z.
+      rewrite /xs' reshape_nseq1 mem_intlv.
+        by rewrite !size_map size_behead size_seq_d size_iota.
+      rewrite mem_cat => /orP[|].
+        move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
+        rewrite -size_eq0 -lt0n size_lambda_partition0//.
+        exact: dltc.
+      by move=> /mapP[/= i] _ ->.
+    + (* all (sorted <=%R) (xs' n) *)
+      apply/allP => z.
+      rewrite /xs'.
+      rewrite /xs' reshape_nseq1 mem_intlv.
+        by rewrite !size_map size_behead size_seq_d size_iota.
+      rewrite mem_cat => /orP[|].
+        move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
+        have : d_ n i < c_ n i.+1 by rewrite dltc.
+        move/lambda_partition_partition => /(_ _ (lambda_gt0 n))[+ _].
+        by move/path_ltW/path_sorted.
+      by move=> /mapP[i] ? ->.
+    + (* sorted (fun s t : seq R => last d s <= head d t) (xs' n) *)
+      apply/(sortedP [::]) => i.
+      rewrite size_intlv size_eq_xs' minnn reshape_nseq1 size_map size_behead.
+      rewrite size_seq_d => ni.
+      rewrite !nth_intlvE size_intlv size_eq_xs' minnn reshape_nseq1 size_map size_behead.
+      rewrite size_seq_d ni (ltnW ni) oddS.
+      case: ifPn => oddi/=.
+        rewrite (nth_map d).
+          rewrite size_behead size_seq_d/=.
+          by rewrite ltn_half_double (leq_trans _ ni).
+        rewrite nth_map_iota.
+          by rewrite ltn_uphalf_double.
+        rewrite [leLHS]/=.
+        rewrite -[leLHS]/(nth d [tuple of (thead (seq_d n) :: behead (seq_d n))] i./2.+1).
+        rewrite -tuple_eta -[leLHS]/(d_ n i./2.+1).
+        have := uphalf_half i.
+        rewrite oddi add1n => <-.
+        apply/ltW.
+        have : d_ n (uphalf i) < c_ n (uphalf i).+1.
+          apply/dltc => //.
+          by rewrite ltn_uphalf_double.
+        move/lb_lambda => /(_ _ (lambda_gt0 n)); apply.
+        rewrite -nth0.
+        apply/mem_nth.
+        apply: size_lambda_partition0 => //.
+        rewrite dltc//.
+        by rewrite ltn_uphalf_double.
+      rewrite (nth_map d).
+        rewrite size_behead size_seq_d/=.
+        by rewrite ltn_uphalf_double.
+      rewrite nth_map_iota.
+        by rewrite ltn_half_double (ltnW ni).
+      rewrite [leRHS]/=.
+      rewrite -[leRHS]/(nth d [tuple of (thead (seq_d n) :: behead (seq_d n))] (uphalf i).+1).
+      rewrite -tuple_eta -[leRHS]/(d_ n (uphalf i).+1).
+      rewrite last_lambda//.
+      rewrite dltc//.
+        by rewrite ltn_half_double (ltnW ni).
+      rewrite uphalf_half (negPf oddi).
+      by rewrite cled.
   rewrite size_intlv size_map size_iota.
   rewrite size_reshape size_nseq size_behead size_seq_d minnn.
   apply: bigmax_le.
