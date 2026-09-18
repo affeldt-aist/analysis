@@ -5963,10 +5963,56 @@ have V_tv n : (V_ n <= Vcd)%E.
     rewrite big_ord_recr/= leeD//.
       rewrite size_v'v.
       apply: lee_sum => i _.
-      admit.
-    admit.
+      rewrite (_ : nth d (c :: v n) i = c_ n i).
+        have [->|i0] := eqVneq (i : nat) 0.
+          by rewrite /c_ cbE.
+        transitivity ((c' n)`_i).
+          rewrite c'_uv.
+          rewrite -(@prednK i)/= ?lt0n//.
+          apply: set_nth_default.
+          by rewrite sz_v// prednK ?lt0n// ltnW.
+        rewrite /c'/= (nth_map 0) ?size_enum_ord.
+          by rewrite ltnS ltnW.
+        by rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i)).
+      rewrite (_ : nth d (u' n) i = d_ n i).
+        transitivity ((d' n)`_i).
+          rewrite d'_uv.
+          rewrite nth_rcons sz_u' (ltn_ord i)//.
+          apply: set_nth_default.
+          by rewrite sz_u'// prednK ?lt0n// ltnW.
+        rewrite /d'/= (nth_map 0) ?size_enum_ord.
+          by rewrite ltnS ltnW.
+        by rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i)).
+      apply: total_variation_ge.
+      by apply cled.
+    apply: (@le_trans _ _ (total_variation (c_ n n) (d_ n n) f)).
+      apply: total_variation_ge => //.
+      exact: cled.
+    apply: (@total_variation_nondecreasing _ _ d).
+    - rewrite in_itv/=; apply/andP; split.
+        by rewrite cled.
+      by rewrite /d_ daE aled.
+    - by rewrite bound_itvE clesup.
+    - by rewrite /d_ daE aled.
   rewrite size_v'v lee_sum// => i _.
-  admit.
+  rewrite (_ : nth d (u' n) i = a_ n i).
+    transitivity ((d' n)`_i).
+      rewrite d'_uv.
+      rewrite nth_rcons sz_u' (ltn_ord i)//.
+      apply: set_nth_default.
+      by rewrite sz_u'// prednK ?lt0n// ltnW.
+    rewrite /d'/= (nth_map 0) ?size_enum_ord.
+      by rewrite ltnS ltnW.
+    rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i))/=.
+    by rewrite /d_ daE.
+  rewrite (_ : nth d _ _ = c_ n i.+1).
+    transitivity (nth d (c' n) i.+1).
+      by rewrite c'_uv//=.
+    rewrite /c'/= (nth_map 0) ?size_enum_ord.
+      by rewrite ltnS.
+    have ni : (i.+1 < n.+1)%N by rewrite ltnS.
+    by rewrite (nth_ord_enum ord0 (Ordinal ni))/=.
+  by rewrite /c_ cbE/=.
 have cdbvf : bounded_variation c d f.
   apply: (bounded_variationl (ltW cd) db).
   apply: bounded_variationr ac _ bvf.
