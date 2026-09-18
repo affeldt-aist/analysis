@@ -4603,6 +4603,17 @@ rewrite (le_trans (ltW ah))//.
 exact: (ih _ _ b).
 Qed.
 
+Lemma bounded_variationS {R : numDomainType} [a c b d : R] [f : R -> R] :
+  c <= d -> a <= c -> d <= b ->
+  bounded_variation a b f -> bounded_variation c d f.
+Proof.
+move=> cd ac db abf.
+suff: bounded_variation a d f.
+  by apply: bounded_variationr.
+apply: bounded_variationl abf => //.
+by rewrite (le_trans ac).
+Qed.
+
 Module lemma6_direct_new.
 Section lemma6_direct.
 Context {R : realType}.
@@ -5952,6 +5963,41 @@ have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
 (*
  * c = c0, d0, c1, d1, ... cn, dn = d
 *)
+
+have nthcc_ n (i : 'I_n) : nth d (c :: v n) i = c_ n i.
+  have [->|i0] := eqVneq (i : nat) 0.
+    by rewrite /c_ cbE.
+  transitivity ((c' n)`_i).
+    rewrite c'_uv.
+    rewrite -(@prednK i)/= ?lt0n//.
+    apply: set_nth_default.
+    by rewrite sz_v// prednK ?lt0n// ltnW.
+  rewrite /c'/= (nth_map 0) ?size_enum_ord.
+    by rewrite ltnS ltnW.
+  by rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i)).
+have nthdd_ n (i : 'I_n) : nth d (u' n) i = d_ n i.
+  transitivity ((d' n)`_i).
+    rewrite d'_uv.
+    rewrite nth_rcons sz_u' (ltn_ord i)//.
+    apply: set_nth_default.
+    by rewrite sz_u'// prednK ?lt0n// ltnW.
+  rewrite /d'/= (nth_map 0) ?size_enum_ord.
+    by rewrite ltnS ltnW.
+  by rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i)).
+have nthvc_ n (i : 'I_n) : nth d (v n) i = c_ n i.+1.
+  transitivity (nth d (c' n) i.+1).
+    by rewrite c'_uv//=.
+  rewrite /c'/= (nth_map 0) ?size_enum_ord.
+    by rewrite ltnS.
+  have ni : (i.+1 < n.+1)%N by rewrite ltnS.
+  by rewrite (nth_ord_enum ord0 (Ordinal ni))/=.
+have nthu'd_ n (i : 'I_n) : nth d (u' n) i = d_ n i.
+  transitivity (nth d (d' n) i).
+     by rewrite d'_uv//= nth_rcons sz_u' (ltn_ord i).
+  rewrite /d'/= (nth_map 0) ?size_enum_ord.
+    by rewrite ltnS ltnW.
+  have ni : (i < n.+1)%N by rewrite ltnS ltnW.
+  by rewrite (nth_ord_enum ord0 (Ordinal ni))/=.
 have V_tv n : (V_ n <= Vcd)%E.
   rewrite /V_ /Vcd.
   rewrite (@total_variationD _ _ _ (c_ n n)).
@@ -5963,26 +6009,7 @@ have V_tv n : (V_ n <= Vcd)%E.
     rewrite big_ord_recr/= leeD//.
       rewrite size_v'v.
       apply: lee_sum => i _.
-      rewrite (_ : nth d (c :: v n) i = c_ n i).
-        have [->|i0] := eqVneq (i : nat) 0.
-          by rewrite /c_ cbE.
-        transitivity ((c' n)`_i).
-          rewrite c'_uv.
-          rewrite -(@prednK i)/= ?lt0n//.
-          apply: set_nth_default.
-          by rewrite sz_v// prednK ?lt0n// ltnW.
-        rewrite /c'/= (nth_map 0) ?size_enum_ord.
-          by rewrite ltnS ltnW.
-        by rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i)).
-      rewrite (_ : nth d (u' n) i = d_ n i).
-        transitivity ((d' n)`_i).
-          rewrite d'_uv.
-          rewrite nth_rcons sz_u' (ltn_ord i)//.
-          apply: set_nth_default.
-          by rewrite sz_u'// prednK ?lt0n// ltnW.
-        rewrite /d'/= (nth_map 0) ?size_enum_ord.
-          by rewrite ltnS ltnW.
-        by rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i)).
+      rewrite nthcc_// nthdd_//.
       apply: total_variation_ge.
       by apply cled.
     apply: (@le_trans _ _ (total_variation (c_ n n) (d_ n n) f)).
@@ -5995,23 +6022,8 @@ have V_tv n : (V_ n <= Vcd)%E.
     - by rewrite bound_itvE clesup.
     - by rewrite /d_ daE aled.
   rewrite size_v'v lee_sum// => i _.
-  rewrite (_ : nth d (u' n) i = a_ n i).
-    transitivity ((d' n)`_i).
-      rewrite d'_uv.
-      rewrite nth_rcons sz_u' (ltn_ord i)//.
-      apply: set_nth_default.
-      by rewrite sz_u'// prednK ?lt0n// ltnW.
-    rewrite /d'/= (nth_map 0) ?size_enum_ord.
-      by rewrite ltnS ltnW.
-    rewrite (nth_ord_enum ord0 (widen_ord (leqnSn n) i))/=.
-    by rewrite /d_ daE.
-  rewrite (_ : nth d _ _ = c_ n i.+1).
-    transitivity (nth d (c' n) i.+1).
-      by rewrite c'_uv//=.
-    rewrite /c'/= (nth_map 0) ?size_enum_ord.
-      by rewrite ltnS.
-    have ni : (i.+1 < n.+1)%N by rewrite ltnS.
-    by rewrite (nth_ord_enum ord0 (Ordinal ni))/=.
+  rewrite nthdd_ /d_ daE -/(a_).
+  rewrite nthvc_.
   by rewrite /c_ cbE/=.
 have cdbvf : bounded_variation c d f.
   apply: (bounded_variationl (ltW cd) db).
@@ -6075,15 +6087,93 @@ have eq3 : \forall n \near \oo, (Vcd - alpha / 2 < V_ n)%E.
 (* total_variationD? *)
 have eq4 n : total_variation c d f =
   \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E +
-   \sum_(i < n) (total_variation (a_ n i) (b_ n i) f).
+   \sum_(i < n) total_variation (a_ n i) (b_ n i) f.
   rewrite (@total_variationD _ _ _ (c_ n n)).
-  - by apply inflec => //.
-  - by apply clesup => //.
-  rewrite (@total_variation_intlv_split _ _ _ f
-    ((*belast*) (u' n) (*(v' n)*)) (v n) d d)//.
-    by apply inflec => //.
+  - by apply inflec.
+  - by apply clesup.
+  rewrite (@total_variation_intlv_split _ _ _ f (u' n) (v n) d d)//.
+    by apply inflec.
   rewrite sz_u' sz_v minnn.
-  admit.
+  rewrite /H.
+  transitivity ((\sum_(i < n) total_variation (c_ n i) (d_ n i) f +
+    \sum_(i < n) total_variation (d_ n i) (c_ n i.+1) f)%R +
+    total_variation (c_ n n) d f)%E.
+    congr (_ + _ + _) => //.
+      apply: eq_bigr => /= i _.
+      by rewrite nthcc_ nthdd_.
+    apply: eq_bigr => /= i _.
+    by rewrite nthu'd_ nthvc_.
+  have lem1 (i : 'I_n.+1) :
+      total_variation (c_ n i) (d_ n i) f \is a fin_num.
+    apply/bounded_variationP; first exact: cled.
+    apply: bounded_variationS cdbvf => //.
+    - exact: cled.
+    - by apply: inflec.
+    - rewrite /d_ daE.
+      by apply: aled.
+  have lem2 (i : 'I_n) :
+      total_variation (c_ n i) (d_ n i) f \is a fin_num.
+    apply/bounded_variationP; first exact: cled.
+    apply: bounded_variationS cdbvf => //.
+    - exact: cled.
+    - by apply: inflec.
+    - rewrite /d_ daE.
+      by apply: aled.
+  have lem3 (i : 'I_n.+1) :
+      total_variation a (d_ n i) f \is a fin_num.
+    apply/bounded_variationP.
+      rewrite (le_trans ac)//.
+      rewrite /d_ daE.
+      by apply clea_bled.
+    apply: bounded_variationS bvf => //.
+      rewrite (le_trans ac)//.
+      rewrite /d_ daE.
+      by apply clea_bled.
+    rewrite (le_trans _ db)//.
+    rewrite /d_ daE.
+    exact: aled.
+  transitivity (\sum_(i < n.+1) (fine (total_variation (c_ n i) (d_ n i) f))%:E +
+      \sum_(i < n) total_variation (a_ n i) (b_ n i) f); last first.
+    congr (_ + _)%E.
+    apply: eq_bigr => /= i _.
+    rewrite fineK.
+      exact: lem1.
+    rewrite EFinB fineK.
+      exact: lem3.
+    rewrite fineK//.
+      apply/bounded_variationP.
+        rewrite (le_trans ac)//.
+        by apply inflec.
+      apply: bounded_variationS bvf => //.
+        rewrite (le_trans ac)//.
+        by apply inflec.
+      rewrite (le_trans _ db)//.
+      exact: clesup.
+    apply/eqP.
+    rewrite eq_sym sube_eq.
+    - exact: lem3.
+    - rewrite fin_num_adde_defr.
+      exact: lem1.
+      by [].
+    rewrite addrC -total_variationD//.
+      by rewrite (le_trans ac)//; exact: inflec.
+    by apply: cled.
+  rewrite big_ord_recr/=.
+  rewrite [in RHS]addrAC.
+  congr (_ + _ + _)%E.
+  - apply: eq_bigr => i _.
+    rewrite fineK.
+      exact: lem2.
+      by [].
+  - apply: eq_bigr => i _.
+    rewrite /d_ daE -/(a_).
+    by rewrite /c_ cbE/= -/(b_).
+  - rewrite /d_ daE a_default//.
+    rewrite fineK//.
+    apply/bounded_variationP; first exact: clesup.
+    apply: bounded_variationS cdbvf => //.
+    - exact: clesup.
+    - by apply: inflec.
 have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
   move=> iltn.
   rewrite -[in X in X `<=` _]setU_1itvob ?bnd_simp//.
@@ -6191,12 +6281,10 @@ have eq5 : \forall n \near \oo,
   rewrite /V_ -lteBlDr.
     by case: n n0n.
   rewrite /Vcd (eq4 n).
-  apply: le_lt_trans.
-  rewrite addeAC leeB// -addeA leeDl// subre_ge0.
-  (* by reindex,  \sum_(i < n) total_variation (A_ i) (B_ i) f =
-     \sum_(i < n) total_variation (a_ n i) (b_ n i) f *)
-    admit.
-  admit.
+    apply: le_lt_trans.
+    rewrite addeAC leeB// -addeA leeDl// subre_ge0.
+    exact: ABbvf.
+  done.
 (* (5.5) (between (5) and (6)) *)
 have alphaH n : (alpha <= \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
   rewrite /alpha.
