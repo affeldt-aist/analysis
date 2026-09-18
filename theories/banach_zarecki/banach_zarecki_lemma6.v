@@ -6082,7 +6082,7 @@ have eq4 n : total_variation c d f =
   rewrite (@total_variation_intlv_split _ _ _ f
     ((*belast*) (u' n) (*(v' n)*)) (v n) d d)//.
     by apply inflec => //.
-  rewrite sz_v'v minnn.
+  rewrite sz_u' sz_v minnn.
   admit.
 have absubcd n i : (i < n)%N ->  `[a_ n i, b_ n i] `<=` `[c, d].
   move=> iltn.
