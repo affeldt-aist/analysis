@@ -6670,19 +6670,26 @@ have eq9 :
   apply: nneseries_tail_cvg.
     apply: (@le_lt_trans _ _ Vcd).
       (* oscillation_closure *)
+      have A_B_cd : forall n : nat, `[A_ n, B_ n] `<=` `[c, d].
+        move=> n.
+        apply: subset_itv; rewrite bnd_simp.
+          rewrite /A_.
+          apply: inf_contiguous_intervals1 => //.
+          rewrite inE//=.
+          have [+ _ _] := @bij _ _ _ _ h1.
+          exact.
+        rewrite /A_.
+        apply: sup_contiguous_intervals2 => //.
+        rewrite inE//=.
+        have [+ _ _] := @bij _ _ _ _ h1.
+        exact.
       rewrite [leLHS](_ : _ = (\big[+%E/0%R]_(0 <= k <oo) oscillation f `]A_ k, B_ k[)).
         apply: eq_eseriesr => i _.
         rewrite -[in RHS]oscillation_closure.
           rewrite closure_neitv_oo//.
           exact: contiguous_intervals1_lt_contiguous_intervals2.
           apply: (continuous_subspaceW _ cf).
-          (* `[A_ i, B_ i] `<=` `[a, b] *)
-          (* apply: (subset_trans (absubcd i)).
-          rewrite -compact_Rhull// -(@RhullK _ `[a, b]%classic).
-            rewrite inE.
-            exact: interval_is_interval.
-          exact: le_Rhull.
-          *) admit.
+          by move=> x /A_B_cd; apply: subset_itv; rewrite bnd_simp//.
         rewrite closure_neitv_oo//.
         exact: contiguous_intervals1_lt_contiguous_intervals2.
       apply: sum_oscillation_le_total_variation.
@@ -6696,9 +6703,7 @@ have eq9 :
           by apply: set_bij_inj; apply: bij.
         apply: (@sub_trivIset _ _ _ setT) => //.
         exact: disjoint_contiguous_intervals.
-        (* exact: absubcd. *)
-        (* forall n : nat, `[A_ n, B_ n] `<=` `[c, d] *)
-        admit.
+        exact: A_B_cd.
     have/(bounded_variationP _ (ltW cd)) := cdbvf.
     by rewrite ge0_fin_numE// total_variation_ge0// ltW.
   move=> n _.
