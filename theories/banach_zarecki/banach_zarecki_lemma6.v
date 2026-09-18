@@ -6235,11 +6235,23 @@ have alphaH n : (alpha <= \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
   apply: continuous_nondecreasing_image_itvcc.
   - exact: cled.
   - apply: continuous_subspaceW cH.
-    admit.
+    apply: subset_itv; rewrite bnd_simp.
+    rewrite (le_trans ac)//.
+      by apply: inflec.
+    rewrite (le_trans _ db)//.
+    by rewrite /d_ daE aled.
   move=> x y xcd ycd xy.
   apply: (nondecreasing_total_variation bvf _ _ xy).
-    admit.
-  admit.
+    apply: subset_itv xcd; rewrite bnd_simp.
+    rewrite (le_trans ac)//.
+      by apply: inflec.
+    rewrite (le_trans _ db)//.
+    by rewrite /d_ daE aled.
+  apply: subset_itv ycd; rewrite bnd_simp.
+  rewrite (le_trans ac)//.
+    by apply: inflec.
+ rewrite (le_trans _ db)//.
+ by rewrite /d_ daE aled.
 (*
 rewrite addrAC ltrD2r.
 move/(@lt_trans _ _ _ (fine alpha / 2)).
@@ -6664,6 +6676,7 @@ have eq9 :
           rewrite closure_neitv_oo//.
           exact: contiguous_intervals1_lt_contiguous_intervals2.
           apply: (continuous_subspaceW _ cf).
+          (* `[A_ i, B_ i] `<=` `[a, b] *)
           (* apply: (subset_trans (absubcd i)).
           rewrite -compact_Rhull// -(@RhullK _ `[a, b]%classic).
             rewrite inE.
@@ -6684,6 +6697,7 @@ have eq9 :
         apply: (@sub_trivIset _ _ _ setT) => //.
         exact: disjoint_contiguous_intervals.
         (* exact: absubcd. *)
+        (* forall n : nat, `[A_ n, B_ n] `<=` `[c, d] *)
         admit.
     have/(bounded_variationP _ (ltW cd)) := cdbvf.
     by rewrite ge0_fin_numE// total_variation_ge0// ltW.
