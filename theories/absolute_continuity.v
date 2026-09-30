@@ -37,6 +37,272 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+
+Lemma cvg_half {R : realType} : (2^-1 ^+ x) @[x --> \oo] --> (0 : R).
+Proof.
+rewrite (_:(fun n => (2^-1 ^+ n)) = (fun n => geometric 1 2^-1 n)).
+   apply: funext => n.
+   by rewrite /geometric/= mul1r.
+apply: cvg_geometric.
+rewrite ger0_norm// invf_lt1//.
+exact: ltr1n.
+Qed.
+
+Lemma continuous_increasing_set_bij {R : realType} (f : R -> R) a b (ab : a < b) :
+  {within `[a, b], continuous f} ->
+  {in `[a, b] &, {homo f : x y / x < y}} ->
+  set_bij `[a, b] `[f a, f b] f.
+Proof.
+move=> cf incf.
+split.
+- move=> x/=; rewrite 2!in_itv/= => /andP[ax xb]; apply/andP; split.
+  + move: ax; rewrite le_eqVlt => /predU1P[-> //|ax].
+    apply/ltW/incf; rewrite ?in_itv//=.
+    * by rewrite lexx (ltW ab).
+    * by rewrite xb andbT ltW.
+  + move: xb; rewrite le_eqVlt => /predU1P[-> //|xb].
+    apply/ltW/incf; rewrite ?in_itv//=.
+    * by rewrite ax/= ltW.
+    * by rewrite lexx (ltW ab).
+- move=> x y; rewrite 2!inE/= 2!in_itv/= => /andP[ax xb]/andP[ay yb].
+  move/eqP; rewrite eq_le => /andP[fxy fyx].
+  apply/not_notP => /eqP.
+  rewrite neq_lt => /orP[xy|yx].
+  + move: fyx => /not_notP; apply.
+    apply/negP; rewrite lt_geF//.
+    apply: incf; rewrite ?in_itv//=.
+    * by rewrite ax xb.
+    * by rewrite ay yb.
+  + move: fxy => /not_notP; apply.
+    apply/negP; rewrite lt_geF//.
+    apply: incf; rewrite ?in_itv//=.
+    * by rewrite ay yb.
+    * by rewrite ax xb.
+- apply: segment_continuous_le_surjective => //.
+  + exact: ltW.
+  + by apply/ltW/incf; rewrite //?boundl_in_itv ?boundr_in_itv bnd_simp/= ltW.
+Qed.
+
+Lemma continuous_increasing_image_itv {R : realType} (f : R -> R) a b (ab : a < b) :
+  {within `[a, b], continuous f} ->
+  {in `[a, b] &, {homo f : x y / x < y}} ->
+  f @` `[a, b] = `[f a, f b]%classic.
+Proof.
+move=> cf incf.
+rewrite eqEsubset; split.
+  apply: set_bij_sub.
+  exact: continuous_increasing_set_bij.
+rewrite -surjE.
+apply: set_bij_surj.
+exact: continuous_increasing_set_bij.
+Qed.
+
+Lemma GdeltaIr {T : topologicalType} (U S : set T) : open U ->
+  Gdelta S -> Gdelta (U `&` S).
+Proof.
+move=> oU [V_ oV {S}->]; exists (fun n => if n == 0 then U else V_ n.-1).
+- by case.
+- by rewrite [RHS](bigcap_splitn 1)/= big_ord1.
+Qed.
+
+Lemma GdeltaIl {T : topologicalType} (U S : set T) : open U ->
+  Gdelta S -> Gdelta (S `&` U).
+Proof. by move=> oU GS; rewrite setIC; exact: GdeltaIr. Qed.
+
+Lemma isolatedP {T : topologicalType} (A : set T) (x : T) :
+ isolated A x ->
+  x \in A /\ exists2 V, open_nbhs x V & V `&` A = [set x].
+Proof.
+move=> [zA [V xV VAx]].
+split => //.
+move: xV; rewrite nbhsE/= => -[B xB BV].
+exists B => //.
+apply/seteqP; split => [z [Bz Az]|].
+  by rewrite -VAx; split => //; exact: BV.
+move=> z/= ?; subst z.
+move/seteqP : VAx => [_ /(_ x erefl)[Vx Ax]].
+split => //.
+by case: xB.
+Qed.
+
+From mathcomp Require Import rat.
+
+Section perfect_set_rm.
+Context {R : realType}.
+Let mu := @lebesgue_measure R.
+Local Open Scope ereal_scope.
+Local Open Scope classical_set_scope.
+
+Definition oobasis : set (set R) := [set `]ratr x.1, ratr x.2[ | x in setT].
+
+Lemma set0_oobasis : set0 \in oobasis.
+Proof.
+rewrite inE /oobasis/=.
+exists (1, 0)%R => //=.
+rewrite -subset0 => x/=; rewrite in_itv/= => /andP[/lt_trans] => /[apply].
+by rewrite ltr_rat ltr10.
+Qed.
+
+Lemma oobasis_countable : countable oobasis.
+Proof.
+by rewrite /countable -(card_le_eqr card_rat2); exact: card_image_le.
+Qed.
+
+Lemma oobasis_basis : basis oobasis.
+Proof.
+split; first by move=> A [[a b]] _/= <-; exact: itv_open.
+move=> r V; rewrite nbhsE/= => -[U [oU /mem_set Ur] UV].
+have [a [b [_ [rB BU]]]] := open_subball_rat oU Ur.
+exists (@ball _ R (ratr a) (ratr b)) => /=; last exact: subset_trans UV.
+split; last exact/set_mem.
+by exists (a - b, a + b)%R => //=; rewrite ball_itv raddfB/= raddfD.
+Qed.
+
+Lemma Rsecond_countable : @second_countable R.
+Proof. by exists oobasis; [exact: oobasis_countable|exact: oobasis_basis]. Qed.
+
+Definition rat_itv (U : set R) := [set pq : (rat * rat)%type |
+  (pq.1 < pq.2)%R /\ `]ratr pq.1, ratr pq.2[ `<=` U].
+
+Lemma open_rat_itv (U : set R) : open U ->
+  U = \bigcup_(pq in rat_itv U) `]ratr pq.1, ratr pq.2[.
+Proof.
+move=> openU.
+apply/seteqP; split => [x /mem_set Ux|z [i [i12 + iz]]]; last exact.
+suff [[p q] Bpq /=xpq] : exists2 pq : (rat * rat)%type,
+    pq \in rat_itv U & x \in `]ratr pq.1, ratr pq.2[.
+  by exists (p, q) => //=; [exact: set_mem|by rewrite inE in xpq].
+have [a [b [r0 [xB BU]]]] := open_subball_rat openU Ux.
+exists (a - b, a + b)%R.
+  rewrite inE /rat_itv /=; split => //.
+    by rewrite ltrBlDr -addrA ltrDl addr_gt0.
+  by rewrite raddfB/= raddfD/= -ball_itv.
+rewrite inE/= raddfB/= raddfD/=.
+by move: xB; rewrite ball_itv inE.
+Qed.
+
+Import MeasurableR.
+Lemma perfect_set_rm (X : set R) :
+  compact X -> mu X < +oo ->
+  exists B, [/\ B `<=` X, compact B, isolated B = set0 &
+    mu B = mu X].
+Proof.
+move=> compactX boundedX.
+pose G : set R := \bigcup_(U in [set U | open U /\ mu (X `&` U) = 0]) U.
+have openG : open G.
+  rewrite /G.
+  by apply: bigcup_open => ? [].
+pose K := X `\` G.
+have mG : measurable G by exact: open_measurable.
+have mX : measurable X by exact: compact_measurable.
+have compactK : compact K.
+  rewrite /K.
+  rewrite setDE.
+  apply: compact_closedI => //.
+  by apply: open_closedC.
+have G0 : mu (X `&` G) = 0.
+  have [F [Fbasis F0] GF] : exists2 F : (set R)^nat,
+      (forall i, F i \in oobasis) /\ (forall i, mu (X `&` F i) = 0) &
+      G = \bigcup_i F i.
+    have GE : G = \bigcup_(U in [set U | oobasis U /\ mu (X `&` U) = 0%R]) U.
+      apply/seteqP; split => [r [/= A [oA XA0]]|r].
+        rewrite (open_rat_itv oA) => -[pq Apq rpq].
+        exists (`]ratr pq.1, ratr pq.2[) => //=.
+        split; first by exists pq.
+        rewrite /rat_itv /= in Apq.
+        apply/eqP; rewrite eq_le measure_ge0 andbT.
+        rewrite -XA0 le_measure//= ?inE//=.
+          exact: measurableI.
+          by apply: measurableI => //; exact: open_measurable.
+        by apply: setIS; case: Apq.
+      move=> [_/= [[pq _ <-]]] Xpq pqr.
+      by exists `]ratr pq.1, ratr pq.2[.
+    have /countable_bijP[B] := oobasis_countable.
+    (* TODO: write this down in the FAQ *)
+    rewrite card_eq_sym => /card_set_bijP[f/=] bijf.
+    Check f : nat -> set R.
+    pose f1 : set R -> nat := pinv B f.
+    exists (fun n => if (n \in B) && (mu (X `&` f n) == 0) then
+      f n else set0).
+      split.
+        move=> n.
+        case: ifPn.
+          move=> /andP[/set_mem Bn _].
+          apply/mem_set.
+          case: bijf => + _ _.
+          by apply.
+        by rewrite set0_oobasis.
+      move=> i.
+      case: ifPn=> [|_].
+        by move=> /andP[_ /eqP].
+      by rewrite setI0 [LHS]measure0.
+    rewrite GE.
+    rewrite bigcup_mkcondr.
+    rewrite (reindex_bigcup f B)//.
+      by case: bijf.
+      by case: bijf.
+    rewrite bigcup_mkcond.
+    apply: eq_bigcup => //= i _.
+    case: ifPn => //= Bi.
+    rewrite /mem/= /in_mem/= /in_set/=.
+    by case: asboolP => [->|/eqP/negPf ->//]; rewrite eqxx.
+  rewrite GF.
+  rewrite setI_bigcupr.
+  apply/eqP; rewrite eq_le.
+  rewrite measure_ge0 andbT.
+  apply: (@le_trans _ _ (\sum_(0 <= i <oo) mu (X `&` F i))).
+    exact: outer_measure_sigma_subadditive.
+  by rewrite eseries0//.
+have muKX : mu K = mu X.
+  rewrite /K.
+  rewrite [LHS]measureD//= -/mu.
+    by rewrite G0 sube0.
+have isoK : isolated K = set0.
+  rewrite -subset0 => /= x.
+  move/isolatedP => [xK /= [U xU UKx]].
+  have xG : x \notin G by move: xK; rewrite in_setD => /andP[].
+  have mXU0 : mu (X `&` U) > 0.
+    rewrite lt_neqAle measure_ge0 andbT eq_sym.
+    apply/eqP => XU0.
+    have UG : U `<=` G.
+      rewrite /G.
+      apply: bigcup_sup => /=; split => //.
+      by case: xU.
+    move/negP : xG; apply.
+    apply/mem_set/UG.
+    by case: xU.
+  have : 0 < mu (K `&` U).
+    rewrite /K.
+    rewrite setDE.
+    rewrite setIAC.
+    rewrite -setDE.
+    have mU : measurable U by apply: open_measurable; case: xU.
+    rewrite [ltRHS](@measureD _ _ _ mu (X `&` U) G)//.
+      exact: measurableI.
+      rewrite (le_lt_trans _ boundedX)// le_measure// ?inE//.
+      exact: measurableI.
+    have XUG0 : mu (X `&` U `&` G) = 0.
+      apply/eqP.
+      rewrite eq_le measure_ge0 andbT.
+      rewrite -G0.
+      rewrite le_measure// ?inE.
+      by apply: measurableI => //; apply: measurableI.
+      by apply: measurableI => //.
+      rewrite setIAC.
+      exact: subIsetl.
+    by rewrite [X in _ - X]XUG0 sube0.
+  by rewrite setIC UKx /mu lebesgue_measure_set1 ltxx.
+exists K.
+split.
+- exact: subDsetl.
+- assumption.
+- assumption.
+- by rewrite muKX.
+Qed.
+
+End perfect_set_rm.
+
+
 Section seq_lemmas.
 (* TODO: move *)
 Lemma nth_map_iota {T} (x : T) (n : nat) (f : nat -> T) (i : nat) :
@@ -61,6 +327,8 @@ Qed.
 
 End seq_lemmas.
 
+Section interval_lemmas.
+
 Lemma mem_interval_le (R : realDomainType) (x y a b : R) :
   x \in `[a, b] -> y \in `[a, b] -> `|x - y| <= `|a - b|.
 Proof.
@@ -71,6 +339,9 @@ have [xy|yx] := leP x y.
   by rewrite ler0_norm ?subr_le0// opprB lerB.
 by rewrite gtr0_norm ?subr_gt0// lerB.
 Qed.
+
+End interval_lemmas.
+
 
 Section merge_lemmas.
 Context {T : Type} {r : rel T}.
@@ -479,7 +750,7 @@ Abort.
 
 End completed_algebra_lemmas.
 
-Section lemmas.
+Section lim_set_lemmas.
 
 (* PR? *)
 Lemma ball_is_interval (R : realType) (x e : R) :
@@ -989,7 +1260,7 @@ Context {R : realFieldType}.
 Implicit Types a b : \bar R.
 Local Open Scope ereal_scope.
 
-(* maybe PR#1848 *)
+(* PR#1848 *)
 Lemma closure_eneitv_oo a b : a < b ->
   closure `]a, b[%classic = `[a, b]%classic.
 Proof.
@@ -1001,6 +1272,7 @@ Section closure_neitv_real.
 Context {R : realType}.
 Implicit Type a b : R.
 
+(* PR#1848 *)
 Lemma closure_neitv_oo a b : a < b ->
   closure `]a, b[%classic = `[a, b]%classic.
 Proof.
@@ -1014,6 +1286,7 @@ apply: divr_gt0 => //.
 by rewrite subr_gt0.
 Qed.
 
+(* PR#1848 *)
 Lemma closure_neitv_oc a b : a < b ->
   closure `]a, b]%classic = `[a, b]%classic.
 Proof.
@@ -1027,6 +1300,7 @@ rewrite -closure_neitv_oo//.
 exact/closureS/subset_itv_oo_oc.
 Qed.
 
+(* PR#1848 *)
 Lemma closure_neitv_co a b : a < b ->
   closure `[a, b[%classic = `[a, b]%classic.
 Proof.
@@ -1040,6 +1314,7 @@ rewrite -closure_neitv_oo//.
 by apply: closureS; exact: subset_itv_oo_co.
 Qed.
 
+(* PR#1848 *)
 Lemma closure_neitv_cc a b : a < b ->
   closure `[a, b]%classic = `[a, b]%classic.
 Proof.
@@ -1047,6 +1322,7 @@ symmetry; apply/closure_id; rewrite -closure_neitv_oo//.
 exact: closed_closure.
 Qed.
 
+(* PR#1848 *)
 Lemma closure_neitv_bnd a b (x y : bool) : a < b ->
   closure [set` (Interval (BSide x a) (BSide y b))] = `[a, b]%classic.
 Proof.
@@ -1058,6 +1334,7 @@ case: x; case: y.
 - exact: closure_neitv_oc.
 Qed.
 
+(* PR#1848 *)
 Lemma closure_neitv_rray (a : R) :
   closure `]a, +oo[%classic = `[a, +oo[%classic.
 Proof.
@@ -1073,6 +1350,7 @@ apply/esym.
 by apply: itv_bndbnd_setU => //; rewrite bnd_simp lerDl.
 Qed.
 
+(* PR#1848 *)
 Lemma closure_neitv_lray (a : R) :
   closure `]-oo, a[%classic = `]-oo, a]%classic.
 Proof.
@@ -2337,49 +2615,6 @@ Lemma head_flatten {T : eqType} d (s : seq T) (ss : seq (seq T)) :
   head d (flatten (s :: ss)) = head d s.
 Proof.
 by move=> s0; rewrite head_cat. Qed.
-
-(*
-Lemma lambda_ub (a b l : R) :
-  a < b -> 0 < l ->
-  forall x : R, x \in (lp a b l) ->
-  x <= b.
-Proof.
-move=> ab l0 x /[dup].
-rewrite -{1}index_mem => index_size.
-move/(nth_index b) <-.
-rewrite -[leRHS](last_lambda b ab l0) -nth_last.
-apply: le_sorted_leq_nth => //.
-  have/path_ltW := lt_path_lambda ab l0.
-  admit.
-Admitted.
-*)
-
-
-(*
-Section total_variation_lim.
-Context {R : realType}.
-Context (a b : R) (f : R -> R).
-Context (ab : a < b).
-
-(* subdivide itv_partition by mean *)
-Let regular_itv_partition (n : nat) : seq R :=
- [seq (fun (j : nat) => (a + ((b - a) * j))) i | i <- iota 1 n].
-
-Lemma total_variation_lim :
-End.
-*)
-
-Section wip.
-Context {R : realType}.
-
-(* this would be used in abs_cont_bounded_variation *)
-Lemma itv_partition_undup_merge (a b : R) (s t : seq R) :
-  itv_partition a b s -> itv_partition a b t ->
-  itv_partition a b (undup (merge <%R s t)).
-Proof.
-Abort.
-
-End wip.
 
 (* TODO: move to lebesgue_measure.v *)
 Lemma lebesgue_measureT {R : realType} : (@lebesgue_measure R) setT = +oo%E.
