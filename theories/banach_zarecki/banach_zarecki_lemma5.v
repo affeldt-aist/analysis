@@ -1603,38 +1603,6 @@ Qed.
 
 End omega_max.
 
-Section nonnegR_is_monoid.
-Context {R : realType}.
-
-Notation maxr := (@maxr {nonneg R}).
-
-Lemma maxrA : associative maxr.
-Proof. exact: maxA. Qed.
-
-Lemma maxr0 : left_id 0%:nng maxr.
-Proof.
-move=> x.
-apply/max_idPr.
-rewrite (_ : widen_itv 0%:itv = widen_itv `|@GRing.zero R|%:itv).
-  apply/esym/eqP.
-  by rewrite num_abs_eq0.
-by rewrite num_abs_le.
-Qed.
-
-Lemma max0r : right_id 0%:nng maxr.
-Proof.
-move=> x.
-apply/max_idPl.
-rewrite (_ : widen_itv 0%:itv = widen_itv `|@GRing.zero R|%:itv).
-  apply/esym/eqP.
-  by rewrite num_abs_eq0.
-by rewrite num_abs_le.
-Qed.
-
-HB.instance Definition _ := Monoid.isLaw.Build {nonneg R} 0%:nng maxr maxrA maxr0 max0r.
-
-End nonnegR_is_monoid.
-
 Section lt_merge_lemmas.
 Context {R : realType}.
 Implicit Types (s t r : seq R) (x : R).
@@ -1680,28 +1648,6 @@ by move: xt => /= /andP[->].
 Qed.
 
 End lt_merge_lemmas.
-
-Section itv_partition_udmerge_disj_seq_lemmas.
-Context {R : realType}.
-Implicit Types (a b : R) (s : seq R) (x : R).
-
-Lemma itv_partition_merge a b s t :
- itv_partition a b s ->
- itv_partition a b t ->
- disj_seq s t -> itv_partition a b (merge <%R s t).
-Proof.
-move=> ps pt.
-(*move=> /disj_seq_allP[/allP ts /allP st].*)
-Abort.
-
-Lemma itv_partition_udmerge a b s t :
- itv_partition a b s ->
- itv_partition a b t ->
- itv_partition a b (udmerge s t).
-Proof.
-Abort.
-
-End itv_partition_udmerge_disj_seq_lemmas.
 
 (* NB: available as PR https://github.com/math-comp/analysis/pull/1809 *)
 Lemma compact_unif_continuousP {R : realType} (a b : R) f :
@@ -1770,125 +1716,6 @@ Lemma mesh_ge0 a b s : 0 <= mesh a b s.
 Proof. by rewrite /mesh. Qed.
 
 End mesh_lemmas.
-
-Section variation_merge_tmp.
-Context {R : realType}.
-Variables (a b : R) (f : R -> R).
-Hypothesis (ab : a < b).
-Hypothesis cf : {within `[a, b], continuous f}.
-Implicit Types (s : seq R) (x : R).
-
-Lemma variation_merge_tmp l s t :
-  itv_partition a b s -> mesh a b s <= l ->
-  itv_partition a b t ->
-  disj_seq s t ->
-  ((variation a b f (merge <%R s t))%:E <= (variation a b f s)%:E +
-  (size t)%:R%:E * 2 * omega_max a b f s)%E.
-Proof.
-have [->|] := pselect (omega_max a b f s = +oo%E).
-  move=> _ _ _ _.
-  rewrite -muleA mulry/= gtr0_sg// mul1e.
-  case: t => /=.
-    rewrite merge0r mul0e adde0//.
-  move=> ht t.
-  rewrite mulry gtr0_sg ?mul1e//.
-  rewrite addey//.
-  exact: leey.
-move/eqP; rewrite -ltey => maxoo.
-elim: t s maxoo.
-  move=> s _ _.
-  by rewrite merge0r 2!mul0e adde0.
-move=> h t IH s maxoo ps sl pht disjst.
-have s0 : s != [::].
-    apply: itv_partition_neq0 ps.
-    by move: ab; rewrite lt_neqAle => /andP[].
-rewrite merge_cons.
-  have [+ _] := pht.
-  by rewrite /= => /andP[].
-move: t s maxoo ps sl s0 IH pht disjst; apply: last_ind.
-  move=> s maxoo ps sl s0 IH pht disjst.
-  rewrite merge0r/= mul1e.
-  apply: variation_merge1_omega_max => //.
-  case: pht => /= /andP[ah _ /eqP ->].
-  by rewrite bound_itvE ltW.
-move=> t tt IH1 s maxoo ps sl s0 IH2 pht disjst.
-have ttb : tt = b.
-  move: pht => [_].
-  by rewrite last_cons last_rcons => /eqP.
-apply: (le_trans (IH2 _ _ _ _ _ _)).
-- apply: le_lt_trans maxoo.
-  have [ps_lt lsb] := ps.
-  apply: omega_max_merge1 => //.
-  exact: path_ltW.
-- have [] := ps.
-  move/path_ltW => psle lasb.
-  apply/andP; split.
-  + by have [/=/andP[/ltW+ _] _] := pht.
-  + rewrite -(@nth_index _ b h (h :: (rcons t tt))); first exact: mem_head.
-    apply: itv_partition_nth_le; first by rewrite /= eqxx//.
-    exact: itv_partition_cons pht.
-- apply: itv_partition_merge1 => //.
-  + admit.
-  + admit.
-(*- apply: (le_trans (itv_partition_max_merge1_le _ _ _)) => //.
-  + by have [] := ps.
-  + admit.
-  + by have [] := ps.
-(*
-rewrite disj_seq_merge_ltW; last first.
-    apply/disj_seq_allP; split; apply/allP.
-      admit.
-    admit.
-  exact: itv_partition_max_merge1'.
-*)
-- apply: (itv_partition_cons1 _ pht).
-  have pt := itv_partition_cons pht.
-  apply: (itv_partition_neq0 _ pt).
-  rewrite lt_eqF//.
-  rewrite -rcons_cons in pht.
-  have [+ _] := pht.
-  rewrite -rev_path.
-  move/order_path_min.
-  have lt_trans_rev : transitive (fun x => <%R ^~ x).
-    admit.
-  move/(_ lt_trans_rev).
-  move/allP.
-  rewrite last_rcons ttb.
-  apply.
-  by rewrite mem_rev belast_rcons in_cons; apply/orP; right; exact: mem_head.
-  (* have := (itv_partition_head_in_itv pht). *)
-- admit.
-have hab : h \in `]a, b[.
-  admit.
-(*
-rewrite -(natr1 (size t)) (EFinD (size t)%:R).
-rewrite 2?muleDl ?mul1e => //; last first.
-  admit.
-rewrite addeA.
-apply: (@le_trans _ _ ((variation a b f (merge <%R s [:: h]))%:E +
-  ((size t)%:R)%:E * 2 * omega_max a b f s)%E).
-  rewrite leeD2l//.
-  rewrite lee_pmul//.
-    apply: omega_max_ge0.
-    - by apply: merge_neq0; rewrite orbT.
-    - exact: ltW.
-    - apply: path_merge.
-        by move: hab; rewrite in_itv/= => /andP[].
-      by case: ps.
-  apply: omega_max_merge1 => //.
-  - apply: path_ltW.
-    by have [] := ps.
-  - admit.
-  - admit.
-rewrite -addeAC leeD2r//.
-apply: variation_merge1 => //.
-have /disj_seq_allP[/allP + _] := disjst.
-apply.
-exact: mem_head.
-*) *)
-Abort.
-
-End variation_merge_tmp.
 
 Section bigmax.
 
@@ -2428,29 +2255,6 @@ rewrite rcons_cons 2!merge_step.
 case: ifPn; by [rewrite IHs//= t0b t1b|rewrite -rcons_cons IHt].
 Qed.
 
-(* TODO: generalize *)
-Lemma le_merge_lrcons (s t : seq R) (b : R) :
-  sorted <=%R s -> sorted <=%R t -> (* unnecessary *)
-   all (<=%R ^~ b) t -> merge <=%R (rcons s b) t = rcons (merge <=%R s t) b.
-Proof.
-elim: t s b; first by move=> ? ?; rewrite 2!merge0r.
-Abort.
-(*
-move=> + + + s; elim: s => [t0 t1 IH b _ st |s0 s1 IHs t0 t1 IHt b].
-  rewrite [rcons _ _]/= [merge _ [::] _]/= => bt.
-  have : t0 <= b. by have/allP := bt; apply; rewrite mem_head.
-  rewrite le_eqVlt => /predU1P[t0b|t0b].
-    subst b.
-    
-; rewrite merge_step lexx/=.
-  rewrite merge_step ifN; last rewrite -ltNge.
-  have -> : [:: b] = rcons [::] b by []; by rewrite IH.
-rewrite [all _ _]/= => /andP[t0b t1b].
-rewrite rcons_cons 2!merge_step.
-case: ifPn; by [rewrite IHs//= t0b t1b|rewrite -rcons_cons IHt].
-Qed.
-*)
-
 Lemma all_ge_merge1r (t : seq R) (b : R) :
 all (<=%R ^~ b) t -> merge <=%R t [:: b] = rcons t b.
 Proof.
@@ -2466,42 +2270,6 @@ elim: t => //.
 move=> t0 t1 IH /=/andP[t0b t1b]/=.
 by rewrite ifT ?IH.
 Qed.
-
-(* TODO: generalize? *)
-Lemma lt_merge1r_lrcons (s0 : seq R) (s1 : R) (t : R) :
-  all (<%R ^~ t) s0 ->
-  merge <%R (rcons s0 s1) [:: t] =
-    if s1 < t then s0 ++ [:: s1; t] else s0 ++ [:: t; s1].
-Proof.
-move=> ts0.
-case: ifPn => [s1t|].
-  rewrite all_gt_merge1r -2?cats1 -?catA ?cat1s//.
-  rewrite cats1 all_rcons s1t//.
-rewrite -leNgt => ts1.
-(*
-rewrite merge_lrcons; last by rewrite /= ts1.
-by rewrite allrel_merge -?cats1 -?catA ?cat1s ?allrel1r.
-Qed.
-*)
-Abort.
-
-(* TODO: generalize? *)
-Lemma le_merge1r_lrcons (s0 : seq R) (s1 : R) (t : R) :
-  all (<=%R ^~ t) s0 ->
-  merge <=%R (rcons s0 s1) [:: t] =
-    if s1 <= t then s0 ++ [:: s1; t] else s0 ++ [:: t; s1].
-Proof.
-move=> ts0.
-case: ifPn => [s1t|].
-  rewrite all_ge_merge1r -2?cats1 -?catA ?cat1s//.
-  rewrite cats1 all_rcons s1t//.
-rewrite -ltNge => ts1.
-(*
-rewrite merge_lrcons; last by rewrite /= ts1.
-by rewrite allrel_merge -?cats1 -?catA ?cat1s ?allrel1r.
-Qed.
-*)
-Abort.
 
 (* TODO: generalize *)
 Lemma merge_rcons_step (s0: seq R) (s1 : R) (t0 : seq R) (t1 : R) :
@@ -2537,44 +2305,11 @@ elim/last_ind : t0 s0 => //=.
     admit.
 Abort.
 
-Lemma merge_rrcons (s t : seq R) (b : R) :
-   all (<=%R ^~ b) s -> merge <%R s (rcons t b) = rcons (merge <%R s t) b.
-Proof.
-elim/last_ind : s => //.
-Abort.
-
-(*
-Lemma merge_rrcons (s t : seq R) (b : R) :
-   all (<%R ^~ b) s -> merge <%R s (rcons t b) = rcons (merge <%R s t) b.
-Proof.
-elim: t s b.
-  move=> ? ? ?/=; rewrite merge0r.
-  rewrite lt_merge1_max => //.
-move=> + + + s; elim: s => [t0 t1 IH b _|s0 s1 IHs t0 t1 IHt b].
-  by rewrite [rcons _ _]/= [merge _ [::] _]/=.
-rewrite [all _ _]/= => /andP[t0b t1b].
-rewrite rcons_cons 2!merge_step.
-by case: ifPn; rewrite ?IHs ?IHt//= t0b t1b.
-Qed.
-*)
-
 Lemma last_undup (s : seq R) (a : R) :
   last a s = last a (undup s).
 Proof.
 by elim/last_ind : s => // ? ? _; rewrite undup_rcons 2!last_rcons.
 Qed.
-
-Lemma last_sorted_merger (s t : seq R) (a : R) :
-  all (<=%R ^~ (last a s)) t -> last a (merge <=%R s t) = last a s.
-Proof.
-(*
-elim/last_ind : s abs t'; first by move/(itv_partitionNnil ab).
-  move=> s0 s1 IHs + _.
-  move=> [pas /eqP]; rewrite last_rcons => ->.
-  rewrite merge_lrcons ?last_rcons//.
-  by apply/allP => x /tab; rewrite in_itv/= => /andP[_ /ltW].
-*)
-Abort.
 
 Lemma itv_partition_last_merge a b (ab : a <= b) s t :
   itv_partition a b s ->
