@@ -25,6 +25,9 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
+(* ??? *)
+Import MaxNngComLaw.
+
 (* TODO: move *)
 Lemma bigmaxr_morph {R : realType} n (f : nat -> R) :
   \big[maxr/0]_(0 <= i < n) `|f i| =
@@ -45,7 +48,7 @@ Implicit Types (a b : R) (f : R -> R).
 Implicit Types (s : seq R) (x : R).
 
 Definition mesh a b s : R := let pnth := nth b (a :: s) in
-  (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
+  (\big[@maxr {nonneg R}/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
 
 End mesh_def.
 
@@ -167,58 +170,24 @@ apply: set_last_default.
 by case: s s0 abs last_s Hsorted2 sorted_s ls_hs'.
 Qed.
 
-Lemma mesh_eq_merge_subseq a b s t :
-  path <=%R a s -> path <=%R a t ->
-  subseq t s ->
-  mesh a b (merge <=%R s t) = mesh a b s.
-Proof.
-elim: t s => //=.
-  move=> pas _ _.
-  by rewrite merge0r.
-move=> h t IH s pas /andP[ah pht] subhts.
-rewrite merge_cons_mergel.
-- exact: le_trans.
-- exact: le_path_min.
-rewrite IH.
-- apply: merge_path => //.
-  by rewrite /= ah.
-- apply: (path_le _ ah) => //; exact: le_trans.
-- apply: (@subseq_trans _ s); last exact: subseq_mergel.
-  apply: subseq_trans subhts.
-  exact: subseq_cons.
-rewrite /mesh.
-rewrite size_merge.
-have hs : h \in s.
-  have /mem_subseq/subsetP := subhts.
-(*  move/(_ h); rewrite 2!inE; apply.
-  exact: mem_head.
-set n := index h (s ++ [:: h]).
-have : (n <= size (s ++ [:: h]))%N.
-  by rewrite index_size.
-rewrite size_cat/= addn1 => ns.*)
-(* needs Monoid instance! *)
-(* have : (\big[@Num.max {nonneg R}/_]_(0 <= n0 < (size s).+1)
-      widen_itv `|nth b (merge <=%R s [:: h]) n0 - nth b (a :: merge <=%R s [:: h]) n0|%:itv)%:num = a.
-rewrite big_cat_nat.
-have := (@big_cat_nat {nonneg R} (0%:nng) (@maxr {nonneg R})). (leq0n n) ns).
-*)
-Abort.
-
-Lemma path_merge_ltW a b (s t : seq R) :
-  path <=%R a s -> subseq t s ->
-  mesh a b s = mesh a b (merge <=%R s t).
-Proof.
-Abort.
-
 Lemma mesh_merge1_le a b s x :
-  path <%R a s -> a <= x <= b -> last a s == b ->
-  mesh a b (merge <%R s [:: x]) <= mesh a b s.
+  a <= x ->
+  mesh a b (merge <=%R s [:: x]) <= mesh a b s.
 Proof.
+move=> ax.
+set n := find (> x) (a :: s).
+rewrite /mesh.
+rewrite size_merge size_cat/= addn1.
+(*
+
+rewrite (@big_cat_nat {nonneg R} 0%:nng (@maxr {nonneg R})).
+ (fun n0 => `|nth b (merge <=%R s [:: x]) n0 - nth b (a :: merge <=%R s [:: x]) n0|%:nng)).
+(bigmaxr_morph (size s).+1
+  (fun i => (nth b (a :: merge <=%R s [:: x]) i - _))).
 move=> ps /eqP sb.
 have [xs|xs] := boolP (x \in s).
   (* rewrite itv_partition_max_merge_subseq. *)
   admit.
-(*
 apply: subseq_itv_partition_max.
 have itv_partition_max_merge :
 *)
@@ -254,9 +223,7 @@ Lemma mesh_filter (a b : R) (s : seq R) (P : pred R) :
 Proof.
 Abort.
 
-
 End mesh_lemmas.
-
 
 Section lambda_partition.
 
