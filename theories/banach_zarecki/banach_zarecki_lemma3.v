@@ -9,6 +9,7 @@ From mathcomp Require Import sequences measure lebesgue_measure realfun.
 From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import borel_hierarchy absolute_continuity.
 From mathcomp Require Import banach_zarecki_lemma2.
+From mathcomp Require Import lebesgue_measure_extra.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 3)                                         *)

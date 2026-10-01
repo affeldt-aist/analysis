@@ -10,6 +10,7 @@ From mathcomp Require Import reals ereal topology normedtype sequences.
 From mathcomp Require Import measure lebesgue_measure numfun realfun.
 From mathcomp Require Import borel_hierarchy absolute_continuity.
 From mathcomp Require Import banach_zarecki_lemma1.
+From mathcomp Require Import lebesgue_measure_extra.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 2)                                         *)
@@ -41,32 +42,11 @@ Let suppre y := sup (`[a, b] `&` f @^-1` [set y]).
 Lemma preimages_gt1_inf_sup y : preimages_gt1 f y
    -> infpre y < suppre y.
 Proof.
-move=> [_ /= (* [_ +]*)].
+move=> [_ /=].
 apply: has_bound_not_subset1_inf_sup.
   by exists a => z [] /=; rewrite in_itv/= => /andP[].
 by exists b => z [] /=; rewrite in_itv/= => /andP[].
 Qed.
-
-(* move=> /not_subset1P[x [y [xy abx aby FxFr FyFr]]]. *)
-(* wlog : x y abx aby FxFr FyFr xy / x < y. *)
-(*   move=> wlg; move: xy; rewrite neq_lt => /orP[xy|yx]. *)
-(*     by apply: (wlg _ _ abx aby) => //; rewrite lt_eqF. *)
-(*   by apply: (wlg _ _ aby abx) => //; rewrite lt_eqF. *)
-(* move=> {}xy; apply: (@le_lt_trans _ _ x). *)
-(*   rewrite -(inf1 x); apply: le_inf; last 2 first. *)
-(*     by exists x. *)
-(*     split; first by exists r. *)
-(*     by exists a => z [] /=; rewrite in_itv/= => /andP[]. *)
-(*   move=> _ /= [_ -> <-]. *)
-(*   by exists (- x); split => //=; exists x. *)
-(* apply: (@lt_le_trans _ _ y) => //. *)
-(* rewrite -(sup1 y); apply: le_sup; last 2 first. *)
-(*   by exists y. *)
-(*   split; first by exists r. *)
-(*   exists b => z [] /=. *)
-(*   by rewrite in_itv/= => /andP[]. *)
-(* by rewrite sub1set inE; exists y. *)
-(* Qed. *)
 
 Hypotheses ab : a < b.
 Variable ndf : {in `[a, b]%R &, nondecreasing_fun f}.
@@ -206,53 +186,6 @@ by apply: is_countable_preimages_gt1_nondecreasing_fun.
 Qed.
 
 End lemma2i.
-
-(* (* unprovable *) *)
-(* have bigcapFG : \bigcap_n (F @` (G_ n)) = \bigcap_n (F @` (G' n)). *)
-(*   rewrite eqEsubset; split. *)
-(*     move=> y/= FGn. *)
-(*     move=> n Nn /=. *)
-(*     by move: (FGn n Nn) => [x [_ ?] ?]; exists x. *)
-(*   (* unprovable direction *) *)
-(*   move=> y/= FGn. *)
-(*   move=> n Nn/= . *)
-(*   move: (FGn n Nn) => [x G'nx Fxy]. *)
-(*   have : exists z, `[a, b]%classic z /\ F z = y. *)
-(*     have [z] := UG0. *)
-(*     rewrite bigcapIr/=[Zab UG'z]. *)
-(*     case => + _. *)
-(*     move/(_ x). *)
-(*     move=> /=. *)
-(*     admit. *)
-(*   admit. *)
-(* have [eq1 eq2] := (@lemma1 _ _ _ F _ G_ (fun i => (@subIsetl _ _ _))). *)
-(* (* w.l.o.g. F @` G_ n is a countable union of intervals *) *)
-(*  wlog: G_ G_E G0 Gab near_eqG near_capG bigcapG bigcapFG eq1 eq2 / (exists ab_ : nat -> nat -> (R * R), *)
-(*       forall n,(forall i, (ab_ n i).1 < (ab_ n i).2) *)
-(*         /\ F @` (G_ n) = \bigcup_i `](ab_ n i).1, (ab_ n i).2[%classic). *)
-(*   admit. *)
-(* move=> [ab_ Hab_]. *)
-(* have ab12 n i : (ab_ n i).1 < (ab_ n i).2 by have [+ _] := (Hab_ n). *)
-(* rewrite -(setIidPr (\bigcap_i (F @` (G' i))) (F @` \bigcap_i (G' i))).2; last first. *)
-(*   move=> _ /= [x G'x <-] n _ /=. *)
-(*   by exists x => //; apply: G'x. *)
-(* rewrite -setDD. *)
-(* apply: measurableD. *)
-(*   rewrite -bigcapFG. (* ? *) *)
-(*   apply: bigcap_measurable => n _. *)
-(*   rewrite (Hab_ n).2. *)
-(*   exact: bigcup_measurable => k _. *)
-(* apply: countable_lebesgue_measurable. *)
-(* apply: (@sub_countable _ _ _ (preimages_gt1 F)); last exact: is_countable_preimages_gt1_nondecreasing_fun. *)
-(* apply: subset_card_le. *)
-(* rewrite [X in X `<=` _](_:_= \bigcap_i F @` (G_ i) `\` F @` (\bigcap_i (G_ i))); last by rewrite bigcapFG bigcapG. *)
-(* have Giab i : G_ i `<=` `[a, b]. *)
-(*   rewrite G_E. *)
-(*   exact: subIsetl. *)
-(* move=> y/=[FGy nFGy]. *)
-(* apply: contrapT => nBy. *)
-(* apply: nFGy. *)
-(* apply: (eq1 y) => /=; by split. *)
 
 Section image_interval_continuous.
 Variables (x y : R).
