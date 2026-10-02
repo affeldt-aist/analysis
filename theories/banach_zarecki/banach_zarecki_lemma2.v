@@ -189,7 +189,7 @@ End lemma2i.
 
 Section image_interval_continuous.
 Variables (x y : R).
-Hypothesis (xy : x < y).
+Hypothesis (xy : x < y). (* (xy : x <= y) ? *)
 Hypothesis (xyab : `]x, y[ `<=` `]a, b[).
 Hypothesis cfxy : {within `[x, y], continuous f}.
 
@@ -427,6 +427,7 @@ rewrite [leLHS](_:_= mu (\bigcap_i [set f x | x in G i] `\` preimages_gt1 f)).
       apply: image_subset.
       exact: Gab.
     rewrite integral_continuous_nondecreasing_itv //.
+        exact: ltW.
       move: ndf.
       apply: itv_sub_in2.
       exact: subset_itv_oo_cc.
