@@ -6,7 +6,7 @@ From mathcomp Require Import unstable.
 From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype derive.
 From mathcomp Require Import sequences measure lebesgue_measure numfun realfun.
-From mathcomp Require Import absolute_continuity.
+From mathcomp Require Import absolute_continuity merge_extra.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 5)                                         *)
@@ -89,20 +89,6 @@ apply: ih.
 rewrite -lock in s0s1 s1x.
 apply: (@path_sorted _ _ s0). (* TODO: path_sorted implicits *)
 by rewrite rcons_path s1x s0s1.
-Qed.
-
-Lemma path_merge d {R : orderType d} (a : R) s h :
-  (a < h)%O ->
-  path <%O a s -> path <=%O a (merge <%O s [:: h]).
-Proof.
-elim: s a h => [a h ah _/=|s0 s1 ih a h ah].
-  by rewrite ltW// andbT.
-rewrite /= => /andP[as0 s0s1].
-case: ifPn => s0h /=.
-  by rewrite (ltW as0)/= ih.
-rewrite (ltW ah)/=.
-rewrite leNgt/= s0h/=.
-by apply: sub_path s0s1 => x y /ltW.
 Qed.
 
 (* PR? *)
@@ -292,6 +278,7 @@ apply: IH => //.
 exact: lt_sorted_filter.
 Qed.
 
+(* move outside of section? *)
 Lemma filterC_split (s t : seq R) :
   sorted <=%R s ->
   s = merge <=%R [seq x <- s | x \in t] [seq x <- s | x \notin t].

@@ -32,11 +32,16 @@ Context {R : realType}.
 (* used in lemma2 *)
 (* mk banach_zarecki/lebesgue_measure_extra.v *)
 Lemma integral_continuous_nondecreasing_itv (a b : R) (f : R -> R) :
-  a < b ->
+  a <= b ->
   {within `[a, b], continuous f} ->
   {in `]a, b[ &, {homo f : x y / (x <= y)%O}} ->
   lebesgue_measure (f @` `]a, b[) = ((f b)%:E - (f a)%:E)%E.
 Proof.
+rewrite le_eqVlt => /predU1P[|].
+  move=> -> _ _.
+  rewrite set_itv_ge.
+    by rewrite bnd_simp ltxx.
+  by rewrite image_set0 measure0 subee.
 move=> ab cf ndf.
 have := (continuous_nondecreasing_image_itvoo_itv ab cf ndf).
 have ndfcc := (continuous_in_nondecreasing_oo_cc ab cf ndf).
