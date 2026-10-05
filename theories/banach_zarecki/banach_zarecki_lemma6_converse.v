@@ -11,7 +11,7 @@ From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import absolute_continuity banach_zarecki_lemma2.
 From mathcomp Require Import banach_zarecki_lemma3 banach_zarecki_lemma5.
 From mathcomp Require Import banach_zarecki_lemma4 (* for contiguous intervals *).
-From mathcomp Require Import mesh.
+From mathcomp Require Import mesh oscillation.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -115,7 +115,7 @@ exists V_; split.
   rewrite -VE.
   apply: esym.
   have /cvg_lim VIV :=
-    @nonincreasing_cvg_mu _ _ _ lebesgue_measure V_ V0oo mV mIV niV.
+    @nonincreasing_cvg_measure _ _ _ lebesgue_measure V_ V0oo mV mIV niV.
   rewrite -[LHS]VIV//.
   apply: cvg_lim => //.
   apply: (@squeeze_cvge _ _ _ _ (cst (mu Z)) _ (fun n => mu Z + (delta n)%:E)%E).
