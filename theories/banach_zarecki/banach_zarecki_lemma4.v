@@ -6,7 +6,7 @@ From mathcomp Require Import boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype.
 From mathcomp Require Import sequences measure lebesgue_measure numfun realfun.
 From mathcomp Require Import measurable_realfun.
-From mathcomp Require Import absolute_continuity.
+From mathcomp Require Import absolute_continuity oscillation.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 4)                                         *)

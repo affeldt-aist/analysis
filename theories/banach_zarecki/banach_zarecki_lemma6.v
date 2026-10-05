@@ -11,7 +11,7 @@ From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import absolute_continuity banach_zarecki_lemma2.
 From mathcomp Require Import banach_zarecki_lemma3 banach_zarecki_lemma5.
 From mathcomp Require Import banach_zarecki_lemma4 (* for contiguous intervals *).
-From mathcomp Require Import mesh.
+From mathcomp Require Import mesh oscillation.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 6)                                         *)
@@ -612,7 +612,7 @@ Section lemmas.
 Context {R : realType}.
 Local Notation mu := (@completed_lebesgue_measure R).
 
-Lemma omega_max0 (a b : R) f : omega_max a f [:: b] = oscillation f `[a, b].
+Lemma omega_max0 (a b : R) f : omega_max a [:: b] f = oscillation f `[a, b].
 Proof. by rewrite/omega_max/= big_nat1. Qed.
 
 Lemma nondecreasing_total_variation (a b : R) (f : R -> R) :
@@ -624,13 +624,11 @@ move=> bvf H x y xab yab xy.
 have axyf := @total_variation_nondecreasing R a b f _ _ xab yab xy.
 rewrite /H fine_le//.
 - apply/bounded_variationP => //.
-    by move: xab; rewrite in_itv/= => /andP[].
-  move: xab; rewrite in_itv/= => /andP[? ?].
-by move: bvf; apply: bounded_variationl.
+    by rewrite (itvP xab).
+  by move: bvf; apply: bounded_variationl; rewrite (itvP xab).
 - apply/bounded_variationP => //.
-    by move: yab; rewrite in_itv/= => /andP[].
-  move: yab; rewrite in_itv/= => /andP[? ?].
-  by move: bvf; apply: bounded_variationl.
+    by rewrite (itvP yab).
+  by move: bvf; apply: bounded_variationl; rewrite (itvP yab).
 Qed.
 
 Lemma cl_imf_tentative (a b : R) (f : R -> R) :
@@ -1218,8 +1216,7 @@ suff : (ereal_sup ((EFin \o f) @` A) <= (f r)%:E + (M + 1))%E.
   by rewrite fAy leNgt ltey negbK -(fineK Mfin).
 suff: ((EFin \o f) @` A) `<=` `]-oo, (f r)%:E + (M + 1)%E[.
   move/ereal_sup_le => /le_trans; apply.
-  apply: ge_ereal_sup => z/=.
-  by rewrite in_itv/= => /ltW.
+  by apply: ge_ereal_sup => z/= /itvP ->.
 move=> _ /= [s As <-].
 rewrite in_itv/= -(fineK Mfin) lte_fin//.
 rewrite (@le_lt_trans _ _ (f r + `|f s - f r|))//.
@@ -1341,8 +1338,7 @@ have has_lbfA : has_lbound [set f x | x in A].
   exact: subset_itv_oo_cc Ar.
 have A0 : A !=set0.
   exists ((c + d) / 2).
-  rewrite /A/= in_itv/=.
-  by rewrite !midf_lt//=.
+  by rewrite /A/= in_itv/= !midf_lt.
 have supfA : has_sup (f @` A) by split => //; exact: image_nonempty.
 have inffA : has_inf (f @` A) by split => //; exact: image_nonempty.
 pose S : set (\bar R):= [set `|f x - f y|%:E | x in A & y in A].
@@ -1413,11 +1409,10 @@ have [u_lt_v|v_lt_u|u_eq_v] := ltgtP u v.
     have [x [y [Ax Ay xy]]] : exists x y : R, [/\ A x, A y & (x < y)%R].
       set x := (c + d) / 2.
       set y := (x + d) / 2.
-      have Ax : A x.
-        by rewrite /A /= in_itv/= !midf_lt.
+      have Ax : A x by rewrite /A /= in_itv/= !midf_lt.
       have Ay : A y.
         rewrite /A /= in_itv/= !midf_lt// andbT.
-        by rewrite (@lt_trans _ _ x) ?midf_lt//.
+        by rewrite (@lt_trans _ _ x) ?midf_lt.
       exists x, y; split => //.
       rewrite midf_lt//.
       by move/mem_set : Ax; rewrite inE => /itvP ->.
@@ -2448,7 +2443,7 @@ case: p pE pltm2.
   have := xn.
   move/contiguous_intervalsS.
   move/cplt_hull_subset_Rhull.
-  by rewrite compact_Rhull//= in_itv/= => /andP[].
+  by rewrite compact_Rhull//= => /itvP ->.
 move=> p pE p1ltm2.
 rewrite leNgt; apply/negP.
 rewrite cbE/= bnth.
@@ -2483,7 +2478,7 @@ have : d_ m p < x.
     have : A n < B (idx A B m p).
       apply: (@lt_trans _ _ x).
         move: xn.
-        by rewrite contiguous_ooitv//= in_itv/= => /andP[].
+        by rewrite contiguous_ooitv//= => /itvP ->.
       rewrite xamp /a_ anth.
       have [-> _ _] := nth_abE A B d pltm1.
       rewrite -idxE.
@@ -2493,8 +2488,7 @@ have : d_ m p < x.
       by apply.
     exists ((A (idx A B m p) + B n) / 2); split.
       rewrite contiguous_ooitv//= in_itv/=.
-      apply/andP; split.
-        by rewrite midf_lt.
+      rewrite midf_lt//=.
       rewrite -/(B (idx A B m p)) mulrDl.
       rewrite (splitr (B (idx A B m p))).
       apply: ltr_leD.
@@ -2550,7 +2544,7 @@ have := @disjoint_contiguous_intervals _ Z.
 move/trivIsetP/(_ (h1 n) (h1 (idx A B m p))).
 move/(_ I I np).
 apply/eqP/set0P; exists x; split => //.
-by rewrite contiguous_ooitv//= in_itv/=; apply/andP; split.
+by rewrite contiguous_ooitv//= in_itv/= Apx xBp.
 Qed.
 
 Lemma hullZ_abcd n : c < d -> compact Z -> Z !=set0 ->
@@ -2630,7 +2624,7 @@ apply/seteqP; split => [r|r].
     rewrite compact_Rhull// in_itv/=; apply/andP; split.
       apply: (le_trans _ air).
       by apply clea_bled.
-    apply: (le_trans rbi).
+    rewrite (le_trans rbi)//.
     by apply clea_bled.
 Qed.
 
