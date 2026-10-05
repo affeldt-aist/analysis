@@ -3,17 +3,14 @@ From Stdlib Require Import Bool.
 From mathcomp Require Import boot order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import unstable.
-From mathcomp Require Import mathcomp_extra boolp contra classical_sets functions.
+From mathcomp Require Import boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype derive.
 From mathcomp Require Import sequences measure lebesgue_measure numfun realfun.
-From mathcomp Require Import absolute_continuity merge_extra.
+From mathcomp Require Import absolute_continuity merge_extra mesh.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 5)                                         *)
 (*                                                                            *)
-(* ```                                                                        *)
-(*    mesh a b s == mesh of the partition s over [a, b]                       *)
-(* ```                                                                        *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -1691,19 +1688,6 @@ Qed.
 
 End variation_merge_omega_max.
 
-Section mesh_lemmas.
-Context {R : realType}.
-Implicit Types (a b : R) (f : R -> R).
-Implicit Types (s : seq R) (x : R).
-
-Definition mesh a b s : R := let pnth := nth b (a :: s) in
-  (\big[maxr/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
-
-Lemma mesh_ge0 a b s : 0 <= mesh a b s.
-Proof. by rewrite /mesh. Qed.
-
-End mesh_lemmas.
-
 Section bigmax.
 
 Lemma le_bigmax_seq2 {T: eqType} d {T' : orderType d} idx idx' (r s : seq T)
@@ -2436,18 +2420,6 @@ have [xy|yx] := leP x y.
 by rewrite gtr0_norm ?subr_gt0// lerB.
 Qed.
 
-Lemma bigmaxr_morph {R : realType} n (f : nat -> R) :
-  \big[maxr/0]_(0 <= i < n) `|f i| =
-  (\big[maxr/0%:nng]_(0 <= i < n)
-      `|f i|%:nng)%:num.
-Proof.
-elim/big_ind2 : _ => //= x1 _ y1 _ -> ->.
-rewrite !/maxr.
-case: ifPn => x1y1; case: ifPn => // y1x1.
-  by apply/eqP; rewrite eq_le (ltW x1y1) andbT leNgt.
-by apply/eqP; rewrite eq_le andbC leNgt x1y1/= ltW.
-Qed.
-
 Section lemma5.
 Context {R : realType}.
 Variables (a b : R) (f : R -> R).
@@ -2468,7 +2440,7 @@ Lemma lemma5' :
   forall A : R, (0%:E <= A%:E < total_variation a b f)%E ->
     exists2 delta, 0 < delta &
       (forall p, itv_partition a b p ->
-       mesh a b p < delta -> (* le? *)
+       mesh a p < delta -> (* le? *)
               A < variation a b f p).
 Proof.
 move=> A /andP[].
@@ -2581,7 +2553,7 @@ case: X'0 mE X' X'E partX' X'V' sleX' V0E sorted_X' X'0ab sX'0 => //=.
 move=> X'00 X'01 mE X' X'E partX' X'V' sleX' V0E sorted_X' X'0ab sX'0.
 rewrite -lee_pdivlMl.
   by rewrite mulr_gt0.
-rewrite (_ : ((V' - A) / 2) = (m%:R * 2)%R * eps)%R.
+rewrite (_ : (V' - A) / 2 = (m%:R * 2) * eps).
   rewrite epsE.
   rewrite (_ : 4 = 2 * 2)%N//.
   rewrite mulnAC 2!natrM.
@@ -2655,10 +2627,13 @@ have : forall x y, x \in `[(nth b (a :: p) n), (nth b p n)] ->
     rewrite [in leRHS]distrC.
     exact: mem_interval_le.
   apply: le_lt_trans abpd.
-  apply: (@le_trans _ _ (\big[maxr/0]_(0 <= n0 < size p)
-      `|nth b p n0 - nth b (a :: p) n0|)); last first.
+  apply: (@le_trans _ _ (\big[maxr/0]_(0 <= i < size p)
+      `|p`_i - (a :: p)`_i|)); last first.
     by rewrite /mesh/= -bigmaxr_morph.
-  apply: (le_bigmax_seq _ _ _ (fun=> _)(*TODO: wtf*)) => //=.
+  rewrite (@set_nth_default _ p 0 b)//.
+  rewrite (@set_nth_default _ (a :: p) 0 b)/=.
+    exact: ltnW.
+  apply: (le_bigmax_seq _ _ _ (fun=> _)) => //.
   by rewrite mem_index_iota leq0n.
 move=> H.
 rewrite lerBlDl; apply: ge_sup => //.
@@ -2678,7 +2653,7 @@ Qed.
 
 Definition variations_with_max a b f l : set R :=
    [set r| exists s, [/\ r = variation a b f s,
- itv_partition a b s & (mesh a b s <= l)%R]].
+ itv_partition a b s & (mesh a s <= l)%R]].
 
 (*lemma5' :
   bounded_variation a b f ->
@@ -2713,7 +2688,7 @@ Local Definition lambda_partition (a b : R) (lambda : R) :=
   [seq (a + (b - a) * i.+1%:R / n%:R) | i <- iota 0 n].
 
 Lemma mesh_lambda x :
-  mesh a b (lambda_partition a b x) =
+  mesh a (lambda_partition a b x) =
      (b - a) / `|ceil ((b - a) / x)|%N%:R.
 Proof.
 apply/eqP; rewrite eq_le; apply/andP; split.
@@ -2761,7 +2736,7 @@ Abort.
 
 Definition variations_with_restr a b f l : set R :=
    [set r| exists s, [/\ r = variation a b f s,
- itv_partition a b s & (l <= mesh a b s)%R]].
+ itv_partition a b s & (l <= mesh a s)%R]].
 
 Lemma variation_with_restr0E l : l <= 0 ->
   variations_with_restr a b f l = variations a b f.
@@ -2802,7 +2777,7 @@ Abort.
 
 Lemma lemma5 (l : R^nat) (s : (seq R)^nat) :
   (forall n, itv_partition a b (s n)) ->
-  (forall n, mesh a b (s n) <= l n) ->
+  (forall n, mesh a (s n) <= l n) ->
   l i @[i --> \oo] --> 0 ->
   (variation a b f (s n))%:E @[n --> \oo] --> total_variation a b f.
 Proof.
@@ -2835,7 +2810,7 @@ have [tvfoo|] := eqVneq (total_variation a b f) +oo%E.
         by rewrite (le_trans _ (xl _))// mesh_ge0.
       over.
     by [].
-  have mxe : \forall n \near \oo, mesh a b (s n) < e.
+  have mxe : \forall n \near \oo, mesh a (s n) < e.
     by apply: filterS lne => n; exact: le_lt_trans.
   move=> abA.
   apply: filterS mxe => n /abA - /(_ (pabx n)).
@@ -3379,14 +3354,14 @@ elim/last_ind : t a b ab s.
   done.
 move=> t0 t1 ih a b ab s cf pas lsb sorted_t notins.
 have le_sorted_s: sorted <=%R s.
-  by have [/path_sorted] := pas.
+  by have /path_sorted := pas.
 have le_sorted_t0: sorted <=%R t0.
-  have [] := sorted_t.
+  have := sorted_t.
   by rewrite le_sorted_rconsE => /andP[].
 rewrite -cats1.
 rewrite merge_cats1//; first by rewrite cats1.
 have [k ks t1k] : exists2 k,
-   (k.+1 < size ((a :: merge <%R s t0)))%N &
+   (k.+1 < size (a :: merge <%R s t0))%N &
      t1 \in `](nth b (a :: merge <%R s t0) k),
      (nth b (a :: merge <%R s t0) k.+1)[.
 (*
@@ -3521,7 +3496,7 @@ Lemma lemma5'_le a b f :
   forall A : R, (0%:E <= A%:E < total_variation a b f)%E ->
     exists2 delta, 0 < delta &
       (forall p, (path <=%R a p /\ last a p <= b) ->
-       mesh a b p < delta -> (* le? *)
+       mesh a p < delta -> (* le? *)
               A < variation a b f p).
 Proof.
 move=> A /andP[].
@@ -3733,7 +3708,7 @@ Admitted.
 Lemma lemma5_le a b f (l : R^nat) (s : (seq R)^nat) :
   (forall n, path <=%R a (s n)) ->
   (forall n, last a (s n) <= b) ->
-  (forall n, mesh a b (s n) <= l n) ->
+  (forall n, mesh a (s n) <= l n) ->
   l i @[i --> \oo] --> 0 ->
   (variation a b f (s n))%:E @[n --> \oo] --> total_variation a b f.
 Proof.

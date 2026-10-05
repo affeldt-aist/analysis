@@ -27,29 +27,6 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-Lemma mem_interval_le (R : realDomainType) (x y a b : R) :
-  x \in `[a, b] -> y \in `[a, b] -> `|x - y| <= `|a - b|.
-Proof.
-rewrite !in_itv/= => /andP[ax xb] /andP[ay yb].
-rewrite (@ler0_norm _ (a - b)); first by rewrite subr_le0 (le_trans ax).
-rewrite opprB.
-have [xy|yx] := leP x y.
-  by rewrite ler0_norm ?subr_le0// opprB lerB.
-by rewrite gtr0_norm ?subr_gt0// lerB.
-Qed.
-
-Lemma bigmaxr_morph {R : realType} n (f : nat -> R) :
-  \big[maxr/0]_(0 <= i < n) `|f i| =
-  (\big[maxr/0%:nng]_(0 <= i < n)
-      `|f i|%:nng)%:num.
-Proof.
-elim/big_ind2 : _ => //= x1 _ y1 _ -> ->.
-rewrite !/maxr.
-case: ifPn => x1y1; case: ifPn => // y1x1.
-  by apply/eqP; rewrite eq_le (ltW x1y1) andbT leNgt.
-by apply/eqP; rewrite eq_le andbC leNgt x1y1/= ltW.
-Qed.
-
 Section preliminaries_all2_nthP.
 
 Context {S T : Type}.
@@ -5193,7 +5170,7 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
   apply/andP; split.
     by rewrite daE -/a_; apply clea_bled.
   by rewrite daE -/a_; apply aled.
-have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
+have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   rewrite /xs mesh_cons.
   rewrite (_ : c = c_ n 0); first by rewrite /c_ cbE eqxx.
   rewrite /maxr; case : ifP => _; last first.
@@ -5207,7 +5184,7 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     rewrite (le_trans _ (diam_max_cons _ _))//.
     rewrite diam_itv; first exact: cled.
     by rewrite ger0_norm// subr_ge0 cled.
-  rewrite mesh_flatten => //.
+  rewrite (@mesh_flatten _ _ d)//.
   - apply/allP => /= i /flattenP[j ].
     rewrite /xs'.
     rewrite mem_intlv.
@@ -5314,19 +5291,10 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     have ? : (0 < size (xs' n))%N.
       rewrite size_intlv size_map size_iota size_reshape size_nseq.
       by rewrite size_behead size_seq_d/= minnn.
-    rewrite (_ : nth d [seq last d s | s <- xs' n] 0 =
-       last d (lambda_partition (d_ n 0) (c_ n 1) (fine (lambda n)))).
-      rewrite (nth_map [::])//.
-      rewrite nth_intlvE.
-      rewrite ifT//.
-      rewrite nth_map_iota//.
-      by rewrite ltn_half_double.
     rewrite nth_intlvE.
     rewrite ifT//.
     rewrite nth_map_iota.
       by rewrite ltn_half_double.
-    rewrite last_lambda//.
-      by apply: dltc => //=; rewrite -double_gt0.
     apply: ltW.
     apply: lambda_partition_mesh => //.
     by apply: dltc => //=; rewrite -double_gt0.
@@ -5344,8 +5312,6 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     rewrite (_ : n.+1.-1 = n)//.
     rewrite (nth_map [::])//.
       by rewrite size_xs' ltnW.
-    rewrite (nth_map [::])//.
-      by rewrite size_xs'.
     rewrite [X in nseq X](_ : _ = size (behead (seq_d n))).
       by rewrite size_behead size_seq_d.
     rewrite reshape_nseq1.
@@ -5380,8 +5346,6 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
     by rewrite mem_iota add0n leq0n/= ltnS ltn_half_double ltnW.
   rewrite (nth_map [::])//.
     by rewrite size_xs' ltnW.
-  rewrite (nth_map [::])//.
-    by rewrite size_xs'.
   rewrite nth_map_iota.
     by rewrite ltn_half_double.
   rewrite nth_intlvE size_xs' (ltnW i1ltn2).
@@ -5396,14 +5360,7 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   rewrite -[nth _ _ _]/(d_ n (i./2).+1).
   rewrite uphalf_half oddi add1n.
   (* *)
-  rewrite nth_intlvE size_xs' i1ltn2.
-  rewrite oddS oddi/=.
-  rewrite nth_map_iota.
-    by rewrite ltn_uphalf_double.
-  rewrite last_lambda//.
-    rewrite dltc//.
-    by rewrite ltn_uphalf_double.
-  rewrite uphalf_half oddi add1n ltW//.
+  rewrite ltW//.
   rewrite lambda_partition_mesh.
   rewrite dltc//=.
   rewrite -ltn_half_double in i1ltn2.
@@ -5414,13 +5371,6 @@ have mesh_xs n : mesh c d (xs n) <= fine (lambda n).
   by rewrite oddS oddi add0n => ->.
   exact: lambda_gt0.
   done.
-(*
-have cd_xs n :
-    (forall (i j : 'I_ n.+1), nth d (xs n) j \notin `]c_ n i, d_ n i[).
-  admit.
-have sub_xcd n : subseq (CD_ n) (xs n).
-  admit.
-*)
 pose S_ n : R := variation c d f (xs n).
 (* (2) *)
 pose V_ n : \bar R := \sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|%:E +

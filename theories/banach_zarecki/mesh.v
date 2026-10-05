@@ -14,6 +14,11 @@ From mathcomp Require Import realfun exp derive borel_hierarchy.
 From mathcomp Require Import absolute_continuity.
 
 (**md**************************************************************************)
+(*                                                                            *)
+(* `mesh a b s`                                                               *)
+(* : the mesh of the subdivision of the interval $[a, b]$, i.e., the max      *)
+(* : of $|p_{i+1} - p_i|$ where $p$ is the list representing the subdivision  *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -25,14 +30,10 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-(* ??? *)
-Import MaxNngComLaw.
-
 (* TODO: move *)
 Lemma bigmaxr_morph {R : realType} n (f : nat -> R) :
   \big[maxr/0]_(0 <= i < n) `|f i| =
-  (\big[maxr/0%:nng]_(0 <= i < n)
-      `|f i|%:nng)%:num.
+  (\big[maxr/0%:nng]_(0 <= i < n) `|f i|%:nng)%:num.
 Proof.
 elim/big_ind2 : _ => //= x1 _ y1 _ -> ->.
 rewrite !/maxr.
@@ -41,47 +42,47 @@ case: ifPn => x1y1; case: ifPn => // y1x1.
 by apply/eqP; rewrite eq_le andbC leNgt x1y1/= ltW.
 Qed.
 
-(* TODO: make mesh.v *)
 Section mesh_def.
 Context {R : realType}.
-Implicit Types (a b : R) (f : R -> R).
-Implicit Types (s : seq R) (x : R).
+Implicit Types (a : R) (f : R -> R) (s t : seq R) (x : R).
 
-Definition mesh a b s : R := let pnth := nth b (a :: s) in
-  (\big[@maxr {nonneg R}/0%:nng]_(0 <= n < size s) `|pnth n.+1 - pnth n|%:nng)%:num.
+(* NB: We can use 0 as a default element because inside the definition the list
+   is never addressed out-of-bounds. *)
+Definition mesh a s : R :=
+  let pnth := nth 0 (a :: s) in
+  (\big[@maxr {nonneg R}/0%:nng]_(0 <= i < size s) `|pnth i.+1 - pnth i|%:nng)%:num.
 
 End mesh_def.
 
 Section mesh_lemmas.
 Context {R : realType}.
-Implicit Types (a b : R) (f : R -> R).
-Implicit Types (s : seq R) (x : R).
+Implicit Types (a : R) (f : R -> R) (s : seq R) (x : R).
 
-Lemma mesh_ge0 a b s : 0 <= mesh a b s.
+Lemma mesh_ge0 a s : 0 <= mesh a s.
 Proof. by rewrite /mesh. Qed.
 
-Lemma mesh0 a b : mesh a b [::] = 0.
+Lemma mesh0 a : mesh a [::] = 0.
 Proof.
 by rewrite /mesh/= big_mkord big_ord0.
 Qed.
 
-Lemma mesh_seq1 (a b x : R) : mesh a b [:: x] = `|x - a|.
+Lemma mesh_seq1 a x : mesh a [:: x] = `|x - a|.
 Proof.
-rewrite /mesh big_nat1_id /=.
+rewrite /mesh big_nat1_id/=.
 rewrite widen_itvE.
 (* note: _%:num := num _ *)
 rewrite num_max/=.
-rewrite max_l//.
+by rewrite max_l.
 Qed.
 
-Lemma mesh_cons (a b x : R) (s : seq R) :
-  mesh a b (x :: s) = maxr `|x - a| (mesh x b s).
+Lemma mesh_cons a x s :
+  mesh a (x :: s) = maxr `|x - a| (mesh x s).
 Proof.
 by rewrite /mesh -!bigmaxr_morph/= big_nat_recl.
 Qed.
 
-Lemma mesh_cat (a b : R) (s t : seq R) :
-  mesh a b (s ++ t) = maxr (mesh a b s) (mesh (last a s) b t).
+Lemma mesh_cat a s t :
+  mesh a (s ++ t) = maxr (mesh a s) (mesh (last a s) t).
 Proof.
 elim: s a.
   by move=> ?; rewrite mesh0 max_r// mesh_ge0.
@@ -89,25 +90,14 @@ move=> s0 s1 IH a.
 by rewrite !mesh_cons IH maxA.
 Qed.
 
-(* need change of definition of mesh? *)
-Lemma mesh_default (a b c : R) (s : seq R) :
-  mesh a b s = mesh a c s.
-Proof.
-elim: s a.
-  by move=> ?; rewrite !mesh0.
-move=> s0 s1 IH a.
-by rewrite !mesh_cons IH.
-Qed.
-
 Lemma mesh_flatten a b (ss : seq (seq R)) :
   all (fun s => s != [::]) ss ->
   all (fun x => a <= x <= b) (flatten ss) ->
   sorted <=%R (flatten ss) ->
-  mesh a b (flatten ss) =
+  mesh a (flatten ss) =
   \big[maxr/0%R]_(i < size ss)
     mesh
      (nth b [seq last b s | s <- [:: a] :: ss] i)
-     (nth b [seq last b s | s <- ss] i)
      (nth [::] ss i).
 Proof.
 elim: ss a.
@@ -117,9 +107,8 @@ case => //.
   rewrite /= => IH a.
   rewrite cats0 andbT => s0 abs ss.
   (* rewrite big_ord1. *)
-  rewrite big_ord_recl big_ord0/= max_l.
-    exact: mesh_ge0.
-  exact: mesh_default.
+  rewrite big_ord_recl big_ord0/= max_l//.
+  exact: mesh_ge0.
 move=> s' ss IH a/=.
 move=> /andP[s0 /andP[s'0 ss0]].
 rewrite all_cat => /andP[abs abss].
@@ -163,16 +152,14 @@ rewrite -IH//.
   move: sorted_ss.
   move/le_sorted_leq_nth; apply => //.
     by rewrite inE; apply: leq_ltn_trans xs'.
-rewrite mesh_cat; congr maxr.
-  exact: mesh_default.
-congr mesh.
+rewrite mesh_cat; congr (maxr _ (mesh _ _)).
 apply: set_last_default.
 by case: s s0 abs last_s Hsorted2 sorted_s ls_hs'.
 Qed.
 
-Lemma mesh_merge1_le a b s x :
+Lemma mesh_merge1_le a s x :
   a <= x ->
-  mesh a b (merge <=%R s [:: x]) <= mesh a b s.
+  mesh a (merge <=%R s [:: x]) <= mesh a s.
 Proof.
 move=> ax.
 set n := find (> x) (a :: s).
@@ -195,8 +182,8 @@ Abort.
 
 Lemma mesh_merge1' a b l s x :
   path <=%R a s -> last a s == b ->
-  mesh a b s <= l ->
-  mesh a b (merge <=%R s [:: x]) <= l.
+  mesh a s <= l ->
+  mesh a (merge <=%R s [:: x]) <= l.
 Proof.
 elim: s => //.
   move=> ? /=.
@@ -205,28 +192,27 @@ elim: s => //.
 rewrite /mesh /=.
 Abort.
 
-Lemma mesh_merge a b l s t :
-  mesh a b s <= l ->
-  mesh a b (merge <=%R s t) <= l.
+Lemma mesh_merge a l s t :
+  mesh a s <= l ->
+  mesh a (merge <=%R s t) <= l.
 Proof.
 Abort.
 
 
 Lemma mesh_mem_filter (a b c d : R) (s : seq R) :
   a <= c -> d <= b ->
-  mesh c d [seq x <- s | x \in `[c, d]] <= mesh a b s.
+  mesh c [seq x <- s | x \in `[c, d]] <= mesh a s.
 Proof.
 Abort.
 
-Lemma mesh_filter (a b : R) (s : seq R) (P : pred R) :
-  mesh a b [seq x <- s | P x] <= mesh a b s.
+Lemma mesh_filter (a : R) (s : seq R) (P : pred R) :
+  mesh a [seq x <- s | P x] <= mesh a s.
 Proof.
 Abort.
 
 End mesh_lemmas.
 
 Section lambda_partition.
-
 Context {R : realType}.
 
 Definition lambda_partition (a b : R) (lambda : R) :=
@@ -248,13 +234,13 @@ Qed.
 
 Lemma lambda_partition_mesh (a b l : R) :
   a < b -> 0 < l ->
-   mesh a b (lp a b l) < l.
+   mesh a (lp a b l) < l.
 Proof.
 move=> ab l0.
 rewrite /mesh.
 
 have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
- `|nth b (a :: lp a b l) n.+1 - nth b (a :: lp a b l) n|%:nng < NngNum (ltW l0).
+ `|(a :: lp a b l)`_n.+1 - (a :: lp a b l)`_ n|%:nng < NngNum (ltW l0).
   move=> n /andP[_ nl]; rewrite -num_lt/=.
   rewrite /lp nth_map_iota//.
   case: n nl.
@@ -267,9 +253,9 @@ have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
   rewrite ltnS => nbal.
   rewrite [X in _ - X]
       (_: _ = a + (b - a) * n.+1%:R / (truncn ((b - a) / l)).+1%:R).
-    transitivity (nth b
+    transitivity (
     ([seq a + (b - a) * i.+1%:R /
-     (truncn ((b - a) / l)).+1%:R | i <- iota 0 (truncn ((b - a) / l)).+1])
+     (truncn ((b - a) / l)).+1%:R | i <- iota 0 (truncn ((b - a) / l)).+1])`_
     n).
       done.
     rewrite nth_map_iota//.
@@ -282,7 +268,7 @@ have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
   exact: truncnS_gt.
 have l0_nng : 0%:nng < NngNum (ltW l0).
   by rewrite -num_lt.
-move/(bigmax_lt (iota 0 (size (lp a b l))) l0_nng).
+move/(bigmax_lt (iota 0 (size (lp a b l) - 0)) l0_nng).
 rewrite -num_lt//.
 apply: le_lt_trans.
 rewrite num_le.
