@@ -612,7 +612,7 @@ Section lemmas.
 Context {R : realType}.
 Local Notation mu := (@completed_lebesgue_measure R).
 
-Lemma omega_max0 (a b : R) f : omega_max a b f [:: b] = oscillation f `[a, b].
+Lemma omega_max0 (a b : R) f : omega_max a f [:: b] = oscillation f `[a, b].
 Proof. by rewrite/omega_max/= big_nat1. Qed.
 
 Lemma nondecreasing_total_variation (a b : R) (f : R -> R) :
