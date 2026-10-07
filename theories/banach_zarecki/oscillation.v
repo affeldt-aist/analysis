@@ -313,8 +313,8 @@ Implicit Types (a : R) (f : R -> R) (s : seq R) (x : R).
 (* NB: we can take 0 as a default element since the list is never addressed
    out of bounds in the definition *)
 Definition omega_max a s f : \bar R :=
-   \big[maxe/-oo%E]_(0 <= n < size s) oscillation f
-    `[(a :: s)`_n, (a :: s)`_n.+1].
+   \big[maxe/-oo%E]_(0 <= i < size s) oscillation f
+    `[(a :: s)`_i, (a :: s)`_i.+1].
 
 (*
 Lemma bigmaxE T Q FH :
