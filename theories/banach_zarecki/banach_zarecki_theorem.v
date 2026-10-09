@@ -46,20 +46,7 @@ apply: Banach_Zarecki_nondecreasing => //. (* lemma 7 *)
   + apply/(bounded_variationP _ ax); exact:(bounded_variationl _ xb).
   + apply/(bounded_variationP _ ay); exact:(bounded_variationl _ yb).
   + by apply: (@total_variation_nondecreasing _ _ b); rewrite ?in_itv /= ?ax ?ay.
-- by apply: lemma6_direct_new.lemma6_direct => //.
+- exact: ene6_direct_new.ene6_direct.
 Qed.
-
-Theorem Banach_Zarecki_converse (f : R -> R) :
-  abs_cont a b f ->
-  [/\ {within `[a, b], continuous f},
-  bounded_variation a b f &
-  lusinN `[a, b] f].
-Proof.
-move=> acf; split.
-- admit.
-- admit.
-- (* lemma6_converse? *)
-  admit.
-Admitted.
 
 End banach_zarecki.

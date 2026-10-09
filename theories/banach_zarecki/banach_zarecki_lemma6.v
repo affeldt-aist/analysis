@@ -3558,9 +3558,9 @@ Lemma total_variation_intlv_split (A B : seq R) (d0 d1 : R) :
   a <= b ->
   itv_partition a b (intlv A B) ->
   total_variation a b f =
-   \sum_(i < (minn (size A) (size B)))
+   \sum_(i < minn (size A) (size B))
        total_variation (nth d0 (a :: B) i) (nth d1 A i) f +
-   \sum_(i < (minn (size A) (size B)))
+   \sum_(i < minn (size A) (size B))
        total_variation (nth d1 A i) (nth d0 B i) f.
 Proof.
 move=> ab pAB.
@@ -4258,8 +4258,8 @@ apply: bounded_variationl abf => //.
 by rewrite (le_trans ac).
 Qed.
 
-Module lemma6_direct_new.
-Section lemma6_direct.
+Module ene6_direct_new.
+Section ene6_direct.
 Context {R : realType}.
 Local Notation mu := (@completed_lebesgue_measure R).
 
@@ -4666,7 +4666,7 @@ Qed.
 Import MeasurableR.
 
 (* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
-Lemma lemma6_direct : lusinN `[a, b] H.
+Lemma ene6_direct : lusinN `[a, b] H.
 Proof.
 apply: contrapT => nl.
 (* use lemma 3 *)
@@ -5664,7 +5664,7 @@ have cdbvf : bounded_variation c d f.
   apply: bounded_variationr ac _ bvf.
   by apply: ltW; exact: (lt_le_trans cd).
 have Soo_tv : (S_ n)%:E @[n --> \oo] --> Vcd.
-  exact: lemma5 lambda0.
+  exact: ene5 lambda0.
 have Voo_V : V_ n @[n --> \oo] --> Vcd.
   apply: (squeeze_cvge _ _ _ _ _ Soo_tv) => //.
   apply: nearW => n.
@@ -6281,8 +6281,8 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
     \sum_(n <= j <oo | `[< `[A_ j, B_ j] `<=` `[c_ n i, d_ n i] >])
      oscillation f `[A_ j, B_ j])%E.
     move => i.
-(* change to lemma4_cover *)
-    have /andP[le1 le2] := @lemma4_cover _ _ _ (cled lbZ ubZ h1 cZ Z_nonempty n i) f _
+(* change to ene4_cover *)
+    have /andP[le1 le2] := @ene4_cover _ _ _ (cled lbZ ubZ h1 cZ Z_nonempty n i) f _
     (fun k : nat => (A_ (n + k)%N, B_ (n + k)%N)) (cf_cd n i)
     (itvfcd n i) (hull_Zsub n i)
     (fun k => contiguous_intervals1_le_contiguous_intervals2 (h1 (n + k)) lbZ ubZ)
@@ -6443,88 +6443,6 @@ Unshelve. all: end_near.
 all: exact: [::].
 Qed.
 
-End lemma6_direct.
+End ene6_direct.
 
-End lemma6_direct_new.
-
-Section lemma6_converse.
-Context {R : realType}.
-Variables a b : R.
-Hypotheses ab : a < b.
-
-Local Notation mu := (@completed_lebesgue_measure R).
-
-Variable f : R -> R.
-
-Let H := fun x => fine (total_variation a ^~ f x).
-
-(* lemma6(i) *)
-Lemma total_variation_Lusin :
-  {within `[a, b], continuous f} ->
-  bounded_variation a b f ->
-  lusinN `[a, b] H -> lusinN `[a, b] f.
-Proof.
-move=> cf abf.
-move=> lusinNH Z Zab/= mZ mZ0.
-have muZ_lty : ((wlength idfun)^*%mu Z < +oo)%E.
-  move: mZ0.
-  rewrite /mu/=.
-  (* TODO: lemma to avoid unfold *)
-  rewrite /completed_lebesgue_stieltjes_measure.
-  by rewrite /completed_measure_extension => ->.
-move : muZ_lty => /(@lebesgue_measure_Gdelta_approx R Z)[G [ZG oG Gnonincreasing muZ]].
-pose Z1 := `]a, b[ `&` \bigcap_i G i.
-suff: mu (f @` Z1) = 0.
-  move=> mfZ1.
-  apply/eqP; rewrite eq_le measure_ge0 andbT.
-  rewrite -mfZ1.
-  rewrite le_outer_measure//.
-  rewrite /Z1.
-
-  apply: image_subset.
-  rewrite -bigcapIr//.
-  apply: sub_bigcap => i _.
-  rewrite subsetI; split => //.
-  admit.
-have H1 : mu (H @` Z1) = mu (\bigcap_i (H @` (G i))) /\
-       mu (\bigcap_i (H @` (G i))) = 0.
-  split.
-    rewrite completed_lebesgue_measureE.
-    have := @measure_image_nondecreasing_fun R a b H ab _ G.
-    (* mismatch Z1 should be an intersection of G's... *)
-    admit.
-
-(*      rewrite fine_le//.
-      + apply/bounded_variationP => //.
-        exact: bounded_variationl abf.
-      + apply/bounded_variationP => //.
-        exact: bounded_variationl abf.
-      + apply: (total_variation_nondecreasing f) => //; rewrite ?in_itv/=.
-        by rewrite xa/=; exact: xb.
-        by rewrite ya/=; exact: yb.
-    - exact: total_variation_continuous.
-    - move=> k.*)
-
-  admit.
-have H2 : mu (H @` G i) @[i --> \oo] --> 0%E.
-  admit.
-pose G_ i := \bigcup_j (open_disjoint_itv (oG i) j).
-have H3 i :
-  mu (f @` Z1) = mu (f @` (\bigcup_j (Z1 `&` (open_disjoint_itv (oG i) j)))).
-  admit.
-have H4 i :
-    (mu (f @` (\bigcup_j (Z1 `&` (open_disjoint_itv (oG i) j)))) <=
-    \sum_(j <oo) (mu^* )%mu (f @` (Z1 `&` (open_disjoint_itv (oG i) j))))%E.
-  admit.
-have H5 i :
-    (\sum_(j <oo) (mu^* )%mu (f @` (Z1 `&` (open_disjoint_itv (oG i) j))) <
-    \sum_(j <oo) oscillation f (closure (open_disjoint_itv (oG i) j)))%E.
-  admit.
-have H6 i :
-    (\sum_(j <oo) oscillation f (closure (open_disjoint_itv (oG i) j)) =
-    mu (H @` G_ i))%E.
-  admit.
-apply/eqP; rewrite eq_le measure_ge0 andbT.
-Abort.
-
-End lemma6_converse.
+End ene6_direct_new.

@@ -103,3 +103,24 @@ apply/eqP; rewrite eq_le measure_ge0 andbT.
 Abort.
 
 End lemma6_converse.
+
+Section BZ_converse.
+
+Context {R : realType}.
+Variables a b : R.
+Hypotheses ab : a < b.
+
+Theorem Banach_Zarecki_converse (f : R -> R) :
+  abs_cont a b f ->
+  [/\ {within `[a, b], continuous f},
+  bounded_variation a b f &
+  lusinN `[a, b] f].
+Proof.
+move=> acf; split.
+- admit.
+- admit.
+- (* lemma6_converse? *)
+  admit.
+Admitted.
+
+End BZ_converse.
