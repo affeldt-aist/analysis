@@ -21,7 +21,7 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-Section lemma1.
+Section ene1.
 Context {R : Type}.
 
 (* Lemma not_subset01P (X : set R) (Y : set R) (f : {fun X >-> Y}) : *)
@@ -31,7 +31,7 @@ Context {R : Type}.
 (*       x1 \in (Y `&` [set y | (X `&` f @^-1` [set y])]) & *)
 (*       x0 != x1]). *)
 
-Lemma lemma1 (X : set R) (Y : set R) (f : R -> R) (I : pointedType)
+Lemma ene1 (X : set R) (Y : set R) (f : R -> R) (I : pointedType)
     (X_ : I -> set R) :
     {homo f : x / X x >-> Y x} ->
     (forall i, X_ i `<=` X) ->
@@ -71,4 +71,4 @@ have Xxi : X xi by apply: X_x; exact: X_ixi.
 by rewrite -(x_unique _ Xxi (esym fxiy)).
 Qed.
 
-End lemma1.
+End ene1.

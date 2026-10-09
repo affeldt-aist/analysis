@@ -39,7 +39,7 @@ apply/seteqP; split => [_ [x [i Di Six <-]]|_ [i Di [x Six <-]]].
 by exists x => //; exists i.
 Qed.
 
-Section lemma4_preliminaries.
+Section ene4_preliminaries.
 Context {R : realType}.
 
 Lemma eq_Rhull_itvccP A (a b : R) :
@@ -146,16 +146,16 @@ apply: subsetI_eq0. (* TODO: generalize this lemma to trivIset *)
   by apply: has_ubound_contiguous_intervals.
 Qed.
 
-End lemma4_preliminaries.
+End ene4_preliminaries.
 
-Section lemma4.
+Section ene4.
 Context {R: realType}.
 Variables a b : R.
 Hypothesis ab : a <= b.
 Local Notation mu := (@completed_lebesgue_measure R).
 Local Open Scope ereal_scope.
 
-Lemma lemma4 (f : R -> R) (P : set R) :
+Lemma ene4 (f : R -> R) (P : set R) :
   is_interval (f @` `[a, b]) ->
   (* perfect_set P *) closed P ->
  (*  a = inf P -> b = sup P -> *)
@@ -324,9 +324,9 @@ Let ex_perfect_set (cmf : cumulative R R) (cZ : set R) :
 Proof.
 Abort.
 
-End lemma4.
+End ene4.
 
-Section lemma4_cover.
+Section ene4_cover.
 Context {R: realType}.
 Variables a b : R.
 Hypothesis ab : a <= b.
@@ -370,7 +370,7 @@ have <- : mu [set` Rhull (f @` X)] =
 by rewrite le_outer_measure//; apply: sub_Rhull.
 Qed.
 
-Lemma lemma4_cover (f : R -> R) (P : set R) (xy : nat -> R * R) :
+Lemma ene4_cover (f : R -> R) (P : set R) (xy : nat -> R * R) :
   {within `[a, b], continuous f} ->
   is_interval (f @` `[a, b]) ->
   [set` Rhull P] `<=` `[a, b]%classic ->
@@ -454,4 +454,4 @@ split => /=; first exact: sigma_algebra_measurable.
 by move=> A oA; rewrite RGenOpenSets.measurableE//=; exact: sub_sigma_algebra.
 Qed.
 
-End lemma4_cover.
+End ene4_cover.

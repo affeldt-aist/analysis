@@ -25,7 +25,7 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-Section lemma3.
+Section ene3.
 Context {R : realType} (a b : R).
 Hypothesis ab : a < b.
 Import MeasurableR.
@@ -1238,4 +1238,4 @@ Qed.
 
 End main_lemma.
 
-End lemma3.
+End ene3.

@@ -167,8 +167,8 @@ theories/banach_zarecki/banach_zarecki_lemma5.v
 theories/banach_zarecki/banach_zarecki_lemma6.v
 theories/banach_zarecki/banach_zarecki_lemma7.v
 theories/banach_zarecki/banach_zarecki_lemma8.v
-theories/banach_zarecki/banach_zarecki_lemma6_converse.v
 theories/banach_zarecki/banach_zarecki_theorem.v
+theories/banach_zarecki/banach_zarecki_theorem_converse.v
 
 theories/all_analysis.v
 

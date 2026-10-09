@@ -134,8 +134,8 @@ banach_zarecki/banach_zarecki_lemma5.v
 banach_zarecki/banach_zarecki_lemma6.v
 banach_zarecki/banach_zarecki_lemma7.v
 banach_zarecki/banach_zarecki_lemma8.v
-banach_zarecki/banach_zarecki_lemma6_converse.v
 banach_zarecki/banach_zarecki_theorem.v
+banach_zarecki/banach_zarecki_theorem_converse.v
 
 all_analysis.v
 showcase/summability.v

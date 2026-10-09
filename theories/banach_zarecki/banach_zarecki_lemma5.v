@@ -2105,7 +2105,7 @@ have [xy|yx] := leP x y.
 by rewrite gtr0_norm ?subr_gt0// lerB.
 Qed.
 
-Section lemma5.
+Section ene5.
 Context {R : realType} (a b : R) (f : R -> R).
 Hypothesis (ab : a < b).
 Hypothesis cf : {within `[a, b], continuous f}.
@@ -2403,7 +2403,7 @@ apply: le_ereal_sup_tmp.
 exists (total_variation a b f).
 Abort.
 
-Lemma lemma5 (l : R^nat) (s : (seq R)^nat) :
+Lemma ene5 (l : R^nat) (s : (seq R)^nat) :
   (forall n, itv_partition a b (s n)) ->
   (forall n, mesh a (s n) <= l n) ->
   l i @[i --> \oo] --> 0 ->
@@ -2464,7 +2464,7 @@ near: n.
 exact: (cvgr_lt _ lcvg0 _ d0).
 Unshelve. all: end_near. Qed.
 
-End lemma5.
+End ene5.
 
 Section lemma5_le.
 Context {R : realType}.

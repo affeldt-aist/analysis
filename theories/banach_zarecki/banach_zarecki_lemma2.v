@@ -26,7 +26,7 @@ Import numFieldNormedType.Exports.
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
-Section lemma2.
+Section ene2.
 Context {R : realType}.
 Variable a b : R.
 Variable f : R -> R.
@@ -56,7 +56,7 @@ Let B_nonempty r : preimages_gt1 f r
 Proof. by move=> [_ /=/existsNP[x]/existsNP[_ /not_implyP[xr _]]]; exists x. Qed.
 
 (* Lemma 2 (i) *)
-Section lemma2i.
+Section ene2i.
 Notation mu := lebesgue_measure.
 
 Let ubb r : ubound (`[a, b] `&` f @^-1` [set r]) b.
@@ -185,7 +185,7 @@ apply: countable_measurable => //.
 by apply: is_countable_preimages_gt1_nondecreasing_fun.
 Qed.
 
-End lemma2i.
+End ene2i.
 
 Section image_interval_continuous.
 Variables (x y : R).
@@ -215,7 +215,7 @@ Qed.
 
 End image_interval_continuous.
 
-Section lemma2iicontinuous.
+Section ene2iicontinuous.
 Import MeasurableR.
 Lemma measurable_image_ooitv_nondecreasing_fun (x y : R) :
   x < y -> `]x, y[ `<=` `]a, b[ ->
@@ -374,7 +374,7 @@ have mFG k : measurable [set f x | x in G_ k].
   apply: measurable_image_open_nondecreasing_fun => //.
   exact: subIsetl.
 have mIFG : measurable (\bigcap_i [set f x | x in G_ i]) by apply: bigcap_measurable.
-have [eq1 eq2] := (@lemma1 _ _ _ f nat G_ homof Gab_cc).
+have [eq1 eq2] := (@ene1 _ _ _ f nat G_ homof Gab_cc).
 apply: measure_squeeze_measurable eq1 eq2.
 - apply: measurableD.
     exact: bigcap_measurable.
@@ -407,7 +407,7 @@ have Gab' : forall k, G k `<=` `[a, b].
   move=> k.
   apply: (@subset_trans _ `]a, b[%classic) => //.
   exact: subset_itv_oo_cc.
-have [HSl HSr] := lemma1 homof Gab'.
+have [HSl HSr] := ene1 homof Gab'.
 move=> Z.
 apply/eqP; rewrite eq_le; apply/andP; split.
   apply: le_outer_measure.
@@ -444,6 +444,6 @@ rewrite [leLHS](_:_= mu (\bigcap_i [set f x | x in G i] `\` preimages_gt1 f)).
 exact: le_outer_measure.
 Qed.
 
-End lemma2iicontinuous.
+End ene2iicontinuous.
 
-End lemma2.
+End ene2.
