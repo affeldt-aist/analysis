@@ -11,7 +11,7 @@ From mathcomp Require Import measurable_realfun.
 From mathcomp Require Import absolute_continuity banach_zarecki_lemma2.
 From mathcomp Require Import banach_zarecki_lemma3 banach_zarecki_lemma5.
 From mathcomp Require Import banach_zarecki_lemma4 (* for contiguous intervals *).
-From mathcomp Require Import mesh oscillation.
+From mathcomp Require Import mesh oscillation interleave.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 6)                                         *)
@@ -115,328 +115,6 @@ Qed.
 
 End all2_nthP.
 
-Section interleave.
-
-Definition seq_of_pair {T} (s : seq (T * T)) : seq (seq T) :=
-  [seq [:: ab.1; ab.2] | ab <- s].
-
-Definition intlv {T} (s t : seq T) :=
-    flatten (seq_of_pair (zip s t)).
-
-Lemma shape_pairs {T} (s : seq (T * T)) :
-  shape (seq_of_pair s) = nseq (size s) 2.
-Proof. by elim: s => [|[x y] s IH] //=; rewrite IH. Qed.
-
-Lemma size_intlv {T} (s t : seq T) :
-   (size (intlv s t) = (minn (size s) (size t)).*2)%N.
-Proof. by rewrite size_flatten shape_pairs sumn_nseq size_zip mul2n. Qed.
-
-Lemma intlv0s {T} (t : seq T) :
-  intlv [::] t = [::].
-Proof. by elim: t. Qed.
-
-Lemma intlvs0 {T} (s : seq T) :
-  intlv s [::] = [::].
-Proof. by elim: s. Qed.
-
-Lemma intlv_cons {T} (x y : T) (s t : seq T) :
-  intlv (x :: s) (y :: t) = x :: y :: intlv s t.
-Proof. by elim: s t. Qed.
-
-Lemma subseq_intlvr {T : eqType} (s t : seq T) :
-  (size s <= size t)%N ->
-   subseq s (intlv s t).
-Proof.
-elim: s t.
-  by move=> ? _; apply: sub0seq.
-move=> s0 s1 IHs.
-case => // t0 t1; rewrite [X in X -> _]/= ltnS => st.
-rewrite intlv_cons -(cat1s s0) -(cat1s s0 (t0 :: _)) subseq_cat2l.
-apply: (@subseq_trans _ (intlv s1 t1)).
-  exact: IHs.
-exact: cons_subseq.
-Qed.
-
-Lemma subseq_intlvl {T : eqType} (s t : seq T) :
-  (size t <= size s)%N ->
-   subseq t (intlv s t).
-Proof.
-elim: s t; first by case.
-move=> s0 s1 IHs.
-case => // t0 t1; rewrite [X in X -> _]/= ltnS => ts.
-rewrite intlv_cons.
-apply: (@subseq_trans _ (t0 :: (intlv s1 t1))).
-  by rewrite /= ifT//; apply: IHs.
-exact: cons_subseq.
-Qed.
-
-Lemma mem_intlvr {T : eqType} (s t : seq T) :
-  (size s <= size t)%N ->
-  forall x, x \in s -> x \in intlv s t.
-Proof.
-elim: s t => //=.
-move=> s0 s1 IHs.
-case => // t0 t1; rewrite [X in X -> _]/= ltnS => s1t1 x.
-rewrite intlv_cons !in_cons => /predU1P[->|xs1].
-  by apply/orP; left.
-by apply/orP; right; apply/orP; right; apply: IHs.
-Qed.
-
-Lemma mem_intlvl {T : eqType} (s t : seq T) :
-  (size t <= size s)%N ->
-  forall x, x \in t -> x \in intlv s t.
-Proof.
-elim: t s => //=.
-move=> t0 t1 IHt.
-case => // s0 s1; rewrite [X in X -> _]/= ltnS => t1s1 x.
-rewrite intlv_cons !in_cons => /predU1P[->|xs1].
-  by apply/orP; right; apply/orP; left.
-by apply/orP; right; apply/orP; right; apply: IHt.
-Qed.
-
-Lemma perm_intlv {T : eqType} (s t : seq T) :
-  size s = size t ->
-  perm_eq (intlv s t) (s ++ t).
-Proof.
-elim: s t.
-  move=> t /=/esym/size0nil ->.
-  by rewrite intlv0s.
-move=> s0 s1 IHs.
-case => // t0 t1.
-rewrite [X in X -> _]/= => /eq_add_S s1t1.
-rewrite intlv_cons /= perm_cons.
-rewrite -[X in _ _ (_ ++ X)]cat1s perm_sym perm_catCA cat1s perm_cons perm_sym.
-exact: IHs.
-Qed.
-
-Lemma mem_intlv {T : eqType} (s t : seq T) :
-  size s = size t ->
-  intlv s t =i s ++ t.
-Proof.
-move=> st; apply: perm_mem.
-exact: perm_intlv.
-Qed.
-
-Lemma le_sorted_intlvl d {T : orderType d} (s t : seq T) :
-  (size s <= size t)%N ->
-   sorted <=%O (intlv s t) -> sorted <=%O s.
-Proof.
-elim: s t => // s0 s1 IH; case => // t0 t1.
-rewrite [X in X -> _]/= ltnS => s1t1; rewrite intlv_cons/= => /andP[s0t0].
-rewrite !le_path_sortedE => /andP[/allP t0st sst]; apply/andP; split.
-  by apply/allP => ? ?; apply: (le_trans s0t0); apply: t0st; apply: mem_intlvr.
-exact: (IH _ s1t1).
-Qed.
-
-Lemma le_sorted_intlvr d {T : orderType d} (s t : seq T) :
-  (size t <= size s)%N ->
-   sorted <=%O (intlv s t) -> sorted <=%O t.
-Proof.
-elim: t s => // t0 t1 IH; case => // s0 s1.
-rewrite [X in X -> _]/= ltnS => t1s1; rewrite intlv_cons/= => /andP[s0t0].
-rewrite !le_path_sortedE => /andP[/allP t0st sst]; apply/andP; split.
-  by apply/allP => ? ?; apply: t0st; apply: mem_intlvl.
-exact: (IH _ t1s1).
-Qed.
-
-Lemma le_sorted_intlvP {R : realType} (s t : seq R) :
-  size s = size t ->
-  (sorted <=%R (intlv s t)) <->
-    [/\ (forall i d, nth d s i <= nth d t i) &
-     (forall i d, (i.+1 < (size s))%N -> nth d t i <= nth d s i.+1)].
-Proof.
-move=> st; split.
-  move=> sorted_st; split.
-  - elim: s t st sorted_st.
-      by move => t/= /esym /size0nil ->.
-    move=> s0 s1 IHs.
-    case => // t0 t1.
-    rewrite [X in X -> _]/= =>  /eq_add_S st.
-    rewrite intlv_cons/= => /andP[s0t0 /path_sorted sorted_st].
-    case => //= i d.
-    exact: IHs.
-  elim: s t st sorted_st => // s0 s1 IHs.
-  case => // t0 t1.
-  rewrite [X in X -> _]/= =>  /eq_add_S st.
-  rewrite intlv_cons/= => /andP[s0t0 path_st].
-  case => //=.
-  move=> d; rewrite ltnS => s10.
-    have/le_path_min/allP := path_st; apply.
-    apply: mem_intlvr.
-      exact: eq_leq.
-    by rewrite mem_nth.
-  move=> n d; rewrite ltnS => n1s1.
-  apply: IHs => //.
-  exact: (path_sorted path_st).
-elim: s t st.
-  by move=> t/= /esym /size0nil ->.
-move=> s0 s1 IHs.
-case => // t0 t1.
-rewrite intlv_cons [X in X -> _]/= => /eq_add_S st.
-move=> /=[slet tles1].
-apply/andP; split.
-  have -> : s0 = nth 0 (s0 :: s1) 0 by [].
-  have -> : t0 = nth 0 (t0 :: t1) 0 by [].
-  exact: slet.
-have sorted_t : sorted <=%R t1.
-  apply: (le_sorted_intlvr (eq_leq (esym st))).
-  apply: (IHs t1 st).
-  split; first by move=> j d; apply: (slet j.+1 d).
-  by move=> j d /(tles1 j.+1 d); apply.
-rewrite le_path_sortedE; apply/andP; split.
-  apply/allP => x.
-  rewrite mem_intlv// mem_cat => /orP[|xt].
-    move: x.
-    apply/allP/(all_nthP s0)  => i iles1.
-    apply: (le_trans _ (tles1 i s0 _)); last by rewrite ltnS.
-    case: i iles1.
-      by [].
-    move=> i i1les.
-    rewrite /=.
-    have {}s11 : (0.+1 < (size s1).+1)%N.
-      by rewrite ltnS (leq_ltn_trans _ i1les).
-    have/le_trans := (tles1 0 s0 s11).
-    apply.
-    have/=/le_trans := (slet 1 s0); apply.
-    case: t1 st slet tles1 sorted_t => //=.
-      by move/size0nil => -> // _ _ _; rewrite nth_default.
-    move=> t1 t2 s1t2 _ _.
-    case: i i1les => // i; rewrite s1t2 ltnS => i1t2.
-    by move/le_path_min/all_nthP; apply; apply: (leq_trans _ i1t2).
-  case: t1 st slet tles1 sorted_t xt => //t1 t2 st slet tles1 sorted_t1 xt.
-  have : (1 < (size s1).+1)%N.
-    by rewrite st.
-  move/(tles1 0 t0)/le_trans; apply.
-  apply: (le_trans (slet 1 _)) => /=.
-  move: xt; rewrite in_cons => /predU1P[->//|xt2].
-  by move/le_path_min/allP : sorted_t1; apply.
-apply: IHs => //; split.
-- by move=> i d; apply: (slet i.+1).
-by move=> i d i1s1; apply: (tles1 i.+1); rewrite ltnS.
-Qed.
-
-Lemma lt_sorted_intlvP {R : realType} (s t : seq R) :
-  size s = size t ->
-  (sorted <%R (intlv s t)) <->
-   (forall (i : nat) d, (i < (size s))%N -> nth d s i < nth d t i) /\
-     (forall i d, (i.+1 < (size s))%N -> nth d t i < nth d s i.+1).
-Proof.
-move=> st; split.
-  move=> sorted_st; split.
-  - elim: s t st sorted_st.
-      by move => t/= /esym /size0nil ->.
-    move=> s0 s1 IHs.
-    case => // t0 t1.
-    rewrite [X in X -> _]/= =>  /eq_add_S st.
-    rewrite intlv_cons/= => /andP[s0t0 /path_sorted sorted_st].
-    case => //= i d.
-    exact: IHs.
-  elim: s t st sorted_st => // s0 s1 IHs.
-  case => // t0 t1.
-  rewrite [X in X -> _]/= =>  /eq_add_S st.
-  rewrite intlv_cons/= => /andP[s0t0 path_st].
-  case => //=.
-  move=> d; rewrite ltnS => s10.
-    have/lt_path_min/allP := path_st; apply.
-    apply: mem_intlvr.
-      exact: eq_leq.
-    by rewrite mem_nth.
-  move=> n d; rewrite ltnS => n1s1.
-  apply: IHs => //.
-  exact: (path_sorted path_st).
-elim: s t st.
-  by move=> t/= /esym /size0nil ->.
-move=> s0 s1 IHs.
-case => // t0 t1.
-rewrite intlv_cons [X in X -> _]/= => /eq_add_S st.
-move=> /=[slet tles1].
-apply/andP; split.
-  have -> : s0 = nth 0 (s0 :: s1) 0 by [].
-  have -> : t0 = nth 0 (t0 :: t1) 0 by [].
-  exact: slet.
-have sorted_s1 : sorted <=%R s1.
-  apply: (le_sorted_intlvl (eq_leq st)).
-  apply: sorted_ltW.
-  apply: (IHs t1 st).
-  split; first by move=> j d; apply: (slet j.+1 d).
-  by move=> j d /(tles1 j.+1 d); apply.
-have sorted_t : sorted <=%R t1.
-  apply: (le_sorted_intlvr (eq_leq (esym st))).
-  apply: sorted_ltW.
-  apply: (IHs t1 st).
-  split; first by move=> j d; apply: (slet j.+1 d).
-  by move=> j d /(tles1 j.+1 d); apply.
-rewrite lt_path_sortedE; apply/andP; split.
-  apply/allP => x.
-  rewrite mem_intlv// mem_cat => /orP[|xt].
-    move: x.
-    apply/allP/(all_nthP s0).
-    case => //= [|i i1s1].
-      by move/(tles1 0 s0).
-    have : (0 < size s1)%N.
-      exact: (leq_ltn_trans _ i1s1).
-    move/(tles1 0 s0) => /=/lt_le_trans; apply.
-    move: sorted_s1; rewrite le_sorted_pairwise.
-    by move/pairwiseP; apply => //; apply: (leq_ltn_trans _ i1s1).
-  case: t1 st slet tles1 sorted_t xt => //t1 t2 st slet tles1 sorted_t1 xt.
-  have : (1 < (size s1).+1)%N.
-    by rewrite st.
-  move/(tles1 0 t0)/lt_le_trans; apply; apply: ltW.
-  have: (0 < size s1)%N by rewrite st.
-  move/(slet 1 t0)/lt_le_trans; apply => /=.
-  move: xt; rewrite in_cons => /predU1P[->//|xt2].
-  by move/le_path_min/allP : sorted_t1; apply.
-apply: IHs => //; split.
-  by move=> i d; move/(slet i.+1); apply.
-by move=> i d; move/(tles1 i.+1); apply.
-Qed.
-
-Lemma intlv_merge {R : realType} (s t : seq R) :
-  size s = size t ->
-  sorted <=%R (intlv s t) ->
-  intlv s t = merge <=%R s t.
-Proof.
-move=> st /[dup]sorted_st.
-have srts : sorted <=%R s by exact: (le_sorted_intlvl (eq_leq st)).
-have srtt : sorted <=%R t by exact: (le_sorted_intlvr (eq_leq (esym st))).
-move/le_sorted_intlvP => []// slet tles1.
-apply: le_sorted_eq => //.
-  apply: merge_sorted => //.
-  exact: le_total.
-rewrite perm_sym perm_merge perm_sym.
-exact: perm_intlv.
-Qed.
-
-Lemma nth_intlvE {T} (d : T) (s t : seq T) n :
-  nth d (intlv s t) n =
-    if (n < size (intlv s t))%N then
-      if odd n then nth d t n./2 else nth d s n./2
-    else d.
-Proof.
-elim: s t n => [|x s IH] [|y t] [|[|n]] //=.
-by rewrite negbK; exact: IH _ n.
-Qed.
-
-Lemma last_intlv {T} (d : T) (s t : seq T) :
-  (size t <= size s)%N ->
-  last d (intlv s t) = last d t.
-Proof.
-move=> ts.
-have size_st : size (intlv s t) = (size t).*2.
-  rewrite size_intlv /minn ifF//.
-  by apply/negP/negP; rewrite -leqNgt.
-rewrite -!nth_last nth_intlvE.
-case: ifP; rewrite ltn_predL; last first.
-  move/negP/negP; rewrite -eqn0Ngt size_st double_eq0.
-  by move/eqP => t0; rewrite nth_default ?t0.
-rewrite size_st/=.
-set n := size t; have : n = size t by [].
-case: n => //n nt _/=.
-by rewrite odd_double/= uphalf_double.
-Qed.
-
-End interleave.
-
 Section reshape_lemmas.
 
 Lemma reshape_nseq1 {T} (s : seq T) :
@@ -464,23 +142,23 @@ rewrite -nth_shape.
 exact: reshape_offsetP.
 Qed.
 
-Lemma nth_flatten_intlvE
+Lemma nth_flatten_interleaveE
     (d : R) (s t : seq (seq R)) i
-    (r := reshape_index (shape (intlv s t)) i)
-    (c := reshape_offset (shape (intlv s t)) i) :
+    (r := reshape_index (shape (interleave s t)) i)
+    (c := reshape_offset (shape (interleave s t)) i) :
   size s = size t ->
-  nth d (flatten (intlv s t)) i =
+  nth d (flatten (interleave s t)) i =
     if odd r then
       nth d (nth [::] t r./2) c
     else
       nth d (nth [::] s r./2) c.
 Proof.
 move=> st.
-rewrite nth_flatten (nth_intlvE [::]) -/r -/c.
+rewrite nth_flatten (nth_interleaveE [::]) -/r -/c.
 case: ifP.
   by case: ifP.
 move/negP/negP; rewrite -leqNgt.
-rewrite size_intlv => str.
+rewrite size_interleave => str.
 case: ifP; rewrite !nth_default => //; apply: leq_trans (half_leq str).
   by rewrite doubleK st minnn.
 by rewrite doubleK st minnn.
@@ -558,32 +236,31 @@ rewrite sorted_cat_cons; apply/andP; split.
 exact: IH.
 Qed.
 
-Lemma nth0_flatten_intlv d (ss tt : (seq (seq R))) :
+Lemma nth0_flatten_interleave d (ss tt : (seq (seq R))) :
   head [::] ss != [::] ->
   (size ss <= size tt)%N ->
-  nth d (flatten (intlv ss tt)) 0 = nth d (nth [::] ss 0) 0.
+  nth d (flatten (interleave ss tt)) 0 = nth d (nth [::] ss 0) 0.
 Proof.
 elim: ss tt => //=.
 move=> s ss IH.
 case => // t tt s0 sstt.
-rewrite intlv_cons/=.
 rewrite nth_cat ifT//.
 apply/not_notP => /negP; rewrite -leqNgt leqn0 => /eqP/size0nil/eqP.
 by apply/negP.
 Qed.
 
-Lemma last_flatten_intlv d (ss tt : (seq (seq R))) :
+Lemma last_flatten_interleave d (ss tt : (seq (seq R))) :
   all (fun s => s != [::]) ss ->
   all (fun s => s != [::]) tt -> (* generalize? *)
   (size tt <= size ss)%N ->
-  last d (flatten (intlv ss tt)) = last d (last [::] tt).
+  last d (flatten (interleave ss tt)) = last d (last [::] tt).
 Proof.
 elim: tt ss d.
   move=> ss d _ _ _.
-  by rewrite intlvs0.
+  by rewrite interleaves0.
 move=> t tt IH.
 case => // s ss d ss0 tt0 ttss.
-rewrite intlv_cons/=.
+rewrite interleave_cons/=.
 rewrite !last_cat.
 rewrite IH//.
 - by move/andP: ss0; case.
@@ -3483,9 +3160,9 @@ congr +%R => //=.
 exact: variation_any_ub.
 Qed.
 
-Lemma variation_flatten_intlv_split a b f (A B : seq (seq R)) :
+Lemma variation_flatten_interleave_split a b f (A B : seq (seq R)) :
   all (fun s => s != [::]) (A ++ B) ->
-  variation a b f (flatten (intlv A B)) =
+  variation a b f (flatten (interleave A B)) =
     \sum_(i < minn (size A) (size B))
       variation
         (nth b [seq last b s | s <- [:: a] :: B] i)
@@ -3519,10 +3196,10 @@ rewrite (IH B (last b y) _) ?minnSS ?A0 ?B0// !big_ord_recl /= addrA addrACA.
 by congr (_ + _ + (_ + _)); apply: variation_any_ub.
 Qed.
 
-Lemma variation_intlv_split a b f (A B : seq R) (d0 d1 : R) :
+Lemma variation_interleave_split a b f (A B : seq R) (d0 d1 : R) :
   a < b ->
-  itv_partition a b (intlv A B) ->
-  variation a b f (intlv A B) =
+  itv_partition a b (interleave A B) ->
+  variation a b f (interleave A B) =
    \sum_(i < (minn (size A) (size B)))
        variation (nth d0 (a :: B) i) (nth d1 A i) f A +
    \sum_(i < (minn (size A) (size B)))
@@ -3554,9 +3231,9 @@ congr +%E; rewrite (IH x)//.
 by apply: eq_bigr => /= i _; rewrite add0n (set_nth_default x a')// ltnW//= ltnS.
 Qed.
 
-Lemma total_variation_intlv_split (A B : seq R) (d0 d1 : R) :
+Lemma total_variation_interleave_split (A B : seq R) (d0 d1 : R) :
   a <= b ->
-  itv_partition a b (intlv A B) ->
+  itv_partition a b (interleave A B) ->
   total_variation a b f =
    \sum_(i < minn (size A) (size B))
        total_variation (nth d0 (a :: B) i) (nth d1 A i) f +
@@ -3565,25 +3242,25 @@ Lemma total_variation_intlv_split (A B : seq R) (d0 d1 : R) :
 Proof.
 move=> ab pAB.
 rewrite (total_variation_sum pAB).
-rewrite size_intlv.
+rewrite size_interleave.
 set n := minn (size A) (size B).
 rewrite -(big_mkord xpredT
- (fun i => total_variation (nth a (a :: intlv A B) i) (nth b (intlv A B) i) f)).
+ (fun i => total_variation (nth a (a :: interleave A B) i) (nth b (interleave A B) i) f)).
 rewrite [LHS](bigID [pred n | ~~ odd n] xpredT)//=.
 congr +%E.
   rewrite -(esum_mul2_even _
- (fun i => total_variation (nth a (a :: intlv A B) i) (nth b (intlv A B) i) f)).
+ (fun i => total_variation (nth a (a :: interleave A B) i) (nth b (interleave A B) i) f)).
   rewrite big_mkord.
   apply: eq_bigr => i _.
-  have i2AB : (i.*2 < size (intlv A B))%N.
-    rewrite size_intlv -/n; case: i; case => /=.
+  have i2AB : (i.*2 < size (interleave A B))%N.
+    rewrite size_interleave -/n; case: i; case => /=.
       by rewrite double0 double_gt0.
     move=> i.
     case: n => // n.
     by move/ltn_mul2; rewrite -!mul2n.
   congr total_variation.
   case: i i2AB; case => //= i i1ltn i12AB.
-    rewrite nth_intlvE ifT//=.
+    rewrite nth_interleaveE ifT//=.
       by apply: leq_ltn_trans i12AB; rewrite doubleS.
     rewrite odd_double/=.
     rewrite uphalf_double.
@@ -3591,7 +3268,7 @@ congr +%E.
     apply: (@ltn_leq_trans n).
       exact: (ltn_trans _ i1ltn).
     by rewrite /n/minn; case: ifP => //; apply: ltnW.
-  rewrite nth_intlvE ifT//.
+  rewrite nth_interleaveE ifT//.
   rewrite odd_double doubleK.
   apply: set_nth_default.
   apply: (@ltn_leq_trans n).
@@ -3608,7 +3285,7 @@ rewrite -big_mkcond/=.
 rewrite -esum_mul2_odd.
 rewrite big_mkord.
 apply: eq_bigr => i _/=.
-rewrite !nth_intlvE size_intlv oddS odd_double/=.
+rewrite !nth_interleaveE size_interleave oddS odd_double/=.
 congr total_variation.
   rewrite ifT.
     rewrite -nE -!mul2n ltn_pmul2l//.
@@ -4972,7 +4649,7 @@ have lambda_gt0 n : 0 < (fine (lambda n)).
   apply: lt_le_trans.
   rewrite diam_itv// ?cled//.
   by rewrite EFinB sube_gt0 lte_fin.
-set xs' := fun n => (intlv
+set xs' := fun n => (interleave
   [seq lambda_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) | i <- iota 0 n]
     (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n)))).
 set xs := fun n => (d_ n 0) :: flatten (xs' n).
@@ -5004,7 +4681,7 @@ have pcdxs n : itv_partition c d (xs n).
       rewrite nth_cons.
       rewrite ltnn.
       rewrite nth_cons (ltn0Sn 0) succnK.
-      rewrite nth0_flatten_intlv.
+      rewrite nth0_flatten_interleave.
       - by [].
       - by rewrite leq_eqVlt size_eq_xs' eqxx.
       rewrite nth_map_iota.
@@ -5015,13 +4692,13 @@ have pcdxs n : itv_partition c d (xs n).
       by [].
     apply/sortedP.
     apply: (@lt_sorted_flatten _ d) => //.
-    - rewrite (eq_all_r (mem_intlv _))// all_cat; apply/andP; split.
+    - rewrite (eq_all_r (mem_interleave _))// all_cat; apply/andP; split.
         apply/allP => _ /mapP[i + ->].
         rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
         by rewrite -size_eq0 gt_eqF.
       rewrite reshape_nseq1.
       by apply/allP => _ /mapP[i + ->].
-    - rewrite (eq_all_r (mem_intlv _))// all_cat; apply/andP; split.
+    - rewrite (eq_all_r (mem_interleave _))// all_cat; apply/andP; split.
         apply/allP => _ /mapP[i + ->].
         rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
         apply: lt_sorted_lambda=> //.
@@ -5029,10 +4706,10 @@ have pcdxs n : itv_partition c d (xs n).
       rewrite reshape_nseq1.
       by apply/allP => _ /mapP[i + ->].
     apply/(sortedP [::]) => i i1xs'.
-    rewrite !nth_intlvE.
+    rewrite !nth_interleaveE.
     rewrite i1xs' (ltnW i1xs').
     move: i1xs'.
-    rewrite size_intlv size_eq_xs' minnn.
+    rewrite size_interleave size_eq_xs' minnn.
     rewrite reshape_nseq1 size_map size_behead size_seq_d.
     rewrite succnK doubleS ltnS.
     move=> in21.
@@ -5101,7 +4778,7 @@ have pcdxs n : itv_partition c d (xs n).
     rewrite cltd//.
     by rewrite ltnS -ltn_double even_halfK ?eveni// doubleS (ltn_trans in21).
   rewrite /xs last_cons.
-  rewrite last_flatten_intlv//.
+  rewrite last_flatten_interleave//.
   - apply/allP => _ /mapP[i + ->].
     rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
     by rewrite -size_eq0 gt_eqF.
@@ -5124,7 +4801,7 @@ have eq_size_lp_nseq n : size [seq lambda_partition (d_ n i) (c_ n i.+1)
        size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
   by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_d.
 have allNnil_xs n : all (fun s : seq R => s != [::]) (xs' n).
-  rewrite (eq_all_r (mem_intlv _))//.
+  rewrite (eq_all_r (mem_interleave _))//.
   rewrite all_cat; apply/andP; split.
     apply/all_nthP => i.
     rewrite size_map size_iota => iltn1.
@@ -5140,7 +4817,7 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
       by rewrite /d_ daE -/a_; apply clea_bled.
     by rewrite /d_ daE -/a_; apply: aled.
   move/flattenP => /=[s].
-  rewrite mem_intlv// mem_cat => /orP[|].
+  rewrite mem_interleave// mem_cat => /orP[|].
     move/mapP => [i + ->]; rewrite mem_iota add0n => /andP[_ iltn1].
     move=> xlp.
     apply/andP; split.
@@ -5181,7 +4858,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   rewrite (@mesh_flatten _ _ d)//.
   - apply/allP => /= i /flattenP[j ].
     rewrite /xs'.
-    rewrite mem_intlv.
+    rewrite mem_interleave.
       by rewrite size_map size_iota size_reshape size_nseq size_behead size_seq_d.
     rewrite mem_cat => /orP[/mapP[k]|].
       rewrite mem_iota add0n leq0n/= => kn ->.
@@ -5216,7 +4893,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   - apply/(@le_sorted_flatten _ d).
     + (* all (fun s : seq R => s != [::]) (xs' n) *)
       apply/allP => z.
-      rewrite /xs' reshape_nseq1 mem_intlv.
+      rewrite /xs' reshape_nseq1 mem_interleave.
         by rewrite !size_map size_behead size_seq_d size_iota.
       rewrite mem_cat => /orP[|].
         move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
@@ -5226,7 +4903,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     + (* all (sorted <=%R) (xs' n) *)
       apply/allP => z.
       rewrite /xs'.
-      rewrite /xs' reshape_nseq1 mem_intlv.
+      rewrite /xs' reshape_nseq1 mem_interleave.
         by rewrite !size_map size_behead size_seq_d size_iota.
       rewrite mem_cat => /orP[|].
         move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
@@ -5236,9 +4913,9 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
       by move=> /mapP[i] ? ->.
     + (* sorted (fun s t : seq R => last d s <= head d t) (xs' n) *)
       apply/(sortedP [::]) => i.
-      rewrite size_intlv size_eq_xs' minnn reshape_nseq1 size_map size_behead.
+      rewrite size_interleave size_eq_xs' minnn reshape_nseq1 size_map size_behead.
       rewrite size_seq_d => ni.
-      rewrite !nth_intlvE size_intlv size_eq_xs' minnn reshape_nseq1 size_map size_behead.
+      rewrite !nth_interleaveE size_interleave size_eq_xs' minnn reshape_nseq1 size_map size_behead.
       rewrite size_seq_d ni (ltnW ni) oddS.
       case: ifPn => oddi/=.
         rewrite (nth_map d).
@@ -5274,7 +4951,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
         by rewrite ltn_half_double (ltnW ni).
       rewrite uphalf_half (negPf oddi).
       by rewrite cled.
-  rewrite size_intlv size_map size_iota.
+  rewrite size_interleave size_map size_iota.
   rewrite size_reshape size_nseq size_behead size_seq_d minnn.
   apply: bigmax_le.
     by rewrite -lee_fin fineK.
@@ -5283,9 +4960,9 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     rewrite (_ : nat_of_ord (Ordinal n0) = 0)//.
     rewrite (_ : nth d [seq last d s | s <- [:: d_ n 0] :: xs' n] 0 = d_ n 0)//.
     have ? : (0 < size (xs' n))%N.
-      rewrite size_intlv size_map size_iota size_reshape size_nseq.
+      rewrite size_interleave size_map size_iota size_reshape size_nseq.
       by rewrite size_behead size_seq_d/= minnn.
-    rewrite nth_intlvE.
+    rewrite nth_interleaveE.
     rewrite ifT//.
     rewrite nth_map_iota.
       by rewrite ltn_half_double.
@@ -5296,12 +4973,12 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   rewrite (_ : nat_of_ord (Ordinal i1ltn2) = i.+1)//.
   rewrite (_ : (nth d [seq last d s | s <- [:: _] :: xs' n] i.+1) =
                  (nth d [seq last d s | s <- xs' n] i))//.
-  rewrite nth_intlvE.
-  rewrite size_intlv size_map size_iota.
+  rewrite nth_interleaveE.
+  rewrite size_interleave size_map size_iota.
   rewrite size_reshape size_nseq size_behead size_seq_d minnn.
   rewrite i1ltn2.
   have size_xs' m : size (xs' m) = m.*2.
-    by rewrite size_intlv size_map size_iota reshape_nseq1 size_map size_behead size_seq_d minnn.
+    by rewrite size_interleave size_map size_iota reshape_nseq1 size_map size_behead size_seq_d minnn.
   case: ifPn => [eveni|oddi].
     rewrite (_ : n.+1.-1 = n)//.
     rewrite (nth_map [::])//.
@@ -5313,7 +4990,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
       rewrite size_behead size_seq_d.
       by rewrite ltn_half_double.
     rewrite mesh_seq1.
-    rewrite nth_intlvE size_xs' (ltnW i1ltn2).
+    rewrite nth_interleaveE size_xs' (ltnW i1ltn2).
     rewrite oddS in eveni.
     rewrite (negPf eveni).
     rewrite nth_map_iota.
@@ -5342,7 +5019,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     by rewrite size_xs' ltnW.
   rewrite nth_map_iota.
     by rewrite ltn_half_double.
-  rewrite nth_intlvE size_xs' (ltnW i1ltn2).
+  rewrite nth_interleaveE size_xs' (ltnW i1ltn2).
   rewrite oddS negbK in oddi.
   rewrite oddi.
   rewrite reshape_nseq1.
@@ -5390,7 +5067,7 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite variation_recl big_ord_recl EFinD -addeA.
   apply: leeD.
     by rewrite /= /c_ cbE/=.
-  rewrite variation_flatten_intlv_split//.
+  rewrite variation_flatten_interleave_split//.
     rewrite all_cat; apply/andP; split => //.
       apply/(all_nthP [::]) => i.
       rewrite size_map size_iota => ni.
@@ -5494,10 +5171,10 @@ have sz_v n : size (v n) = n.
   by rewrite -c'_uv size_tuple.
 have size_v'v n : minn (size ((u' n))) (size (v n)) = n.
   by rewrite sz_u' sz_v minnn.
-have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
+have pc'd' n : itv_partition c (c_ n n) (interleave ((u' n)) (v n)).
   split.
     rewrite lt_path_sortedE; apply/andP; split.
-      rewrite (eq_all_r (mem_intlv _)) ?sz_u' ?sz_v//.
+      rewrite (eq_all_r (mem_interleave _)) ?sz_u' ?sz_v//.
       rewrite all_cat; apply/andP; split.
         apply/allP => z zc'.
         rewrite (@le_lt_trans _ _ (c_ n 0))//.
@@ -5548,7 +5225,7 @@ have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
       by rewrite ltnS in ni.
       exact: leq0n.
       done.
-    apply/lt_sorted_intlvP; rewrite ?sz_v ?sz_u'//.
+    apply/lt_sorted_interleaveP; rewrite ?sz_v ?sz_u'//.
     split.
       move=> i d0 ni.
       rewrite [ltLHS](_ : _ = nth d0 (d' n) i).
@@ -5575,7 +5252,7 @@ have pc'd' n : itv_partition c (c_ n n) (intlv ((u' n)) (v n)).
     rewrite [in ltRHS](nth_map 0) ?size_tuple//.
     rewrite (nth_ord_enum _ (Ordinal niW))//=.
     by rewrite cltd//.
-  rewrite last_intlv.
+  rewrite last_interleave.
     by rewrite sz_v sz_u'.
   rewrite /c_.
   rewrite cbE.
@@ -5637,7 +5314,7 @@ have V_tv n : (V_ n <= Vcd)%E.
   rewrite (@total_variationD _ _ _ (c_ n n)).
   - by rewrite /c_ cbE; case: ifPn => // n0; apply infleb.
   - by apply clesup.
-  rewrite (@total_variation_intlv_split _ _ _ f ((u' n)) (v n) d d)//.
+  rewrite (@total_variation_interleave_split _ _ _ f ((u' n)) (v n) d d)//.
     by apply inflec.
   rewrite addrAC leeD//.
     rewrite big_ord_recr/= leeD//.
@@ -5725,7 +5402,7 @@ have eq4 n : total_variation c d f =
   rewrite (@total_variationD _ _ _ (c_ n n)).
   - by apply inflec.
   - by apply clesup.
-  rewrite (@total_variation_intlv_split _ _ _ f (u' n) (v n) d d)//.
+  rewrite (@total_variation_interleave_split _ _ _ f (u' n) (v n) d d)//.
     by apply inflec.
   rewrite sz_u' sz_v minnn.
   rewrite /H.
