@@ -1288,7 +1288,16 @@ Lemma in_mem_closedP (x : R) (A : set R) :
   closure A x <->
  (forall U, nbhs x U -> U `&` A !=set0).
 Proof.
-Admitted.
+split.
+  rewrite closureEnbhs/= => H U xU.
+  rewrite setIC.
+  exact: H.
+move=> H.
+rewrite closureEnbhs/= => C D AC xD.
+have := H _ xD.
+rewrite setIC.
+by apply: subsetI_neq0 => //.
+Qed.
 
 Lemma closure_bigcup0 (A : (set R)^nat) n :
   closure (\bigcup_(i < n) (A i)) = \bigcup_(i < n) (closure (A i)).
