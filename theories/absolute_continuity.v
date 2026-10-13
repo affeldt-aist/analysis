@@ -1231,9 +1231,9 @@ Lemma closure_open (I : set R) : open I -> is_interval I ->
   exists2 A : set R, (is_subset1 A \/ is_subset2 A) & closure I = I `|` A.
 Proof.
 move=> oI iI.
-Admitted. (* but unused *)
+Abort.
 
-Definition close_open (I : set R) (oI : open I) (iI : is_interval I) :=
+(*Definition close_open (I : set R) (oI : open I) (iI : is_interval I) :=
   sval (cid2 (closure_open oI iI)).
 
 Lemma closure_openE (I : set R) (oI : open I) (iI : is_interval I) :
@@ -1241,9 +1241,9 @@ Lemma closure_openE (I : set R) (oI : open I) (iI : is_interval I) :
 Proof.
 rewrite /close_open.
 by case: cid2.
-Qed.
+Qed.*)
 
-Lemma closure_bigcup (I : nat -> set R) :
+(*Lemma closure_bigcup (I : nat -> set R) :
   trivIset [set: nat] I ->
   (forall q : nat, open (I q) /\ is_interval (I q)) ->
   closure (\bigcup_n I n) = \bigcup_n (closure (I n)).
@@ -1278,6 +1278,7 @@ move=> x.
 move/limit_pointP => [x_ ].
 admit.
 Abort.
+*)
 
 (* StackExchange :
   https://math.stackexchange.com/questions/195311/
