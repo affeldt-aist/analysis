@@ -3116,12 +3116,19 @@ rewrite mn0 => /esym/eqP.
 exact/negP/set0P.
 Qed.
 
-Lemma bigcup_contiguous_itvs A :
-  closed A -> cplt_hull A = \bigcup_k (contiguous_itvs A) k.
+Lemma cplt_hull_contiguous_itvs A : closed A ->
+  cplt_hull A = \bigcup_k (contiguous_itvs A) k.
 Proof.
 move=> cA.
 rewrite /contiguous_itvs; case: pselect => ? //.
 by rewrite -open_disjoint_itv_bigcup.
+Qed.
+
+Lemma contiguous_itvs_Rhull (A : set R) : closed A ->
+  \bigcup_k contiguous_itvs A k `|` A = [set` Rhull A].
+Proof.
+move=> cA.
+by rewrite -cplt_hull_contiguous_itvs// /cplt_hull setDKU//; exact: sub_Rhull.
 Qed.
 
 Lemma contiguous_itvs_subsetC A n :
@@ -3138,7 +3145,7 @@ Lemma contiguous_itvsS A n :
   contiguous_itvs A n `<=` cplt_hull A.
 Proof.
 have [cA|cA] := pselect (closed A).
-  by rewrite (bigcup_contiguous_itvs cA); exact: bigcup_sup.
+  by rewrite (cplt_hull_contiguous_itvs cA); exact: bigcup_sup.
 (* NB: needs lemma here *)
 by rewrite /contiguous_itvs; case: pselect.
 Qed.
@@ -3176,7 +3183,7 @@ Lemma bigcup_contiguous_itvs_fine A :
 Proof.
 move=> cA.
 have closedA : closed A by exact: compact_closed.
-rewrite bigcup_contiguous_itvs//.
+rewrite cplt_hull_contiguous_itvs//.
 apply: eq_bigcupr => n _.
 transitivity [set` Rhull (contiguous_itvs A n)].
   by rewrite RhullK//; rewrite inE; exact: is_interval_contiguous_itvs.
@@ -3544,7 +3551,7 @@ Lemma mem_contiguous_itvs2 (Z : set R) j :
 Proof.
 move=> cZ Z0 Zj0.
 move: (cZ); rewrite Rcompact_boundE/= => -[closedZ ubndZ lbndZ].
-have cpltZE := bigcup_contiguous_itvs closedZ.
+have cpltZE := cplt_hull_contiguous_itvs closedZ.
 have H1 : (cplt_hull Z) =
     \bigcup_k `]contiguous_itvs1 Z k, contiguous_itvs2 Z k[%classic.
   rewrite [in LHS]cpltZE; apply: eq_bigcup => // i _.
@@ -3655,7 +3662,7 @@ Lemma mem_contiguous_itvs1 (Z : set R) j :
 Proof.
 move=> cZ Z0 Zj0.
 move: (cZ); rewrite Rcompact_boundE/= => -[closedZ ubndZ lbndZ].
-have cpltZE := bigcup_contiguous_itvs closedZ.
+have cpltZE := cplt_hull_contiguous_itvs closedZ.
 have H1 : (cplt_hull Z) =
     \bigcup_k `]contiguous_itvs1 Z k, contiguous_itvs2 Z k[%classic.
   rewrite [in LHS]cpltZE; apply: eq_bigcup => // i _.
@@ -3937,7 +3944,7 @@ move=> /finite_seqP_new[/= p up Pp].
 have [p0|p0] := eqVneq p [::].
   have : contiguous_itvs_support P = set0.
     by rewrite Pp p0 -subset0 => x/=; rewrite inE.
-  have := bigcup_contiguous_itvs closedP.
+  have := cplt_hull_contiguous_itvs closedP.
   rewrite -/U bigcup_contiguous_itvs_support.
   rewrite Pp p0 bigcup0// setD_eq0 => {}Pp _.
   have {}Pp : P = [set` Rhull P] by apply/seteqP; split => //; exact: sub_Rhull.
@@ -4426,8 +4433,8 @@ have cZ : closed Z.
   by apply/eqP/negP/negP/set0P; exists n; exists x.
 apply/set0P/negP => /eqP Z0.
 have : cplt_hull Z !=set0.
-  rewrite bigcup_contiguous_itvs//.
-  exists x; exists n => //.
+  rewrite cplt_hull_contiguous_itvs//.
+  by exists x, n.
 apply/set0P/negP/negPn/eqP; rewrite Z0; exact: cplt_hull0.
 Qed.
 
@@ -4438,7 +4445,7 @@ apply/eqP/not_notP; move/negP/set0P => -[x i0].
 have := @cplt_hull_set0 R.
 move/eqP; apply/negP/set0P.
 exists x.
-rewrite bigcup_contiguous_itvs; first exact: closed0.
+rewrite cplt_hull_contiguous_itvs; first exact: closed0.
 by exists i.
 Qed.
 
@@ -4567,8 +4574,8 @@ apply: subsetI_eq0. (* TODO: generalize this lemma to trivIset *)
   rewrite [X in _ `<=` X]H.
   apply: interval_ooS.
   rewrite has_bound_inf_sup//.
-  by apply: has_lbound_contiguous_itvs.
-  by apply: has_ubound_contiguous_itvs.
+  exact: has_lbound_contiguous_itvs.
+  exact: has_ubound_contiguous_itvs.
 Qed.
 
 End lemma4_preliminaries.

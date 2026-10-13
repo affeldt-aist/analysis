@@ -2,8 +2,10 @@ From HB Require Import structures.
 From mathcomp Require Import boot order ssralg ssrnum interval.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import boolp contra classical_sets.
-From mathcomp Require Import reals ereal topology normedtype numfun.
+From mathcomp Require Import reals ereal topology normedtype numfun derive.
+From mathcomp Require Import realfun. (*NB: for total_variation*)
 From mathcomp Require Import absolute_continuity. (*TODO: for closure_bigcup only*)
+From mathcomp Require Import variation_extra.
 
 (**md**************************************************************************)
 (* # Oscillation                                                              *)
@@ -86,167 +88,6 @@ move=> [a Aa].
 by rewrite (@le_trans _ _ a)//;
   [exact: ereal_inf_lbound|exact: ereal_sup_ubound].
 Qed.
-
-Section itv_partition_porder.
-Context {d} {T : porderType d}.
-Implicit Types (a b x : T) (s : seq T).
-
-Lemma itv_partition_neq0 a b s : a != b -> itv_partition a b s -> s != [::].
-Proof. by elim: s a b => // a' b' /negbTE a'b' []/=; rewrite a'b'. Qed.
-
-Lemma itv_partition_sorted a b s : itv_partition a b s -> sorted <%O s.
-Proof. by case => sa _; exact: path_sorted sa. Qed.
-
-Lemma last_mem_itv_partition a b s :
-  itv_partition a b s -> (a < b)%O -> b \in s.
-Proof.
-move: s; apply: last_ind => //.
-- by move/itv_partition_nil ->; rewrite ltxx.
-- move=> s' x' _ [_].
-rewrite [a]lock.
-  rewrite last_rcons => /eqP -> _.
-  by rewrite mem_rcons mem_head.
-Qed.
-
-Lemma itv_partitionNnil a b s : (a < b)%O ->
- itv_partition a b s -> (0 < size s)%N.
-Proof.
-move=> ab p; apply: (@leq_trans (size [:: b])); rewrite ?size_subseq ?sub1seq//.
-exact: last_mem_itv_partition ab.
-Qed.
-
-Lemma itv_partition_cons1 a b s x :
-  s != [::] ->
-  itv_partition a b (x :: s) -> itv_partition a b s.
-Proof.
-case: s => // s0 s1 _.
-case => /= /and3P[ax xs0 s0s1 s0s1b]; split => //=.
-by rewrite s0s1 andbT (lt_trans ax).
-Qed.
-
-(*Lemma itv_partition_head a b h s :
-s != [::] ->
-a < h < head b s -> itv_partition a b s ->
- itv_partition a b (h :: s).
-Proof.
-case: s => // s0 s1 _ /andP[ah hs0] /[dup]pabs [/=/andP[as0 pas] /eqP sb].
-split; first by rewrite /=; apply/and3P; split => //.
-by rewrite -sb.
-Qed.*)
-
-Let itv_partition_in_itv a b s :
-  itv_partition a b s -> {in s, forall x, x \in `]a, b]}.
-Proof.
-move=> /[dup]parts.
-move=> [/[dup]/lt_path_min/allP sa].
-move=> /[dup]pas.
-rewrite lt_path_pairwise.
-move/pairwiseP => pwltas.
-move/eqP => lsb.
-move=> x xs.
-rewrite in_itv/=; apply/andP; split; first exact: sa.
-rewrite -lsb (last_nth a).
-have xas : x \in a :: s by rewrite in_cons; apply/orP; right.
-rewrite -(nth_index a xas).
-rewrite le_eqVlt; apply/predU1P.
-rewrite -implyNp => nlast.
-apply: pwltas.
-- rewrite inE/=.
-  case: ifP => // _.
-  by rewrite ltnS index_mem.
-- by rewrite inE//.
-- rewrite /=.
- move: s lsb parts sa pas x nlast xs xas.
-  apply: last_ind => // s t IH.
-  rewrite last_rcons => ->.
-  move=> patsb asb psb x/[swap] xsb.
-  rewrite nth_index.
-    by rewrite in_cons; apply/orP; right.
-    move/[swap] => _.
-    rewrite -last_nth last_rcons => xb.
-  rewrite ifN.
-    by rewrite lt_eqF// asb.
-  rewrite (_ : index x (rcons s b) = index x s).
-    rewrite -cats1 index_cat.
-    rewrite ifT//.
-    move: xsb.
-    by rewrite mem_rcons in_cons => /predU1P; case.
-  rewrite size_rcons ltnS.
-  rewrite index_mem.
-  move: xsb.
-  rewrite mem_rcons in_cons.
-  by move/predU1P; case.
-Qed.
-
-Lemma itv_partition_head_in_itv a b s t :
-  itv_partition a b (rcons s t) -> {in s, forall x, x \in `]a, b[}.
-Proof.
-move=> pst x xs.
-have in_ab := itv_partition_in_itv pst.
-rewrite in_itv/=; apply/andP; split.
-  have := in_ab x.
-  rewrite mem_rcons in_cons.
-  have H : (x == t) || (x \in s) by apply/orP; right.
-  by move/(_ H); rewrite in_itv/= => /andP[ax xb].
-have [] := pst.
-rewrite lt_path_pairwise.
-move/pairwiseP => lt_ast.
-move/eqP <-; rewrite (last_nth a).
-have : x \in a :: (rcons s t).
-  rewrite in_cons; apply/orP; right.
-  by rewrite mem_rcons in_cons xs orbT.
-move/(nth_index a) <-.
-apply: lt_ast; last 2 first.
-- by rewrite inE.
-- rewrite /=.
-  rewrite ifF.
-    rewrite lt_eqF => //.
-    have [/lt_path_min/allP + _] := pst.
-    by apply; rewrite mem_rcons in_cons xs orbT.
-  by rewrite size_rcons -cats1 index_cat xs ltnS index_mem.
-rewrite inE index_mem.
-rewrite in_cons; apply/orP; right.
-by rewrite mem_rcons in_cons xs orbT.
-Qed.
-
-Lemma itv_partition_gt_lb def a b s : (a < def)%O ->
-  itv_partition a b s -> forall n, (a < nth def s n)%O.
-Proof.
-move=> ab ps n.
-have [ns|ns] := ltnP n (size s).
-  suff : nth def s n \in `]a, b].
-    by rewrite in_itv/= => /andP[].
-  apply: (itv_partition_in_itv ps).
-  exact: mem_nth.
-by rewrite nth_default.
-Qed.
-
-Lemma itv_partition_le_ub def a b s :
-  itv_partition a b s -> forall n, (n < size s)%N -> (nth def s n <= b)%O.
-Proof.
-move=> ps n ns.
-suff : nth def s n \in `]a, b].
-  by rewrite in_itv/= => /andP[].
-apply: (itv_partition_in_itv ps).
-by apply/mem_nth.
-Qed.
-
-Lemma itv_partition_lt_ub a b s :
-  itv_partition a b s -> forall n, (n.+1 < size s)%N -> (nth b s n < b)%O.
-Proof.
-elim/last_ind : s => // s0 s1 _ ps n.
-rewrite size_rcons ltnS => ns0.
-pose s := rcons s0 s1.
-rewrite -/s.
-suff : nth b s n \in `]a, b[.
-  by rewrite in_itv/= => /andP[].
-apply: (@itv_partition_head_in_itv _ _ s0 s1) => //.
-apply/(nthP b).
-exists n => //.
-by rewrite nth_rcons ns0.
-Qed.
-
-End itv_partition_porder.
 
 Definition oscillation {R : realType} (f : R -> R) (A : set R) : \bar R :=
   (if A == set0 then
@@ -524,6 +365,261 @@ apply: (@le_trans _ _ (inf (closure (f @` A)))); last first.
   exact/set0P.
 rewrite -inf_closure//.
 exact/set0P.
+Qed.
+
+Lemma oscillationE (A : set R) (f : R -> R) :
+  A !=set0 ->
+  let B := [set (EFin \o f) x | x in A] in
+  ereal_sup B \is a fin_num ->
+  ereal_inf B \is a fin_num ->
+  oscillation f A = ereal_sup [set `|f x - f y|%:E | x in A & y in A].
+Proof.
+move=> A0 B Mfin mfin.
+rewrite /oscillation.
+move/set0P : (A0) => /negPf ->.
+apply/eqP; rewrite eq_le; apply/andP; split; last first.
+  apply: ge_ereal_sup => /= _ /= [r Ar [s As] <-].
+  have [frfs|frfs] := leP (f r) (f s).
+    rewrite ler0_norm ?subr_le0// opprB EFinB leeB//.
+      apply/le_ereal_sup_tmp.
+      by exists ((f s)%:E) => //=; exists s.
+    rewrite ge_ereal_inf//.
+    by exists ((f r)%:E) => //=; exists r.
+  rewrite gtr0_norm ?subr_gt0// EFinB leeB//.
+    apply/le_ereal_sup_tmp.
+    by exists ((f r)%:E) => //=; exists r.
+  rewrite ge_ereal_inf//.
+  by exists ((f s)%:E) => //=; exists s.
+apply/lee_addgt0Pr => /= e' e'0.
+have B0 : B !=set0 by exact: image_nonempty.
+set M : \bar R := ereal_sup B.
+set m : \bar R := ereal_inf B.
+have := ereal_inf_sup B0.
+rewrite -/M -/m.
+rewrite le_eqVlt => /predU1P[-> {m}|mM].
+  rewrite subee//.
+  rewrite adde_ge0 ?lee_fin//; last exact: ltW.
+  rewrite -(ereal_sup1 0) ereal_sup_le//.
+  rewrite sub1set inE/=.
+  by case: A0 => x Ax; exists x => //; exists x => //; rewrite subrr normr0.
+pose e := minr e' (fine (M - m)).
+have e20 : (0 < e / 2)%R.
+  rewrite divr_gt0// lt_min e'0/= fine_gt0// sube_gt0 mM/=.
+  rewrite -(@gte0_abs _ (_ - _)%E) ?sube_gt0//.
+  by rewrite -fin_num_abs fin_numB Mfin mfin.
+have [r Ar rMe] : exists2 r, A r & ((f r)%:E > M - (e / 2)%:E)%E.
+  have [x [r Ar] rx Bex] := @ub_ereal_sup_adherent _ B _ e20 Mfin.
+  exists r => //.
+  by rewrite -rx in Bex.
+have [s As sme] : exists2 s, A s & ((f s)%:E < m + (e / 2)%:E)%E.
+  have [y [s As] sy Bey] := @lb_ereal_inf_adherent _ B _ e20 mfin.
+  exists s => //.
+  by rewrite -sy in Bey.
+rewrite (@le_trans _ _ (`|f r - f s|%:E + e'%:E))//.
+  rewrite -leeBlDr//.
+  rewrite (@le_trans _ _ ((M - (e' / 2)%:E) - (m + (e' / 2)%:E))%E)//.
+    by rewrite oppeD// ?fin_num_adde_defl// addeACA -EFinB -opprD -splitr EFinN.
+  rewrite ger0_norm.
+    rewrite subr_ge0.
+    rewrite -lee_fin (le_trans (ltW sme))// (le_trans _ (ltW rMe))//.
+    rewrite leeBrDl// addeCA -EFinD -splitr.
+    rewrite -leeBrDl//.
+    rewrite -[leRHS]fineK ?fin_numB ?Mfin//.
+    rewrite lee_fin.
+    by rewrite /e ge_min lexx orbT.
+  rewrite EFinB leeB// ltW//.
+    rewrite (le_lt_trans _ rMe)//.
+    by rewrite leeB// lee_fin ler_wpM2r// /e ge_min lexx.
+  rewrite (lt_le_trans sme)//.
+  by rewrite leeD2l// lee_fin ler_wpM2r// /e ge_min lexx.
+rewrite leeD2r//.
+apply/le_ereal_sup_tmp.
+exists `|f r - f s|%:E => //=.
+by exists r => //; exists s.
+Qed.
+
+Lemma bounded_set_oscillation_le_total_variations (A : set R) f :
+  bounded_set A ->
+  (oscillation f A <= total_variation (inf A) (sup A) f)%E.
+Proof.
+move=> boundA.
+have [->|/set0P A0] := eqVneq A set0.
+  rewrite oscillation0.
+  rewrite total_variation_ge0//.
+  by rewrite inf0 sup0.
+have [supfin|] := boolP (ereal_sup ((EFin \o f) @` A) \is a fin_num); last first.
+  move=> /fin_numPn[|].
+    move=> /ereal_sup_ninfty/subset_set1[|].
+      move/image_set0_set0/eqP.
+      by move/set0P : A0 => /negbTE ->.
+    rewrite /oscillation => ->.
+    rewrite ereal_sup1 ereal_inf1/=.
+    by move/set0P : A0 => /negPf ->; rewrite leNye.
+  move/sup_not_bounded_variation => /(_ boundA).
+  move/not_bounded_variationP => ->.
+    by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+  by rewrite leey.
+have [inffin|] := boolP (ereal_inf ((EFin \o f) @` A) \is a fin_num); last first.
+  move=> /fin_numPn[|].
+    move/inf_not_bounded_variation => /(_ boundA).
+    move/not_bounded_variationP => ->.
+      by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+    by rewrite leey.
+  move=> /ereal_inf_pinfty/subset_set1[|].
+    move/image_set0_set0/eqP.
+    by move/set0P : A0 => /negbTE ->.
+  rewrite /oscillation => ->.
+  rewrite ereal_sup1 ereal_inf1/=.
+  by move/set0P : A0 => /negPf ->; rewrite leNye.
+rewrite oscillationE//.
+apply: ge_ereal_sup => /= _ [r Ar [s As <-]].
+wlog : r s Ar As / (r < s)%R.
+  move=> wlg.
+  have [rs|sr|sr] := ltgtP r s.
+  + exact: wlg.
+  + by rewrite distrC wlg.
+  + rewrite sr subrr normr0 total_variation_ge0//.
+    by rewrite has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                     exact: bounded_has_ubound].
+move=> rs; apply: (@le_trans _ _ (total_variation r s f)).
+  apply: le_ereal_sup_tmp.
+  eexists; last exact: lexx.
+  exists `|f r - f s|%R => //.
+  exists [:: s] => /=.
+    by rewrite /itv_partition/= andbT.
+  by rewrite /variation/= big_nat1/= distrC.
+apply: (@le_trans _ _ (total_variation (inf A) s f)).
+  rewrite (@total_variationD _ (inf A) s r)//.
+    by apply: ge_inf => //; exact: bounded_has_lbound.
+    exact: ltW.
+  by rewrite leeDr// total_variation_ge0// ge_inf//; exact: bounded_has_lbound.
+apply: (@total_variation_nondecreasing _ _ (sup A) f).
+- rewrite in_itv/=; apply/andP; split.
+    by apply: ge_inf => //; exact: bounded_has_lbound.
+  by apply: ub_le_sup => //; exact: bounded_has_ubound.
+- rewrite !bound_itvE has_bound_inf_sup//; [exact: bounded_has_lbound|
+                                            exact: bounded_has_ubound].
+- by apply: ub_le_sup => //; exact: bounded_has_ubound.
+(*
+rewrite Rbounded_setE/= => -[haslbA hasubA].
+apply: (@le_trans _ _ (oscillation f [set` Rhull A])).
+  apply: oscillation_sub.
+  exact: sub_Rhull.
+rewrite -oscillation_closure.
+rewrite compact_Rhull.
+  rewrite Rcompact_boundE; split => //.*)
+Qed.
+
+Lemma oscillation_ub (c d : R) (f : R -> R) (e : R) : (c < d)%R ->
+  {within `[c, d], continuous f} (* shouldn't be necessary *) ->
+  (0 < e)%R ->
+  exists xy, [/\ `]c, d[%classic xy.1, `]c, d[%classic xy.2, (xy.1 < xy.2)%R &
+    (`|f xy.1 - f xy.2|%:E > oscillation f `]c, d[ - e%:E)%E ].
+Proof.
+move=> cd cf e0.
+pose w := oscillation f `]c, d[.
+pose A := `]c, d[%classic.
+have has_ubfA : has_ubound [set f x | x in A].
+  have [M Mcd Mmax] := EVT_max (ltW cd) cf.
+  exists (f M) => _/= [r Ar <-].
+  apply: Mmax.
+  exact: subset_itv_oo_cc Ar.
+have has_lbfA : has_lbound [set f x | x in A].
+  have [m mcd mmin] := EVT_min (ltW cd) cf.
+  exists (f m) => _/= [r Ar <-].
+  apply: mmin.
+  exact: subset_itv_oo_cc Ar.
+have A0 : A !=set0.
+  exists ((c + d) / 2)%R.
+  by rewrite /A/= in_itv/= !midf_lt.
+have supfA : has_sup (f @` A) by split => //; exact: image_nonempty.
+have inffA : has_inf (f @` A) by split => //; exact: image_nonempty.
+pose S : set (\bar R):= [set `|f x - f y|%:E | x in A & y in A].
+have wS : w = ereal_sup S.
+  rewrite /w oscillationE//.
+  - rewrite -(image_comp _ EFin) ereal_sup_EFin//; exact: image_nonempty.
+  - rewrite -(image_comp _ EFin) ereal_inf_EFin//; exact: image_nonempty.
+have [u [v [Au Av uve]]] : exists u v, [/\ A u, A v & (`|f u - f v|%:E > w - e%:E)%E].
+  have : ereal_sup S \is a fin_num.
+    rewrite /S.
+    rewrite [X in ereal_sup X](_ : _ = [set x%:E | x in [set `|f x - f y|%R | x in A & y in A]]).
+      (* TODO: lemma *)
+      rewrite eqEsubset; split => [_/= [r Ar] [y Ay <-]|].
+        eexists; last reflexivity.
+        exists r => //.
+        by exists y.
+      move=> x /= [r [s As] [y Ay <-{r}] <-{x}].
+      exists s => //.
+      by exists y => //.
+    rewrite ereal_sup_EFin//.
+    have : has_ubound [set `|f x|%R | x in A].
+      (* TODO: lemma *)
+      case: has_ubfA => M HM.
+      case: has_lbfA => m Hm.
+      exists (maxr `|M| `|m|)%R => /= x/= [r Ar] <-.
+      have [fr0|fr0] := lerP (f r) 0.
+        rewrite ler0_norm// le_max.
+        apply/orP; right.
+        rewrite lerNl.
+        rewrite (@le_trans _ _ m)//.
+          by rewrite lerNl -normrN ler_norm.
+        by apply: Hm; by exists r.
+      rewrite gtr0_norm// le_max.
+      apply/orP; left.
+      rewrite (@le_trans _ _ M)//.
+        by apply: HM; by exists r.
+      by rewrite ler_norm.
+    case => m Hm.
+    exists (m + m)%R => y/= [r Ar [s As <-]].
+    rewrite (le_trans (ler_normB _ _))// lerD//.
+      apply: Hm; by exists r.
+    apply: Hm; by exists s.
+    (* TODO: lemma *)
+    case: A0 => r Ar.
+    exists `|f r - f r|%R, r => //.
+    by exists r.
+  move/ub_ereal_sup_adherent => /(_ _ e0)[_ [r rx] [r' Ar'] <- Hr].
+  exists r, r'; split => //=.
+  rewrite EFinN lteBlDr//.
+  rewrite wS.
+  move: Hr.
+  by rewrite lteBlDr.
+have [u_lt_v|v_lt_u|u_eq_v] := ltgtP u v.
+- set x := u; set y := v.
+  have [cx xy yd] : [/\ c < x, x < y & y < d]%R.
+    split => //.
+    by move/mem_set : Au; rewrite inE => /itvP ->.
+    by move/mem_set : Av; rewrite inE => /itvP ->.
+  by exists (x, y); split => //=.
+- set y := u; set x := v.
+  have [cx xy yd] : [/\ c < x, x < y & y < d]%R.
+    split => //.
+    by move/mem_set : Av; rewrite inE => /itvP ->.
+    by move/mem_set : Au; rewrite inE => /itvP ->.
+  exists (x, y); split => //=.
+  by rewrite distrC.
+- have [we|ew] := ltP w e%:E.
+    have [x [y [Ax Ay xy]]] : exists x y : R, [/\ A x, A y & (x < y)%R].
+      set x := ((c + d) / 2)%R.
+      set y := ((x + d) / 2)%R.
+      have Ax : A x by rewrite /A /= in_itv/= !midf_lt.
+      have Ay : A y.
+        rewrite /A /= in_itv/= !midf_lt// andbT.
+        by rewrite (@lt_trans _ _ x) ?midf_lt.
+      exists x, y; split => //.
+      rewrite midf_lt//.
+      by move/mem_set : Ax; rewrite inE => /itvP ->.
+    exists (x, y); split => //=.
+    rewrite -/w EFinN.
+    rewrite (@lt_le_trans _ _ 0%E)// ?sube_lt0//.
+    by apply/orP; right.
+  have : (w - e%:E < 0)%E.
+    by rewrite (lt_le_trans uve)// u_eq_v subrr normr0.
+  rewrite sube_lt0.
+    by apply/orP; right.
+  by rewrite ltNge ew.
 Qed.
 
 End oscillation_lemmas.

@@ -6,7 +6,8 @@ From mathcomp Require Import unstable.
 From mathcomp Require Import boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype derive.
 From mathcomp Require Import sequences measure lebesgue_measure numfun realfun.
-From mathcomp Require Import absolute_continuity merge_extra mesh oscillation.
+From mathcomp Require Import absolute_continuity merge_extra mesh
+  variation_extra oscillation.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 5)                                         *)
@@ -557,39 +558,6 @@ Section variation_lemmas.
 Context {R : realDomainType}.
 Implicit Types (a b : R) (f : R -> R).
 
-Lemma variation_behead a b s f :
-  variation (nth b s 0) b f (behead s) <= variation a b f s.
-Proof.
-case: s => [|s0 s1]/=.
-  by rewrite !variation_nil.
-by rewrite /variation/= big_nat_recl//= lerDr.
-Qed.
-
-Lemma variation_nth a b f s : a < b ->
-  itv_partition a b s ->
-  forall k, (k.+2 <= size s)%N ->
-  variation a (nth b s k) f (itv_partitionL s (nth b s k)) <= variation a b f s.
-Proof.
-move=> ab abs k ks.
-rewrite [in leRHS](@in_itv_partition _ _ (nth b s k) s).
-  exact: itv_partition_sorted abs.
-  apply/(nthP b).
-  exists k => //.
-  by rewrite (leq_trans _ ks).
-rewrite (@variation_cat _ (nth b s k))//.
-- apply/ltW.
-  exact: (itv_partition_gt_lb _ abs).
-- apply: (@itv_partition_nth_le _ _ a _ _ k.+1) => //.
-  by rewrite (leq_trans ks).
-- apply: itv_partitionLP (abs).
-    exact: (itv_partition_gt_lb _ abs).
-  exact: (itv_partition_lt_ub abs).
-- apply: itv_partitionRP (abs).
-    exact: (itv_partition_gt_lb _ abs).
-  exact: (itv_partition_lt_ub abs).
-- by rewrite lerDl variation_ge0.
-Qed.
-
 Lemma filter_iota a b s : a < b ->
   itv_partition a b s ->
   forall k, (k < size s)%N ->
@@ -657,84 +625,7 @@ rewrite (@variation_cat _ (nth b s k))//.
 by rewrite lerDl// variation_ge0.
 Qed.
 
-Lemma variationxx a b f s :
-  variation a b f (a :: s) = variation a b f s.
-Proof. by rewrite /variation/= big_nat_recl//= subrr normr0 add0r. Qed.
-
-Lemma variation_stutter a b f x s :
-  variation a b f [:: x, x & s] = variation a b f (x :: s).
-Proof.
-rewrite /variation.
-rewrite [x :: s]lock /= big_nat_recl// -lock.
-by rewrite /= !big_nat_recl//= subrr normr0 add0r.
-Qed.
-
-Lemma variation_recl a b f x s :
-  variation a b f (x :: s) = `|f x - f a| + variation x b f s.
-Proof. by rewrite /variation/= big_nat_recl. Qed.
-
-Lemma variation_recr a b f s :
-  variation a b f (rcons s (last a s)) = variation a b f s.
-Proof.
-rewrite {1}/variation/=.
-rewrite size_rcons.
-rewrite big_nat_recr//=.
-rewrite [X in _ + X](_ : _ = 0) ?addr0.
-  rewrite nth_rcons ltnn eqxx.
-  rewrite -/(rcons (a :: s) (last a s)).
-  rewrite nth_rcons/= ltnS leqnn/=.
-  by rewrite -last_nth subrr normr0.
-rewrite /variation.
-rewrite big_seq [RHS]big_seq.
-apply: eq_bigr => /= k.
-rewrite mem_index_iota leq0n/= => ks.
-rewrite nth_rcons ks.
-congr (`| _ - f _ |).
-rewrite -/(rcons (a :: s) (last a s)).
-by rewrite nth_rcons/= ltnS (ltnW ks).
-Qed.
-
-Lemma sorted_variation_subseq a b f s t :
-  sorted <=%R s -> sorted <=%R t ->
-  subseq s t ->
-  variation a b f s <= variation a b f t.
-Proof.
-elim: s a t.
-- by move=> ? ? _; rewrite variation_nil variation_ge0.
-move=> + + + + t.
-elim: t => // t0 t1 IHt s0 s1 IHs a0 /= ps pt.
-have [s0t0 s1st1|s0t0 st1] := eqVneq s0 t0.
-  rewrite s0t0 2!variation_recl lerD2l IHs//.
-  + exact: path_sorted ps.
-  + exact: path_sorted pt.
-rewrite (@le_trans _ _ (variation a0 b f t1))//.
-  apply: IHt => //.
-  exact: path_sorted pt.
-exact: le_variation.
-Qed.
-
-Lemma in_variation_merge1 a b f s x : a < b -> itv_partition a b s ->
-  x \in s ->
-  variation a b f (merge <%O s [:: x]) = variation a b f s.
-Proof.
-elim: s x a b => // s0 s1 ih x a b ab abs.
-have s0bs1 := itv_partition_cons abs.
-rewrite inE => /predU1P[->{x}|xs1].
-  by rewrite /= ltxx variation_stutter.
-rewrite /=.
-have [s0x|s0x] := ltP s0 x.
-  rewrite variation_recl.
-  rewrite ih//.
-    apply: itv_partition_size_neq0 s0bs1.
-    move: xs1.
-    rewrite -index_mem.
-    exact: leq_trans.
-  by rewrite variation_recl.
-case: abs => /= /andP[as0 s0s1 _].
-move/order_path_min : s0s1 => /(_ lt_trans)/allP/(_ _ xs1).
-by rewrite ltNge s0x.
-Qed.
-
+(* TODO: move to merge_extra.v? *)
 Lemma sorted_undup_merge_subseq (s t : seq R) :
   sorted <=%R s -> sorted <%R t ->
   subseq s t -> undup (merge <%R t s) = t.
@@ -754,6 +645,7 @@ apply: orb_idr.
 exact: mem_subseq.
 Qed.
 
+(* TODO: move to merge_extra.v? *)
 Lemma le_sorted_merge_sym (s t : seq R) :
   sorted <=%R s -> sorted <=%R t -> merge <=%R s t = merge <=%R t s.
 Proof.
@@ -783,6 +675,7 @@ case: ifPn => [|]; last rewrite -ltNge; first rewrite le_eqVlt => /predU1P[|].
 Qed.
 
 (* generalize *)
+(* TODO: move to merge_extra.v? *)
 Lemma le_sorted_mergeA (r s t : seq R) :
    sorted <=%R r -> sorted <=%R s -> sorted <=%R t ->
    merge <%R r (merge <%R s t) =
@@ -803,6 +696,7 @@ move=> ss st; apply: lt_sorted_eq; rewrite ?lt_sorted_filter//.
 by move=> ?; rewrite 2!mem_filter andbC.
 Qed.
 
+(* TODO: move to merge_extra.v? *)
 Lemma merge_filter_undup (s t : seq R) :
 sorted <%R s -> sorted <%R t ->
 let t' := [seq x <- t | x \notin s] in
@@ -925,7 +819,6 @@ exists (d, e); split => //=.
   + exact: maxd.
 - rewrite /oscillation ifN.
   by apply/neitvP => /=; rewrite bnd_simp ltW.
-- 
 Abort.
 
 Lemma variation_oscillation a b c1 c2 f :
@@ -2539,7 +2432,7 @@ have [xc|cx|eqxc] := ltgtP x c.
   by rewrite !variation_consE lerD2l.
 Qed.
 *)
-Admitted.
+Abort.
 
 Lemma variation_merge1_oscillation_new a b f s :
   {within `[a, b], continuous f} ->
@@ -2844,7 +2737,7 @@ by rewrite (lt_trans xkx).
 by rewrite in_itv/= (ltW xkx) (ltW xxk1).
 Qed.
 *)
-Admitted.
+Abort.
 
 Lemma variation_merge1_omega_max_new a b f s :
   s != [::] ->
