@@ -316,6 +316,9 @@ Definition omega_max a s f : \bar R :=
    \big[maxe/-oo%E]_(0 <= i < size s) oscillation f
     `[(a :: s)`_i, (a :: s)`_i.+1].
 
+Lemma omega_max0 (a b : R) f : omega_max a [:: b] f = oscillation f `[a, b].
+Proof. by rewrite/omega_max/= big_nat1. Qed.
+
 (*
 Lemma bigmaxE T Q FH :
 forall (F : T -> R) (HF : forall x, 0 <= F x),

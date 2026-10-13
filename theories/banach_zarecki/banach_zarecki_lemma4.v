@@ -11,13 +11,6 @@ From mathcomp Require Import absolute_continuity oscillation.
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 4)                                         *)
 (*                                                                            *)
-(*   cplt_hull P            == A relative complement of P in convex hull of P.*)
-(*   contiguous_intervals P == A countable family of component intervals of   *)
-(*                             cplt_hull P, called as "intervals contiguous   *)
-(*                             to P" in Ene's Proof.                          *)
-(* ref: https://projecteuclid1.org/journals/real-analysis-exchange/volume-23/ *)
-(*issue-1/An-Elementary-Proof-of-the-Banach-Zarecki-Theorem/rae/              *)
-(*1337086099.full*)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -121,36 +114,10 @@ rewrite hasNub_ereal_sup//.
 - exact: image_nonempty.
 Qed.
 
-Lemma trivIset_contiguous_intervals (P : set R) :
-  has_lbound P -> has_ubound P ->
-  let a_ := contiguous_intervals1 P : (R) ^nat in
-  let b_ := contiguous_intervals2 P : (R) ^nat in
-  trivIset [set: nat] (fun i : nat => `]((a_ i)), ((b_ i))[%classic).
-Proof.
-move=> lP uP.
-rewrite /= /contiguous_intervals1 /contiguous_intervals2.
-apply/trivIsetP => i j _ _ ij.
-have /trivIsetP/(_ i j Logic.I Logic.I ij) := @disjoint_contiguous_intervals _ P.
-apply: subsetI_eq0. (* TODO: generalize this lemma to trivIset *)
-- have /is_intervalP H := @is_interval_contiguous_intervals _ P i.
-  rewrite [X in _ `<=` X]H.
-   apply: interval_ooS.
-   rewrite has_bound_inf_sup//.
-   by apply: has_lbound_contiguous_intervals.
-   by apply: has_ubound_contiguous_intervals.
-- have /is_intervalP H := @is_interval_contiguous_intervals _ P j.
-  rewrite [X in _ `<=` X]H.
-  apply: interval_ooS.
-  rewrite has_bound_inf_sup//.
-  by apply: has_lbound_contiguous_intervals.
-  by apply: has_ubound_contiguous_intervals.
-Qed.
-
 End ene4_preliminaries.
 
 Section ene4.
-Context {R: realType}.
-Variables a b : R.
+Context {R: realType} (a b : R).
 Hypothesis ab : a <= b.
 Local Notation mu := (@completed_lebesgue_measure R).
 Local Open Scope ereal_scope.
@@ -160,8 +127,8 @@ Lemma ene4 (f : R -> R) (P : set R) :
   (* perfect_set P *) closed P ->
  (*  a = inf P -> b = sup P -> *)
   Rhull P = `[a, b] ->
-  let a_ := contiguous_intervals1 P in
-  let b_ := contiguous_intervals2 P in
+  let a_ := contiguous_itvs1 P in
+  let b_ := contiguous_itvs2 P in
   `|f b - f a|%:E <= mu (f @` `[a, b])
      <= (mu^*)%mu (f @` P) +
         \sum_(0 <= i <oo) oscillation f `[(a_ i), (b_ i)]%classic.
@@ -171,38 +138,37 @@ move/[dup]/eq_Rhull_itvccP => [[haslbP Pinf infa] [hasubP Psup supa]] Pab.
 have compactP : compact P.
   apply: Rbounded_closed_compact => //.
   by rewrite Rbounded_setE.
-set a_ := contiguous_intervals1 P.
-set b_ := contiguous_intervals2 P.
+set a_ := contiguous_itvs1 P.
+set b_ := contiguous_itvs2 P.
 have H1 : f @` `[a, b] = (f @` P) `|` \bigcup_i f @` `](a_ i), (b_ i)[.
   rewrite -image_bigcup_disjoint.
-    exact: trivIset_contiguous_intervals.
+    exact: trivIset_contiguous_itvs.
   rewrite -image_setU.
   congr (f @` _).
   apply/seteqP; split; last first.
     rewrite -Pab.
     rewrite subUset; split; first exact: sub_Rhull.
     apply: bigcup_sub => i _.
-    have -> : `]((a_ i)), ((b_ i))[%classic =
-                   [set` Rhull (contiguous_intervals P i)].
+    have -> : `]a_ i, b_ i[%classic = [set` Rhull (contiguous_itvs P i)].
       rewrite /Rhull.
-      rewrite ifT; first exact/asboolP/has_lbound_contiguous_intervals.
-      rewrite ifT; first exact/asboolP/has_ubound_contiguous_intervals.
+      rewrite ifT; first exact/asboolP/has_lbound_contiguous_itvs.
+      rewrite ifT; first exact/asboolP/has_ubound_contiguous_itvs.
       congr ([set` Interval (BSide _ _) (BSide _ _)]); apply: eq_fun => _.
       - apply/esym/asboolF.
         apply: open_haslb_memNinf.
-        + exact: has_lbound_contiguous_intervals.
-        + exact: open_contiguous_intervals.
+        + exact: has_lbound_contiguous_itvs.
+        + exact: open_contiguous_itvs.
       - apply/esym/asboolP.
         apply: open_hasub_memNsup.
-        + exact: has_ubound_contiguous_intervals.
-        + exact: open_contiguous_intervals.
+        + exact: has_ubound_contiguous_itvs.
+        + exact: open_contiguous_itvs.
     rewrite RhullK.
       rewrite inE.
-      exact: is_interval_contiguous_intervals.
-    apply: (subset_trans (@contiguous_intervalsS _ P i)).
+      exact: is_interval_contiguous_itvs.
+    apply: (subset_trans (@contiguous_itvsS _ P i)).
     exact: cplt_hull_subset_Rhull.
   rewrite /a_.
-  rewrite -bigcup_contiguous_intervals_fine//.
+  rewrite -bigcup_contiguous_itvs_fine//.
   rewrite setDUK; first exact: sub_Rhull.
   by rewrite Pab.
 apply/andP; split.
@@ -268,7 +234,7 @@ have fab0 : [set f x | x in `[(a_ n), (b_ n)]] !=set0.
   exists (f ((a_ n))) => //.
   exists ((a_ n)) => //=.
   rewrite boundl_in_itv//= bnd_simp.
-  exact: contiguous_intervals1_le_contiguous_intervals2.
+  exact: contiguous_itvs1_le_contiguous_itvs2.
 have [hasubf|hasNubf] :=
   pselect (has_ubound (f @` `[((a_ n)), ((b_ n))])); last first.
   rewrite -image_comp hasNub_ereal_sup//.

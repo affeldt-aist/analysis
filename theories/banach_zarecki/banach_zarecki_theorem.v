@@ -46,7 +46,7 @@ apply: Banach_Zarecki_nondecreasing => //. (* lemma 7 *)
   + apply/(bounded_variationP _ ax); exact:(bounded_variationl _ xb).
   + apply/(bounded_variationP _ ay); exact:(bounded_variationl _ yb).
   + by apply: (@total_variation_nondecreasing _ _ b); rewrite ?in_itv /= ?ax ?ay.
-- exact: ene6_direct_new.ene6_direct.
+- exact: Ene6_direct.ene6_direct.
 Qed.
 
 End banach_zarecki.
