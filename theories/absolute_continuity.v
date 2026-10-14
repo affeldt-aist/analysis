@@ -222,19 +222,11 @@ move=> hasubA oA; rewrite -{1}((interior_id A).1 oA).
 by move/(right_bounded_interior hasubA); rewrite /= ltxx.
 Qed.
 
-Lemma slosed_haslb_mem_inf A : has_lbound A -> closed A ->
-  A (inf A).
-Proof.
-move=> haslbA cA.
-Abort.
-
 End open_mem_lemmas.
 
 Section completed_algebra_lemmas.
-Context {d : measure_display}.
-Context {T : semiRingOfSetsType d}.
-Context {R : realType}.
-Variable (mu : measure T R).
+Context {d : measure_display} {T : semiRingOfSetsType d} {R : realType}
+  (mu : measure T R).
 Implicit Types (A B : set T).
 
 Lemma completed_algebra_measurable_eq_measure A B :
@@ -257,7 +249,7 @@ Lemma ball_is_interval (R : realType) (x e : R) :
   0 < e -> is_interval (ball x e).
 Proof. by move=> e0; rewrite ball_itv; exact: interval_is_interval. Abort.
 
-(* TODO:PR in topology_structure? *)
+(* TODO: to appear in MCA *)
 Lemma bigcap_open (R : topologicalType) (F : (set R) ^nat)  :
   (forall i, open (F i)) ->
   forall i, open (\bigcap_(j < i) F j).
@@ -273,7 +265,7 @@ apply: openI => //.
 by rewrite -bigcap_mkord.
 Qed.
 
-(* TODO: PR (generalize cvg_measure_bigcap) *)
+(* TODO: to appear MCA *)
 Lemma cvg_measure_bigcap_new d (T : algebraOfSetsType d) {R : realFieldType}
   (mu : {measure set T -> \bar R}) (F : (set T)^nat) :
   (mu (F 0%N) < +oo)%E ->
@@ -298,6 +290,7 @@ rewrite !bigcap_mkord big_ord_recr/= subsetEset.
 exact: subIsetl.
 Qed.
 
+(* TODO: to appear MCA *)
 Lemma cvg_measure_bigcap_new_new d (T : algebraOfSetsType d) {R : realFieldType}
   (mu : {measure set T -> \bar R}) (F : (set T)^nat) :
   (mu (F 0%N) < +oo)%E ->
@@ -383,88 +376,10 @@ near=> y; rewrite in_itv/=; apply/andP; split => //.
 by rewrite (le_lt_trans ax).
 Unshelve. all: by end_near. Qed.
 
-Lemma near_at_left_in_itv {R : realFieldType} [a b : R] :
-  {in `]a, b], forall y, \forall x \near y^'-, x \in `]a, b[}.
-Proof.
-Abort.
-
 End lim_set_lemmas.
 
 Section move_to_realfun.
 Context {R : realType}.
-
-(* move to realfun.v? *)
-Lemma continuous_increasing_image_itvoo (a b : R) (f : R -> R) :
-  {within `[a, b] , continuous f} ->
-  {in `]a, b[ &, {homo f : x y / (x < y)%O}} ->
-  f @` `]a, b[%classic `<=` `]f a, f b[%classic.
-Proof.
-move=> cf ndf.
-move=> _ /= [r + <-].
-rewrite in_itv /= => /andP [ar rb].
-move: cf.
-move/continuous_within_itvP.
-move/(_ (lt_trans ar rb)) => [cf fa fb].
-
-move : fa.
-move/cvg_at_rightP.
-move/(_ (fun n => a + 2^-1 ^ n.+1)).
-have H : ((forall n : nat, a < (a + 2^-1 ^ n.+1)) /\ (a + 2^-1 ^ n.+1) @[n --> \oo] --> a).
-  admit.
-move/(_ H) => {H}.
-have H : (f (a + 2^-1 ^ n.+1) - f a) @[n --> \oo] --> (0:R)%R.
-  admit.
-move=> cvgfa.
-have : \forall x \near a^'+, f x < f r.
-  admit.
-rewrite -nbhs_nearE.
-move=> [e /= e0].
-(* move/(cvg_lim (@Rhausdorff R)). *)
-
-(* apply: have_near. *)
-
-(*   apply (real_cvgr_lt ). *)
-
-(*   apply: filter_near_of. *)
-(*   rewrite near_filter_onE. *)
-(*   rewrite /lim. *)
-(*   Unset Printing Notations. *)
-
-(*   have : cvg (f x @[x --> a^']). *)
-(*   Unset Printing Notations. *)
-
-(*   apply: limr_le. *)
-(*   - apply/cvg_ex. *)
-(*     exists (f a). *)
-(*     exact: fa. *)
-(*   - near=> a0. *)
-(*     apply: ndf. *)
-(*     rewrite in_itv/=; apply/andP; split => //. *)
-(*     rewrite (le_lt_trans _ rb)//. *)
-(*     near: a0. *)
-(*     by apply: nbhs_right_le. *)
-(*     by rewrite in_itv/= ar. *)
-(*     near: a0. *)
-(*     by apply: nbhs_right_le. *)
-(* move: (fb) => /cvg_lim <-//. *)
-(* apply: limr_ge. *)
-(* - apply/cvg_ex. *)
-(*   exists (f b). *)
-(*   exact: fb. *)
-(* - near=> b0. *)
-(*   apply: ndf. *)
-(*   by rewrite in_itv/= ar. *)
-(*   rewrite in_itv/=; apply/andP; split => //. *)
-(*   by rewrite (lt_trans ar)//. *)
-(*   near: b0. *)
-(*   by apply: nbhs_left_ge. *)
-(* Unshelve. all: by end_near. Qed. *)
-(* case : (leP a b) => [|ba]. *)
-(*   rewrite le_eqVlt. *)
-(*   case/orP. *)
-(*     by move/eqP ->; rewrite !set_itvoo0 image_set0 => _ _. *)
-(*   move=> ltab cf ndf. *)
-Abort.
 
 Lemma continuous_nondecreasing_image_itvoo (a b : R) (f : R -> R) :
   {within `[a, b], continuous f} ->
@@ -514,29 +429,6 @@ apply: continuous_nondecreasing_image_itvoo => //.
   by move=> x y xab yab; apply: ndf => //; apply: subset_itv_oo_cc.
 by exists r => //=; rewrite in_itv/= ar.
 Qed.
-
-Lemma nondecreasing_fun_decomp (a b : R) (f : R -> R) :
-  {in `]a, b[ &, {homo f : x y / x <= y}} ->
-  forall x, x \in `]a, b[ ->
- (\forall y & z \near x, y < z -> f y < f z)
- \/ (\forall y \near x, f y = cst (f x) y).
-Proof.
-move=> ndf x.
-rewrite in_itv/= => /andP[ax xb].
-have [cstx|cstx] := pselect (\forall y \near x, f y = cst (f x) y).
-  by right; apply: filterS cstx.
-Abort.
-
-Lemma nondecreasing_bound_le (a : R) (b : itv_bound R) (f : R -> R) :
-  ((BLeft a) < b)%O ->
-  {in (Interval (BLeft a) b) &, {homo f : x y / (x <= y)%O}} ->
-  f x @[x --> a^'+] --> f a ->
-  forall x, a < x -> f a <= f x.
-Proof.
-case: b => t b.
-wlog -> : t / t = false.
-  move/(_ false (Logic.eq_refl false)).
-Abort.
 
 Lemma continuous_in_nondecreasing_oo_cc (a b : R) (f : R -> R) : a < b ->
   {within `[a, b] , continuous f} ->
@@ -695,7 +587,7 @@ Context {R : realFieldType}.
 Implicit Types a b : \bar R.
 Local Open Scope ereal_scope.
 
-(* PR#1848 *)
+(* PR #1848 *)
 Lemma closure_eneitv_oo a b : a < b ->
   closure `]a, b[%classic = `[a, b]%classic.
 Proof.
@@ -707,7 +599,7 @@ Section closure_neitv_real.
 Context {R : realType}.
 Implicit Type a b : R.
 
-(* PR#1848 *)
+(* PR #1848 *)
 Lemma closure_neitv_oo a b : a < b ->
   closure `]a, b[%classic = `[a, b]%classic.
 Proof.
@@ -1227,59 +1119,6 @@ Module closure_bigcup.
 Section closure_bigcup.
 Context {R : realType}.
 
-Lemma closure_open (I : set R) : open I -> is_interval I ->
-  exists2 A : set R, (is_subset1 A \/ is_subset2 A) & closure I = I `|` A.
-Proof.
-move=> oI iI.
-Abort.
-
-(*Definition close_open (I : set R) (oI : open I) (iI : is_interval I) :=
-  sval (cid2 (closure_open oI iI)).
-
-Lemma closure_openE (I : set R) (oI : open I) (iI : is_interval I) :
-  closure I = I `|` close_open oI iI.
-Proof.
-rewrite /close_open.
-by case: cid2.
-Qed.*)
-
-(*Lemma closure_bigcup (I : nat -> set R) :
-  trivIset [set: nat] I ->
-  (forall q : nat, open (I q) /\ is_interval (I q)) ->
-  closure (\bigcup_n I n) = \bigcup_n (closure (I n)).
-Proof.
-move=> tI /all_and2 [oI iI].
-apply/seteqP; split; last first.
-  move=> /= r [i _] Iir.
-  rewrite (bigcup_setD1 i)//.
-  rewrite closureU.
-  by left.
-have -> : \bigcup_n closure (I n) =
-    \bigcup_n (I n `|` close_open (oI n) (iI n)).
-  apply/seteqP; split => /= r.
-    move=> [i _ Iir].
-    exists i => //.
-    move: Iir.
-    rewrite (closure_openE (oI i) (iI i)) => -[].
-      by left.
-    by right.
-  move=> [i _] [Iir|].
-    exists i => //.
-    rewrite closure_openE//.
-    by left.
-  move=> ir.
-  exists i => //=.
-  rewrite closure_openE.
-  by right.
-move=> x.
-  rewrite closure_isolated_limit_point => -[[/set_mem[n _ Inx]] _|].
-  exists n => //.
-  by left.
-move/limit_pointP => [x_ ].
-admit.
-Abort.
-*)
-
 (* StackExchange :
   https://math.stackexchange.com/questions/195311/
   union-of-closure-of-sets-is-the-closure-of-the-union-true-for-finite-false-for
@@ -1296,192 +1135,11 @@ move=> H.
 rewrite closureEnbhs/= => C D AC xD.
 have := H _ xD.
 rewrite setIC.
-by apply: subsetI_neq0 => //.
+exact: subsetI_neq0.
 Qed.
 
-Lemma closure_bigcup0 (A : (set R)^nat) n :
-  closure (\bigcup_(i < n) (A i)) = \bigcup_(i < n) (closure (A i)).
-Proof.
-rewrite eqEsubset; split; last first.
-  apply: bigcup_sub => i /= iltn.
-  by apply: closureS; exact: bigcup_sup.
-apply: subsetC2.
-move=> x.
-rewrite -setTD/= => -[_ H].
-have : forall i : 'I_ n, exists U' : set R, nbhs x U' /\ U' `&` A i = set0.
-  move=> i.
-  move: H => /exists2P/forallNP/(_ i).
-  move/not_andP => [//=|].
-  move/in_mem_closedP.
-  move/existsNP => [U'].
-  move/not_implyP => [xU'].
-  move/set0P/negP/negbNE/eqP => UAi0.
-  by exists U'.
-move/choice => [U0 /all_and2[xU disjU]].
-move/in_mem_closedP.
-apply/existsNP.
-Abort.
-
 End closure_bigcup.
 End closure_bigcup.
-
-Section bigcup_cintsub.
-Context {R : realType}.
-
-Definition nondeg_interval :=
-[set A : set R | is_interval A /\ ~ is_subset1 A].
-
-Lemma nondeg_intervalP A : nondeg_interval A <->
-  [/\ is_interval A, A !=set0 & inf A < sup A].
-Proof.
-split.
-- move=> [itvA Nsub1A].
-  split => //.
-  + apply/set0P/negP; move/eqP => A0; apply: Nsub1A.
-    by rewrite A0.
-  + apply: has_bound_not_subset1_inf_sup.
-    * 
-      admit.
-    * admit.
-  + admit.
-- move=> [itvA A0 inf_sup].
-  split => //.
-  admit.
-Abort.
-
-Definition nondeg_set :=
-[set A : set R | closure (interior A) = A].
-
-Definition cintsub (A C : set R) :=
-  [/\ closed A, is_interval A & A `<=` C].
-
-(*
-bigcup_ointsub =
-fun R : realType =>
-let ointsub :=
-  fun A U : set R => [/\ open A, is_interval A & A `<=` U] in
-let ointsub_rat :=
-  fun (U : set R) (q : rat) => [set A | ointsub A U /\ A (ratr q)]
-  in
-fun (U : set R) (q : rat) => \bigcup_(A in ointsub_rat U q) A
-     : forall [R : realType], set R -> rat -> set R
-*)
-
-Lemma closed_disjoint (A : set R) : compact A -> nondeg_set A ->
-   exists I : (set R)^nat,
-[/\ (forall n, closed (I n)), (forall n, is_interval (I n)),
-  trivIset [set: nat] I & A = \bigcup_n I n].
-Proof.
-Abort.
-
-
-End bigcup_cintsub.
-
-Section closed_disjoint.
-Context {R : realType}.
-
-Lemma unprovable_closed_disjoint (C : set R) : (closed C) ->
- exists I : (set R)^nat,
-[/\ (forall n, closed (I n)), (forall n, is_interval (I n)),
-  trivIset [set: nat] I & C = \bigcup_n I n].
-Proof.
-(* counter exaample: Cantor set
- * Cantor set is compact but uncountable union of closed set(singleton)
- *) Abort.
-
-Lemma closed_disjoint (C : set R) : compact C ->
- exists I : (set R)^nat,
-[/\ (forall n, closed (I n)), (forall n, is_interval (I n)),
-  trivIset [set: nat] I & C = \bigcup_n I n].
-Proof.
-move=> cC.
-(* if C is compact, there is a closed interval I0 such that
-   C `<=` I0. *)
-set I0 := Rhull C.
-have I0E : I0 = `[inf C, sup C].
-  rewrite /I0/Rhull.
-  rewrite ifT//=.
-    apply: asboolT.
-    exists (inf C).
-    move=> x Cx.
-    admit.
-  admit.
-(* Since ~` C is open, ~` C is written by countable union of open intervals
-   by disjoint_open *)
-have oCC : open (~` C).
-  rewrite openC.
-  exact: compact_closed.
-have [U ] := OpenSetDisjointItvs.open_disjoint_itv oCC.
-move=> [/all_and2[oU iU]] disjU cCU.
-(* I0 `\` ~` C is countable union of closed interval? *)
-Abort.
-
-End closed_disjoint.
-
-Section lebesgue_measure_closure.
-Context {R : realType}.
-Notation mu := lebesgue_measure.
-
-Lemma bigcup_closure (B: nat -> set R) :
-(forall i, is_interval (B i)) -> (forall i, ~ is_subset1 (B i)) ->
-  trivIset [set: nat] B ->
-closure (\bigcup_i B i) = \bigcup_i (closure (B i)).
-Proof.
-move=> disjB.
-rewrite eqEsubset; split.
-- move=> x.
-  rewrite closure_isolated_limit_point/= => -[|].
-  + rewrite /isolated => -[/set_mem[n In Bnx] ?].
-    exists n => //.
-    exact: subset_closure.
-  + move/limit_pointP.
-    move=> [/= p_ [pB px cvgp]].
- (* rewrite /limit_point/= => limpx. *)
- (*    pose e (n : nat) : R := n%:R^-1. *)
- (*    pose U n := (ball x (e n)). *)
- (*    poset n_ (i : nat) := proj1_sig ( *)
-Abort.
-
-Import MeasurableR.
-
-Lemma lebesgue_measure_closure_open (A : set R) : open A ->
-  mu A = mu (closure A).
-Proof.
-move=> oA.
-have [->|] := eqVneq A set0.
-  by rewrite closure0.
-move/set0P => neA.
-pose s := @open_disjoint_itv _ _ oA.
-rewrite [in LHS](open_disjoint_itv_bigcup oA).
-have ccA : closed (closure A).
-  exact: closed_closure.
-apply/eqP; rewrite eq_le; apply/andP; split.
-  rewrite le_measure ?inE//.
-  - apply: bigcup_measurable => // k _.
-    apply: open_measurable.
-    exact: open_disjoint_itv_open.
-  - exact: closed_measurable.
-  rewrite -(open_disjoint_itv_bigcup oA).
-  exact: subset_closure.
-(*  move=> [:tmp].
-  rewrite le_measure ?inE//.
-    abstract: tmp.
-    apply: bigcup_measurable => // k _.
-    apply: open_measurable.
-    by have [] := oiI k.
-  apply: closed_measurable.
-  exact: closed_closure.
-  rewrite AE.
-  exact: subset_closure.
-*)
-rewrite measure_bigcup//=.
-  move=> n _.
-  apply: is_interval_measurable.
-  exact: open_disjoint_itv_is_interval.
-  exact: open_disjoint_itv_trivIset.
-Abort.
-
-End lebesgue_measure_closure.
 
 (* NB: work starts here *)
 
@@ -1801,41 +1459,6 @@ rewrite K; apply: h; split => //.
 Qed.
 
 End abs_contP.
-
-Section absolute_continuity_lemmas.
-Context {R : realType}.
-Import MeasurableR.
-
-Lemma abs_cont_derive1_cst a b (f : R^o -> R^o) : a < b ->
-  abs_cont a b f -> {ae @lebesgue_measure R, {in `[a, b], f^`() =1 cst 0}} ->
-  {in `[a, b], forall c, f c = f a}.
-Proof.
-move=> ab abf Df0 c cab.
-pose E := [set x | f^`() x = 0] `&` `[a, c].
-suff: forall e : R, 0 < e -> `|f c - f a| <= e * (c - a + 1).
-  move=> suf; move: cab; rewrite in_itv/= => /andP[ac _].
-  apply/eqP; rewrite -subr_eq0 -normr_eq0 eq_le normr_ge0 andbT.
-  apply/ler_addgt0Pl => /= e e0; rewrite addr0.
-  rewrite -(mulr1 e) -(@mulVf _ ((c - a + 1))).
-    by rewrite gt_eqF// ltr_pwDr// subr_ge0.
-  by rewrite mulrA suf// divr_gt0// ltr_pwDr// subr_ge0.
-move=> _/posnumP[e]; have [d de] := abf e.
-
-Abort.
-
-Lemma abs_cont_bounded_variation (a b : R) (f : R -> R) :
-  a <= b ->
-  abs_cont a b f -> bounded_variation a b f.
-Proof.
-move=> ab acf.
-apply/(bounded_variationP _ ab).
-
-have [d] := acf (PosNum ltr01).
-
-Abort.
-
-
-End absolute_continuity_lemmas.
 
 Section tmp.
 Context {R : realType}.
