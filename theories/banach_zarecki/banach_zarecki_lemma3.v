@@ -687,100 +687,81 @@ rewrite le_eqVlt => /predU1P[FxBd|FxBd].
     by rewrite -FxBd.
   rewrite VAx/=.
   by apply/eqP; rewrite eq_sym lt_eqF// ltrDl.
-have [yE|] := eqVneq (F (x - d')) y.
-  subst y.
+have [yE|Fxd'y] := eqVneq (F (x - d')) y.
   have : (V `&` A) (x - d').
     split.
       apply: xdV.
-      rewrite /ball_/=.
-      rewrite opprD addrA subrr add0r normrN ltr0_norm//.
-      by rewrite oppr_lt0.
-      by rewrite opprK.
+      rewrite /ball_/= opprD addrA subrr add0r normrN ltr0_norm//.
+      - by rewrite oppr_lt0.
+      - by rewrite opprK.
     rewrite /A/=; split.
-      by rewrite in_itv/= axd'/=.
+      by rewrite in_itv/= axd'.
     by rewrite yE.
   rewrite VAx/=.
-  apply/eqP.
-  by rewrite eq_sym gt_eqF// ltrBlDl ltrDr.
-move=> Fxd'y.
+  by apply/eqP; rewrite eq_sym gt_eqF// ltrBlDl ltrDr.
 have [yE|] := eqVneq (F (x + d')) y.
-  subst y.
   have : (V `&` A) (x + d').
     split.
       apply: xdV.
-      rewrite /ball_/=.
-      by rewrite opprD addrA subrr add0r normrN gtr0_norm//.
+      by rewrite /ball_/= opprD addrA subrr add0r normrN gtr0_norm.
     rewrite /A/=; split.
-    by rewrite in_itv/= xd'b andbT (le_trans axd')//.
+      by rewrite in_itv/= xd'b andbT (le_trans axd').
     by rewrite yE.
   rewrite VAx/=.
-  apply/eqP.
-  by rewrite eq_sym lt_eqF// ltrDl.
+  by apply/eqP; rewrite eq_sym lt_eqF// ltrDl.
 move=> yFxd'.
 have [n /andP[xd'yn ynxd']] : exists n, F (x - d') < y_ n < F (x + d').
   pose k := Num.min ((F (x + d') - y) / 2) ((y - F (x - d')) / 2).
   have k0 : 0 < k.
     rewrite lt_min !divr_gt0//.
-    rewrite subr_gt0.
-    rewrite lt_neqAle eq_sym yFxd'/= ndF//.
-    by apply: subset_itv_oo_cc.
-    rewrite in_itv/= axDd'//=.
-    by rewrite lerDl ltW.
+      rewrite subr_gt0 lt_neqAle eq_sym yFxd'/= ndF//.
+      - exact: subset_itv_oo_cc.
+      - by rewrite in_itv/= axDd'.
+      - by rewrite lerDl ltW.
     rewrite subr_gt0 lt_neqAle Fxd'y ndF//.
-      by rewrite in_itv/= axd'//= (le_trans _ xd'b)//.
-    by apply: subset_itv_oo_cc.
-    by rewrite lerBlDl lerDr ltW.
+    - by rewrite in_itv/= axd'//= (le_trans _ xd'b)//.
+    - exact: subset_itv_oo_cc.
+    - by rewrite lerBlDl lerDr ltW.
   move/cvgrPdist_lt : y_cvg => /(_ _ k0)[n _]/(_ n (@leqnn n)).
   rewrite ltr_distlC => /andP[ykyn ynyk].
-  exists n.
-  apply/andP; split.
-    rewrite (le_lt_trans _ ykyn)// /k.
-    rewrite lerBrDl -lerBrDr.
-    rewrite ge_min.
+  exists n; apply/andP; split.
+    rewrite (le_lt_trans _ ykyn)// /k lerBrDl -lerBrDr ge_min.
     apply/orP; right.
     rewrite ler_piMr//; last by rewrite ?invf_le1 ?ler1n//.
     rewrite subr_ge0 ndF//.
-    by rewrite in_itv/= axd'/= (le_trans xd'xd').
-    by rewrite in_itv/= !(itvP xab).
-    by rewrite lerBlDl lerDr ltW.
-  rewrite (lt_le_trans ynyk)// /k.
-  rewrite -lerBrDl.
-  rewrite ge_min.
+    - by rewrite in_itv/= axd'/= (le_trans xd'xd').
+    - by rewrite in_itv/= !(itvP xab).
+    - by rewrite lerBlDl lerDr ltW.
+  rewrite (lt_le_trans ynyk)// /k -lerBrDl ge_min.
   apply/orP; left.
   rewrite ler_piMr//; last by rewrite ?invf_le1 ?ler1n//.
   rewrite subr_ge0 ndF//.
-  by rewrite in_itv/= !(itvP xab).
-  rewrite in_itv/= xd'b andbT.
-  by rewrite (le_trans axd')//.
-  by rewrite lerDl ltW.
-have H3 : {within `[x - d', x + d'], continuous F}.
+  - by rewrite in_itv/= !(itvP xab).
+  - rewrite in_itv/= xd'b andbT.
+    by rewrite (le_trans axd')//.
+  - by rewrite lerDl ltW.
+have xd'F : {within `[x - d', x + d'], continuous F}.
   apply: continuous_subspaceW cF.
-  by apply: subset_itv; rewrite bnd_simp//=.
+  by apply: subset_itv; rewrite bnd_simp.
 have : Num.min (F (x - d')) (F (x + d')) <= y_ n <=
        Num.max (F (x - d')) (F (x + d')).
   by rewrite ge_min (ltW xd'yn)/= le_max (ltW ynxd') orbT.
-move/IVT => /(_ xd'xd' H3)[x' x'xd Fx'yn].
+move/IVT => /(_ xd'xd' xd'F)[x' x'xd Fx'yn].
 have : x' \in V `&` A.
-  rewrite inE.
-  split.
-    apply: xdV.
-    apply/set_mem.
-    rewrite -[X in _ \in X]/(ball _ _).
-    rewrite ball_itv inE/=.
+  rewrite inE; split.
+    apply/xdV/set_mem.
+    rewrite -[X in _ \in X]/(ball _ _) ball_itv inE/=.
     apply: subset_itv x'xd; rewrite bnd_simp//=.
-      by rewrite ltrD2l ltrN2//.
-    by rewrite ltrD2l//.
-  rewrite /A; split => //=.
-  by apply: subset_itv x'xd; rewrite bnd_simp//=.
+      by rewrite ltrD2l ltrN2.
+    by rewrite ltrD2l.
+  rewrite /A; split => /=.
+    by apply: subset_itv x'xd; rewrite bnd_simp.
   rewrite Fx'yn.
-  apply/y_K.
-  by apply/imageT.
+  exact/y_K/imageT.
 rewrite VAx inE/= => x'x.
-subst x'.
-move/eqP : Fx'yn.
-apply/negP.
-rewrite eq_sym.
-exact: y_neq.
+move: Fx'yn x'xd; rewrite x'x {x'x x'}.
+move=> /eqP /[swap] x'xd; apply/negP.
+by rewrite eq_sym y_neq.
 Qed.
 
 Arguments open : clear implicits.
@@ -983,7 +964,6 @@ Qed.
 
 Lemma image_measure0_Lusin_nondecreasing_isolated0 (F : R -> R) :
   {within `[a, b], continuous F} ->
-  (* increasing means nondecreasing or not? *)
   {in `[a, b] &, {homo F : x y / x <= y}} ->
   (forall Z : set R, Z `<=` `[a, b]%classic ->
       compact R Z ->
