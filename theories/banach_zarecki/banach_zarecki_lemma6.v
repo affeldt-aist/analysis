@@ -2141,7 +2141,7 @@ Section mv_to_constructive_ereal.
 Context {R : realDomainType}.
 Implicit Types (x y z u a b : \bar R) (r : R).
 
-(* replace the bigmaxe_fin_num in MCA *)
+(* NB: to appear in MCA 1.19.0 (PR 2134) *)
 Lemma bigmaxe_fin_num def (s : seq (\bar R)) : s != [::] ->
   {in s, forall x, (def <= x)%E /\ x \is a fin_num} ->
   \big[maxe/def]_(i <- s) i \is a fin_num.
@@ -2179,23 +2179,6 @@ Let ndH := bounded_variation_total_nondecreasing bvf.
 Let cH : {within `[a, b], continuous H}.
 Proof. exact: total_variation_continuous. Qed.
 
-
-(*
-Lemma lebesgue_measure_eq_itv_bnd (A : set R) (x y : R)
- (b0 b1 : bool) :
-  (x <= y) ->
-  A = [set` Interval (BSide b0 x) (BSide b1 y)] ->
-  (lebesgue_measure A = (y - x)%:E)%E.
-Proof.
-rewrite le_eqVlt => /predU1P[->|].
-  move=> ->; rewrite subrr.
-  case: b0; case: b1; rewrite ?set_itvoo0 ?set_itvoc0 ?set_itvco0 ?measure0//.
-  by rewrite set_itv1 lebesgue_measure_set1.
-move=> xy ->.
-by case: b0; case: b1; rewrite lebesgue_measure_itv lte_fin xy.
-Qed.
-*)
-
 Import MeasurableR.
 
 Local Notation mu := (@completed_lebesgue_measure R).
@@ -2232,8 +2215,7 @@ have cd : c < d.
   apply: (@sub_countable _ _ _ Z).
     exact: card_image_le.
   exact: is_subset1_countable.
-have perfectZ : perfect_set Z.
-  by apply/perfectP; split.
+have perfectZ : perfect_set Z by exact/perfectP.
 have Z_nonempty : Z !=set0.
   apply/set0P; apply/negP => /eqP Z0'.
   by move: HZ; rewrite Z0' image_set0 measure0 ltxx.
@@ -2296,8 +2278,7 @@ have lambda_fin n : lambda n \is a fin_num.
   move/mapP => [i].
   rewrite mem_iota add0n => /andP[_ iltn2 ->].
   by rewrite diam_itv ?ltry ?ContItvs.cled.
-have lambda_ge0 n : (0 <= lambda n)%E.
-  exact: diam_max_ge0.
+have lambda_ge0 n : (0 <= lambda n)%E by exact: diam_max_ge0.
 have mcgitv i : mu.-cara.-measurable (contiguous_itvs Z i).
   move=> k; apply: sub_caratheodory.
   rewrite RGenOpenSets.measurableE.
@@ -2415,40 +2396,6 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
  *    [:: d_ n n]]
  *  [remark]: c_ n 0 = c, d_ n n = d, k_ i = number of points between (d_ n i) and (c_ n i.+1)
  *)
-(*
-have Hsplit_ab : forall n (i : 'I_n), exists xs,
-    itv_partition (a_ n i) (b_ n i) (rcons xs (b_ n i)) /\
-    (`|head (b_ n i) xs - a_ n i|%:E < lambda n)%E /\
-    (`|b_ n i - last (a_ n i) xs |%:E < lambda n)%E /\
-    (forall k, ((nth d xs k.+1 - nth d xs k)%:E < lambda n)%E).
-  move=> n i.
-  pose xs' := @lambda_partition R (a_ n i) (b_ n i) (fine (lambda n)).
-  have [u [v uv]] : exists h t, xs' = h :: t.
-    admit. (* use size_lambda_partition0 *)
-  exists (belast u v).
-  split.
-    have H1 : b_ n i = last u v.
-      admit. (* use last_lambda *)
-    rewrite [X in rcons _ X]H1.
-    rewrite -lastI.
-    rewrite -uv.
-    apply: lambda_partition_partition.
-    by apply: altb => // i0; apply: contiguous_itvs1_lt_contiguous_itvs2.
-    admit.
-  split.
-    (* lambda_partition_mesh *) admit.
-  split.
-    (* lambda_partition_mesh *) admit.
-  move=> i0.
-  (* lambda_partition_mesh *) admit.
-pose split_ab n i := sval (cid (Hsplit_ab n i)).
-pose xs n : seq R := flatten [tuple (c_ n i :: d_ n i :: split_ab n i) | i < n].
-have xs_prop1 n : forall k, (`|nth d (xs n) k.+1 - nth d (xs n) k|%:E < lambda n)%E.
-  admit. (* use Hsplit_ab *)
-have xs_prop2 n : forall k l, nth d (xs n) k \notin `]c_ n l, d_ n l[.
-  (* since points besides ci di are comming from ]ai,bi[ *)
-  admit.
-*)
 have lambda_gt0 n : 0 < (fine (lambda n)).
   have cdab i : (i < n.+1)%N -> `[c_ n i, d_ n i]%classic `<=` `[a, b]%classic.
     move=> in1.
