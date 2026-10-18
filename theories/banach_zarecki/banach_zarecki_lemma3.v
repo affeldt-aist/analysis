@@ -416,21 +416,6 @@ Admitted.
 
 Section main_lemma.
 
-Lemma limit_point_open (U : set R) (p : R) :
-  limit_point U p <-> forall V, open_nbhs p V ->
-                         exists y : R, [/\ y != p, U y & V y].
-Proof.
-split.
-  move=> Up /= V pV.
-  apply: Up.
-  by apply: open_nbhs_nbhs.
-move=> /= H V.
-rewrite nbhsE/= => -[A pA AV].
-have [y [yp Uy Ay]] := H _ pA.
-exists y; split => //.
-by apply: AV.
-Qed.
-
 (* NB: this is too long! *)
 Lemma nondecreasing_cont_isolated (F : R -> R) (K : set R) :
   compact K ->
