@@ -127,12 +127,14 @@ pi_irrational.v
 gauss_integral.v
 
 absolute_continuity.v
+banach_zarecki/not_used.v
 banach_zarecki/mesh.v
 banach_zarecki/lebesgue_measure_extra.v
 banach_zarecki/merge_extra.v
 banach_zarecki/variation_extra.v
 banach_zarecki/oscillation.v
 banach_zarecki/interleave.v
+banach_zarecki/diameter.v
 banach_zarecki/banach_zarecki_lemma1.v
 banach_zarecki/banach_zarecki_lemma2.v
 banach_zarecki/banach_zarecki_lemma3.v
