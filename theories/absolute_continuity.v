@@ -45,15 +45,28 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
 Section seq_lemmas.
-(* TODO: maybe replace by lemmas of tuple? *)
+
 Lemma nth_map_iota {T} (x : T) (n : nat) (f : nat -> T) (i : nat) :
-  (i < n)%N ->
+   (i < n)%N ->
   nth x [seq f k | k <- iota 0 n] i = f i.
 Proof.
 by move=> iltn; rewrite (nth_map 0%N) ?nth_iota; first by rewrite size_iota.
 Qed.
 
- (* TODO: generalize *)
+(* TODO: mv *)
+Lemma nth_map_tuple {T} (x : T) (n : nat) (f : nat -> T) (i : nat) :
+  (i < n)%N ->
+  nth x [tuple f k | k < n] i = f i.
+Proof.
+move=> iltn.
+suff: tnth [tuple f k | k < n] (Ordinal iltn) = f i.
+  move=> <-.
+  apply: set_nth_default.
+  by rewrite size_tuple.
+by rewrite tnth_mktuple.
+Qed.
+
+(* TODO: generalize *)
 Lemma sorted_catP {R : realType} (d : R) (s t : seq R) :
   s != [::] -> t != [::] ->
   [/\ sorted <=%R s, sorted <=%R t & last d s <= head d t] <->

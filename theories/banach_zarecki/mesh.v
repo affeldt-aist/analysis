@@ -19,6 +19,9 @@ From mathcomp Require Import absolute_continuity.
 (* : the mesh of the subdivision of the interval $[a, b]$, i.e., the max      *)
 (* : of $|p_{i+1} - p_i|$ where $p$ is the list representing the subdivision  *)
 (*                                                                            *)
+(* `uniform_partition a b d`                                                  *)
+(* : $a + \frac{b - a}{d}, \ldots, a + \frac{(n-1)(b-a)}{d}, b$               *)
+(*                                                                            *)
 (******************************************************************************)
 
 Set Implicit Arguments.
@@ -198,7 +201,6 @@ Lemma mesh_merge a l s t :
 Proof.
 Abort.
 
-
 Lemma mesh_mem_filter (a b c d : R) (s : seq R) :
   a <= c -> d <= b ->
   mesh c [seq x <- s | x \in `[c, d]] <= mesh a s.
@@ -212,127 +214,114 @@ Abort.
 
 End mesh_lemmas.
 
-Section lambda_partition.
-Context {R : realType}.
+Section uniform_partition.
+Context {R : realType} (a b l : R).
 
-Definition lambda_partition (a b : R) (lambda : R) :=
-  let n := (truncn ((b - a) / lambda)).+1 in
-  [seq (a + (b - a) * i.+1%:R / n%:R) | i <- iota 0 n].
+Let nb := (truncn ((b - a) / l)).+1.
 
-Local Notation lp := lambda_partition.
+Let f i := a + (b - a) * i.+1%:R / nb%:R.
 
-Lemma lambda_partition_size0_tmp (a b l : R) :
-  (0 < (truncn ((b - a) / l)).+1)%N.
-Proof. by []. Qed.
+Definition uniform_partition := [tuple f i | i < nb].
 
-Lemma size_lambda_partition0 (a b l : R) :
-  a < b -> 0 < l ->
-  (0 < size (lp a b l))%N.
-Proof.
-move=> ab l0; by rewrite size_map size_iota lambda_partition_size0_tmp.
-Qed.
+Local Notation up := uniform_partition.
 
-Lemma lambda_partition_mesh (a b l : R) :
-  a < b -> 0 < l ->
-   mesh a (lp a b l) < l.
+Let nb_gt0 : (0 < nb)%N. Proof. by []. Qed.
+
+Lemma size_uniform_partition_gt0 : a < b -> 0 < l ->
+  (0 < size up)%N.
+Proof. by move=> ab l0; rewrite size_tuple nb_gt0. Qed.
+
+Lemma uniform_partition_mesh : a < b -> 0 < l -> mesh a up < l.
 Proof.
 move=> ab l0.
 rewrite /mesh.
-
-have : forall n : nat, (0 <= n < (truncn ((b - a) / l)).+1)%N ->
- `|(a :: lp a b l)`_n.+1 - (a :: lp a b l)`_ n|%:nng < NngNum (ltW l0).
-  move=> n /andP[_ nl]; rewrite -num_lt/=.
-  rewrite /lp nth_map_iota//.
-  case: n nl.
+have : forall i : nat, (0 <= i < nb)%N ->
+ `|(a :: up)`_i.+1 - (a :: up)`_ i|%:nng < NngNum (ltW l0).
+  move=> i /andP[_ il]; rewrite -num_lt.
+  rewrite /up/= nth_map_tuple//.
+  case: i il.
     move=> _ /=.
+    rewrite /f.
     rewrite mulr1 addrAC subrr add0r ger0_norm.
       by rewrite mulr_ge0// subr_ge0 ltW.
     rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
     exact: truncnS_gt.
   move=> n.
   rewrite ltnS => nbal.
-  rewrite [X in _ - X]
-      (_: _ = a + (b - a) * n.+1%:R / (truncn ((b - a) / l)).+1%:R).
-    transitivity (
-    ([seq a + (b - a) * i.+1%:R /
-     (truncn ((b - a) / l)).+1%:R | i <- iota 0 (truncn ((b - a) / l)).+1])`_
-    n).
-      done.
-    rewrite nth_map_iota//.
-    by rewrite ltnW// ltnS.
+  rewrite [X in _ - X] (_: _ = f n).
+    transitivity ([tuple f i | i < nb]`_ n).
+      by [].
+    by rewrite nth_map_tuple// ltnW// ltnS.
   rewrite opprD addrACA subrr add0r.
   rewrite -nat1r mulrDr mulrDl addrK mulr1.
   rewrite ger0_norm.
     by rewrite mulr_ge0// subr_ge0 ltW.
   rewrite ltr_pdivrMr// mulrC -ltr_pdivrMr//.
   exact: truncnS_gt.
-have l0_nng : 0%:nng < NngNum (ltW l0).
-  by rewrite -num_lt.
-move/(bigmax_lt (iota 0 (size (lp a b l) - 0)) l0_nng).
+have l0_nng : 0%:nng < NngNum (ltW l0) by rewrite -num_lt.
+move/(bigmax_lt (iota 0 (size up - 0)) l0_nng).
 rewrite -num_lt//.
 apply: le_lt_trans.
 rewrite num_le.
 rewrite big_nat_cond.
 apply: sub_bigmax.
 move=> n; rewrite andbT => /andP[-> ]/leq_trans; apply.
-by rewrite size_map size_iota.
+by rewrite size_tuple.
 Qed.
 
-Lemma last_lambda (a b l d : R) :
-  a < b -> 0 < l ->
-  last d (lp a b l) = b.
+Lemma last_uniform_partition (d : R) : a < b -> 0 < l -> last d up = b.
 Proof.
 move=> ab l0.
 rewrite (last_nth b).
-rewrite -(@prednK (size _))//.
-rewrite /lp (lock (iota 0))/=; unlock; rewrite nth_map_iota.
-  by rewrite size_map size_iota.
-by rewrite size_map size_iota/= -mulrA divff// mulr1 addrCA subrr addr0.
+rewrite -(@prednK (size _)) ?size_tuple//.
+rewrite /up/=.
+rewrite nth_map_tuple//.
+rewrite /f.
+by rewrite -mulrA divff// mulr1 addrCA subrr addr0.
 Qed.
 
-Lemma lt_path_lambda (a b l : R) :
-  a < b -> 0 < l ->
-  path <%R a (lp a b l).
+Lemma path_uniform_partition : a < b -> 0 < l -> path <%R a up.
 Proof.
 move=> ab l0.
 rewrite lt_path_pairwise.
-apply/(pairwiseP 0) => i j; rewrite !inE/= size_map size_iota.
-case: i j => //=.
-  case => //= j _; rewrite ltnS => jl _.
-  rewrite nth_map_iota// ltrDl.
+apply/(pairwiseP 0) => i j; rewrite !inE size_tuple.
+case: i j => //.
+  case => // j _; rewrite ltnS => jl _.
+  rewrite /up/=.
+  rewrite nth_map_tuple// ltrDl.
   by rewrite divr_gt0 ?mulr_gt0 ?subr_gt0.
 move=> i; case => // j.
 rewrite ltnS => il; rewrite ltnS => jl; rewrite ltnS => ij/=.
-rewrite !nth_map_iota//.
-rewrite ltrD2l ltr_pM2r// ltr_pM2l//.
+rewrite !nth_map_tuple//.
+rewrite /f ltrD2l ltr_pM2r ?invr_gt0// ltr_pM2l//.
   by rewrite subr_gt0.
 by rewrite ltr_nat ltnS.
 Qed.
 
-Lemma lt_sorted_lambda (a b l : R) :
-  a < b -> 0 < l ->
-  sorted <%R (lp a b l).
+Lemma sorted_uniform_partition : a < b -> 0 < l -> sorted <%R up.
 Proof.
-move=> ab l0.
-exact: path_sorted (lt_path_lambda ab l0).
+by move=> ab l0; exact: path_sorted (path_uniform_partition ab l0).
 Qed.
 
-Lemma lb_lambda (a b l : R) :
-  a < b -> 0 < l ->
-  forall x : R, x \in lp a b l ->
-  a < x.
+Lemma lb_uniform_partition : a < b -> 0 < l ->
+  forall x : R, x \in uniform_partition -> a < x.
 Proof.
 move=> ab l0 /= x slp.
-by have/lt_path_min/allP := lt_path_lambda ab l0; apply.
+by have/lt_path_min/allP := path_uniform_partition ab l0; apply.
 Qed.
 
-Lemma lambda_partition_partition (a b l : R) :
-  a < b -> 0 < l ->
-  itv_partition a b (lp a b l).
+Lemma head_uniform_partition d : a < b -> 0 < l -> a < head d up.
+Proof.
+move=> ab l0; apply: lb_uniform_partition => //.
+rewrite -nth0; apply/mem_nth.
+by rewrite size_uniform_partition_gt0.
+Qed.
+
+Lemma itv_uniform_partition : a < b -> 0 < l -> itv_partition a b up.
 Proof.
 move=> ab l0.
-split; last by rewrite last_lambda.
-exact: lt_path_lambda.
+split; last by rewrite last_uniform_partition.
+exact: path_uniform_partition.
 Qed.
 
-End lambda_partition.
+End uniform_partition.
