@@ -29,7 +29,7 @@ Context {R : realType}.
 Variables a b : R.
 Hypotheses ab : a < b.
 
-Local Notation mu := (@completed_lebesgue_measure R).
+Local Notation mu := (@lebesgue_measure R).
 
 Theorem Banach_Zarecki (f : R -> R) :
   {within `[a, b], continuous f} ->

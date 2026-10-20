@@ -119,7 +119,7 @@ End ene4_preliminaries.
 Section ene4.
 Context {R: realType} (a b : R).
 Hypothesis ab : a <= b.
-Local Notation mu := (@completed_lebesgue_measure R).
+Local Notation mu := (@lebesgue_measure R).
 Local Open Scope ereal_scope.
 
 Lemma ene4 (f : R -> R) (P : set R) :
@@ -130,7 +130,7 @@ Lemma ene4 (f : R -> R) (P : set R) :
   let a_ := contiguous_itvs1 P in
   let b_ := contiguous_itvs2 P in
   `|f b - f a|%:E <= mu (f @` `[a, b])
-     <= (mu^*)%mu (f @` P) +
+     <= mu (f @` P) +
         \sum_(0 <= i <oo) oscillation f `[(a_ i), (b_ i)]%classic.
 Proof.
 move=> fab closedP.
@@ -175,7 +175,7 @@ apply/andP; split.
   (* wlog? *)
   have [fafb|] := pselect (f a < f b)%R.
     have -> : `|f b - f a|%:E = mu `[f a, f b].
-      rewrite completed_lebesgue_measure_itv/= lte_fin fafb -EFinD.
+      rewrite lebesgue_measure_itv/= lte_fin fafb -EFinD.
       move: fafb.
       rewrite -subr_gt0.
       by move/ltW/normr_idP ->.
@@ -189,7 +189,7 @@ apply/andP; split.
       by rewrite subrr normr0 measure_ge0.
   rewrite -normrN opprB => fbfa.
   have -> : `|f a - f b|%:E = mu `[f b, f a].
-    rewrite completed_lebesgue_measure_itv/= lte_fin fbfa -EFinD.
+    rewrite lebesgue_measure_itv/= lte_fin fbfa -EFinD.
     move: fbfa.
     rewrite -subr_gt0.
     by move/ltW/normr_idP ->.
@@ -198,13 +198,9 @@ apply/andP; split.
   - by exists b => //=; rewrite bound_itvE.
   - by exists a => //=; rewrite bound_itvE.
   - by rewrite in_itv/= in xfba.
-rewrite -measurable_mu_extE.
-  apply: sub_caratheodory.
-  rewrite -(@RhullK _ (f @` `[a, b]))//.
-  by rewrite inE.
 rewrite H1.
-apply: (@le_trans _ _ (mu^*%mu [set f x | x in P] +
-         mu^*%mu (\bigcup_i [set f x | x in `](a_ i), (b_ i)[]))).
+apply: (@le_trans _ _ (mu [set f x | x in P] +
+         mu (\bigcup_i [set f x | x in `](a_ i), (b_ i)[]))).
   exact: outer_measureU2.
 apply: leeD2l.
 apply: le_trans.
@@ -221,15 +217,12 @@ case: ifPn => [/eqP ab0|ab0].
   rewrite set_itv_ge ?bnd_simp -?leNgt//; first exact/ltW.
   by rewrite image_set0 mu_ext0.
 rewrite [leRHS](_ : _ =
-       mu^*%mu [set` Rhull (f @` `[((a_ n)), ((b_ n))] )]); last first.
+       mu [set` Rhull (f @` `[((a_ n)), ((b_ n))] )]); last first.
   apply: le_outer_measure.
   apply: subset_trans (@sub_Rhull _ _).
   apply: image_subset.
   exact: subset_itv_oo_cc.
-rewrite measurable_mu_extE/=.
-  apply: sub_caratheodory.
-  exact: MeasurableRocitv.measurable_itv.
-rewrite completed_lebesgue_measure_itv.
+rewrite lebesgue_measure_itv.
 have fab0 : [set f x | x in `[(a_ n), (b_ n)]] !=set0.
   exists (f ((a_ n))) => //.
   exists ((a_ n)) => //=.
@@ -296,7 +289,7 @@ Section ene4_cover.
 Context {R: realType}.
 Variables a b : R.
 Hypothesis ab : a <= b.
-Local Notation mu := (@completed_lebesgue_measure R).
+Local Notation mu := (@lebesgue_measure R).
 
 Local Open Scope ereal_scope.
 
@@ -328,7 +321,7 @@ have <- : mu [set` Rhull (f @` X)] =
   rewrite !ifT.
   - exact/asboolP.
   - exact/asboolP.
-  rewrite completed_lebesgue_measure_itv => /=; case: ifPn => //.
+  rewrite lebesgue_measure_itv => /=; case: ifPn => //.
   rewrite -leNgt => si.
   rewrite -EFinB (_ : 0 = 0%:E)//; congr EFin.
   apply/esym/eqP; rewrite subr_eq0 eq_le; apply/andP; split => //.
@@ -345,7 +338,7 @@ Lemma ene4_cover (f : R -> R) (P : set R) (xy : nat -> R * R) :
    \bigcup_(i in (fun i => `[(xy i).1, (xy i).2]%classic `<=` `[a, b]))
        `](xy i).1, (xy i).2[%classic ->
   `|f b - f a|%:E <= mu (f @` `[a, b])
-     <= (mu^*)%mu (f @` P) +
+     <= mu (f @` P) +
         \sum_(0 <= i <oo | `[< `[(xy i).1, (xy i).2]%classic `<=` `[a, b] >])
           oscillation f `[(xy i).1, (xy i).2]%classic.
 Proof.
@@ -367,7 +360,7 @@ apply/andP; split.
   (* wlog? *)
   have [fafb|] := pselect (f a < f b)%R.
     have -> : `|f b - f a|%:E = mu `[f a, f b].
-      rewrite completed_lebesgue_measure_itv/= lte_fin fafb -EFinD.
+      rewrite lebesgue_measure_itv/= lte_fin fafb -EFinD.
       move: fafb.
       rewrite -subr_gt0.
       by move/ltW/normr_idP ->.
@@ -381,7 +374,7 @@ apply/andP; split.
       by rewrite subrr normr0 measure_ge0.
   rewrite -normrN opprB => fbfa.
   have -> : `|f a - f b|%:E = mu `[f b, f a].
-    rewrite completed_lebesgue_measure_itv/= lte_fin fbfa -EFinD.
+    rewrite lebesgue_measure_itv/= lte_fin fbfa -EFinD.
     move: fbfa.
     rewrite -subr_gt0.
     by move/ltW/normr_idP ->.
@@ -390,34 +383,20 @@ apply/andP; split.
   - by exists b => //=; rewrite bound_itvE.
   - by exists a => //=; rewrite bound_itvE.
   - by rewrite in_itv/= in xfba.
-rewrite -measurable_mu_extE.
-  apply: sub_caratheodory.
-  rewrite -(@RhullK _ (f @` `[a, b]))//.
-  by rewrite inE.
-apply: (le_trans (le_outer_measure mu^*%mu _ _ H1)).
+apply: (le_trans (le_outer_measure mu _ _ H1)).
 apply: (le_trans (outer_measureU2 _ _ _)).
 rewrite leeD2l//.
 rewrite bigcup_mkcond.
 apply: (le_trans (outer_measure_sigma_subadditive _ _)).
 rewrite [leLHS](_: _ =  \big[+%E/0%R]_(0 <= i <oo)
        (if i \in (fun i0 : nat => `[< `[(xy i0).1, (xy i0).2] `<=` `[a, b] >])
-        then mu^*%mu [set f x | x in `[(xy i).1, (xy i).2]]
+        then mu [set f x | x in `[(xy i).1, (xy i).2]]
         else 0)).
   apply: eq_eseriesr => n _.
   by case: ifP.
 rewrite -eseries_mkcond; apply: lee_nneseries => // n.
 rewrite inE => xyab.
-rewrite [leLHS](_ : mu^*%mu (f @` `[(xy n).1, (xy n).2]) =
-                    mu (f @` `[(xy n).1, (xy n).2]))%E; last first.
-  exact: measure_le_oscillation.
-apply: measurable_mu_extE.
-apply: sub_caratheodory.
-apply: compact_measurable.
-  apply: continuous_compact.
-    exact: continuous_subspaceW cf.
-  exact: segment_compact.
-split => /=; first exact: sigma_algebra_measurable.
-by move=> A oA; rewrite RGenOpenSets.measurableE//=; exact: sub_sigma_algebra.
+exact: measure_le_oscillation.
 Qed.
 
 End ene4_cover.

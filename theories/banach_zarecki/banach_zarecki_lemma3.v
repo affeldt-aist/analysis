@@ -29,7 +29,7 @@ Section ene3.
 Context {R : realType} (a b : R).
 Hypothesis ab : a < b.
 Import MeasurableR.
-Local Notation mu := (@completed_lebesgue_measure R).
+Local Notation mu := (@lebesgue_measure R).
 
 (* lemma3 (easy direction) *)
 Lemma Lusin_image_measure0 (f : R -> R) :
@@ -126,8 +126,7 @@ exists V_; split.
     apply: (@le_trans _ _ (mu (U_ n))).
       rewrite le_outer_measure//.
       by apply: bigcap_inf => /=.
-    rewrite mUe completed_lebesgue_measureE lebesgue_regularity_outer_inf ltW//.
-    exact: einf.
+    by rewrite mUe lebesgue_regularity_outer_inf ltW.
   - exact: cvg_cst.
   - rewrite -(adde0 ((wlength _)^*%mu Z)).
     apply: cvgeD.
@@ -210,7 +209,7 @@ Let measure0_setI_set1 (A : set R) (x : R) :
   mu (A `&` [set x]) = 0.
 Proof.
 rewrite setI1; case: ifP => //.
-by rewrite completed_lebesgue_measureE lebesgue_measure_set1.
+by rewrite lebesgue_measure_set1.
 Qed.
 
 (* generalize? *)
@@ -226,7 +225,6 @@ rewrite -{1}(setUIDK A [set x]).
 rewrite image_setU.
 apply: (le_trans (outer_measureU2 _ _ _)) => /=.
 have := measure0_image_setI_set1 f A x.
-rewrite completed_lebesgue_measureE.
 rewrite /lebesgue_measure/lebesgue_stieltjes_measure/measure_extension.
 by move->; rewrite add0r.
 Qed.
@@ -247,7 +245,6 @@ move=> /existsNP[Z]/not_implyP[Zab/=] /not_implyP[mZ] /not_implyP[muZ0].
 move=> /eqP; rewrite neq_lt ltNge measure_ge0/= => muFZ0.
 have Zoo : (mu Z < +oo)%E.
   apply: (@le_lt_trans _ _ (mu `[a, b])); first exact: le_outer_measure.
-  rewrite completed_lebesgue_measureE.
   by rewrite lebesgue_measure_itv/= lte_fin ab -EFinD ltry.
 have [U_ [ZU oU _ mZIU]] := lebesgue_measure_Gdelta_approx Zoo.
 set Z1 := `]a, b[ `&` \bigcap_n U_ n.
@@ -265,7 +262,7 @@ have Z1oo : (mu (F @` Z1) < +oo)%E.
     apply: (subset_trans Z1ab).
     exact: subset_itv_oo_cc.
   rewrite continuous_increasing_image_itv//.
-  rewrite completed_lebesgue_measure_itv lte_fin incF// -?EFinB ?ltry//.
+  rewrite lebesgue_measure_itv lte_fin incF// -?EFinB ?ltry//.
     by rewrite boundl_in_itv/= bnd_simp ltW.
   by rewrite boundr_in_itv bnd_simp ltW.
 have gZ1 : Gdelta Z1.
@@ -298,7 +295,7 @@ have FZ1oo : (mu (F @` Z1) < +oo)%E.
     rewrite -continuous_increasing_image_itv => //.
     apply: image_subset.
     exact: subset_itv_oo_cc.
-  rewrite completed_lebesgue_measure_itv.
+  rewrite lebesgue_measure_itv.
   by case: ifP=> //; rewrite -EFinB ltry.
 have FZ10 : (0 < mu (F @` Z1))%E.
   apply: (@lt_le_trans _ _ (mu (F @` (Z `\ a `\ b)))).
@@ -348,7 +345,6 @@ have : (0 < mu (F @` K1))%E.
     apply: le_lt_trans FZ1oo.
     exact: le_outer_measure.
   rewrite -lteBlDr//.
-  rewrite completed_lebesgue_measureE.
   apply: le_lt_trans.
   rewrite sube_ge0// /e EFinM fineK; first by rewrite ge0_fin_numE.
   rewrite muleC gee_pMl//.
@@ -780,7 +776,6 @@ move=> /existsNP[Z]/not_implyP[Zab/=] /not_implyP[mZ] /not_implyP[muZ0].
 move=> /eqP; rewrite neq_lt ltNge measure_ge0/= => muFZ0.
 have Zoo : (mu Z < +oo)%E.
   apply: (@le_lt_trans _ _ (mu `[a, b])); first exact: le_outer_measure.
-  rewrite completed_lebesgue_measureE.
   by rewrite lebesgue_measure_itv/= lte_fin ab -EFinD ltry.
 (* wlog (we should read Z1 as Z in paper) *)
 have [U_ [ZU oU _ mZIU]] := lebesgue_measure_Gdelta_approx Zoo.
@@ -806,7 +801,7 @@ have FZ1oo : (mu (F @` Z1) < +oo)%E.
     apply: le_outer_measure.
     apply: continuous_nondecreasing_image_itvoo => //.
     by move=> ? ? ? ?; apply: ndF; exact: subset_itv_oo_cc.
-  rewrite completed_lebesgue_measure_itv.
+  rewrite lebesgue_measure_itv.
   by case: ifP => //; rewrite -EFinB ltry.
 have ZabZ1 : Z `\ a `\ b `<=` Z1.
   rewrite subsetI; split.
@@ -839,9 +834,6 @@ have mpreF0 : mu ([set F x | x in Z1] `&` preimages_gt1 `[a, b] [set: R] F) = 0.
   exact: is_countable_preimages_gt1_nondecreasing_fun.
 have e'0 : 0 < e'.
   rewrite /e' measureD//=.
-  - apply: sub_caratheodory.
-    by rewrite RGenOpenSets.measurableE.
-  - apply: sub_caratheodory.
     apply: countable_measurable => //.
     exact: is_countable_preimages_gt1_nondecreasing_fun.
   rewrite mpreF0 sube0.
@@ -898,7 +890,6 @@ have : (0 < mu (F @` K1))%E.
     apply: le_lt_trans FZ1'oo.
     exact: le_outer_measure.
   rewrite -lteBlDr//.
-  rewrite completed_lebesgue_measureE.
   apply: le_lt_trans.
   rewrite sube_ge0// /e EFinM fineK; first by rewrite ge0_fin_numE.
   rewrite muleC gee_pMl//.
@@ -965,7 +956,6 @@ move=> /existsNP[Z]/not_implyP[Zab/=] /not_implyP[mZ] /not_implyP[muZ0].
 move=> /eqP; rewrite neq_lt ltNge measure_ge0/= => muFZ0.
 have Zoo : (mu Z < +oo)%E.
   apply: (@le_lt_trans _ _ (mu `[a, b])); first exact: le_outer_measure.
-  rewrite completed_lebesgue_measureE.
   by rewrite lebesgue_measure_itv/= lte_fin ab -EFinD ltry.
 (* wlog (we should read Z1 as Z in paper) *)
 have [U_ [ZU oU _ mZIU]] := lebesgue_measure_Gdelta_approx Zoo.
@@ -991,7 +981,7 @@ have FZ1oo : (mu (F @` Z1) < +oo)%E.
     apply: le_outer_measure.
     apply: continuous_nondecreasing_image_itvoo => //.
     by move=> ? ? ? ?; apply: ndF; exact: subset_itv_oo_cc.
-  rewrite completed_lebesgue_measure_itv.
+  rewrite lebesgue_measure_itv.
   by case: ifP => //; rewrite -EFinB ltry.
 have ZabZ1 : Z `\ a `\ b `<=` Z1.
   rewrite subsetI; split.
@@ -1024,9 +1014,6 @@ have mpreF0 : mu ([set F x | x in Z1] `&` preimages_gt1 `[a, b] [set: R] F) = 0.
   exact: is_countable_preimages_gt1_nondecreasing_fun.
 have e'0 : 0 < e'.
   rewrite /e' measureD//=.
-  - apply: sub_caratheodory => //.
-    by rewrite RGenOpenSets.measurableE.
-  - apply: sub_caratheodory.
     apply: countable_measurable => //.
     exact: is_countable_preimages_gt1_nondecreasing_fun.
   rewrite mpreF0 sube0.
@@ -1105,7 +1092,6 @@ have : (0 < mu (F @` K1))%E.
     apply: le_lt_trans FZ1'oo.
     exact: le_outer_measure.
   rewrite -lteBlDr//.
-  rewrite completed_lebesgue_measureE.
   apply: le_lt_trans.
   rewrite sube_ge0// /e EFinM fineK; first by rewrite ge0_fin_numE.
   rewrite muleC gee_pMl//.

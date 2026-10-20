@@ -287,7 +287,7 @@ End checking_flatten_lemmas.
 
 Section lemmas.
 Context {R : realType}.
-Local Notation mu := (@completed_lebesgue_measure R).
+Local Notation mu := (@lebesgue_measure R).
 
 From mathcomp Require Import convex.
 
@@ -2181,7 +2181,7 @@ Proof. exact: total_variation_continuous. Qed.
 
 Import MeasurableR.
 
-Local Notation mu := (@completed_lebesgue_measure R).
+Local Notation mu := (@lebesgue_measure R).
 
 (* https://math.stackexchange.com/questions/520209/removing-isolated-points-to-get-a-perfect-set *)
 Lemma ene6_direct : lusinN `[a, b] H.
@@ -2248,8 +2248,8 @@ have fin_alpha : alpha \is a fin_num.
     rewrite ltNge.
     by rewrite ndH ?boundl_in_itv ?boundr_in_itv ?bnd_simp//= ltW.
   rewrite le_eqVlt => /predU1P[->|HaHb].
-    by rewrite set_itv1 completed_lebesgue_measureE lebesgue_measure_set1.
-  rewrite completed_lebesgue_measure_itv ifT ?lte_fin//=.
+    by rewrite set_itv1 lebesgue_measure_set1.
+  rewrite lebesgue_measure_itv ifT ?lte_fin//=.
   by rewrite -EFinB ltry.
 pose a_ := OrderedBounds.a_ A_ B_ d.
 pose b_ := OrderedBounds.b_ A_ B_ d.
@@ -2280,8 +2280,6 @@ have lambda_fin n : lambda n \is a fin_num.
   by rewrite diam_itv ?ltry ?ContItvs.cled.
 have lambda_ge0 n : (0 <= lambda n)%E by exact: diam_max_ge0.
 have mcgitv i : mu.-cara.-measurable (contiguous_itvs Z i).
-  move=> k; apply: sub_caratheodory.
-  rewrite RGenOpenSets.measurableE.
   apply: open_measurable.
   exact: open_contiguous_itvs.
 have lambda0 : (fine \o lambda) @ \oo --> 0%R.
@@ -2297,7 +2295,7 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
     rewrite diam_itv; first exact: ContItvs.cled.
     rewrite (bigD1 i)//=.
     have -> : mu `[c_ n i, d_ n i] = (d_ n i - c_ n i)%:E.
-      rewrite completed_lebesgue_measure_itv lte_fin.
+      rewrite lebesgue_measure_itv lte_fin.
       have [_|] := ltP (c_ n i) (d_ n i).
         by rewrite /= -EFinB.
       rewrite le_eqVlt; move/predU1P => [->|].
@@ -2334,7 +2332,6 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
       apply: setDidl.
       exact: ContItvs.disj_abcd.
     rewrite bigcup_mkord.
-    rewrite completed_lebesgue_measureE.
     rewrite measure_semi_additive_ord//=.
       (* lemma? *)
       case => i iltn2.
@@ -2377,12 +2374,11 @@ have lambda0 : (fine \o lambda) @ \oo --> 0%R.
   apply: cvg_measure_bigcap_new_new => /=; last 2 first.
       by move=> ?; apply: measurableD => //; exact: sub_caratheodory.
     apply: bigcap_measurable => // ? _; apply: measurableD => //.
-    exact: sub_caratheodory.
   apply: (@le_lt_trans _ _ (mu [set` Rhull Z])).
     apply: le_outer_measure.
     exact: subDsetl.
   rewrite compact_Rhull//.
-  rewrite completed_lebesgue_measure_itv//= lte_fin.
+  rewrite lebesgue_measure_itv//= lte_fin.
   rewrite cd.
   by rewrite -EFinB ltry.
 (* pose CD_ n := merge <=%R [tuple c_ n i | i < n.+1] [tuple d_ n i | i < n.+1]. *)
@@ -2431,7 +2427,7 @@ have lambda_gt0 n : 0 < fine (lambda n).
       exact: cdab.
     apply: itv_sub_in2 ndH.
     exact: cdab.
-  rewrite completed_lebesgue_measure_itv/= ifF//.
+  rewrite lebesgue_measure_itv/= ifF//.
   apply/negP/negP; rewrite -leNgt le_eqVlt; apply/predU1P; left.
   congr (H _)%:E.
   apply/eqP; rewrite eq_le; apply/andP; split; last by exact: ContItvs.cled.
@@ -3411,8 +3407,8 @@ have alphaH n : (alpha <= \sum_(i < n.+1) (H (d_ n i) - H (c_ n i))%:E)%E.
         exact: ContItvs.aled.
       - exact: ContItvs.cled.
     rewrite le_eqVlt => /predU1P[->|Hcd].
-      by rewrite subrr completed_lebesgue_measure_itv/= ltxx.
-    by rewrite completed_lebesgue_measure_itv/= lte_fin Hcd EFinD.
+      by rewrite subrr lebesgue_measure_itv/= ltxx.
+    by rewrite lebesgue_measure_itv/= lte_fin Hcd EFinD.
   apply: (@le_trans _ _
     (\sum_(i < n.+1) mu [set H x | x in `[c_ n i, d_ n i]])).
     exact: (outer_measure_subadditive mu
@@ -3467,13 +3463,9 @@ have cdIcplt_hull (S : set R) : measurable S -> S `<=` `[c, d] ->
     exact: sub_Rhull.
   rewrite setIUr.
   rewrite measureU/=.
-  - apply: sub_caratheodory.
-    rewrite RGenOpenSets.measurableE.
-    apply: measurableI => //.
+  - apply: measurableI => //.
     exact: compact_measurable.
-  - apply: sub_caratheodory.
-    rewrite RGenOpenSets.measurableE.
-    apply: measurableI => //.
+  - apply: measurableI => //.
     apply: measurableD => //.
     exact: compact_measurable.
   - by rewrite setIACA setDIK setI0.
@@ -3739,16 +3731,7 @@ have ineq7 n : ((\sum_(i < n.+1) `|f (d_ n i) - f (c_ n i)|)%:E <=
     (Zsub_cover n i).
     rewrite /=.
     apply: (le_trans le1); apply: (le_trans le2).
-    have -> : mu^*%mu [set f x | x in Zsub n i] = 0.
-      rewrite measurable_mu_extE/=.
-        apply: sub_caratheodory.
-        rewrite RGenOpenSets.measurableE.
-        apply: compact_measurable.
-        apply: continuous_compact.
-          apply: continuous_subspaceW cf.
-          by apply: subIset; left.
-        apply: compact_closedI => //.
-        exact: itv_closed.
+    have -> : mu [set f x | x in Zsub n i] = 0.
       apply: lusinf.
       - by apply: subIset; left.
       - rewrite /=.
