@@ -115,15 +115,12 @@ Qed.
 
 End all2_nthP.
 
-Section reshape_lemmas.
-
-Lemma reshape_nseq1 {T} (s : seq T) :
-  reshape (nseq (size s) 1) s = [seq [:: x] | x <- s].
+(* TODO: move to mathcomp_extra.v? *)
+Lemma reshape_nseq1 {T} (s : seq T) n : size s = n ->
+  reshape (nseq n 1) s = [seq [:: x] | x <- s].
 Proof.
-by elim: s => // s0 s1/= <-; congr cons => //; rewrite ?take0 ?drop0.
+by elim: s n => [[]//| s0 s1/= ih [//|n] [s1n]/=]; rewrite take0 drop0 ih.
 Qed.
-
-End reshape_lemmas.
 
 Section checking_flatten_lemmas.
 Context {R : realType}.
@@ -2446,13 +2443,12 @@ have lambda_gt0 n : 0 < fine (lambda n).
   by rewrite EFinB sube_gt0 lte_fin.
 set xs' := fun n => interleave
   [seq (uniform_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) : seq _) | i <- iota 0 n]
-    (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
+    (reshape (nseq n 1) (behead (seq_d n))).
 set xs := fun n => (d_ n 0) :: flatten (xs' n).
 have size_eq_xs' n : size [seq (uniform_partition (d_ n i) (c_ n i.+1)
    (fine (lambda n)) : seq _) | i <- iota 0 n] =
-    size (reshape (nseq (size (behead (seq_d n))) 1%N) (behead (seq_d n))).
-  by rewrite size_map size_iota size_reshape size_behead size_nseq size_tuple.
-
+    size (reshape (nseq n 1) (behead (seq_d n))).
+  by rewrite size_map size_iota size_reshape size_nseq.
 have pcdxs n : itv_partition c d (xs n).
   case: n.
     rewrite /xs.
@@ -2491,21 +2487,21 @@ have pcdxs n : itv_partition c d (xs n).
         apply/allP => _ /mapP[i + ->].
         rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
         by rewrite -size_eq0 gt_eqF// size_tuple.
-      rewrite reshape_nseq1.
+      rewrite reshape_nseq1 ?size_behead ?size_tuple//.
       by apply/allP => _ /mapP[i + ->].
     - rewrite (eq_all_r (mem_interleave _))// all_cat; apply/andP; split.
         apply/allP => _ /mapP[i + ->].
         rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
         apply: sorted_uniform_partition => //.
         exact: ContItvs.dltc.
-      rewrite reshape_nseq1.
+      rewrite reshape_nseq1 ?size_behead ?size_tuple//.
       by apply/allP => _ /mapP[i + ->].
     apply/(sortedP [::]) => i i1xs'.
     rewrite !nth_interleaveE.
     rewrite i1xs' (ltnW i1xs').
     move: i1xs'.
     rewrite size_interleave size_eq_xs' minnn.
-    rewrite reshape_nseq1 size_map size_behead size_tuple.
+    rewrite reshape_nseq1 ?size_behead ?size_tuple//.
     rewrite succnK doubleS ltnS.
     move=> in21.
     case: ifP => [oddi|eveni].
@@ -2572,10 +2568,10 @@ have pcdxs n : itv_partition c d (xs n).
   - apply/allP => _ /mapP[i + ->].
     rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
     by rewrite -size_eq0 gt_eqF// size_tuple.
-  - rewrite reshape_nseq1.
+  - rewrite reshape_nseq1 ?size_behead ?size_tuple//.
     by apply/allP => _ /mapP[i _ ->].
   - by rewrite size_eq_xs'.
-  rewrite reshape_nseq1.
+  rewrite reshape_nseq1 ?size_behead ?size_tuple//.
   rewrite (@set_last_default _ [seq _ | _ <- _] [:: d]).
     by rewrite size_map size_behead size_tuple.
   rewrite last_map/=.
@@ -2596,7 +2592,7 @@ have allNnil_xs n : all (fun s : seq R => s != [::]) (xs' n).
     rewrite size_map size_iota => iltn1.
     rewrite nth_map_iota//.
     by rewrite -size_eq0 gt_eqF// size_tuple.
-  rewrite reshape_nseq1.
+  rewrite reshape_nseq1 ?size_behead ?size_tuple//.
   apply/all_nthP => i.
   rewrite size_map => iltd.
   by rewrite (nth_map d).
@@ -2623,7 +2619,7 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
     apply: (@itv_partition_le_ub _ _ _ (d_ n i)) => //.
     apply: itv_uniform_partition => //.
     exact: ContItvs.dltc.
-  rewrite reshape_nseq1 => /mapP[r rdn] ->.
+  rewrite reshape_nseq1 ?size_behead ?size_tuple// => /mapP[r rdn] ->.
   rewrite mem_seq1 => /eqP ->{x}.
   move/mem_behead : rdn.
   move/(nthP d) => -[i id <-{r}].
@@ -2649,7 +2645,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   - apply/allP => /= i /flattenP[j ].
     rewrite /xs'.
     rewrite mem_interleave.
-      by rewrite size_map size_iota size_reshape size_nseq size_behead size_tuple.
+      by rewrite size_map size_iota size_reshape size_nseq.
     rewrite mem_cat => /orP[/mapP[k]|].
       rewrite mem_iota add0n leq0n => kn ->.
       move=> /(nthP d)[l lsz] <-{i}.
@@ -2668,7 +2664,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
         apply: itv_uniform_partition => //.
         exact: ContItvs.dltc.
       exact: ContItvs.clesup.
-    rewrite reshape_nseq1 => /mapP[k].
+    rewrite reshape_nseq1 ?size_behead ?size_tuple// => /mapP[k].
     move=> /(nthP d)[l].
     rewrite size_behead size_tuple => /= ln <-{k} ->{j}.
     rewrite mem_seq1 => /eqP ->{i}.
@@ -2683,7 +2679,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   - apply/(@le_sorted_flatten _ d).
     + (* all (fun s : seq R => s != [::]) (xs' n) *)
       apply/allP => z.
-      rewrite /xs' reshape_nseq1 mem_interleave.
+      rewrite /xs' reshape_nseq1 ?size_behead ?size_tuple// mem_interleave.
         by rewrite !size_map size_behead size_iota size_tuple.
       rewrite mem_cat => /orP[|].
         move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
@@ -2693,7 +2689,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     + (* all (sorted <=%R) (xs' n) *)
       apply/allP => z.
       rewrite /xs'.
-      rewrite /xs' reshape_nseq1 mem_interleave.
+      rewrite /xs' reshape_nseq1 ?size_behead ?size_tuple// mem_interleave.
         by rewrite !size_map size_behead size_iota size_tuple.
       rewrite mem_cat => /orP[|].
         move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
@@ -2703,10 +2699,11 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
       by move=> /mapP[i] ? ->.
     + (* sorted (fun s t : seq R => last d s <= head d t) (xs' n) *)
       apply/(sortedP [::]) => i.
-      rewrite size_interleave size_eq_xs' minnn reshape_nseq1 size_map size_behead.
-      rewrite size_tuple => ni.
-      rewrite !nth_interleaveE size_interleave size_eq_xs' minnn reshape_nseq1 size_map size_behead.
-      rewrite size_tuple ni (ltnW ni) oddS.
+      rewrite size_interleave size_eq_xs' minnn.
+      rewrite reshape_nseq1 ?size_behead ?size_tuple// => ni.
+      rewrite !nth_interleaveE size_interleave size_eq_xs' minnn.
+      rewrite reshape_nseq1 ?size_behead ?size_tuple//.
+      rewrite ni (ltnW ni) oddS.
       case: ifPn => oddi/=.
         rewrite (nth_map d).
           rewrite size_behead size_tuple/=.
@@ -2740,7 +2737,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
       rewrite uphalf_half (negPf oddi).
       by rewrite ContItvs.cled.
   rewrite size_interleave size_map size_iota.
-  rewrite size_reshape size_nseq size_behead size_tuple minnn.
+  rewrite size_reshape size_nseq minnn.
   apply: bigmax_le.
     by rewrite -lee_fin fineK.
   case; case.
@@ -2748,8 +2745,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     rewrite (_ : nat_of_ord (Ordinal n0) = 0)//.
     rewrite (_ : nth d [seq last d s | s <- [:: d_ n 0] :: xs' n] 0 = d_ n 0)//.
     have ? : (0 < size (xs' n))%N.
-      rewrite size_interleave size_map size_iota size_reshape size_nseq.
-      by rewrite size_behead size_tuple/= minnn.
+      by rewrite size_interleave size_map size_iota size_reshape size_nseq minnn.
     rewrite nth_interleaveE.
     rewrite ifT//.
     rewrite nth_map_iota.
@@ -2762,17 +2758,18 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   rewrite (_ : (nth d [seq last d s | s <- [:: _] :: xs' n] i.+1) =
                  (nth d [seq last d s | s <- xs' n] i))//.
   rewrite nth_interleaveE.
-  rewrite size_interleave size_map size_iota.
-  rewrite size_reshape size_nseq size_behead size_tuple minnn.
+  rewrite size_interleave size_map size_iota size_reshape size_nseq minnn.
   rewrite i1ltn2.
   have size_xs' m : size (xs' m) = m.*2.
-    by rewrite size_interleave size_map size_iota reshape_nseq1 size_map size_behead size_tuple minnn.
+    rewrite size_interleave size_map size_iota reshape_nseq1.
+      by rewrite size_behead size_tuple.
+    by rewrite size_map size_behead size_tuple minnn.
   case: ifPn => [eveni|oddi].
-    rewrite (_ : n.+1.-1 = n)// (nth_map [::])//.
+    rewrite (nth_map [::])//.
       by rewrite size_xs' ltnW.
     rewrite [X in nseq X](_ : _ = size (behead (seq_d n))).
       by rewrite size_behead size_tuple.
-    rewrite reshape_nseq1.
+    rewrite reshape_nseq1//.
     rewrite (nth_map d).
       rewrite size_behead size_tuple.
       by rewrite ltn_half_double.
@@ -2809,7 +2806,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   rewrite nth_interleaveE size_xs' (ltnW i1ltn2).
   rewrite oddS negbK in oddi.
   rewrite oddi.
-  rewrite reshape_nseq1.
+  rewrite reshape_nseq1 ?size_behead ?size_tuple//.
   rewrite (nth_map d).
     by rewrite size_behead size_tuple ltn_half_double ltnW.
   rewrite /=.
@@ -2860,12 +2857,12 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
       rewrite size_map size_iota => ni.
       rewrite nth_map_iota//.
       by rewrite -size_eq0 gt_eqF// size_tuple.
-    rewrite reshape_nseq1.
+    rewrite reshape_nseq1 ?size_behead ?size_tuple//.
     apply/all_nthP => i.
     rewrite size_map size_behead size_tuple/= => iltn.
     by rewrite (nth_map d)// size_behead size_tuple.
   rewrite size_map size_iota.
-  rewrite reshape_nseq1 size_map size_behead size_tuple minnn.
+  rewrite reshape_nseq1 ?size_behead ?size_tuple// minnn.
   rewrite EFinD addrC leeD//.
     rewrite -sumEFin; apply: lee_sum => /= i _.
     rewrite (_ : nth d
