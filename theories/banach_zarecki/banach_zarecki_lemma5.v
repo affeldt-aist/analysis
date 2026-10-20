@@ -5,9 +5,12 @@ From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import unstable.
 From mathcomp Require Import boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype derive.
-From mathcomp Require Import sequences measure lebesgue_measure numfun realfun.
+From mathcomp Require Import sequences measure numfun realfun.
 From mathcomp Require Import absolute_continuity merge_extra mesh
   variation_extra oscillation.
+
+(* only for right_continuous and right_continuousW *)
+From mathcomp Require Import lebesgue_measure.
 
 (**md**************************************************************************)
 (* # Banach–Zarecki Theorem (lemma 5)                                         *)
