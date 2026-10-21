@@ -2441,20 +2441,14 @@ have lambda_gt0 n : 0 < fine (lambda n).
   apply: lt_le_trans.
   rewrite diam_itv// ?ContItvs.cled//.
   by rewrite EFinB sube_gt0 lte_fin.
-set xs' := fun n => interleave
-  [seq (uniform_partition (d_ n i) (c_ n i.+1) (fine (lambda n)) : seq _) | i <- iota 0 n]
-    (reshape (nseq n 1) (behead (seq_d n))).
-set xs := fun n => (d_ n 0) :: flatten (xs' n).
-have size_eq_xs' n : size [seq (uniform_partition (d_ n i) (c_ n i.+1)
-   (fine (lambda n)) : seq _) | i <- iota 0 n] =
-    size (reshape (nseq n 1) (behead (seq_d n))).
-  by rewrite size_map size_iota size_reshape size_nseq.
+pose unif_part n i : _.-tuple _ := locked uniform_partition (d_ n i) (c_ n i.+1) (fine (lambda n)).
+pose xs' n := interleave [seq (unif_part n i : seq _) | i <- iota 0 n]
+                         (reshape (nseq n 1) (behead (seq_d n))).
+pose xs n := d_ n 0 :: flatten (xs' n).
 have pcdxs n : itv_partition c d (xs n).
   case: n.
     rewrite /xs.
-    rewrite (_ : flatten _ = [::]).
-      rewrite /xs' [iota _ _]/=.
-      by rewrite [map _ _]/= interleave0s.
+    rewrite (_ : flatten _ = [::])//.
     rewrite /itv_partition; split.
       apply/andP; split => //.
       by apply: (le_lt_trans (ContItvs.inflec _ _ _ _ _ _ )) => //; exact: ContItvs.cltd.
@@ -2476,22 +2470,28 @@ have pcdxs n : itv_partition c d (xs n).
       rewrite nth_cons (ltn0Sn 0) succnK.
       rewrite nth0_flatten_interleave.
       - by rewrite -size_eq0 size_tuple.
-      - by rewrite leq_eqVlt size_eq_xs' eqxx.
+      - by rewrite size_map size_iota size_reshape size_nseq.
+      rewrite /unif_part -lock.
       rewrite nth_map_tuple//.
       rewrite ltrDl.
       rewrite mulr_gt0//.
       by rewrite mulr1 subr_gt0 ContItvs.dltc.
     apply/sortedP.
     apply: (@lt_sorted_flatten _ d) => //.
-    - rewrite (eq_all_r (mem_interleave _))// all_cat; apply/andP; split.
+    - rewrite (eq_all_r (mem_interleave _))//.
+        by rewrite size_map size_iota size_reshape size_nseq.
+      rewrite all_cat; apply/andP; split.
         apply/allP => _ /mapP[i + ->].
         rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
         by rewrite -size_eq0 gt_eqF// size_tuple.
       rewrite reshape_nseq1 ?size_behead ?size_tuple//.
       by apply/allP => _ /mapP[i + ->].
-    - rewrite (eq_all_r (mem_interleave _))// all_cat; apply/andP; split.
+    - rewrite (eq_all_r (mem_interleave _))//.
+        by rewrite size_map size_iota size_reshape size_nseq.
+      rewrite all_cat; apply/andP; split.
         apply/allP => _ /mapP[i + ->].
         rewrite mem_iota => /andP[]; rewrite add0n => _ iltn1.
+        rewrite /unif_part -lock.
         apply: sorted_uniform_partition => //.
         exact: ContItvs.dltc.
       rewrite reshape_nseq1 ?size_behead ?size_tuple//.
@@ -2500,10 +2500,8 @@ have pcdxs n : itv_partition c d (xs n).
     rewrite !nth_interleaveE.
     rewrite i1xs' (ltnW i1xs').
     move: i1xs'.
-    rewrite size_interleave size_eq_xs' minnn.
+    rewrite size_interleave size_map size_iota size_reshape size_nseq minnn doubleS ltnS => in21.
     rewrite reshape_nseq1 ?size_behead ?size_tuple//.
-    rewrite succnK doubleS ltnS.
-    move=> in21.
     case: ifP => [oddi|eveni].
       rewrite ifF.
         by rewrite oddS oddi.
@@ -2534,7 +2532,8 @@ have pcdxs n : itv_partition c d (xs n).
           move: oddi; rewrite in22.
           by rewrite !oddS negbK odd_double.
         move=> ->.
-        rewrite [uniform_partition]lock/= uphalf_double -lock.
+        rewrite [unif_part]lock/= uphalf_double -lock.
+        rewrite /unif_part -lock.
         apply: head_uniform_partition => //.
         by rewrite ContItvs.dltc.
       move=> i2n.
@@ -2544,7 +2543,9 @@ have pcdxs n : itv_partition c d (xs n).
       apply: (@lb_uniform_partition _ _ (c_ n.+2 i./2.+2) (fine (lambda n.+2))).
       - exact: ContItvs.dltc.
       - by rewrite lambda_gt0.
-      rewrite -nth0; apply: mem_nth.
+      rewrite -nth0.
+      rewrite /unif_part -lock.
+      apply: mem_nth.
       rewrite size_uniform_partition_gt0//.
       exact: ContItvs.dltc.
     rewrite ifT.
@@ -2556,7 +2557,9 @@ have pcdxs n : itv_partition c d (xs n).
       rewrite size_behead size_tuple.
       rewrite -ltn_double odd_halfK ?oddS ?eveni//.
       by rewrite !succnK doubleS (ltn_trans in21).
-    rewrite nth_behead last_uniform_partition.
+    rewrite nth_behead.
+    rewrite /unif_part -lock.
+    rewrite last_uniform_partition.
       apply: ContItvs.dltc => //.
         rewrite succnK -ltn_double even_halfK ?eveni// doubleS.
         exact: (ltn_trans in21).
@@ -2570,7 +2573,7 @@ have pcdxs n : itv_partition c d (xs n).
     by rewrite -size_eq0 gt_eqF// size_tuple.
   - rewrite reshape_nseq1 ?size_behead ?size_tuple//.
     by apply/allP => _ /mapP[i _ ->].
-  - by rewrite size_eq_xs'.
+  - by rewrite size_reshape size_map size_iota size_nseq.
   rewrite reshape_nseq1 ?size_behead ?size_tuple//.
   rewrite (@set_last_default _ [seq _ | _ <- _] [:: d]).
     by rewrite size_map size_behead size_tuple.
@@ -2587,6 +2590,7 @@ have eq_size_lp_nseq n : size [seq (uniform_partition (d_ n i) (c_ n i.+1)
   by rewrite size_map size_iota size_reshape size_nseq size_behead size_tuple.
 have allNnil_xs n : all (fun s : seq R => s != [::]) (xs' n).
   rewrite (eq_all_r (mem_interleave _))//.
+    by rewrite size_map size_iota size_reshape size_nseq.
   rewrite all_cat; apply/andP; split.
     apply/all_nthP => i.
     rewrite size_map size_iota => iltn1.
@@ -2603,13 +2607,17 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
       by rewrite /d_ OrderedBounds.daE -/a_; exact: ContItvs.clea.
     by rewrite /d_ OrderedBounds.daE -/a_; exact: ContItvs.aled.
   move/flattenP => /=[s].
-  rewrite mem_interleave// mem_cat => /orP[|].
+  rewrite mem_interleave//.
+    by rewrite size_map size_iota size_reshape size_nseq.
+  rewrite mem_cat => /orP[|].
     move/mapP => [i + ->]; rewrite mem_iota add0n => /andP[_ iltn1].
     move=> xlp.
     apply/andP; split.
       rewrite (@le_trans _ _ (d_ n i))//.
         by rewrite /d_ OrderedBounds.daE -/a_; exact: ContItvs.clea.
-      apply: (ltW (@lb_uniform_partition _ (d_ n i) (c_ n i.+1) _ _ _ _ xlp)).
+      move: xlp.
+      rewrite /unif_part -lock.
+      move/(@lb_uniform_partition _ (d_ n i) (c_ n i.+1))/ltW; apply.
         rewrite /c_ /d_ OrderedBounds.cbE OrderedBounds.daE/=.
         apply: OrderedBounds.a_lt_b => // j.
         exact: contiguous_itvs1_lt_contiguous_itvs2.
@@ -2617,6 +2625,7 @@ have allcd_xs n : all (fun x : R => c <= x <= d) (xs n).
     rewrite (@le_trans _ _ (c_ n i.+1))//; last exact: ContItvs.clesup.
     move/(nthP d) : xlp => [j Hj <-{x}].
     apply: (@itv_partition_le_ub _ _ _ (d_ n i)) => //.
+    rewrite /unif_part -lock.
     apply: itv_uniform_partition => //.
     exact: ContItvs.dltc.
   rewrite reshape_nseq1 ?size_behead ?size_tuple// => /mapP[r rdn] ->.
@@ -2650,17 +2659,18 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
       rewrite mem_iota add0n leq0n => kn ->.
       move=> /(nthP d)[l lsz] <-{i}.
       apply/andP; split.
-        set p := uniform_partition _ _ _.
         rewrite (@le_trans _ _ (d_ n k))//.
           rewrite /d_ !OrderedBounds.daE -/(a_ _).
           apply/le_sorted_leq_nth => //; [|by rewrite inE/= size_tuple (leq_trans _ kn)..].
           exact: ListOfBounds.sorted_seq_a.
-        rewrite -[leRHS]/(nth d (d_ n k :: p) l.+1).
+        rewrite -[leRHS]/(nth d (d_ n k :: unif_part n k) l.+1).
         apply: itv_partition_nth_ge_with_def => //.
+        rewrite /unif_part -lock.
         apply: itv_uniform_partition => //.
         by rewrite ContItvs.dltc.
       rewrite (@le_trans _ _ (c_ n k.+1))//.
         apply/(@itv_partition_le_ub _ _ _ (d_ n k)) => //.
+        rewrite /unif_part -lock.
         apply: itv_uniform_partition => //.
         exact: ContItvs.dltc.
       exact: ContItvs.clesup.
@@ -2683,8 +2693,9 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
         by rewrite !size_map size_behead size_iota size_tuple.
       rewrite mem_cat => /orP[|].
         move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
-        rewrite -size_eq0 -lt0n size_uniform_partition_gt0//.
-        exact: ContItvs.dltc.
+        rewrite -size_eq0 -lt0n.
+        rewrite /unif_part -lock.
+        by rewrite size_uniform_partition_gt0// ContItvs.dltc.
       by move=> /mapP[/= i] _ ->.
     + (* all (sorted <=%R) (xs' n) *)
       apply/allP => z.
@@ -2695,13 +2706,14 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
         move=> /mapP[/= i]; rewrite mem_iota leq0n add0n/= => ni ->{z}.
         have : d_ n i < c_ n i.+1 by rewrite ContItvs.dltc.
         move/itv_uniform_partition => /(_ _ (lambda_gt0 n))[+ _].
+        rewrite /unif_part -lock.
         by move/path_ltW/path_sorted.
       by move=> /mapP[i] ? ->.
     + (* sorted (fun s t : seq R => last d s <= head d t) (xs' n) *)
       apply/(sortedP [::]) => i.
-      rewrite size_interleave size_eq_xs' minnn.
-      rewrite reshape_nseq1 ?size_behead ?size_tuple// => ni.
-      rewrite !nth_interleaveE size_interleave size_eq_xs' minnn.
+      rewrite size_interleave size_map size_iota size_reshape size_nseq minnn => ni.
+      rewrite !nth_interleaveE size_interleave.
+      rewrite size_map size_iota size_reshape size_nseq minnn.
       rewrite reshape_nseq1 ?size_behead ?size_tuple//.
       rewrite ni (ltnW ni) oddS.
       case: ifPn => oddi/=.
@@ -2720,7 +2732,9 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
           apply/ContItvs.dltc => //.
           by rewrite ltn_uphalf_double.
         move/lb_uniform_partition => /(_ _ (lambda_gt0 n)); apply.
-        rewrite -nth0; apply/mem_nth.
+        rewrite -nth0.
+        rewrite /unif_part -lock.
+        apply/mem_nth.
         apply: size_uniform_partition_gt0 => //.
         rewrite ContItvs.dltc//.
         by rewrite ltn_uphalf_double.
@@ -2731,6 +2745,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
       rewrite [leRHS]/=.
       rewrite -[leRHS]/(nth d [tuple of (thead (seq_d n) :: behead (seq_d n))] (uphalf i).+1).
       rewrite -tuple_eta -[leRHS]/(d_ n (uphalf i).+1).
+      rewrite /unif_part -lock.
       rewrite last_uniform_partition//.
       rewrite ContItvs.dltc//.
         by rewrite ltn_half_double (ltnW ni).
@@ -2751,6 +2766,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     rewrite nth_map_iota.
       by rewrite ltn_half_double.
     apply: ltW.
+    rewrite /unif_part -lock.
     apply: uniform_partition_mesh => //.
     by apply: ContItvs.dltc => //=; rewrite -double_gt0.
   move=> i i1ltn2 _.
@@ -2779,6 +2795,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
     rewrite (negPf eveni).
     rewrite nth_map_iota.
       by rewrite ltn_half_double ltnW.
+    rewrite /unif_part -lock.
     rewrite last_uniform_partition.
       by rewrite ContItvs.dltc// ltn_half_double ltnW.
       by rewrite lambda_gt0.
@@ -2816,6 +2833,7 @@ have mesh_xs n : mesh c (xs n) <= fine (lambda n).
   rewrite uphalf_half oddi add1n.
   (* *)
   rewrite ltW//.
+  rewrite /unif_part -lock.
   rewrite uniform_partition_mesh.
   rewrite ContItvs.dltc//=.
   rewrite -ltn_half_double in i1ltn2.
@@ -2865,15 +2883,12 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
   rewrite reshape_nseq1 ?size_behead ?size_tuple// minnn.
   rewrite EFinD addrC leeD//.
     rewrite -sumEFin; apply: lee_sum => /= i _.
-    rewrite (_ : nth d
-            [seq last d s
-               | s <- [seq (uniform_partition (d_ n i0)
-                             (c_ n i0.+1) (fine (lambda n)) : seq _)
-                         | i0 <- iota 0 n]] i = b_ n i).
+    rewrite (_ : nth d [seq last d s | s <- [seq (unif_part n i0 : seq _) | i0 <- iota 0 n]] i =
+                 b_ n i).
     rewrite (nth_map [::]).
-      rewrite size_map size_iota//.
+      by rewrite size_map size_iota.
     rewrite nth_map_iota => //.
-      rewrite last_uniform_partition//.
+      rewrite /unif_part -lock last_uniform_partition//.
         by rewrite ContItvs.dltc/=.
       by rewrite /c_ OrderedBounds.cbE.
     rewrite (_ : (nth d [seq last d s | s <- [seq [:: x] |
@@ -2894,23 +2909,21 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
     rewrite nth_behead.
     by rewrite /seq_d -/(OrderedBounds.d_ _ _ _ _ n i.+1) OrderedBounds.daE.
   rewrite -sumEFin; apply: lee_sum => /= i _.
-  rewrite (_ : nth d
-         [seq last d s
-            | s <- [seq (uniform_partition (d_ n i0) (c_ n i0.+1)
-                          (fine (lambda n)) : seq _)
-                      | i0 <- iota 0 n]] i = b_ n i).
+  rewrite (_ : nth d [seq last d s | s <- [seq (unif_part n i0 : seq _) | i0 <- iota 0 n]] i =
+               b_ n i).
     rewrite (nth_map [::]).
       by rewrite !size_map size_iota.
     rewrite nth_map_iota//.
+    rewrite /unif_part -lock.
     rewrite last_uniform_partition//.
       by rewrite ContItvs.dltc/=.
     by rewrite /c_ OrderedBounds.cbE.
   case: i; case => //.
     rewrite /= => n0.
     rewrite nth_map_iota//.
+    rewrite /unif_part -lock.
     rewrite /c_ /d_ OrderedBounds.cbE OrderedBounds.daE/=.
-    have A_lt_B k : A_ k < B_ k.
-      exact: contiguous_itvs1_lt_contiguous_itvs2.
+    have A_lt_B k : A_ k < B_ k by exact: contiguous_itvs1_lt_contiguous_itvs2.
     have [] := itv_uniform_partition (OrderedBounds.a_lt_b d A_lt_B n0) (lambda_gt0 n).
     move=> /path_ltW pl llb.
     apply: variation_le_total_variation => //.
@@ -2928,7 +2941,13 @@ have SV n : ((S_ n)%:E <= V_ n)%E.
     exact: contiguous_itvs1_lt_contiguous_itvs2.
   have[] := (itv_uniform_partition (OrderedBounds.a_lt_b d A_lt_B i1ltn) (lambda_gt0 n)).
   move=> /path_ltW pl llb.
-  apply: variation_le_total_variation; rewrite nth_map_iota// /c_ /d_ OrderedBounds.cbE OrderedBounds.daE//.
+  apply: variation_le_total_variation.
+    rewrite nth_map_iota//.
+    rewrite /unif_part -lock.
+    by rewrite /c_ /d_ OrderedBounds.cbE OrderedBounds.daE.
+  rewrite nth_map_iota//.
+  rewrite /unif_part -lock.
+  rewrite /c_ /d_ OrderedBounds.cbE OrderedBounds.daE//.
   by rewrite (eqP llb).
 set Vcd : \bar R := total_variation c d f.
 
