@@ -128,6 +128,8 @@ gauss_integral.v
 
 absolute_continuity.v
 banach_zarecki/not_used.v
+banach_zarecki/bz_mathcomp_extra.v
+banach_zarecki/bz_analysis_extra.v
 banach_zarecki/mesh.v
 banach_zarecki/lebesgue_measure_extra.v
 banach_zarecki/merge_extra.v

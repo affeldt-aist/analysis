@@ -1,5 +1,4 @@
 From HB Require Import structures.
-From Stdlib Require Import Bool.
 From mathcomp Require Import boot order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import boolp classical_sets functions.
@@ -25,11 +24,8 @@ Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
 
 Section banach_zarecki.
-Context {R : realType}.
-Variables a b : R.
+Context {R : realType} (a b : R).
 Hypotheses ab : a < b.
-
-Local Notation mu := (@lebesgue_measure R).
 
 Theorem Banach_Zarecki (f : R -> R) :
   {within `[a, b], continuous f} ->

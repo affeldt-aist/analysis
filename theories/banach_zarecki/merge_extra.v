@@ -40,7 +40,6 @@ Section merge_lemmas_eqType.
 Context {T : eqType} {r : rel T}.
 Implicit Types (s t : seq T) (x : T).
 
-(* NB: unused *)
 Lemma merger_cons s t x : all (r x) t ->
   merge r (x :: s) t = x :: merge r s t.
 Proof.
@@ -54,7 +53,6 @@ apply: allxt.
 exact: mem_head.
 Qed.
 
-(* NB: unused *)
 Lemma merge_cons_mergel s t x :
   transitive r ->
   all (r x) t -> merge r s (x :: t) = merge r (merge r s [:: x]) t.
@@ -256,4 +254,16 @@ case: ifPn => s0h /=.
 rewrite (ltW ah)/=.
 rewrite leNgt/= s0h/=.
 by apply: sub_path s0s1 => x y /ltW.
+Qed.
+
+Lemma le_sorted_mergeA d {R : orderType d}  (r s t : seq R) :
+   sorted <=%O r -> sorted <=%O s -> sorted <=%O t ->
+   merge <%O r (merge <%O s t) =
+   merge <%O (merge <%O r s) t.
+Proof.
+move=> sr ss st.
+rewrite !merge_ltEle//.
+- by rewrite merge_sorted//; exact: le_total.
+- by rewrite merge_sorted//; exact: le_total.
+by rewrite mergeA//; first exact: le_total; exact: le_trans.
 Qed.

@@ -1,11 +1,11 @@
 From HB Require Import structures.
-From Stdlib Require Import Bool.
 From mathcomp Require Import boot order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import unstable.
 From mathcomp Require Import boolp contra classical_sets functions.
 From mathcomp Require Import reals ereal topology normedtype derive.
 From mathcomp Require Import sequences measure numfun realfun.
+From mathcomp Require Import bz_mathcomp_extra.
 From mathcomp Require Import absolute_continuity merge_extra mesh
   variation_extra oscillation.
 
@@ -20,86 +20,12 @@ From mathcomp Require Import lebesgue_measure.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
+
 Import Order.TTheory GRing.Theory Num.Def Num.Theory.
 Import numFieldNormedType.Exports.
 
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
-
-Lemma eq_mem_sub_mem {A} {a1 a2 : {pred A}} :
-  (a1 =i a2) <-> {subset a1 <= a2} /\ {subset a2 <= a1}.
-Proof.
-split => [H | [H1 H2] a]; first by split=> a; rewrite H.
-case/boolP: (a \in a2); [exact: H2 | apply: contraNF; exact: H1].
-Qed.
-
-Lemma sorted_rconsE {T : eqType} (leT : rel T) :
-  transitive leT ->
-  forall {x : T} {s : seq T},
-  sorted leT (rcons s x) = sorted leT s && all (leT ^~ x) s.
-Proof.
-move=> tr x s.
-rewrite -rev_sorted rev_rcons/= path_sortedE; first exact: rev_trans.
-by rewrite all_rev rev_sorted andbC.
-Qed.
-
-Lemma sorted_ltW d {T : orderType d} (s : seq T) :
-  sorted <%O s -> sorted <=%O s.
-Proof. by apply: sub_sorted; exact: ltW. Qed.
-
-Lemma le_sorted_rconsE d {R : porderType d} (x : R) (s : seq R) :
-  sorted <=%O (rcons s x) = sorted <=%O s && all (<=%O ^~ x) s.
-Proof. rewrite sorted_rconsE//; exact: le_trans. Qed.
-
-Lemma lt_sorted_rconsE d {R : porderType d} (x : R) (s : seq R) :
-  sorted <%O (rcons s x) = sorted <%O s && all (<%O ^~ x) s.
-Proof. rewrite sorted_rconsE//; exact: lt_trans. Qed.
-
-Lemma sorted_filter_rcons d {R : porderType d} y (l : seq R) : sorted <%O l ->
-  sorted <%O (rcons [seq x <- l | (x < y)%O] y).
-Proof.
-move=> sl; apply/(sortedP y)=> i; rewrite size_rcons ltnS => ily.
-rewrite lt_sorted_ltn_nth ?inE ?size_rcons ?ltnS//; last by rewrite ltnW.
-rewrite lt_sorted_pairwise pairwise_rcons.
-apply/andP; split; first exact: filter_all.
-by rewrite -lt_sorted_pairwise lt_sorted_filter.
-Qed.
-
-Lemma sorted_filter_path d {R : porderType d} y (l : seq R) :
-  sorted <%O l -> path <%O y [seq x <- l | (y < x)%O].
-Proof.
-move=> sl; rewrite lt_path_sortedE.
-by apply/andP; split; last exact: lt_sorted_filter; exact: filter_all.
-Qed.
-
-Lemma lt_sorted_rcons_notin d {R : porderType d} s (x : R) :
-  sorted <%O (rcons s x) -> x \notin s.
-Proof.
-elim: s x => // s0 [|s1 s2] ih x.
-  by rewrite /= inE andbT => ?; rewrite gt_eqF.
-rewrite [s1 :: s2]lock/= /= rcons_path => /andP[s0s1 s1x].
-rewrite inE negb_or; apply/andP; split.
-  rewrite gt_eqF//.
-  move/order_path_min : s0s1 => /(_ lt_trans)/allP s0s1.
-  rewrite (le_lt_trans _ s1x)//.
-  apply/ltW.
-  apply/s0s1.
-  by rewrite -lock/= mem_last.
-rewrite -lock.
-apply: ih.
-rewrite -lock in s0s1 s1x.
-apply: (@path_sorted _ _ s0). (* TODO: path_sorted implicits *)
-by rewrite rcons_path s1x s0s1.
-Qed.
-
-(* PR? *)
-Lemma path_ltW d {T : orderType d} (a : T) s : path <%O a s -> path <=%O a s.
-Proof.
-rewrite le_path_pairwise lt_path_pairwise => H.
-apply: (@sub_in_pairwise _ (fun x => x \in [set: T]) _ _ _ _ _ H).
-  move=> x y _ _; exact: ltW.
-apply/allP => x _; exact: in_setT.
-Qed.
 
 Definition disj_seq {T : eqType} (s t : seq T) :=
 [disjoint [set` s] & [set` t]].
@@ -131,11 +57,7 @@ Implicit Types (T : eqType) (R : realDomainType).
 
 Lemma disj_seq_sym {T} (s t : seq T) :
   disj_seq s t = disj_seq t s.
-Proof.
-apply: eq_true_iff_eq.
-suff tmp (p q : seq T) : disj_seq p q -> disj_seq q p by split; exact: tmp.
-by move=> ?; rewrite /disj_seq disj_set_sym.
-Qed.
+Proof. by rewrite /disj_seq disj_set_sym. Qed.
 
 Lemma disj_seq_allP {T} (s t : seq T) :
   disj_seq s t <-> all (fun x => x \notin s) t.
@@ -190,11 +112,49 @@ rewrite 2!mem_filter => /andP[/=/negP NPx xs].
 by apply/nandP; left; apply/negP.
 Qed.
 
+(* NB: not used *)
 Lemma predCl_disj_seq {R} (s : seq R) (P : pred R) :
   disj_seq [seq x <- s | predC P x] [seq x <- s | P x].
 Proof. by rewrite disj_seq_sym; exact: predCr_disj_seq. Qed.
 
 End disj_seq_lemmas.
+
+Lemma sorted_filter_rcons d {R : porderType d} y (l : seq R) : sorted <%O l ->
+  sorted <%O (rcons [seq x <- l | (x < y)%O] y).
+Proof.
+move=> sl; apply/(sortedP y)=> i; rewrite size_rcons ltnS => ily.
+rewrite lt_sorted_ltn_nth ?inE ?size_rcons ?ltnS//; last by rewrite ltnW.
+rewrite lt_sorted_pairwise pairwise_rcons.
+apply/andP; split; first exact: filter_all.
+by rewrite -lt_sorted_pairwise lt_sorted_filter.
+Qed.
+
+Lemma sorted_filter_path d {R : porderType d} y (l : seq R) :
+  sorted <%O l -> path <%O y [seq x <- l | (y < x)%O].
+Proof.
+move=> sl; rewrite lt_path_sortedE.
+by apply/andP; split; last exact: lt_sorted_filter; exact: filter_all.
+Qed.
+
+Lemma lt_sorted_rcons_notin d {R : porderType d} s (x : R) :
+  sorted <%O (rcons s x) -> x \notin s.
+Proof.
+elim: s x => // s0 [|s1 s2] ih x.
+  by rewrite /= inE andbT => ?; rewrite gt_eqF.
+rewrite [s1 :: s2]lock/= /= rcons_path => /andP[s0s1 s1x].
+rewrite inE negb_or; apply/andP; split.
+  rewrite gt_eqF//.
+  move/order_path_min : s0s1 => /(_ lt_trans)/allP s0s1.
+  rewrite (le_lt_trans _ s1x)//.
+  apply/ltW.
+  apply/s0s1.
+  by rewrite -lock/= mem_last.
+rewrite -lock.
+apply: ih.
+rewrite -lock in s0s1 s1x.
+apply: (@path_sorted _ _ s0). (* TODO: path_sorted implicits *)
+by rewrite rcons_path s1x s0s1.
+Qed.
 
 Fixpoint merge_lt_seq {R : realDomainType} (l s : seq R) :=
   match s with
@@ -675,20 +635,6 @@ case: ifPn => [|]; last rewrite -ltNge; first rewrite le_eqVlt => /predU1P[|].
   rewrite ifT ?ltW//.
   rewrite IHt//.
   exact: path_sorted sbt.
-Qed.
-
-(* generalize *)
-(* TODO: move to merge_extra.v? *)
-Lemma le_sorted_mergeA (r s t : seq R) :
-   sorted <=%R r -> sorted <=%R s -> sorted <=%R t ->
-   merge <%R r (merge <%R s t) =
-   merge <%R (merge <%R r s) t.
-Proof.
-move=> sr ss st.
-rewrite !merge_ltEle//.
-- by rewrite merge_sorted//; exact: le_total.
-- by rewrite merge_sorted//; exact: le_total.
-by rewrite mergeA//; first exact: le_total; exact: le_trans.
 Qed.
 
 Lemma lt_sorted_mem_filter_exchange (s t : seq R) :
