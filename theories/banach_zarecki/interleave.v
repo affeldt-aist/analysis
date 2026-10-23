@@ -280,3 +280,55 @@ by rewrite odd_double/= uphalf_double.
 Qed.
 
 End interleave_lemmas.
+
+Section flatten_lemmas.
+Context {R : realType}.
+
+Lemma nth0_flatten_interleave d (ss tt : (seq (seq R))) :
+  head [::] ss != [::] ->
+  (size ss <= size tt)%N ->
+  nth d (flatten (interleave ss tt)) 0 = nth d (nth [::] ss 0) 0.
+Proof.
+elim: ss tt => //=.
+move=> s ss IH.
+case => // t tt s0 sstt.
+rewrite nth_cat ifT//.
+apply/not_notP => /negP; rewrite -leqNgt leqn0 => /eqP/size0nil/eqP.
+by apply/negP.
+Qed.
+
+Lemma last_flatten_interleave d (ss tt : (seq (seq R))) :
+  all (fun s => s != [::]) ss ->
+  all (fun s => s != [::]) tt -> (* generalize? *)
+  (size tt <= size ss)%N ->
+  last d (flatten (interleave ss tt)) = last d (last [::] tt).
+Proof.
+elim: tt ss d.
+  move=> ss d _ _ _.
+  by rewrite interleaves0.
+move=> t tt IH.
+case => // s ss d ss0 tt0 ttss.
+rewrite interleave_cons/=.
+rewrite !last_cat.
+rewrite IH//.
+- by move/andP: ss0; case.
+- by move/andP: tt0; case.
+have [->/=|] := eqVneq tt [::].
+  apply: set_last_default.
+  rewrite ltnNge leqn0.
+  apply/negP; move/eqP/size0nil/eqP; apply/negP.
+  by move/andP: tt0; case.
+move=> tt_neq_nil.
+rewrite (@set_last_default _ tt [::]).
+  rewrite ltnNge leqn0.
+  by apply/negP; move/eqP/size0nil/eqP; apply/negP.
+apply: set_last_default.
+rewrite ltnNge leqn0.
+apply/negP; move/eqP/size0nil/eqP; apply/negP.
+move/andP: tt0 => [_ /allP]; apply.
+rewrite -nth_last mem_nth// ltn_predL.
+rewrite ltnNge leqn0.
+by apply/negP; move/eqP/size0nil/eqP; apply/negP.
+Qed.
+
+End flatten_lemmas.

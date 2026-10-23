@@ -156,6 +156,8 @@ theories/gauss_integral.v
 
 theories/absolute_continuity.v
 theories/banach_zarecki/not_used.v
+theories/banach_zarecki/bz_mathcomp_extra.v
+theories/banach_zarecki/bz_analysis_extra.v
 theories/banach_zarecki/mesh.v
 theories/banach_zarecki/lebesgue_measure_extra.v
 theories/banach_zarecki/merge_extra.v

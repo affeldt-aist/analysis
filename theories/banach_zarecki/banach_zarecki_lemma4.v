@@ -1,5 +1,4 @@
 From HB Require Import structures.
-From Stdlib Require Import Bool.
 From mathcomp Require Import boot order interval_inference ssralg ssrnum.
 From mathcomp Require Import ssrint interval archimedean.
 From mathcomp Require Import boolp contra classical_sets functions.
