@@ -10,8 +10,8 @@ From mathcomp Require Import reals ereal topology normedtype sequences.
 From mathcomp Require Import real_interval esum measure.
 From mathcomp Require Import lebesgue_stieltjes_measure lebesgue_measure numfun.
 From mathcomp Require Import measurable_realfun.
-From mathcomp Require Import realfun exp derive borel_hierarchy.
-From mathcomp Require Import absolute_continuity.
+From mathcomp Require Import realfun exp derive.
+From mathcomp Require Import absolute_continuity bz_mathcomp_extra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -21,6 +21,58 @@ Import numFieldNormedType.Exports.
 
 Local Open Scope classical_set_scope.
 Local Open Scope ring_scope.
+
+Definition disj_seq {T : eqType} (s t : seq T) :=
+  [disjoint [set` s] & [set` t]].
+
+Lemma disj_seq_sym {T : eqType} (s t : seq T) :
+  disj_seq s t = disj_seq t s.
+Proof. by rewrite /disj_seq disj_set_sym. Qed.
+
+Lemma disj_seq_allP {T : eqType} (s t : seq T) :
+  disj_seq s t <-> all (fun x => x \notin s) t.
+Proof.
+split.
+- move=> dsst.
+  + apply/allP => x xt; apply/negP => xs.
+    have := dsst.
+    move/disj_set2P/eqP.
+    apply/negP.
+    apply/set0P.
+    by exists x.
+- move/allP=> ts.
+  apply/disj_setPRL => x/= xt.
+  apply/negP.
+  exact: ts.
+Qed.
+
+Lemma disj_seq_filterr {T : eqType} (s t : seq T) (P : pred T) :
+  disj_seq s t -> disj_seq s [seq x <- t | P x].
+Proof.
+move/disj_seq_allP => /allP st.
+apply/disj_seq_allP; apply/allP => x; rewrite mem_filter.
+by move=> /andP[_ xt]; exact: st.
+Qed.
+
+Lemma disj_seq_filterl {T : eqType} (s t : seq T) (P : pred T) :
+  disj_seq s t -> disj_seq [seq x <- s | P x] t.
+Proof.
+by rewrite disj_seq_sym => ?; rewrite disj_seq_sym; exact: disj_seq_filterr.
+Qed.
+
+Lemma disj_seq_consr {T : eqType} (s t : seq T) (a : T) :
+  disj_seq s (a :: t) -> disj_seq s t.
+Proof.
+move/disj_seq_allP => /allP st.
+apply/disj_seq_allP; apply/allP => x memx.
+by apply: st; rewrite in_cons memx orbT.
+Qed.
+
+Lemma disj_seq_consl {T : eqType} (s t : seq T) (a : T) :
+  disj_seq (a :: s) t -> disj_seq s t.
+Proof.
+by rewrite disj_seq_sym => H; rewrite disj_seq_sym; exact: disj_seq_consr H.
+Qed.
 
 Section merge_lemmas.
 Context {T : Type} {r : rel T}.
@@ -267,3 +319,215 @@ rewrite !merge_ltEle//.
 - by rewrite merge_sorted//; exact: le_total.
 by rewrite mergeA//; first exact: le_total; exact: le_trans.
 Qed.
+
+Lemma le_sorted_merge_sym d {R : orderType d} (s t : seq R) :
+  sorted <=%O s -> sorted <=%O t -> merge <=%O s t = merge <=%O t s.
+Proof.
+elim: s t.
+  by move=> t; rewrite merge0r.
+move=> a s IHs t.
+elim: t a s IHs => // b t IHt a s IHs sas sbt.
+rewrite 2!merge_step.
+case: ifPn => [|]; last rewrite -ltNge; first rewrite le_eqVlt => /predU1P[|].
+- move=> ?; subst a.
+  rewrite lexx.
+  rewrite IHs//; first exact: path_sorted sas.
+  rewrite merger_cons; first exact: le_path_min.
+  rewrite -IHt//; first exact: path_sorted sbt.
+  rewrite merger_cons; first exact: le_path_min.
+  rewrite IHs//.
+    exact: path_sorted sas.
+  exact: path_sorted sbt.
+- move=> ab.
+  rewrite ifN; first by rewrite -ltNge.
+  rewrite IHs//.
+  exact: path_sorted sas.
+- move=> ba.
+  rewrite ifT ?ltW//.
+  rewrite IHt//.
+  exact: path_sorted sbt.
+Qed.
+
+Lemma sorted_undup_merge_subseq d {R : orderType d} (s t : seq R) :
+  sorted <=%O s -> sorted <%O t ->
+  subseq s t -> undup (merge <%O t s) = t.
+Proof.
+move=> ss st subseq_st.
+have lest : sorted <=%O t by exact: sorted_ltW.
+apply: (le_sorted_eq _ lest).
+  apply: undup_sorted; first exact: le_trans.
+  rewrite merge_ltEle//.
+  apply: merge_sorted => //; first exact: le_total.
+rewrite -{2}(@undup_id _ t).
+  by have := st; rewrite lt_sorted_uniq_le => /andP[].
+apply: perm_undup.
+move=> x.
+rewrite mem_merge mem_cat.
+apply: orb_idr.
+exact: mem_subseq.
+Qed.
+
+Fixpoint merge_lt_seq d {R : orderType d} (l s : seq R) :=
+  match s with
+  | [::] => l
+  | h :: s' =>
+     [seq x <- l | x < h]%O ++ [:: h] ++ merge_lt_seq [seq x <- l | h < x]%O s'
+  end.
+
+Lemma merge_lt_seq_merge d {R : orderType d} (t s : seq R) :
+  sorted <%O t -> sorted <%O s ->
+  disj_seq t s ->
+  merge <%O t s = merge_lt_seq t s.
+Proof.
+elim: s t => //= a s.
+- move=> _ _.
+  by rewrite merge0r.
+move=> IH t st pas dast.
+rewrite -IH.
+- exact: lt_sorted_filter.
+- exact: path_sorted pas.
+- apply: disj_seq_filterl.
+  exact: disj_seq_consr dast.
+elim: t st dast; first by [].
+move=> b t IH' pbt dasbt /=.
+case: ifPn => [ba|]; last rewrite -leNgt le_eqVlt => /predU1P[ab|ab].
+- rewrite cat_cons; congr cons.
+  rewrite ifN.
+    by rewrite -leNgt ltW.
+  apply: IH'.
+   exact: path_sorted pbt.
+  exact: disj_seq_consl dasbt.
+- have /disj_seq_allP/allP := dasbt.
+  move/(_ a (mem_head a s)).
+  rewrite in_cons; move/norP => [/negP].
+  by rewrite ab.
+- rewrite ab.
+    have ->/= : [seq x <- t | x < a]%O = [::].
+      apply/path_lt_filter0.
+      apply: path_le ab pbt.
+      exact: lt_trans.
+    congr cons.
+    rewrite path_lt_filterT.
+      apply: path_le ab pbt.
+      exact: lt_trans.
+  by elim: s IH pas IH' dasbt.
+Qed.
+
+Lemma sorted_merge_lt_seq  d {R : orderType d} (l s : seq R) :
+  sorted <%O l -> sorted <%O s ->
+  sorted <%O (merge_lt_seq l s).
+Proof.
+case: s => //= hs s sl ps.
+rewrite sorted_cat_cons sorted_filter_rcons => //=.
+elim: s hs l sl ps => /=.
+  move=> ? ? ? ?; exact: sorted_filter_path.
+move=> hs s IH hhs l sl /andP[hhshs ps].
+rewrite cat_path; apply/andP; split.
+  rewrite -filter_predI/=.
+  under eq_filter do rewrite /= andbC.
+  rewrite filter_predI.
+  apply: sorted_filter_path.
+  exact: lt_sorted_filter.
+rewrite /=; apply/andP; split.
+  move: (mem_last hhs [seq x <- [seq x <- l | hhs < x] | x < hs]%O).
+  rewrite inE => /predU1P[->//|].
+  by rewrite mem_filter => /andP[].
+apply: IH => //.
+exact: lt_sorted_filter.
+Qed.
+
+Lemma merge_filter_undup d {R : orderType d} (s t : seq R) :
+  sorted <%O s -> sorted <%O t ->
+  let t' := [seq x <- t | x \notin s] in
+  merge <%O s t' = undup (merge <%O s t).
+Proof.
+move=> sorted_s sorted_t t'.
+set t0 := [seq x <- t | x \in s].
+have less : sorted <=%O s by exact: sorted_ltW.
+have lest : sorted <=%O t by exact: sorted_ltW.
+have -> : merge <%O s t = merge <%O (merge <%O s t') t0.
+  rewrite (filterC_split s lest).
+  rewrite merge_ltEle//; first by rewrite -filterC_split.
+  rewrite [X in merge _ _ X]le_sorted_merge_sym ?le_sorted_filter//.
+  rewrite -merge_ltEle//.
+    by rewrite le_sorted_merge_sym ?le_sorted_filter// -filterC_split.
+  rewrite -merge_ltEle// ?le_sorted_filter//.
+  by rewrite le_sorted_mergeA// ?le_sorted_filter.
+rewrite sorted_undup_merge_subseq//.
+- exact: le_sorted_filter.
+- rewrite merge_lt_seq_merge//.
+  + exact: lt_sorted_filter.
+  + by apply/disj_seq_allP/allP => x; rewrite mem_filter => /andP[].
+  apply: sorted_merge_lt_seq => //.
+  exact: lt_sorted_filter.
+apply: (@subseq_trans _ s); last exact: subseq_mergel.
+rewrite /t0 lt_sorted_mem_filter_exchange//.
+exact: filter_subseq.
+Qed.
+
+Section merge_cats1.
+Context {d} {R : orderType d}.
+Variables (f : R -> R).
+Implicit Types (s : seq R) (x : R).
+
+Lemma merge_cats1 s t x : sorted <=%O s -> sorted <=%O (t ++ [:: x]) ->
+  merge <=%O s (t ++ [:: x]) = merge <=%O (merge <=%O s t) [:: x].
+Proof.
+move=> ss st.
+elim: s t x ss st.
+  move=> t x ss st /=.
+  rewrite sorted_merge//=; first exact: le_trans.
+  by rewrite sorted_merge//; exact: le_trans.
+move=> s0 s1 ih t.
+move: t s0 s1 ih.
+elim=> // t0 t1 ih' s0 s1 ih x ss stx.
+rewrite /=.
+rewrite -!/(merge <=%O (s0 :: s1) _).
+have t0x : (t0 <= x)%O.
+  move: stx.
+  rewrite /sorted/=.
+  move/le_path_min => /allP; apply.
+  by rewrite mem_cat mem_head orbT.
+have [s0t0|t0s0] := leP s0 t0.
+  rewrite -/((t0 :: t1) ++ [:: x]).
+  rewrite ih//; first exact: path_sorted ss.
+  move: s0t0.
+  rewrite le_eqVlt => /predU1P[s0t0|s0t0].
+    subst t0.
+    by rewrite merge_step// t0x.
+  rewrite merge_step ifT//.
+  apply: ltW.
+  apply: lt_le_trans s0t0 t0x.
+rewrite ih'//.
+  move: stx.
+  apply: subseq_sorted; first exact: le_trans.
+  rewrite [in X in subseq _ X]/=.
+  by apply: subseq_cons.
+rewrite [RHS]merger_cons//.
+by rewrite /=andbT.
+Qed.
+
+End merge_cats1.
+
+Section sorted_merge1.
+
+Context {d} {T : orderType d}.
+Implicit Types (a b x : T) (s : seq T).
+
+Lemma sorted_merge1 h s : h \notin s ->
+  sorted <%O s -> sorted <%O (merge <%O s [:: h]).
+Proof.
+elim: s h => // s0 s1 ih h hs /= s0s1.
+have [s0h|s0h]/= := ltP s0 h.
+  have s1h : sorted <%O (merge <%O s1 [:: h]).
+    apply: ih (path_sorted s0s1).
+    by apply: contra hs; rewrite inE orbC => ->.
+  rewrite path_min_sorted//; apply/allP => x.
+  rewrite mem_merge mem_cat => /orP[xs1|].
+    by move/order_path_min : s0s1 => /(_ lt_trans)/allP/(_ _ xs1).
+  by rewrite mem_seq1 => /eqP ->.
+rewrite lt_neqAle s0h andbT.
+by move: hs; rewrite !inE negb_or => /andP[->].
+Qed.
+
+End sorted_merge1.
