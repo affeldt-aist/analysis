@@ -5,13 +5,8 @@ From mathcomp Require Import ssrint interval archimedean perm finmap.
 #[warning="-warn-library-file-internal-analysis"]
 From mathcomp Require Import unstable.
 From mathcomp Require Import boolp classical_sets functions contra cardinality.
-From mathcomp Require Import reals topology normedtype ereal sequences derive.
-From mathcomp Require Import measure lebesgue_measure numfun realfun.
-From mathcomp Require Import measurable_realfun.
-From mathcomp Require Import absolute_continuity banach_zarecki_lemma2.
-From mathcomp Require Import banach_zarecki_lemma3 banach_zarecki_lemma5.
-From mathcomp Require Import banach_zarecki_lemma4 (* for contiguous intervals *).
-From mathcomp Require Import mesh oscillation interleave variation_extra.
+From mathcomp Require Import reals topology normedtype ereal sequences.
+From mathcomp Require Import bz_mathcomp_extra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -8,7 +8,7 @@ From mathcomp Require Import boolp classical_sets functions contra cardinality.
 From mathcomp Require Import reals convex topology normedtype ereal sequences.
 From mathcomp Require Import derive measure lebesgue_measure numfun realfun.
 From mathcomp Require Import measurable_realfun.
-From mathcomp Require Import absolute_continuity interleave.
+From mathcomp Require Import absolute_continuity interleave merge_extra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -148,6 +148,45 @@ by move=> Ea s t; rewrite !all2_count2 (eq_count2 Ea).
 Qed.
 
 End count2.
+
+Section disj_seq_lemmas.
+Implicit Types (T : eqType) (R : realDomainType).
+
+Lemma predCr_disj_seq {R} (s : seq R) (P : pred R) :
+  disj_seq [seq x <- s | P x] [seq x <- s | predC P x].
+Proof.
+apply/disj_seq_allP/allP => x.
+rewrite 2!mem_filter => /andP[/=/negP NPx xs].
+by apply/nandP; left; apply/negP.
+Qed.
+
+Lemma predCl_disj_seq {R} (s : seq R) (P : pred R) :
+  disj_seq [seq x <- s | predC P x] [seq x <- s | P x].
+Proof. by rewrite disj_seq_sym; exact: predCr_disj_seq. Qed.
+
+End disj_seq_lemmas.
+
+(* unlike subseq, disj_seq s t is true when s and t is disjoint as sets,
+   not that each one be not a subseq of the other.
+   i.e. disj_seq [:: a; a; b] [:: a; b; b] is false although
+~ (subseq [:: a; a; b] [:: a; b; b] \/ subseq [:: a; b; b] [:: a; a; b]) is true *)
+Example subseqNdisj_seq {T : eqType} :
+let disj_seq' s t := ~~ (subseq s t || subseq t s) in
+  forall a b : T, a == b = false ->
+   let s := [:: a; a; b] in
+   let t := [:: a; b; b] in
+  disj_seq' s t /\ ~ disj_seq s t.
+Proof.
+move=> disj_seq' a b ab s t.
+split.
+- apply/norP; split.
+  + by rewrite /= eqxx ?ifF ?ifF.
+  + rewrite /= eqxx ifF; first by rewrite eq_sym.
+    by rewrite eqxx.
+- rewrite /disj_seq disj_set2E; apply/negP.
+  apply/set0P.
+  exists a => /=; split; exact: mem_head.
+Qed.
 
 Lemma open_itvbb {R : realType} (b0 b1 : bool) (x y : R) :
   open [set` (Interval (BSide b0 x) (BSide b1 y))] =

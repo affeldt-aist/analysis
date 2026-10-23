@@ -3,6 +3,7 @@ From mathcomp Require Import boot order algebra.
 From mathcomp Require Import unstable.
 From mathcomp Require Import boolp classical_sets functions contra cardinality.
 From mathcomp Require Import filter reals ereal topology normedtype numfun.
+From mathcomp Require Import bz_mathcomp_extra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -30,6 +31,20 @@ by rewrite big_cons -fine_max// ih.
 Qed.
 
 End mv_to_constructive_ereal.
+
+Lemma ereal_le_bigmax_seq2 {R : realType} {T : eqType} (r s : seq T) (F F' : T -> \bar R) :
+  (forall i, i \in r -> exists2 j, j \in s & (F i <= F' j)%O) ->
+  (\big[maxe/-oo%E]_(i <- r) F i <=
+        \big[maxe/-oo%E]_(i <- s) F' i)%O.
+Proof.
+case: s => [h|r0 r1 h].
+  rewrite big_nil leeNy_eq; apply/eqP.
+  rewrite big_seq_cond.
+  apply: bigmax_eq_id => i.
+  by rewrite andbT => /(h i) -[?].
+apply: le_bigmax_seq2 => //.
+by exists r0; rewrite ?mem_head ?leNye.
+Qed.
 
 (* TODO: to appear in MCA 1.19.0 *)
 Lemma itv_partition_nth_ge_with_def {d} {T : porderType d} (def a b : T) s m :
