@@ -42,6 +42,10 @@ HB.mixin Record PseudoMetric_isMetric (K : numDomainType) M & PseudoMetric K M :
 HB.structure Definition Metric (K : numDomainType) :=
   { M of PseudoMetric K M & PseudoMetric_isMetric K M }.
 
+#[short(type="pmetricType")]
+HB.structure Definition PointedMetric (K : numDomainType) :=
+  { M of PseudoPointedMetric K M & PseudoMetric_isMetric K M }.
+
 Section metric_numDomainType.
 Context {R : numDomainType} (T : metricType R).
 
