@@ -172,7 +172,7 @@ End disj_seq_lemmas.
 ~ (subseq [:: a; a; b] [:: a; b; b] \/ subseq [:: a; b; b] [:: a; a; b]) is true *)
 Example subseqNdisj_seq {T : eqType} :
 let disj_seq' s t := ~~ (subseq s t || subseq t s) in
-  forall a b : T, a == b = false ->
+  forall a b : T, a != b ->
    let s := [:: a; a; b] in
    let t := [:: a; b; b] in
   disj_seq' s t /\ ~ disj_seq s t.
@@ -180,12 +180,12 @@ Proof.
 move=> disj_seq' a b ab s t.
 split.
 - apply/norP; split.
-  + by rewrite /= eqxx ?ifF ?ifF.
-  + rewrite /= eqxx ifF; first by rewrite eq_sym.
+  + by rewrite /= eqxx ?ifF ?ifF//; exact/negbTE.
+  + rewrite /= eqxx ifF; first by rewrite eq_sym; exact/negbTE.
     by rewrite eqxx.
 - rewrite /disj_seq disj_set2E; apply/negP.
   apply/set0P.
-  exists a => /=; split; exact: mem_head.
+  by exists a => /=; split; exact: mem_head.
 Qed.
 
 Lemma open_itvbb {R : realType} (b0 b1 : bool) (x y : R) :

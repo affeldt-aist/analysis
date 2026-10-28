@@ -178,7 +178,7 @@ Local Notation merge := (@merge R <%R).
 
 Definition udmerge s t := (undup (merge s t)).
 
-Let lt_pathNmem x s : path x s -> x \in s = false.
+Let lt_pathNmem x s : path x s -> x \notin s.
 Proof.
 move/lt_path_min/allP => ltxs.
 apply/negP => xs.
@@ -213,12 +213,6 @@ by move: xt => /= /andP[->].
 Qed.
 
 End lt_merge_lemmas.
-
-(* NB: available as PR https://github.com/math-comp/analysis/pull/1809 *)
-Lemma compact_unif_continuousP {R : realType} (a b : R) f :
-  {within `[a, b], continuous f} <-> @unif_continuous (subspace `[a, b]) R f.
-Proof.
-Admitted.
 
 Section variation_merge_omega_max.
 Context {R : realType}.
@@ -499,7 +493,7 @@ rewrite lee_fin => /andP[A0].
 move/ereal_sup_gt => [_ /=[Vstar [xstar dxstar vVstar] <-]].
 rewrite lte_fin => AVstar.
 have /unif_continuousP/= : @unif_continuous (subspace `[a, b]) R f.
-  exact/compact_unif_continuousP.
+  by apply/heine_cantor_subspace => //; exact: segment_compact.
 pose m := size xstar.
 have mE : m = size xstar by [].
 pose eps := (Vstar - A) / (4 * m)%:R.

@@ -58,7 +58,7 @@ exact: (ih _ _ b).
 Qed.
 
 Lemma subset_setCS {R} (X A B : set R) : A `<=` X -> B `<=` X ->
-  A `<=` B = (X `\` B `<=` X `\` A).
+  (A `<=` B) = (X `\` B `<=` X `\` A).
 Proof.
 move=> AX BX.
 apply/propeqP; split => [|H x Ax]; first exact: setDS.
