@@ -2379,9 +2379,10 @@ have sz_v n : size (v n) = n.
   apply: succn_inj.
   rewrite (_ : size (v n) = (size ((u n) :: (v n))).-1) //.
   by rewrite -c'_uv size_tuple.
-have size_v'v n : minn (size ((u' n))) (size (v n)) = n.
+have size_v'v n : minn (size (u' n)) (size (v n)) = n.
   by rewrite sz_u' sz_v minnn.
-have pc'd' n : itv_partition c (c_ n n) (interleave ((u' n)) (v n)).
+(* NB: second use of interleave *)
+have pc'd' n : itv_partition c (c_ n n) (interleave (u' n) (v n)).
   split.
     rewrite lt_path_sortedE; apply/andP; split.
       rewrite (eq_all_r (mem_interleave _)) ?sz_u' ?sz_v//.
