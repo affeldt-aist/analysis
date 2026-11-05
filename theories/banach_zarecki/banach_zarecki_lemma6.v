@@ -791,7 +791,7 @@ have [|subZ] := pselect (is_subset1 Z); last first.
   move=> i; rewrite -/c.
   suff: `[c, d]%classic (A i) by rewrite /= => /itvP[->].
   have /closureS := @ABcd i.
-  rewrite closure_neitv_oo// closure_neitv_cc//.
+  rewrite closure_itvoo// closure_neitv_cc//.
     exact: has_bound_not_subset1_inf_sup.
   by apply => /=; rewrite bound_itvE ltW.
 move/is_subset1P => -[Z0'|[z Zz]].
@@ -817,7 +817,7 @@ have [|subZ] := pselect (is_subset1 Z); last first.
   apply: OrderedBounds.up_B_b => // i0; rewrite -/c.
   suff: `[c, d]%classic (B i0) by rewrite /= => /itvP[->].
   have /closureS := @ABcd i0.
-  rewrite closure_neitv_oo// closure_neitv_cc//.
+  rewrite closure_itvoo// closure_neitv_cc//.
     exact: has_bound_not_subset1_inf_sup.
   by apply => /=; rewrite bound_itvE ltW.
 move/is_subset1P => -[Z0'|[z Zz]].
@@ -3198,11 +3198,11 @@ have eq9 :
       rewrite [leLHS](_ : _ = (\big[+%E/0%R]_(0 <= k <oo) oscillation f `]A_ k, B_ k[)).
         apply: eq_eseriesr => i _.
         rewrite -[in RHS]oscillation_closure.
-          rewrite closure_neitv_oo//.
+          rewrite closure_itvoo//.
           exact: contiguous_itvs1_lt_contiguous_itvs2.
           apply: (continuous_subspaceW _ cf).
           by move=> x /A_B_cd; apply: subset_itv; rewrite bnd_simp//.
-        rewrite closure_neitv_oo//.
+        rewrite closure_itvoo//.
         exact: contiguous_itvs1_lt_contiguous_itvs2.
       apply: sum_oscillation_le_total_variation.
         exact: cd.
