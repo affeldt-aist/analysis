@@ -13,7 +13,7 @@
 - in `metric_structure.v`:
   + lemma `ball_open`
   + lemma `ball_open_nbhs`
-  + lemma `accessible_field`
+  + lemma `metric_accessible`
 
 ### Changed
 
