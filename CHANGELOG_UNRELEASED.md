@@ -10,6 +10,11 @@
     `pownMexpr_cvgn0`
   + instance `is_derive1_powRl`
 
+- in `metric_structure.v`:
+  + lemma `ball_open`
+  + lemma `ball_open_nbhs`
+  + lemma `accessible_field`
+
 ### Changed
 
 - in `lebesgue_integral_nonneg.v`, generalized and deprecated:
@@ -29,6 +34,10 @@
 ### Changed
 
 ### Renamed
+
+- in `pseudometric_normed_Zmodule.v`:
+  + `ball_open` -> `pseudo_ball_open`
+  + `ball_open_nbhs` -> `pseudo_ball_open_nbhs`
 
 ### Generalized
 
