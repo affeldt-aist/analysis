@@ -35,8 +35,8 @@ Section list_of_bounds.
    B is the (unordered) sequence of right bounds *)
 Context {R : realType} (A B : nat -> R).
 
-(* unordered sequence of (left,right) bounds,
-   the original indexed is recorded as a third component *)
+(* unordered sequence of (left, right) bounds,
+   the original index is recorded as a third component *)
 Definition ABi n := [tuple ((A i, B i), nat_of_ord i) | i < n].
 
 Lemma unzip2_ABi n : unzip2 (ABi n) = iota 0 n.
@@ -44,7 +44,7 @@ Proof.
 by rewrite -val_enum_ord /ABi /unzip2 -[in LHS]map_comp/=; exact: eq_map.
 Qed.
 
-(* ordered sequence of (left,right) bounds,
+(* ordered sequence of (left, right) bounds,
    the third component records the original index *)
 Definition left_lt {T1 T2} := fun x y : R * T1 * T2 => x.1.1 <= y.1.1.
 Definition abi n := sort left_lt (ABi n).
@@ -70,7 +70,7 @@ Proof. by rewrite !sorted_map sort_sorted//= => ? ?/=; rewrite le_total. Qed.
 (* ordered sequence of right bounds *)
 Definition seq_b n := unzip2 (unzip1 (abi n)).
 
-(* reordered indices *)
+(* original indices after reordering *)
 Definition seq_idx n := unzip2 (abi n).
 
 Lemma seq_b_nth_idx d n :
@@ -110,8 +110,7 @@ Lemma perm_seq_idx n : perm_eq (seq_idx n) (iota 0 n).
 Proof.
 set d : R := 0.
 have [q H1 H2] := perm_iota_sort left_lt (d, d, 0) (ABi n).
-have qn : forall k, k \in q -> (k < n)%N.
-  move=> k.
+have qn k : k \in q -> (k < n)%N.
   by rewrite (perm_mem H1) mem_iota leq0n/= add0n size_tuple card_ord.
 move: H1; rewrite size_tuple.
 apply: perm_trans.
@@ -500,7 +499,7 @@ Lemma sum_oscillation_le_total_variation {R : realType} (a b : R) (f : R -> R) (
   (forall i0 : nat, A i0 < B i0) ->
   let I i := `]A i, B i[%classic in
   trivIset [set: nat] I ->
-  (forall n, `[A n, B n]%classic `<=` `[a, b]) ->
+  (forall n, I n `<=` `[a, b]) ->
   (\sum_(i <oo) oscillation f (I i) <= total_variation a b f)%E.
 Proof.
 move=> ab cf AB I tI Iab.
@@ -531,6 +530,7 @@ have : forall i : 'I_n, exists xy, [/\ i_ i xy.1, i_ i xy.2, xy.1 < xy.2 &
   - apply: continuous_subspaceW cf.
     rewrite /a_ OrderedBounds.anth /b_ OrderedBounds.bnth.
     have [-> -> _] := ListOfBounds.nth_abiE A B b (ltn_ord i).
+    apply: subset_neitv_oocc => //.
     exact: Iab.
   - rewrite divr_gt0//.
     by near: n; exact: nbhs_infty_gtr.
@@ -630,15 +630,13 @@ apply: variation_le_total_variation.
         have [+ _ _ _] := Hxy ord0.
         rewrite /i_/= in_itv/= => /andP[+ _].
         apply: le_lt_trans.
-        rewrite /a_ OrderedBounds.anth.
-        rewrite (and3proj1 (ListOfBounds.nth_abiE _ _ _ _))//.
-        rewrite -OrderedBounds.idxE.
-        have /= := Iab (OrderedBounds.idx A B n.+1 0).
-        have /itvP ->// : A (OrderedBounds.idx A B n.+1 0) \in `[a, b].
-        rewrite inE.
-        apply: (Iab (OrderedBounds.idx A B n.+1 0)) => /=.
-        rewrite in_itv/= lexx/=.
-        by rewrite ltW.
+        apply: (@incl_itv_lb_nat _ a (BRight b) n.+1 (fun i => (a_ n.+1 i, b_ n.+1 i)) _ _ ord0) => //.
+          by move=> ?; exact: OrderedBounds.a_lt_b.
+        move=> j/= jn.
+        rewrite /a_ OrderedBounds.anth/=.
+        rewrite /b_ OrderedBounds.bnth/=.
+        have /= [-> -> _] := @ListOfBounds.nth_abiE R A B b n.+1 j jn.
+        exact: Iab.
       rewrite (nth_map ord0)//.
         by rewrite size_enum_ord//.
       rewrite /s0/=.
@@ -675,8 +673,9 @@ apply: variation_le_total_variation.
         by rewrite -/(nat_of_bool true) -oddi1 -uphalf_half.
       rewrite (sup_itvcc (ltW ab))//.
       apply: OrderedBounds.b_le_a => // j.
-      suff: B j \in `[a, b] by move/itvP ->.
-      by apply/(Iab j); rewrite /= bound_itvE ltW.
+      apply: (@incl_itv_ub_nat R (BLeft a) b j.+1 (fun i => (A i, B i))) => //.
+        by move=> k kn/=; exact: AB.
+      by move=> k kn/=; exact: Iab.
     rewrite (_ : odd i = odd i.-1.+1).
       by rewrite prednK// lt0n.
     rewrite oddS eveni1/=.
@@ -715,12 +714,9 @@ apply: variation_le_total_variation.
   rewrite /b_ OrderedBounds.bnth.
   rewrite (and3proj2 (ListOfBounds.nth_abiE _ _ _ _))//.
   rewrite -OrderedBounds.idxE.
-  have /= := Iab (OrderedBounds.idx A B n.+1 n1).
-  have : B (OrderedBounds.idx A B n.+1 n1) \in `[a, b].
-    rewrite inE.
-    apply: (Iab (OrderedBounds.idx A B n.+1 n1)) => /=.
-    by rewrite bound_itvE// ltW.
-  by move=> /itvP ->.
+  apply: (@incl_itv_ub_nat R (BLeft a) b ((OrderedBounds.idx A B n.+1 n).+1) (fun i => (A i, B i))) => //.
+    by move=> k kn/=; exact: AB.
+  by move=> k kn/=; exact: Iab.
 by rewrite /s last_rcons.
 Unshelve. all: end_near. Qed.
 
@@ -3173,59 +3169,42 @@ have ineq8 : \forall n \near \oo,
   apply: (lt_le_trans (H6 n0 n0n)).
   by rewrite sumEFin.
 (* (9), used in the last step *)
-have eq9 :
-   (\sum_(n <= j <oo) oscillation f `[A_ j, B_ j])%E @[n --> \oo] --> 0%:E.
-(*  rewrite (cvg_shiftS (fun k => \big[+%E/0]_(k <= j <oo) _)).*)
-  apply: nneseries_tail_cvg.
-    apply: (@le_lt_trans _ _ Vcd).
-      (* oscillation_closure *)
-      have A_B_cd : forall n : nat, `[A_ n, B_ n] `<=` `[c, d].
-        move=> n.
-        apply: subset_itv; rewrite bnd_simp.
-          rewrite /A_.
-          apply: inf_contiguous_itvs1 => //.
-          rewrite inE//=.
-          have [+ _ _] := @bij _ _ _ _ h1.
-          exact.
-        rewrite /A_.
-        apply: sup_contiguous_itvs2 => //.
-        rewrite inE//=.
-        have [+ _ _] := @bij _ _ _ _ h1.
-        exact.
-      rewrite [leLHS](_ : _ = (\big[+%E/0%R]_(0 <= k <oo) oscillation f `]A_ k, B_ k[)).
-        apply: eq_eseriesr => i _.
-        rewrite -[in RHS]oscillation_closure.
-          rewrite closure_neitv_oo//.
-          exact: contiguous_itvs1_lt_contiguous_itvs2.
-          apply: (continuous_subspaceW _ cf).
-          by move=> x /A_B_cd; apply: subset_itv; rewrite bnd_simp//.
+have eq9 : (\sum_(n <= j <oo) oscillation f `[A_ j, B_ j] @[n --> \oo] --> 0)%E.
+  apply: nneseries_tail_cvg; last first.
+    by move=> n _; exact: oscillation_ge0.
+  apply: (@le_lt_trans _ _ Vcd).
+    have A_B_cd n : `]A_ n, B_ n[ `<=` `[c, d].
+      have [supp_h1 _ _] := @bij _ _ _ _ h1.
+      apply: subset_itv; rewrite bnd_simp.
+        by apply: inf_contiguous_itvs1 => //; rewrite inE/=; exact: supp_h1.
+      by apply: sup_contiguous_itvs2 => //; rewrite inE//=; exact: supp_h1.
+    rewrite [leLHS](_ : _ = (\big[+%E/0%R]_(0 <= k <oo) oscillation f `]A_ k, B_ k[)).
+      apply: eq_eseriesr => i _.
+      rewrite -[in RHS]oscillation_closure; last first.
         rewrite closure_neitv_oo//.
         exact: contiguous_itvs1_lt_contiguous_itvs2.
-      apply: sum_oscillation_le_total_variation.
-        exact: cd.
-        exact: cdcf.
-        by move=> i0; exact: contiguous_itvs1_lt_contiguous_itvs2.
-        rewrite /A_ /B_.
-        rewrite [X in _ _ X](_: _ = (contiguous_itvs Z) \o h1).
-          by apply/funext => i; rewrite -contiguous_ooitv.
-        rewrite trivIset_comp.
-          by apply: set_bij_inj; apply: bij.
-        apply: (@sub_trivIset _ _ _ setT) => //.
-        exact: disjoint_contiguous_itvs.
-        exact: A_B_cd.
-    have/(bounded_variationP _ (ltW cd)) := cdbvf.
-    by rewrite ge0_fin_numE// total_variation_ge0// ltW.
-  move=> n _.
-  exact: oscillation_ge0.
+      rewrite closure_neitv_oo//.
+        exact: contiguous_itvs1_lt_contiguous_itvs2.
+      apply/(continuous_subspaceW _ cf)/subset_neitv_oocc => //.
+        exact: contiguous_itvs1_lt_contiguous_itvs2.
+      by move=> x /A_B_cd; apply: subset_itv; rewrite bnd_simp//.
+    apply: (sum_oscillation_le_total_variation cd cdcf) => //.
+    - by move=> i0; exact: contiguous_itvs1_lt_contiguous_itvs2.
+    - rewrite /A_ /B_ [X in _ _ X](_: _ = (contiguous_itvs Z) \o h1).
+        by apply/funext => i; rewrite -contiguous_ooitv.
+      rewrite trivIset_comp.
+        by apply: set_bij_inj; exact: bij.
+      apply: (@sub_trivIset _ _ _ setT) => //.
+      exact: disjoint_contiguous_itvs.
+  have/(bounded_variationP _ (ltW cd)) := cdbvf.
+  by rewrite ge0_fin_numE// total_variation_ge0// ltW.
 (* the last step *)
-have : (alpha / 2 <= 0%:E)%E.
-  have/cvg_lim <- := eq9.
-    exact: ereal_hausdorff.
-  apply: (lime_ge _ ineq8).
-  by apply/cvg_ex; exists 0%:E.
+have : (alpha / 2 <= 0)%E.
+  have/cvg_lim <- := eq9; first exact: ereal_hausdorff.
+  apply/(lime_ge _ ineq8).
+  by apply/cvg_ex; exists 0%E.
 rewrite pmule_lle0 ?inve_gt0//.
-apply/negP.
-by rewrite -ltNge.
+by apply/negP; rewrite -ltNge.
 Unshelve. all: end_near.
 all: exact: [::].
 Qed.

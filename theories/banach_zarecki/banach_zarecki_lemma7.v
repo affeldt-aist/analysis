@@ -128,22 +128,19 @@ have Hc n k : (k < n_ n)%N -> {within `[(ab_ n k).1, (ab_ n k).2], continuous f}
   move/andP => [].
   rewrite le_eqVlt.
   move/orP => [/eqP <- _|abnkx xabnk].
-    have /= -> := incl_itv_lb (fun i=> (ablt n (nat_of_ord i) (ltn_ord i)))
-      (fun i=> absub n (nat_of_ord i) (ltn_ord i)) (Ordinal knn).
-    have /= := incl_itv_ub (fun i=> (ablt n (nat_of_ord i) (ltn_ord i)))
-      (fun i=> absub n (nat_of_ord i) (ltn_ord i)) (Ordinal knn).
+    apply/andP; split.
+      by apply: (@incl_itv_lb_nat _ _ _ (n_ n)) => // *; [exact: ablt|exact: absub].
     apply: le_trans.
-    exact/ltW/ablt.
+      exact/ltW/ablt.
+    by apply: (@incl_itv_ub_nat _ _ _ (n_ n)) => // *; [exact: ablt|exact: absub].
   apply/andP; split.
     apply: (le_trans _ (ltW abnkx)).
-    by have /= := (incl_itv_lb (fun i=> (ablt n (nat_of_ord i) (ltn_ord i)))
-      (fun i=> absub n (nat_of_ord i) (ltn_ord i)) (Ordinal knn)).
+    by apply: (@incl_itv_lb_nat _ _ _ (n_ n)) => // *; [exact: ablt|exact: absub].
   apply: (le_trans xabnk).
-  by have /= := (incl_itv_ub (fun i=> (ablt n (nat_of_ord i) (ltn_ord i)))
-      (fun i=> absub n (nat_of_ord i) (ltn_ord i)) (Ordinal knn)).
+  by apply: (@incl_itv_ub_nat _ _ _ (n_ n)) => // *; [exact: ablt|exact: absub].
 have Hhomo n k : (k < n_ n)%N -> {in `](ab_ n k).1, (ab_ n k).2[ &, {homo f : x y / x <= y}}.
   move=> knn x y xab yab.
-  by apply: nndf; exact: (absub n k).
+  by apply/nndf; exact: (absub n k).
 have d_prop i : \sum_(k < n_ i) (((ab_ i) k).2 - ((ab_ i) k).1) < delta_0 i.
   by rewrite /ab_; case: cid => ? [].
 have e0_prop i : \sum_(k < n_ i) `|f (((ab_ i) k).2) - f ((ab_ i) k).1| >= e0%:num.

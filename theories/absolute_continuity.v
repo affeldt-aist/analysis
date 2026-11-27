@@ -1186,10 +1186,11 @@ by move=> [].
 *)
  *)
 
+(* TODO: this is more related to ordering of lists of bounds rather than abs cont, mv elsewhere?*)
 Section for_abs_cont.
 Context {R : realType}.
 
-Lemma incl_itv_lb a (b : itv_bound R) n (B : 'I_n -> R * R) :
+Let incl_itv_lb a (b : itv_bound R) (B : nat -> R * R) :
   (forall i, (B i).1 < (B i).2) ->
   (forall i, `](B i).1, (B i).2[ `<=`
              [set` Interval (BLeft a) b] (*NB: closed on the left*)) ->
@@ -1213,13 +1214,13 @@ Lemma incl_itv_lb_nat a (b : itv_bound R) n (B : nat -> R * R) :
   forall i, (i < n)%N -> a <= (B i).1.
 Proof.
 move: n => [_ _ []//|n] H1 H2 i ni.
-have /= := (@incl_itv_lb a b n.+1 (B \o @inord n) _ _ (Ordinal ni)).
+have /= := (@incl_itv_lb a b (B \o @inord n) _ _ (Ordinal ni)).
 rewrite inordK//; apply => j.
 - exact: H1.
 - exact: H2.
 Qed.
 
-Lemma incl_itv_ub (a : itv_bound R) b n (B : 'I_n -> R * R) :
+Let incl_itv_ub (a : itv_bound R) b (B : nat -> R * R) :
   (forall i, (B i).1 < (B i).2) ->
   (forall i, `](B i).1, (B i).2[ `<=`
               [set` Interval a (BRight b)] (*NB: closed on the right*)) ->
@@ -1244,7 +1245,7 @@ Lemma incl_itv_ub_nat (a : itv_bound R) b n (B : nat -> R * R) :
   forall i, (i < n)%N -> (B i).2 <= b.
 Proof.
 move: n => [_ _ []//|n] H1 H2 i ni.
-have /= := (@incl_itv_ub a b n.+1 (B \o @inord n) _ _ (Ordinal ni)).
+have /= := (@incl_itv_ub a b (B \o @inord n) _ _ (Ordinal ni)).
 rewrite inordK//; apply => j.
 - exact: H1.
 - exact: H2.
